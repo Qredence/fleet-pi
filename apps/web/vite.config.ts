@@ -1,13 +1,17 @@
+import { resolve } from "node:path"
+
 import { defineConfig } from "vite"
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import viteTsConfigPaths from "vite-tsconfig-paths"
 import tailwindcss from "@tailwindcss/vite"
-import { nitro } from "nitro/vite"
+import { config as dotenvConfig } from "dotenv"
+
+// Load .env from the monorepo root into process.env for server-side routes
+dotenvConfig({ path: resolve(import.meta.dirname, "../../.env"), override: false })
 
 const config = defineConfig({
   plugins: [
-    nitro(),
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
