@@ -21,8 +21,26 @@
 
 ## AI Integration
 
-- The chat backend uses `@mariozechner/pi-ai`, not Vercel AI SDK.
+- The chat backend uses `@mariozechner/pi-coding-agent` on top of `@mariozechner/pi-ai`, not Vercel AI SDK.
 - The primary provider is Amazon Bedrock via Pi's `amazon-bedrock` provider.
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
+- Shared browser-safe chat protocol types live in `apps/web/src/lib/pi/chat-protocol.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.
 - The browser chat client consumes newline-delimited JSON events from `/api/chat`.
+- `/api/chat` is session-based: the client sends a single `message` plus optional Pi `sessionFile`/`sessionId` metadata, and the server resumes or creates a persistent Pi session.
+- Supporting chat endpoints are `/api/chat/models`, `/api/chat/resources`, `/api/chat/session`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/resume`, and `/api/chat/abort`.
+- The server keeps live Pi `AgentSessionRuntime` instances in memory for a short TTL (`FLEET_PI_RUNTIME_TTL_MS`, default 10 minutes) so aborts and queued follow-ups operate on the same runtime. Invalid, outside, or missing session files must still start a fresh repo-scoped session.
+- The web chat enables Pi's built-in `read`, `write`, `edit`, and `bash` tools scoped to the repository root. File paths and bash cwd must remain repo-scoped. Tool execution is direct in v1; there is no approval gate.
+- Pi tool execution events are normalized into existing agent-elements tool parts (`tool-Read`, `tool-Write`, `tool-Edit`, `tool-Bash`) for rendering.
+- Pi sessions are persistent JSONL sessions. The browser should store only Pi session metadata in localStorage and hydrate visible messages from the Pi session file after refresh.
+- Model choices should come from Pi `ModelRegistry`/`SettingsManager`, not a hard-coded UI list. Project-local Pi resources under `.pi/skills`, `.pi/prompts`, and `.pi/extensions` are loaded through `DefaultResourceLoader` and surfaced through `/api/chat/resources`.
 - Bedrock credentials should come from standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1` when unset.
+
+## Manual Chat Checks
+
+- Ask `read package.json` and verify a Read tool card appears.
+- Ask `create a small temp file under this repo` and verify Write renders and the file is created inside the repo.
+- Ask `edit that temp file` and verify Edit renders a diff.
+- Ask `run pnpm --version` and verify Bash renders command and output.
+- Refresh the page and confirm the visible transcript hydrates from stored Pi session metadata.
+- Corrupt localStorage with `/etc/hosts` as `sessionFile`; the app should silently start a fresh repo-scoped session instead of showing an outside-session error.
+- While streaming, send another prompt and verify a follow-up queue status appears.

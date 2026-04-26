@@ -1,5 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { History, Plus, Square } from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { AgentChat } from "@workspace/ui/components/agent-elements/agent-chat"
 import { InputBar } from "@workspace/ui/components/agent-elements/input-bar"
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
@@ -7,34 +14,37 @@ import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loa
 import type {
   ChatMessage,
   ChatStatus,
+  ChatToolPart,
 } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ModelOption } from "@workspace/ui/components/agent-elements/types"
+import type {
+  ChatModelInfo,
+  ChatModelSelection,
+  ChatModelsResponse,
+  ChatSessionInfo,
+  ChatSessionMetadata,
+  ChatSessionResponse,
+  ChatStreamEvent,
+} from "@/lib/pi/chat-protocol"
 
 export const Route = createFileRoute("/")({ component: Chat })
 
-const MODELS: Array<ModelOption> = [
-  {
-    id: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-    name: "Claude Haiku",
-    version: "4.5",
-  },
-  {
-    id: "us.anthropic.claude-sonnet-4-6",
-    name: "Claude Sonnet",
-    version: "4.6",
-  },
-  {
-    id: "us.anthropic.claude-opus-4-6-v1[1m]",
-    name: "Claude Opus",
-    version: "4.6",
-  },
-]
+type ChatModelOption = ModelOption & {
+  provider: string
+  modelId: string
+  thinkingLevel?: ChatModelInfo["defaultThinkingLevel"]
+}
 
-type ChatStreamEvent =
-  | { type: "start"; id: string }
-  | { type: "delta"; text: string }
-  | { type: "done"; message: ChatMessage }
-  | { type: "error"; message: string }
+type ChatSessionsResponse = {
+  sessions: Array<ChatSessionInfo>
+}
+
+type QueueState = {
+  steering: Array<string>
+  followUp: Array<string>
+}
+
+const CHAT_SESSION_STORAGE_KEY = "fleet-pi-chat-session"
 
 function createTextMessage(
   role: ChatMessage["role"],
@@ -56,18 +66,99 @@ function appendAssistantDelta(
 ) {
   return messages.map((message) => {
     if (message.id !== assistantId) return message
-    const text = message.parts
-      .filter((part): part is { type: "text"; text: string } => {
-        return part.type === "text" && typeof part.text === "string"
-      })
-      .map((part) => part.text)
-      .join("")
+    const parts = [...message.parts]
+    const textIndex = parts.findIndex((part) => part.type === "text")
 
-    return {
-      ...message,
-      parts: [{ type: "text", text: `${text}${delta}` }],
+    if (textIndex === -1) {
+      return { ...message, parts: [...parts, { type: "text", text: delta }] }
     }
+
+    const part = parts[textIndex]
+    parts[textIndex] =
+      part.type === "text" ? { ...part, text: `${part.text}${delta}` } : part
+    return { ...message, parts }
   })
+}
+
+function upsertAssistantToolPart(
+  messages: Array<ChatMessage>,
+  assistantId: string,
+  toolPart: ChatToolPart,
+) {
+  return messages.map((message) => {
+    if (message.id !== assistantId) return message
+
+    const toolIndex = message.parts.findIndex((part) => {
+      return (
+        part.type === toolPart.type &&
+        "toolCallId" in part &&
+        part.toolCallId === toolPart.toolCallId
+      )
+    })
+
+    if (toolIndex === -1) {
+      return { ...message, parts: [...message.parts, toolPart] }
+    }
+
+    const parts = [...message.parts]
+    parts[toolIndex] = { ...parts[toolIndex], ...toolPart }
+    return { ...message, parts }
+  })
+}
+
+function upsertAssistantThinkingPart(
+  messages: Array<ChatMessage>,
+  assistantId: string,
+  thought: string,
+) {
+  return upsertAssistantToolPart(messages, assistantId, {
+    type: "tool-Thinking",
+    toolCallId: "thinking",
+    state: "input-streaming",
+    input: { thought },
+    output: thought,
+  })
+}
+
+function readStoredSession(): ChatSessionMetadata {
+  if (typeof window === "undefined") return {}
+
+  try {
+    const raw = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as ChatSessionMetadata
+    return {
+      sessionFile:
+        typeof parsed.sessionFile === "string" ? parsed.sessionFile : undefined,
+      sessionId:
+        typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+function storeSession(metadata: ChatSessionMetadata) {
+  if (typeof window === "undefined") return
+
+  if (!metadata.sessionFile && !metadata.sessionId) {
+    window.localStorage.removeItem(CHAT_SESSION_STORAGE_KEY)
+    return
+  }
+
+  window.localStorage.setItem(
+    CHAT_SESSION_STORAGE_KEY,
+    JSON.stringify(metadata),
+  )
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(body || `Request failed (${response.status})`)
+  }
+  return (await response.json()) as T
 }
 
 async function readChatStream(
@@ -103,52 +194,272 @@ async function readChatStream(
   handleLine(buffer)
 }
 
-function usePiChat(modelId: string) {
+function metadataUrl(metadata: ChatSessionMetadata) {
+  const params = new URLSearchParams()
+  if (metadata.sessionFile) params.set("sessionFile", metadata.sessionFile)
+  if (metadata.sessionId) params.set("sessionId", metadata.sessionId)
+  return params.toString()
+}
+
+function usePiChat(model: ChatModelSelection | undefined) {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
   const [error, setError] = useState<Error | null>(null)
+  const [sessionMetadata, setSessionMetadata] =
+    useState<ChatSessionMetadata>(() => readStoredSession())
+  const [sessions, setSessions] = useState<Array<ChatSessionInfo>>([])
+  const [activityLabel, setActivityLabel] = useState<string | undefined>()
+  const [queue, setQueue] = useState<QueueState>({ steering: [], followUp: [] })
   const messagesRef = useRef(messages)
+  const sessionMetadataRef = useRef(sessionMetadata)
   const abortRef = useRef<AbortController | null>(null)
+
+  const setMessagesSynced = useCallback(
+    (
+      updater:
+        | Array<ChatMessage>
+        | ((current: Array<ChatMessage>) => Array<ChatMessage>),
+    ) => {
+      setMessages((current) => {
+        const next =
+          typeof updater === "function" ? updater(current) : updater
+        messagesRef.current = next
+        return next
+      })
+    },
+    [],
+  )
+
+  const setSessionMetadataSynced = useCallback(
+    (metadata: ChatSessionMetadata) => {
+      sessionMetadataRef.current = metadata
+      setSessionMetadata(metadata)
+      storeSession(metadata)
+    },
+    [],
+  )
+
+  const refreshSessions = useCallback(async () => {
+    const result = await fetchJson<ChatSessionsResponse>("/api/chat/sessions")
+    setSessions(result.sessions)
+  }, [])
 
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
 
   useEffect(() => {
+    sessionMetadataRef.current = sessionMetadata
+  }, [sessionMetadata])
+
+  useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
 
-  const stop = useCallback(() => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    setStatus("ready")
-  }, [])
+  useEffect(() => {
+    void refreshSessions().catch((err) => {
+      setError(err instanceof Error ? err : new Error(String(err)))
+    })
+  }, [refreshSessions])
+
+  useEffect(() => {
+    const stored = readStoredSession()
+    if (!stored.sessionFile && !stored.sessionId) return
+
+    let cancelled = false
+    const loadStoredSession = async () => {
+      const result = await fetchJson<ChatSessionResponse>(
+        `/api/chat/session?${metadataUrl(stored)}`,
+      )
+      if (cancelled) return
+      setSessionMetadataSynced(result.session)
+      setMessagesSynced(result.messages)
+    }
+
+    void loadStoredSession().catch((err) => {
+      if (!cancelled) {
+        setError(err instanceof Error ? err : new Error(String(err)))
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [setMessagesSynced, setSessionMetadataSynced])
+
+  const handleStreamEvent = useCallback(
+    (
+      event: ChatStreamEvent,
+      assistantIdRef: { current: string | null },
+    ) => {
+      if (event.type === "start") {
+        assistantIdRef.current = event.id
+        setSessionMetadataSynced({
+          sessionFile: event.sessionFile,
+          sessionId: event.sessionId,
+        })
+        const assistantMessage = createTextMessage("assistant", "", event.id)
+        setMessagesSynced((current) => [...current, assistantMessage])
+        setStatus("streaming")
+        if (event.sessionReset) {
+          setActivityLabel("Started a fresh Pi session")
+        } else if (event.diagnostics?.length) {
+          setActivityLabel(event.diagnostics[0])
+        }
+        return
+      }
+
+      if (event.type === "delta" && assistantIdRef.current) {
+        const activeAssistantId = assistantIdRef.current
+        setMessagesSynced((current) =>
+          appendAssistantDelta(current, activeAssistantId, event.text),
+        )
+        return
+      }
+
+      if (event.type === "thinking" && assistantIdRef.current) {
+        const activeAssistantId = assistantIdRef.current
+        setMessagesSynced((current) =>
+          upsertAssistantThinkingPart(current, activeAssistantId, event.text),
+        )
+        return
+      }
+
+      if (event.type === "tool" && assistantIdRef.current) {
+        const activeAssistantId = assistantIdRef.current
+        setMessagesSynced((current) =>
+          upsertAssistantToolPart(current, activeAssistantId, event.part),
+        )
+        return
+      }
+
+      if (event.type === "queue") {
+        setQueue({ steering: event.steering, followUp: event.followUp })
+        return
+      }
+
+      if (event.type === "state") {
+        setActivityLabel(labelForState(event.state.name))
+        return
+      }
+
+      if (event.type === "compaction") {
+        setActivityLabel(
+          event.phase === "start" ? "Compacting session" : "Compaction finished",
+        )
+        return
+      }
+
+      if (event.type === "retry") {
+        setActivityLabel(
+          event.phase === "start"
+            ? `Retrying request ${event.attempt}/${event.maxAttempts}`
+            : event.success
+              ? "Retry succeeded"
+              : "Retry failed",
+        )
+        return
+      }
+
+      if (event.type === "done") {
+        setSessionMetadataSynced({
+          sessionFile: event.sessionFile,
+          sessionId: event.sessionId,
+        })
+        setMessagesSynced((current) =>
+          current.some((message) => message.id === event.message.id)
+            ? current.map((message) =>
+                message.id === event.message.id ? event.message : message,
+              )
+            : [...current, event.message],
+        )
+        setQueue({ steering: [], followUp: [] })
+        setActivityLabel(undefined)
+        void refreshSessions()
+        return
+      }
+
+      if (event.type === "error") {
+        throw new Error(event.message)
+      }
+    },
+    [
+      refreshSessions,
+      setMessagesSynced,
+      setSessionMetadataSynced,
+    ],
+  )
+
+  const queueFollowUp = useCallback(
+    async (trimmed: string) => {
+      const userMessage = createTextMessage("user", trimmed)
+      setMessagesSynced((current) => [...current, userMessage])
+      setError(null)
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmed,
+          model,
+          sessionFile: sessionMetadataRef.current.sessionFile,
+          sessionId: sessionMetadataRef.current.sessionId,
+          streamingBehavior: "followUp",
+        }),
+      })
+
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || `Chat request failed (${response.status})`)
+      }
+
+      await readChatStream(response, (event) => {
+        if (event.type === "queue") {
+          setQueue({ steering: event.steering, followUp: event.followUp })
+          setActivityLabel("Follow-up queued")
+        }
+        if (event.type === "error") {
+          throw new Error(event.message)
+        }
+      })
+    },
+    [model, setMessagesSynced],
+  )
 
   const sendMessage = useCallback(
     async ({ text }: { text: string }) => {
       const trimmed = text.trim()
-      if (!trimmed || status === "streaming" || status === "submitted") return
+      if (!trimmed || status === "submitted") return
+
+      if (status === "streaming") {
+        try {
+          await queueFollowUp(trimmed)
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error(String(err)))
+        }
+        return
+      }
 
       const controller = new AbortController()
       abortRef.current?.abort()
       abortRef.current = controller
       setError(null)
+      setActivityLabel(undefined)
       setStatus("submitted")
 
       const userMessage = createTextMessage("user", trimmed)
-      const requestMessages = [...messagesRef.current, userMessage]
-      messagesRef.current = requestMessages
-      setMessages(requestMessages)
-
-      let assistantId: string | null = null
+      setMessagesSynced((current) => [...current, userMessage])
+      const assistantIdRef = { current: null as string | null }
 
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: requestMessages,
-            model: modelId,
+            message: trimmed,
+            model,
+            sessionFile: sessionMetadataRef.current.sessionFile,
+            sessionId: sessionMetadataRef.current.sessionId,
           }),
           signal: controller.signal,
         })
@@ -158,36 +469,9 @@ function usePiChat(modelId: string) {
           throw new Error(body || `Chat request failed (${response.status})`)
         }
 
-        await readChatStream(response, (event) => {
-          if (event.type === "start") {
-            assistantId = event.id
-            const assistantMessage = createTextMessage("assistant", "", event.id)
-            setMessages((current) => [...current, assistantMessage])
-            setStatus("streaming")
-            return
-          }
-
-          if (event.type === "delta" && assistantId) {
-            const activeAssistantId = assistantId
-            setMessages((current) =>
-              appendAssistantDelta(current, activeAssistantId, event.text),
-            )
-            return
-          }
-
-          if (event.type === "done") {
-            setMessages((current) =>
-              current.map((message) =>
-                message.id === event.message.id ? event.message : message,
-              ),
-            )
-            return
-          }
-
-          if (event.type === "error") {
-            throw new Error(event.message)
-          }
-        })
+        await readChatStream(response, (event) =>
+          handleStreamEvent(event, assistantIdRef),
+        )
 
         setStatus("ready")
       } catch (err) {
@@ -201,15 +485,213 @@ function usePiChat(modelId: string) {
         }
       }
     },
-    [modelId, status],
+    [
+      handleStreamEvent,
+      model,
+      queueFollowUp,
+      setMessagesSynced,
+      status,
+    ],
   )
 
-  return { messages, sendMessage, status, stop, error }
+  const stop = useCallback(() => {
+    void fetch("/api/chat/abort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionMetadataRef.current),
+    }).catch(() => undefined)
+    abortRef.current?.abort()
+    abortRef.current = null
+    setStatus("ready")
+    setActivityLabel(undefined)
+  }, [])
+
+  const startNewSession = useCallback(async () => {
+    const result = await fetchJson<ChatSessionResponse>("/api/chat/new", {
+      method: "POST",
+    })
+    setSessionMetadataSynced(result.session)
+    setMessagesSynced([])
+    setQueue({ steering: [], followUp: [] })
+    setActivityLabel(undefined)
+    await refreshSessions()
+  }, [refreshSessions, setMessagesSynced, setSessionMetadataSynced])
+
+  const resumeSession = useCallback(
+    async (metadata: ChatSessionMetadata) => {
+      const result = await fetchJson<ChatSessionResponse>("/api/chat/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata),
+      })
+      setSessionMetadataSynced(result.session)
+      setMessagesSynced(result.messages)
+      setQueue({ steering: [], followUp: [] })
+      setActivityLabel(
+        result.sessionReset ? "Started a fresh Pi session" : undefined,
+      )
+      await refreshSessions()
+    },
+    [refreshSessions, setMessagesSynced, setSessionMetadataSynced],
+  )
+
+  return {
+    activityLabel,
+    error,
+    messages,
+    queue,
+    refreshSessions,
+    resumeSession,
+    sendMessage,
+    sessionMetadata,
+    sessions,
+    startNewSession,
+    status,
+    stop,
+  }
+}
+
+function labelForState(state: ChatStreamEvent["type"] | string) {
+  switch (state) {
+    case "agent_start":
+      return "Agent running"
+    case "turn_start":
+      return "Starting turn"
+    case "message_start":
+      return "Receiving response"
+    case "message_end":
+      return "Response received"
+    case "turn_end":
+      return "Turn finished"
+    case "agent_end":
+      return undefined
+    default:
+      return undefined
+  }
+}
+
+function queueLabel(queue: QueueState) {
+  const count = queue.followUp.length + queue.steering.length
+  if (count === 0) return undefined
+  if (queue.followUp.length > 0) {
+    return `${queue.followUp.length} follow-up queued`
+  }
+  return `${queue.steering.length} steering message queued`
+}
+
+function toModelOption(model: ChatModelInfo): ChatModelOption {
+  return {
+    id: model.key,
+    name: model.name,
+    provider: model.provider,
+    modelId: model.id,
+    thinkingLevel: model.defaultThinkingLevel,
+  }
+}
+
+function toModelSelection(
+  model: ChatModelOption | undefined,
+): ChatModelSelection | undefined {
+  if (!model) return undefined
+  return {
+    provider: model.provider,
+    id: model.modelId,
+    thinkingLevel: model.thinkingLevel,
+  }
+}
+
+function SessionControls({
+  activeSessionId,
+  onNewSession,
+  onResumeSession,
+  sessions,
+}: {
+  activeSessionId?: string
+  onNewSession: () => void
+  onResumeSession: (metadata: ChatSessionMetadata) => void
+  sessions: Array<ChatSessionInfo>
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <button
+        type="button"
+        onClick={onNewSession}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+        aria-label="New session"
+        title="New session"
+      >
+        <Plus className="size-3.5" />
+      </button>
+      <div className="relative min-w-0">
+        <History className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-foreground/35" />
+        <select
+          value={activeSessionId ?? ""}
+          onChange={(event) => {
+            const session = sessions.find(
+              (item) => item.id === event.target.value,
+            )
+            if (session) {
+              onResumeSession({
+                sessionFile: session.path,
+                sessionId: session.id,
+              })
+            }
+          }}
+          className="h-7 max-w-[190px] rounded-[6px] border-0 bg-transparent pl-6 pr-2 text-[12px] leading-4 text-foreground/45 outline-none transition-colors hover:bg-foreground/6"
+          aria-label="Resume session"
+          title="Resume session"
+        >
+          <option value="">Session</option>
+          {sessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.name || session.firstMessage || session.id.slice(0, 8)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
 }
 
 function Chat() {
-  const [modelId, setModelId] = useState(MODELS[1].id)
-  const { messages, sendMessage, status, stop, error } = usePiChat(modelId)
+  const [models, setModels] = useState<Array<ChatModelOption>>([])
+  const [modelKey, setModelKey] = useState<string | undefined>()
+
+  useEffect(() => {
+    let cancelled = false
+    const loadModels = async () => {
+      const result = await fetchJson<ChatModelsResponse>("/api/chat/models")
+      if (cancelled) return
+      const nextModels = result.models.map(toModelOption)
+      setModels(nextModels)
+      setModelKey((current) => current ?? result.selectedModelKey ?? nextModels[0]?.id)
+    }
+
+    void loadModels()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const selectedModel = models.find((model) => model.id === modelKey)
+  const modelSelection = useMemo(
+    () => toModelSelection(selectedModel),
+    [selectedModel],
+  )
+  const {
+    activityLabel,
+    error,
+    messages,
+    queue,
+    resumeSession,
+    sendMessage,
+    sessionMetadata,
+    sessions,
+    startNewSession,
+    status,
+    stop,
+  } = usePiChat(modelSelection)
+  const infoDescription = queueLabel(queue) ?? activityLabel
 
   return (
     <div className="h-svh">
@@ -228,17 +710,43 @@ function Chat() {
           InputBar: (props) => (
             <InputBar
               {...props}
+              status={status === "streaming" ? "ready" : props.status}
+              infoBar={
+                infoDescription
+                  ? { description: infoDescription, position: "top" }
+                  : undefined
+              }
               leftActions={
-                <ModelPicker
-                  models={MODELS}
-                  value={modelId}
-                  onChange={setModelId}
-                />
+                <>
+                  <ModelPicker
+                    models={models}
+                    value={modelKey}
+                    onChange={setModelKey}
+                    placeholder="Model"
+                  />
+                  <SessionControls
+                    activeSessionId={sessionMetadata.sessionId}
+                    sessions={sessions}
+                    onNewSession={() => void startNewSession()}
+                    onResumeSession={(metadata) => void resumeSession(metadata)}
+                  />
+                </>
               }
               rightActions={
                 <div className="flex items-center gap-1">
                   {(status === "streaming" || status === "submitted") && (
                     <SpiralLoader size={16} />
+                  )}
+                  {status === "streaming" && (
+                    <button
+                      type="button"
+                      onClick={stop}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+                      aria-label="Stop"
+                      title="Stop"
+                    >
+                      <Square className="size-3" />
+                    </button>
                   )}
                 </div>
               }

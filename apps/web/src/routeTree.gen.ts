@@ -11,6 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
+import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
+import { Route as ApiChatResumeRouteImport } from './routes/api/chat/resume'
+import { Route as ApiChatResourcesRouteImport } from './routes/api/chat/resources'
+import { Route as ApiChatNewRouteImport } from './routes/api/chat/new'
+import { Route as ApiChatModelsRouteImport } from './routes/api/chat/models'
+import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +29,115 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatSessionsRoute = ApiChatSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatSessionRoute = ApiChatSessionRouteImport.update({
+  id: '/session',
+  path: '/session',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatResumeRoute = ApiChatResumeRouteImport.update({
+  id: '/resume',
+  path: '/resume',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatResourcesRoute = ApiChatResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatNewRoute = ApiChatNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatModelsRoute = ApiChatModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatAbortRoute = ApiChatAbortRouteImport.update({
+  id: '/abort',
+  path: '/abort',
+  getParentRoute: () => ApiChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/chat': typeof ApiChatRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/chat': typeof ApiChatRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/chat': typeof ApiChatRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat'
+  fullPaths:
+    | '/'
+    | '/api/chat'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat'
-  id: '__root__' | '/' | '/api/chat'
+  to:
+    | '/'
+    | '/api/chat'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/chat'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiChatRoute: typeof ApiChatRoute
+  ApiChatRoute: typeof ApiChatRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +156,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/sessions': {
+      id: '/api/chat/sessions'
+      path: '/sessions'
+      fullPath: '/api/chat/sessions'
+      preLoaderRoute: typeof ApiChatSessionsRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/session': {
+      id: '/api/chat/session'
+      path: '/session'
+      fullPath: '/api/chat/session'
+      preLoaderRoute: typeof ApiChatSessionRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/resume': {
+      id: '/api/chat/resume'
+      path: '/resume'
+      fullPath: '/api/chat/resume'
+      preLoaderRoute: typeof ApiChatResumeRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/resources': {
+      id: '/api/chat/resources'
+      path: '/resources'
+      fullPath: '/api/chat/resources'
+      preLoaderRoute: typeof ApiChatResourcesRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/new': {
+      id: '/api/chat/new'
+      path: '/new'
+      fullPath: '/api/chat/new'
+      preLoaderRoute: typeof ApiChatNewRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/models': {
+      id: '/api/chat/models'
+      path: '/models'
+      fullPath: '/api/chat/models'
+      preLoaderRoute: typeof ApiChatModelsRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/abort': {
+      id: '/api/chat/abort'
+      path: '/abort'
+      fullPath: '/api/chat/abort'
+      preLoaderRoute: typeof ApiChatAbortRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
   }
 }
 
+interface ApiChatRouteChildren {
+  ApiChatAbortRoute: typeof ApiChatAbortRoute
+  ApiChatModelsRoute: typeof ApiChatModelsRoute
+  ApiChatNewRoute: typeof ApiChatNewRoute
+  ApiChatResourcesRoute: typeof ApiChatResourcesRoute
+  ApiChatResumeRoute: typeof ApiChatResumeRoute
+  ApiChatSessionRoute: typeof ApiChatSessionRoute
+  ApiChatSessionsRoute: typeof ApiChatSessionsRoute
+}
+
+const ApiChatRouteChildren: ApiChatRouteChildren = {
+  ApiChatAbortRoute: ApiChatAbortRoute,
+  ApiChatModelsRoute: ApiChatModelsRoute,
+  ApiChatNewRoute: ApiChatNewRoute,
+  ApiChatResourcesRoute: ApiChatResourcesRoute,
+  ApiChatResumeRoute: ApiChatResumeRoute,
+  ApiChatSessionRoute: ApiChatSessionRoute,
+  ApiChatSessionsRoute: ApiChatSessionsRoute,
+}
+
+const ApiChatRouteWithChildren =
+  ApiChatRoute._addFileChildren(ApiChatRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiChatRoute: ApiChatRoute,
+  ApiChatRoute: ApiChatRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,7 @@
 "use client";
 
 import { Popover as BasePopover } from "@base-ui/react/popover";
+import { cloneElement, isValidElement } from "react";
 import { cn } from "../utils/cn";
 import type { ReactNode } from "react";
 
@@ -37,11 +38,24 @@ export function Popover({
       onOpenChange={onOpenChange ? (next) => onOpenChange(next) : undefined}
     >
       <BasePopover.Trigger
-        render={(props) => (
-          <span {...props} className="inline-flex">
-            {trigger}
-          </span>
-        )}
+        render={(props) => {
+          if (isValidElement<{ className?: string }>(trigger)) {
+            return cloneElement(trigger, {
+              ...props,
+              className: cn("inline-flex", trigger.props.className, props.className),
+            });
+          }
+
+          return (
+            <button
+              {...props}
+              type="button"
+              className={cn("inline-flex", props.className)}
+            >
+              {trigger}
+            </button>
+          );
+        }}
       />
       <BasePopover.Portal>
         <BasePopover.Positioner side={side} align={align} sideOffset={sideOffset}>
