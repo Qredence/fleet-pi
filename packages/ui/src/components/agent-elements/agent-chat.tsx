@@ -211,6 +211,7 @@ function findPendingQuestion(
         };
         output?: {
           answer?: QuestionAnswer;
+          answers?: Array<QuestionAnswer>;
         };
       };
       if (part?.type !== "tool-Question") continue;
@@ -218,7 +219,9 @@ function findPendingQuestion(
       const questions = input?.questions ?? [];
       const firstQuestion = questions[0] ?? input?.question;
       if (!firstQuestion) continue;
-      if (part.output?.answer) return null;
+      if (part.output?.answer || (part.output?.answers?.length ?? 0) > 0) {
+        return null;
+      }
       return {
         id: part.toolCallId ?? `question-${i}-${p}`,
         toolCallId: part.toolCallId,

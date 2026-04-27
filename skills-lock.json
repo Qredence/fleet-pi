@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-elements": {
+      "source": "21st-dev/agent-elements",
+      "sourceType": "github",
+      "computedHash": "899ff281733653460fc7c0864daaa602fb9d32b176f3653178791fae657d9277"
+    }
+  }
+}

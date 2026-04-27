@@ -29,6 +29,31 @@ export const ModelPicker = memo(function ModelPicker({
   const activeModel = models.find((m) => m.id === activeId) ?? models[0];
   const [open, setOpen] = useState(false);
 
+  const scrollActiveModelIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const node = document.querySelector<HTMLElement>(
+          '[data-agent-model-picker-active="true"]',
+        );
+        const popup = node?.closest<HTMLElement>('[role="dialog"]');
+        if (!node || !popup) return;
+
+        popup.scrollTop = Math.max(
+          0,
+          node.offsetTop - popup.clientHeight / 2 + node.clientHeight / 2,
+        );
+      });
+    });
+  }, []);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (nextOpen) scrollActiveModelIntoView();
+    },
+    [scrollActiveModelIntoView],
+  );
+
   const handleSelect = useCallback(
     (id: string) => {
       if (!isControlled) setInternalValue(id);
@@ -41,27 +66,28 @@ export const ModelPicker = memo(function ModelPicker({
   return (
     <Popover
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       side="top"
       align="start"
+      className="w-[260px]"
       trigger={
         <button
           type="button"
           className={cn(
-            "inline-flex h-7 items-center gap-1 rounded-[6px] px-2 text-[12px] leading-4 text-foreground/40 transition-colors hover:bg-foreground/6 cursor-pointer",
+            "inline-flex h-7 max-w-full items-center gap-1 rounded-[6px] px-2 text-[12px] leading-4 text-foreground/40 transition-colors hover:bg-foreground/6 cursor-pointer",
             className,
           )}
           aria-label="Select model"
         >
-          <span className="font-medium">
+          <span className="min-w-0 truncate font-medium">
             {activeModel?.name ?? placeholder}
           </span>
           {activeModel?.version && (
-            <span className="font-normal text-foreground/25">
+            <span className="shrink-0 font-normal text-foreground/25">
               {activeModel.version}
             </span>
           )}
-          <IconChevronDown className="size-3 text-foreground/40" />
+          <IconChevronDown className="size-3 shrink-0 text-foreground/40" />
         </button>
       }
     >
@@ -71,16 +97,20 @@ export const ModelPicker = memo(function ModelPicker({
           <button
             key={model.id}
             type="button"
+            aria-current={isActive ? "true" : undefined}
+            data-agent-model-picker-active={isActive ? "true" : undefined}
             onClick={() => handleSelect(model.id)}
             className={cn(
-              "flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6 cursor-pointer",
+              "flex w-full min-w-0 items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6 cursor-pointer",
               isActive && "bg-foreground/6",
             )}
           >
-            <span className="flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate">
               {model.name}
               {model.version && (
-                <span className="ml-1 text-foreground/40">{model.version}</span>
+                <span className="ml-1 text-foreground/40">
+                  {model.version}
+                </span>
               )}
             </span>
             {isActive && (

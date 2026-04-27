@@ -1,18 +1,18 @@
+import type React from "react";
 import {
+  IconSearch as Search,
   IconEye as Eye,
-  IconFileCode as FileCode2,
-  IconFilePlus as FilePlus,
   IconFolderSearch as FolderSearch,
   IconGitBranch as GitBranch,
-  IconGlobe as Globe,
-  IconChecklist as ListTodo,
-  IconLogout as LogOut,
-  IconSearch as Search,
-  IconSparkles as Sparkles,
   IconTerminal2 as Terminal,
   IconCircleX as XCircle,
+  IconFileCode as FileCode2,
+  IconSparkles as Sparkles,
+  IconGlobe as Globe,
+  IconFilePlus as FilePlus,
+  IconChecklist as ListTodo,
+  IconLogout as LogOut,
 } from "@tabler/icons-react";
-import type React from "react";
 
 export type ToolVariant = "simple" | "collapsible";
 
@@ -37,7 +37,7 @@ function getDisplayPath(filePath: string): string {
   const worktreeMatch = filePath.match(
     /\.21st\/worktrees\/[^/]+\/[^/]+\/(.+)$/,
   );
-  if (worktreeMatch) return worktreeMatch[1];
+  if (worktreeMatch) return worktreeMatch[1]!;
   if (filePath.startsWith("/")) {
     const parts = filePath.split("/");
     const rootIndicators = ["apps", "packages", "src", "lib", "components"];

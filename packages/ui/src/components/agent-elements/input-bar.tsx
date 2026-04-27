@@ -432,6 +432,15 @@ export const InputBar = memo(function InputBar({
         >
           {infoBarPosition === "top" && infoBarNode}
           {questionBarNode}
+          {suggestionItems.length > 0 && (
+            <Suggestions
+              items={suggestionItems}
+              onSelect={handleSuggestionSelect}
+              disabled={disabled || isStreaming}
+              className={cn("mb-3 px-3", suggestionsClassName)}
+              itemClassName={suggestionItemClassName}
+            />
+          )}
           <div
             className={cn(
               "relative cursor-text rounded-an-input-border-radius bg-an-input-background shadow-2xs ring-1 ring-foreground/10",
@@ -561,15 +570,6 @@ export const InputBar = memo(function InputBar({
               </div>
             </div>
           </div>
-          {suggestionItems.length > 0 && (
-            <Suggestions
-              items={suggestionItems}
-              onSelect={handleSuggestionSelect}
-              disabled={disabled || isStreaming}
-              className={cn("mt-4 px-3", suggestionsClassName)}
-              itemClassName={suggestionItemClassName}
-            />
-          )}
           {infoBarPosition === "bottom" && infoBarNode}
         </div>
       </div>

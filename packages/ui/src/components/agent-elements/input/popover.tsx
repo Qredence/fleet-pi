@@ -4,6 +4,7 @@ import { Popover as BasePopover } from "@base-ui/react/popover";
 import { cloneElement, isValidElement } from "react";
 import { cn } from "../utils/cn";
 import type { ReactNode } from "react";
+import type { PopoverPositionerProps } from "@base-ui/react/popover";
 
 export type PopoverSide = "top" | "bottom" | "left" | "right";
 export type PopoverAlign = "start" | "center" | "end";
@@ -17,6 +18,8 @@ export type PopoverProps = {
   side?: PopoverSide;
   align?: PopoverAlign;
   sideOffset?: number;
+  collisionAvoidance?: PopoverPositionerProps["collisionAvoidance"];
+  collisionPadding?: PopoverPositionerProps["collisionPadding"];
   className?: string;
 };
 
@@ -29,6 +32,12 @@ export function Popover({
   side = "top",
   align = "start",
   sideOffset = 6,
+  collisionAvoidance = {
+    side: "flip",
+    align: "shift",
+    fallbackAxisSide: "none",
+  },
+  collisionPadding = 8,
   className,
 }: PopoverProps) {
   return (
@@ -58,10 +67,16 @@ export function Popover({
         }}
       />
       <BasePopover.Portal>
-        <BasePopover.Positioner side={side} align={align} sideOffset={sideOffset}>
+        <BasePopover.Positioner
+          side={side}
+          align={align}
+          sideOffset={sideOffset}
+          collisionAvoidance={collisionAvoidance}
+          collisionPadding={collisionPadding}
+        >
           <BasePopover.Popup
             className={cn(
-              "min-w-[180px] rounded-[10px] border border-an-border-color bg-an-background p-1 shadow-lg outline-none",
+              "max-h-[min(320px,var(--available-height))] min-w-[180px] max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-[10px] border border-an-border-color bg-an-background p-1 shadow-lg outline-none",
               "text-an-foreground",
               className,
             )}

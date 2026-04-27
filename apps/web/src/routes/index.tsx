@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { History, Plus, Square } from "lucide-react"
+import { Bot, ClipboardList, History, Plus, Square } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -10,17 +10,22 @@ import {
 import { AgentChat } from "@workspace/ui/components/agent-elements/agent-chat"
 import { InputBar } from "@workspace/ui/components/agent-elements/input-bar"
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
+import { ModeSelector } from "@workspace/ui/components/agent-elements/input/mode-selector"
 import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loader"
 import type {
   ChatMessage,
   ChatStatus,
   ChatToolPart,
 } from "@workspace/ui/components/agent-elements/chat-types"
+import type { QuestionAnswer } from "@workspace/ui/components/agent-elements/question/question-prompt"
 import type { ModelOption } from "@workspace/ui/components/agent-elements/types"
 import type {
+  ChatMode,
   ChatModelInfo,
   ChatModelSelection,
   ChatModelsResponse,
+  ChatPlanAction,
+  ChatQuestionAnswerResponse,
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
@@ -45,6 +50,21 @@ type QueueState = {
 }
 
 const CHAT_SESSION_STORAGE_KEY = "fleet-pi-chat-session"
+const CHAT_MODE_STORAGE_KEY = "fleet-pi-chat-mode"
+const CHAT_MODES = [
+  {
+    id: "agent",
+    label: "Agent",
+    icon: Bot,
+    description: "Full tool access",
+  },
+  {
+    id: "plan",
+    label: "Plan",
+    icon: ClipboardList,
+    description: "Read-only planning",
+  },
+]
 
 function createTextMessage(
   role: ChatMessage["role"],
@@ -97,7 +117,17 @@ function upsertAssistantToolPart(
     })
 
     if (toolIndex === -1) {
-      return { ...message, parts: [...message.parts, toolPart] }
+      const textIndex = message.parts.findIndex((part) => part.type === "text")
+      const parts =
+        textIndex === -1
+          ? [...message.parts, toolPart]
+          : [
+              ...message.parts.slice(0, textIndex),
+              toolPart,
+              ...message.parts.slice(textIndex),
+            ]
+
+      return { ...message, parts }
     }
 
     const parts = [...message.parts]
@@ -152,6 +182,18 @@ function storeSession(metadata: ChatSessionMetadata) {
   )
 }
 
+function readStoredMode(): ChatMode {
+  if (typeof window === "undefined") return "agent"
+  return window.localStorage.getItem(CHAT_MODE_STORAGE_KEY) === "plan"
+    ? "plan"
+    : "agent"
+}
+
+function storeMode(mode: ChatMode) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode)
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
   if (!response.ok) {
@@ -201,7 +243,13 @@ function metadataUrl(metadata: ChatSessionMetadata) {
   return params.toString()
 }
 
-function usePiChat(model: ChatModelSelection | undefined) {
+type SendMessageInput = {
+  text: string
+  mode?: ChatMode
+  planAction?: ChatPlanAction
+}
+
+function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
   const [error, setError] = useState<Error | null>(null)
@@ -209,6 +257,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
     useState<ChatSessionMetadata>(() => readStoredSession())
   const [sessions, setSessions] = useState<Array<ChatSessionInfo>>([])
   const [activityLabel, setActivityLabel] = useState<string | undefined>()
+  const [planLabel, setPlanLabel] = useState<string | undefined>()
   const [queue, setQueue] = useState<QueueState>({ steering: [], followUp: [] })
   const messagesRef = useRef(messages)
   const sessionMetadataRef = useRef(sessionMetadata)
@@ -338,6 +387,11 @@ function usePiChat(model: ChatModelSelection | undefined) {
         return
       }
 
+      if (event.type === "plan") {
+        setPlanLabel(event.message)
+        return
+      }
+
       if (event.type === "state") {
         setActivityLabel(labelForState(event.state.name))
         return
@@ -391,7 +445,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
   )
 
   const queueFollowUp = useCallback(
-    async (trimmed: string) => {
+    async (trimmed: string, requestMode: ChatMode) => {
       const userMessage = createTextMessage("user", trimmed)
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
@@ -402,6 +456,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
         body: JSON.stringify({
           message: trimmed,
           model,
+          mode: requestMode,
           sessionFile: sessionMetadataRef.current.sessionFile,
           sessionId: sessionMetadataRef.current.sessionId,
           streamingBehavior: "followUp",
@@ -427,13 +482,14 @@ function usePiChat(model: ChatModelSelection | undefined) {
   )
 
   const sendMessage = useCallback(
-    async ({ text }: { text: string }) => {
+    async ({ text, mode: requestedMode, planAction }: SendMessageInput) => {
       const trimmed = text.trim()
       if (!trimmed || status === "submitted") return
+      const requestMode = requestedMode ?? mode
 
       if (status === "streaming") {
         try {
-          await queueFollowUp(trimmed)
+          await queueFollowUp(trimmed, requestMode)
         } catch (err) {
           setError(err instanceof Error ? err : new Error(String(err)))
         }
@@ -458,6 +514,8 @@ function usePiChat(model: ChatModelSelection | undefined) {
           body: JSON.stringify({
             message: trimmed,
             model,
+            mode: requestMode,
+            planAction,
             sessionFile: sessionMetadataRef.current.sessionFile,
             sessionId: sessionMetadataRef.current.sessionId,
           }),
@@ -487,6 +545,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
     },
     [
       handleStreamEvent,
+      mode,
       model,
       queueFollowUp,
       setMessagesSynced,
@@ -514,6 +573,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
     setMessagesSynced([])
     setQueue({ steering: [], followUp: [] })
     setActivityLabel(undefined)
+    setPlanLabel(undefined)
     await refreshSessions()
   }, [refreshSessions, setMessagesSynced, setSessionMetadataSynced])
 
@@ -530,6 +590,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
       setActivityLabel(
         result.sessionReset ? "Started a fresh Pi session" : undefined,
       )
+      setPlanLabel(undefined)
       await refreshSessions()
     },
     [refreshSessions, setMessagesSynced, setSessionMetadataSynced],
@@ -539,6 +600,7 @@ function usePiChat(model: ChatModelSelection | undefined) {
     activityLabel,
     error,
     messages,
+    planLabel,
     queue,
     refreshSessions,
     resumeSession,
@@ -656,6 +718,7 @@ function SessionControls({
 function Chat() {
   const [models, setModels] = useState<Array<ChatModelOption>>([])
   const [modelKey, setModelKey] = useState<string | undefined>()
+  const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
 
   useEffect(() => {
     let cancelled = false
@@ -673,6 +736,12 @@ function Chat() {
     }
   }, [])
 
+  const handleModeChange = useCallback((nextMode: string) => {
+    const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
+    setMode(normalized)
+    storeMode(normalized)
+  }, [])
+
   const selectedModel = models.find((model) => model.id === modelKey)
   const modelSelection = useMemo(
     () => toModelSelection(selectedModel),
@@ -682,6 +751,7 @@ function Chat() {
     activityLabel,
     error,
     messages,
+    planLabel,
     queue,
     resumeSession,
     sendMessage,
@@ -690,16 +760,67 @@ function Chat() {
     startNewSession,
     status,
     stop,
-  } = usePiChat(modelSelection)
-  const infoDescription = queueLabel(queue) ?? activityLabel
+  } = usePiChat(modelSelection, mode)
+  const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
+
+  const answerQuestion = useCallback(
+    async ({
+      toolCallId,
+      answer,
+    }: {
+      toolCallId?: string
+      answer: QuestionAnswer
+    }) => {
+      const result = await fetchJson<ChatQuestionAnswerResponse>(
+        "/api/chat/question",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionFile: sessionMetadata.sessionFile,
+            sessionId: sessionMetadata.sessionId,
+            toolCallId,
+            answer,
+          }),
+        },
+      )
+
+      if (result.mode) {
+        handleModeChange(result.mode)
+      }
+      if (result.message) {
+        await sendMessage({
+          text: result.message,
+          mode: result.mode,
+          planAction: result.planAction,
+        })
+      }
+    },
+    [handleModeChange, sendMessage, sessionMetadata],
+  )
 
   return (
-    <div className="h-svh">
+    <div className="relative h-svh">
+      <div className="fixed left-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-full border border-border/70 bg-background/85 px-1.5 py-1 shadow-sm backdrop-blur">
+        <SessionControls
+          activeSessionId={sessionMetadata.sessionId}
+          sessions={sessions}
+          onNewSession={() => void startNewSession()}
+          onResumeSession={(metadata) => void resumeSession(metadata)}
+        />
+      </div>
       <AgentChat
         messages={messages}
         status={status}
         onSend={(msg) => sendMessage({ text: msg.content })}
         onStop={stop}
+        questionTool={{
+          submitLabel: "Continue",
+          allowSkip: true,
+          onAnswer: ({ toolCallId, answer }) => {
+            void answerQuestion({ toolCallId, answer }).catch(() => undefined)
+          },
+        }}
         error={error ?? undefined}
         emptyStatePosition="center"
         suggestions={[
@@ -718,17 +839,16 @@ function Chat() {
               }
               leftActions={
                 <>
+                  <ModeSelector
+                    modes={CHAT_MODES}
+                    value={mode}
+                    onChange={handleModeChange}
+                  />
                   <ModelPicker
                     models={models}
                     value={modelKey}
                     onChange={setModelKey}
                     placeholder="Model"
-                  />
-                  <SessionControls
-                    activeSessionId={sessionMetadata.sessionId}
-                    sessions={sessions}
-                    onNewSession={() => void startNewSession()}
-                    onResumeSession={(metadata) => void resumeSession(metadata)}
                   />
                 </>
               }

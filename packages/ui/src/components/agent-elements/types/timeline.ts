@@ -26,7 +26,7 @@ export type TimelineStep =
       searchSource?: string;
       filePath?: string;
       diffStats?: string;
-      diffLines?: Array<{ type: "add" | "remove" | "context"; content: string }>;
+      diffLines?: { type: "add" | "remove" | "context"; content: string }[];
       bashCommand?: string;
       bashOutput?: string;
       bashSuccess?: boolean;
@@ -42,4 +42,4 @@ export type TimelineStep =
       duration: number;
     };
 
-export type Turn = { userStep?: TimelineStep; steps: Array<TimelineStep> };
+export type Turn = { userStep?: TimelineStep; steps: TimelineStep[] };

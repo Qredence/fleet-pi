@@ -658,6 +658,7 @@ function AssistantParts({
 
   const { elements } = useMemo(() => {
     const elems: Array<React.ReactNode> = [];
+    const textChunks: Array<string> = [];
     const taskPartIds = new Set(
       parts
         .filter(
@@ -695,19 +696,7 @@ function AssistantParts({
 
       if (isTextPart(part)) {
         const text = part.text;
-        if (text) {
-          elems.push(
-            <div
-              key={`${msg.id}-text-${i}`}
-              className="group/assistant-text text-[14px]"
-            >
-              <Markdown
-                content={text}
-                className="leading-relaxed [&_p]:leading-relaxed"
-              />
-            </div>,
-          );
-        }
+        if (text) textChunks.push(text);
         i++;
         continue;
       }
@@ -756,6 +745,21 @@ function AssistantParts({
       }
 
       i++;
+    }
+
+    const text = textChunks.join("\n\n");
+    if (text) {
+      elems.push(
+        <div
+          key={`${msg.id}-text-final`}
+          className="group/assistant-text text-[14px]"
+        >
+          <Markdown
+            content={text}
+            className="leading-relaxed [&_p]:leading-relaxed"
+          />
+        </div>,
+      );
     }
 
     return { elements: elems };

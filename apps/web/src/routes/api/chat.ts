@@ -14,6 +14,13 @@ import {
   upsertThinkingPart,
   upsertToolPart,
 } from "@/lib/pi/server"
+import {
+  createPlanDecisionPart,
+  createPlanEvent,
+  getPlanState,
+  updateExecutionProgress,
+  updatePlanFromAssistantText,
+} from "@/lib/pi/plan-mode"
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -64,6 +71,7 @@ export const Route = createFileRoute("/api/chat")({
               const result = await createPiRuntime(body, body.model)
               session = result.runtime.session
               releaseRuntime = retainPiRuntime(result.runtime)
+              send(createPlanEvent(getPlanState(result.runtime)))
               const abort = () => void session?.abort()
 
               request.signal.addEventListener("abort", abort, { once: true })
@@ -90,6 +98,26 @@ export const Route = createFileRoute("/api/chat")({
 
               await session.prompt(prompt, { expandPromptTemplates: true })
               request.signal.removeEventListener("abort", abort)
+
+              const assistantText = textFromParts(parts)
+              if (body.planAction === "execute") {
+                const { state } = updateExecutionProgress(
+                  result.runtime,
+                  assistantText,
+                )
+                send(createPlanEvent(state))
+              } else if (body.mode === "plan") {
+                const state = updatePlanFromAssistantText(
+                  result.runtime,
+                  assistantText,
+                )
+                const decisionPart = createPlanDecisionPart(assistantId, state)
+                if (decisionPart) {
+                  parts = upsertToolPart(parts, decisionPart)
+                  send({ type: "tool", part: decisionPart })
+                }
+                send(createPlanEvent(state))
+              }
 
               send({
                 type: "done",
@@ -214,6 +242,13 @@ function handleSessionEvent(
   }
 
   return { parts, thinkingText }
+}
+
+function textFromParts(parts: Array<ChatMessagePart>) {
+  return parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .filter(Boolean)
+    .join("\n")
 }
 
 function isAssistantErrorMessage(

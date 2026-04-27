@@ -8,6 +8,16 @@ import {
   createAgentSessionServices,
   getAgentDir,
 } from "@mariozechner/pi-coding-agent"
+import {
+  CHAT_TOOL_ALLOWLIST,
+  answerPlanDecision,
+  applyPlanMode,
+  createPlanModeExtension,
+  isPlanDecisionToolCall,
+  normalizeQuestionInput,
+  normalizeQuestionOutput,
+  resolveQuestionnaireAnswer,
+} from "./plan-mode"
 import type {
   AgentSessionEvent,
   AgentSessionRuntime,
@@ -24,9 +34,13 @@ import type {
   ChatToolPart,
 } from "@workspace/ui/components/agent-elements/chat-types"
 import type {
+  ChatMode,
   ChatModelInfo,
   ChatModelSelection,
   ChatModelsResponse,
+  ChatPlanAction,
+  ChatQuestionAnswerRequest,
+  ChatQuestionAnswerResponse,
   ChatResourcesResponse,
   ChatSessionInfo,
   ChatSessionMetadata,
@@ -35,7 +49,6 @@ import type {
 } from "./chat-protocol"
 
 const DEFAULT_REPO_ROOT = "/Volumes/SSD-T7/work-location/fleet-pi/fleet-pi"
-const CODING_TOOL_NAMES = ["read", "write", "edit", "bash"]
 const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"
 const RUNTIME_TTL_MS = Number(process.env.FLEET_PI_RUNTIME_TTL_MS ?? 600_000)
 const THINKING_LEVELS = new Set<ChatThinkingLevel>([
@@ -53,6 +66,11 @@ type SessionAgentMessage = Extract<SessionEntry, { type: "message" }>["message"]
 type SessionManagerResult = {
   sessionManager: SessionManager
   sessionReset: boolean
+}
+
+type ChatRuntimeMetadata = ChatSessionMetadata & {
+  mode?: ChatMode
+  planAction?: ChatPlanAction
 }
 
 type ActiveSessionRecord = {
@@ -125,7 +143,7 @@ export async function queuePromptOnActiveSession(
 }
 
 export async function createPiRuntime(
-  metadata: ChatSessionMetadata,
+  metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection,
 ) {
   const repoRoot = getRepoRoot()
@@ -143,6 +161,7 @@ export async function createPiRuntime(
     }
     reusable.lastUsedAt = Date.now()
     await applyModelSelection(reusable.runtime, modelSelection)
+    applyPlanMode(reusable.runtime, metadata.mode, metadata.planAction)
     return {
       runtime: reusable.runtime,
       sessionReset: false,
@@ -167,6 +186,9 @@ export async function createPiRuntime(
     const runtimeServices = await createAgentSessionServices({
       cwd,
       agentDir: runtimeAgentDir,
+      resourceLoaderOptions: {
+        extensionFactories: [createPlanModeExtension()],
+      },
     })
     const { model, thinkingLevel } = resolveModelSelection(
       runtimeServices,
@@ -180,7 +202,7 @@ export async function createPiRuntime(
       thinkingLevel,
       // Pi 0.70.2 exposes an allowlist of active tool names here. The SDK also
       // exports createCodingTools(cwd), but createAgentSession* expects names.
-      tools: CODING_TOOL_NAMES,
+      tools: CHAT_TOOL_ALLOWLIST,
     })
 
     return {
@@ -195,12 +217,43 @@ export async function createPiRuntime(
     sessionManager,
   })
   trackRuntime(runtime)
+  applyPlanMode(runtime, metadata.mode, metadata.planAction)
 
   return {
     runtime,
     diagnostics: collectDiagnostics(runtime.services, runtime.modelFallbackMessage),
     sessionReset,
   }
+}
+
+export function applyRuntimePlanMode(
+  runtime: AgentSessionRuntime,
+  metadata: Pick<ChatRuntimeMetadata, "mode" | "planAction">,
+) {
+  return applyPlanMode(runtime, metadata.mode, metadata.planAction)
+}
+
+export function answerChatQuestion(
+  request: ChatQuestionAnswerRequest,
+): ChatQuestionAnswerResponse {
+  if (isPlanDecisionToolCall(request.toolCallId)) {
+    const active = findRuntimeRecord(request)
+    if (!active) {
+      return {
+        ok: false,
+        message: "Plan session is no longer active. Send a new message to continue.",
+      }
+    }
+    return answerPlanDecision(active.runtime, request.answer)
+  }
+
+  const ok = resolveQuestionnaireAnswer(request.toolCallId, request.answer)
+  return ok
+    ? { ok: true }
+    : {
+        ok: false,
+        message: "Question is no longer active.",
+      }
 }
 
 export async function createNewChatSession(): Promise<ChatSessionResponse> {
@@ -401,7 +454,16 @@ export function upsertToolPart(
       current.toolCallId === part.toolCallId,
   )
 
-  if (index === -1) return [...parts, part]
+  if (index === -1) {
+    const textIndex = parts.findIndex((current) => current.type === "text")
+    if (textIndex === -1) return [...parts, part]
+
+    return [
+      ...parts.slice(0, textIndex),
+      part,
+      ...parts.slice(textIndex),
+    ]
+  }
 
   const next = [...parts]
   next[index] = { ...next[index], ...part }
@@ -959,6 +1021,9 @@ function normalizeToolName(toolName: string) {
       return "Edit"
     case "bash":
       return "Bash"
+    case "questionnaire":
+    case "question":
+      return "Question"
     default:
       return toolName
   }
@@ -987,6 +1052,10 @@ function textFromToolResult(result: unknown) {
 function normalizeToolInput(toolName: string, args: unknown) {
   const input =
     args && typeof args === "object" ? { ...(args as Record<string, unknown>) } : {}
+
+  if (toolName === "Question") {
+    return normalizeQuestionInput(input)
+  }
 
   if (typeof input.path === "string" && !input.file_path) {
     input.file_path = input.path
@@ -1044,6 +1113,10 @@ function normalizeToolOutput(
       diff: typeof detailDiff === "string" ? detailDiff : undefined,
       details,
     }
+  }
+
+  if (toolName === "Question") {
+    return normalizeQuestionOutput(result) ?? { content: text, details }
   }
 
   return {

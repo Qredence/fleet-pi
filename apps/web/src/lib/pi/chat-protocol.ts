@@ -3,6 +3,10 @@ import type {
   ChatToolPart,
 } from "@workspace/ui/components/agent-elements/chat-types"
 
+export type ChatMode = "agent" | "plan"
+
+export type ChatPlanAction = "execute" | "refine"
+
 export type ChatThinkingLevel =
   | "off"
   | "minimal"
@@ -27,7 +31,27 @@ export type ChatSessionMetadata = {
 export type ChatRequest = ChatSessionMetadata & {
   message?: string
   model?: ChatModelSelection
+  mode?: ChatMode
+  planAction?: ChatPlanAction
   streamingBehavior?: "steer" | "followUp"
+}
+
+export type ChatQuestionAnswer = {
+  kind: "single" | "multi" | "text" | "skip"
+  selectedIds?: Array<string>
+  text?: string
+}
+
+export type ChatQuestionAnswerRequest = ChatSessionMetadata & {
+  toolCallId?: string
+  answer: ChatQuestionAnswer
+}
+
+export type ChatQuestionAnswerResponse = {
+  ok: boolean
+  message?: string
+  mode?: ChatMode
+  planAction?: ChatPlanAction
 }
 
 export type ChatStartEvent = {
@@ -43,6 +67,14 @@ export type ChatStreamEvent =
   | ChatStartEvent
   | { type: "delta"; text: string; messageId?: string }
   | { type: "tool"; part: ChatToolPart; messageId?: string }
+  | {
+      type: "plan"
+      mode: ChatMode
+      executing: boolean
+      completed: number
+      total: number
+      message?: string
+    }
   | { type: "state"; state: ChatStateEvent }
   | { type: "queue"; steering: Array<string>; followUp: Array<string> }
   | { type: "thinking"; text: string; messageId?: string }
