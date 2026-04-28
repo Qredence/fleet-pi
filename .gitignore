@@ -33,4 +33,9 @@ npm-debug.log*
 .DS_Store
 *.pem
 
+# Local runtime state
+.fleet/
+
 .playwright-mcp/
+
+node_modules/
