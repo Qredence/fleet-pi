@@ -31,13 +31,14 @@ const PNPM_BUILTINS = new Set([
 // Scripts that modify files and should only be checked for existence, not executed
 const MODIFYING_SCRIPTS = new Set(["syncpack:fix"])
 
-// Commands to skip (Pi tool commands, examples with placeholders)
+// Commands to skip (Pi tool commands, examples with placeholders, self-referencing)
 const SKIP_PATTERNS = [
   /^read\s+/,
   /^create\s+/,
   /^edit\s+/,
   /^run\s+pnpm\s+--version$/,
   /^pnpm\s+.*<.*>.*$/,
+  /^validate-agents-md$/, // skip self to avoid infinite recursion
 ]
 
 function shouldSkip(command) {
