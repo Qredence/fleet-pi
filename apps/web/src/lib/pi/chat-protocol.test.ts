@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { ChatPlanAction, ChatRequest } from "./chat-protocol"
+import type { ChatRequest } from "./chat-protocol"
 
 describe("chat-protocol types", () => {
   it("accepts a valid agent mode request", () => {
