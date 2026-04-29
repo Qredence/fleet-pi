@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-export async function healthHandler(): Promise<Response> {
+export function healthHandler(): Response {
   return new Response(JSON.stringify({ status: "ok" }), {
     status: 200,
     headers: {
