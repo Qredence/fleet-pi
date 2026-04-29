@@ -15,6 +15,7 @@
 - Check dependency version consistency with `pnpm syncpack`.
 - Auto-fix dependency version drift with `pnpm syncpack:fix`.
 - Detect unused exports and dependencies with `pnpm knip`.
+- Detect duplicate code with `pnpm jscpd`.
 
 ## Pre-commit Hooks
 

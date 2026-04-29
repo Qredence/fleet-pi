@@ -12,7 +12,8 @@
     "syncpack": "syncpack lint --dependency-types prod,dev,peer",
     "syncpack:fix": "syncpack fix --dependency-types prod,dev,peer",
     "syncpack:format": "syncpack format --dependency-types prod,dev,peer",
-    "knip": "knip"
+    "knip": "knip",
+    "jscpd": "jscpd apps/web/src packages/ui/src"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "husky": "^9.1.7",
+    "jscpd": "^4.0.9",
     "knip": "^6.8.0",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",

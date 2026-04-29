@@ -1,0 +1,26 @@
+{
+  "threshold": 5,
+  "reporters": ["console", "consoleFull", "json"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/*.min.js",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.e2e.ts",
+    "**/routeTree.gen.ts",
+    "**/dist/**",
+    "**/build/**",
+    "**/.turbo/**",
+    "**/.cache/**"
+  ],
+  "absolute": true,
+  "gitignore": true,
+  "format": ["typescript", "javascript", "tsx", "jsx", "json"],
+  "minTokens": 50,
+  "minLines": 5,
+  "maxLines": 500,
+  "maxSize": "100kb",
+  "blame": false,
+  "cache": true,
+  "silent": false
+}
