@@ -13,7 +13,8 @@
     "syncpack:fix": "syncpack fix --dependency-types prod,dev,peer",
     "syncpack:format": "syncpack format --dependency-types prod,dev,peer",
     "knip": "knip",
-    "jscpd": "jscpd apps/web/src packages/ui/src"
+    "jscpd": "jscpd apps/web/src packages/ui/src",
+    "tech-debt": "./scripts/scan-tech-debt.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [
