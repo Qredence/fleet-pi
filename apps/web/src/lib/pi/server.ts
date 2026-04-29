@@ -149,7 +149,7 @@ export async function createPiRuntime(
   const repoRoot = getRepoRoot()
   const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
-  const sessionDir = getSessionDir(repoRoot, agentDir, services)
+  const sessionDir = getSessionDir(repoRoot, services)
   const mayReuseRuntime =
     !metadata.sessionFile || isUsableSessionFile(metadata.sessionFile, sessionDir)
   const reusable = mayReuseRuntime ? findRuntimeRecord(metadata) : undefined
@@ -262,7 +262,7 @@ export async function createNewChatSession(): Promise<ChatSessionResponse> {
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
   const sessionManager = SessionManager.create(
     repoRoot,
-    getSessionDir(repoRoot, agentDir, services),
+    getSessionDir(repoRoot, services),
   )
 
   return {
@@ -277,7 +277,7 @@ export async function hydrateChatSession(
   const repoRoot = getRepoRoot()
   const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
-  const sessionDir = getSessionDir(repoRoot, agentDir, services)
+  const sessionDir = getSessionDir(repoRoot, services)
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
 
   if (!sessionFile) {
@@ -311,7 +311,7 @@ export async function listChatSessions(): Promise<Array<ChatSessionInfo>> {
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
   const sessions = await SessionManager.list(
     repoRoot,
-    getSessionDir(repoRoot, agentDir, services),
+    getSessionDir(repoRoot, services),
   )
 
   return sessions.map((session) => ({
@@ -560,23 +560,18 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
   }, Math.max(0, RUNTIME_TTL_MS))
 }
 
-function getSessionDir(
-  repoRoot: string,
-  agentDir: string,
-  services: AgentSessionServices,
-) {
+function getSessionDir(repoRoot: string, services: AgentSessionServices) {
   const configuredSessionDir = services.settingsManager.getSessionDir()
   const sessionDir = configuredSessionDir
     ? resolve(repoRoot, configuredSessionDir)
-    : getDefaultRepoSessionDir(repoRoot, agentDir)
+    : getDefaultRepoSessionDir(repoRoot)
 
   mkdirSync(sessionDir, { recursive: true })
   return sessionDir
 }
 
-function getDefaultRepoSessionDir(repoRoot: string, agentDir: string) {
-  const safePath = `--${repoRoot.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`
-  return resolve(agentDir, "sessions", safePath)
+function getDefaultRepoSessionDir(repoRoot: string) {
+  return resolve(repoRoot, ".fleet", "sessions")
 }
 
 async function createSessionManager(
