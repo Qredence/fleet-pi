@@ -29,6 +29,10 @@ dist
 # Debug
 npm-debug.log*
 
+# IDE
+.idea/
+.vscode/
+
 # Misc
 .DS_Store
 *.pem
