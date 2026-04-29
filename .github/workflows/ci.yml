@@ -319,6 +319,14 @@ jobs:
           path: build-metrics/
           retention-days: 30
 
+      - name: Upload bundle report artifact
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/web/bundle-report/
+          retention-days: 30
+
   knip:
     runs-on: ubuntu-latest
     timeout-minutes: 10

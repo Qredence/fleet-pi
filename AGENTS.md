@@ -16,6 +16,7 @@
 - Auto-fix dependency version drift with `pnpm syncpack:fix`.
 - Detect unused exports and dependencies with `pnpm knip`.
 - Detect duplicate code with `pnpm jscpd`.
+- Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 
 ## Pre-commit Hooks
 
