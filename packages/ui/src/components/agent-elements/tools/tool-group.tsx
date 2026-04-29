@@ -1,13 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { toolRegistry } from "./tool-registry";
-import { GenericTool } from "./generic-tool";
 import { getToolStatus } from "../utils/format-tool";
 import { cn } from "../utils/cn";
+import { toolRegistry } from "./tool-registry";
+import { GenericTool } from "./generic-tool";
 import { ToolRowBase } from "./tool-row-base";
 
 export type ToolGroupProps = {
   part: any;
-  nestedTools?: any[];
+  nestedTools?: Array<any>;
   chatStatus?: string;
   completeLabel: string;
   shimmerLabel?: string;
@@ -31,7 +31,7 @@ function formatCount(value: number, label: string): string {
   return `${value} ${value === 1 ? label : `${label}s`}`;
 }
 
-function summarizeNestedTools(nestedTools: any[]): string {
+function summarizeNestedTools(nestedTools: Array<any>): string {
   if (nestedTools.length === 0) return "";
   const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"]);
   const searchTypes = new Set([
@@ -52,7 +52,7 @@ function summarizeNestedTools(nestedTools: any[]): string {
     else if (commandTypes.has(tool.type)) commandCount += 1;
   }
 
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   if (fileCount > 0) parts.push(formatCount(fileCount, "file"));
   if (searchCount > 0)
     parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`);
@@ -64,7 +64,7 @@ function summarizeNestedTools(nestedTools: any[]): string {
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
 }
 
-function getNestedCounts(nestedTools: any[]) {
+function getNestedCounts(nestedTools: Array<any>) {
   const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"]);
   const searchTypes = new Set([
     "tool-Search",
@@ -84,7 +84,7 @@ function getNestedCounts(nestedTools: any[]) {
 }
 
 function formatStreamCounts(fileCount: number, searchCount: number): string {
-  const parts: string[] = [];
+  const parts: Array<string> = [];
   if (fileCount > 0) parts.push(formatCount(fileCount, "file"));
   if (searchCount > 0)
     parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`);

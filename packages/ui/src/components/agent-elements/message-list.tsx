@@ -90,7 +90,7 @@ function normalizeMessages(messages: Array<ChatMessage>): Array<ChatMessage> {
     return {
       ...message,
       parts: [{ type: "text", text: content }],
-    } as ChatMessage;
+    };
   });
   return changed ? normalized : messages;
 }
@@ -316,7 +316,7 @@ export const MessageList = memo(function MessageList({
 
   const containerRefCallback = useCallback((el: HTMLDivElement | null) => {
     (
-      chatContainerRef as React.MutableRefObject<HTMLDivElement | null>
+      chatContainerRef
     ).current = el;
 
     if (chatContainerObserverRef.current) {
