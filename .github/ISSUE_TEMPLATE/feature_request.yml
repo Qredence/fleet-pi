@@ -1,0 +1,54 @@
+name: Feature Request
+description: Suggest an idea for Fleet Pi
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees:
+  - fleet-pi/maintainers
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem is.
+      placeholder: I'm always frustrated when [...]
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+      placeholder: What should the feature do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+      placeholder: Other ways to solve this?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area does this feature affect?
+      multiple: true
+      options:
+        - Chat UI
+        - AI / LLM integration
+        - Tool execution
+        - Dev environment
+        - Testing
+        - Documentation
+        - Other
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](../../SECURITY.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
