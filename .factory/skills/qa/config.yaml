@@ -1,0 +1,65 @@
+project: Fleet Pi
+imagemagick: true
+
+environments:
+  dev:
+    url: http://localhost:3000
+    restrictions:
+      - "Requires AWS credentials with Bedrock access for chat functionality"
+      - "No persistent data — sessions stored locally in .fleet/sessions"
+
+default_target: dev
+
+auth:
+  method: none
+  provider: null
+
+personas:
+  - name: anonymous
+    description: "Anonymous user with no authentication required"
+    email: null
+    credentials_source: null
+    secret_name: null
+    test_focus:
+      - chat
+      - tools
+      - sessions
+      - plan_mode
+      - model_selection
+    cannot_do: []
+
+  - name: fresh_session
+    description: "New session with no prior chat history"
+    email_pattern: null
+    test_focus:
+      - onboarding
+      - empty_states
+      - first_message
+      - session_creation
+
+apps:
+  web:
+    path_patterns:
+      - "apps/web/**"
+      - "packages/ui/**"
+    skill: qa-web
+    test_tool: agent-browser
+    build_command: "pnpm build"
+
+feature_flags:
+  provider: none
+  dashboard_url: null
+  how_to_override: "N/A"
+
+integrations:
+  llm:
+    provider: amazon-bedrock
+    test_mode: "Uses AWS credentials from environment variables"
+    notes: "Chat functionality requires valid AWS credentials with Bedrock model access"
+
+cleanup:
+  auto_cleanup: false
+  strategy: none
+  instructions: "Tests create temporary Pi sessions under .fleet/sessions. These are ephemeral and can be left for manual cleanup or ignored."
+
+failure_learning: suggest_in_report

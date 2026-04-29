@@ -1,0 +1,56 @@
+# QA Install Progress — generated 2026-04-29
+# Delete this file to restart the questionnaire from scratch.
+
+phase: completed
+categories:
+  default_target:
+    environments:
+      - dev (localhost:3000)
+    default_target: dev
+    restrictions: []
+
+  personas:
+    - name: anonymous
+      description: Anonymous user with no authentication
+      email: null
+      credentials_source: null
+      test_focus:
+        - chat
+        - tools
+        - sessions
+        - plan_mode
+      cannot_do: []
+
+  critical_flows:
+    - chat message + streaming response
+    - tool cards (read/write/edit/bash)
+    - session management (new/resume/list/hydrate)
+    - model selection
+    - agent/plan mode switching
+    - plan mode with questions
+    - follow-up queuing
+    - abort stream
+    - page refresh hydration
+
+  external_services:
+    - provider: amazon-bedrock
+      test_mode: uses AWS credentials from env
+      notes: LLM inference requires valid AWS credentials with Bedrock access
+
+  cleanup:
+    auto_cleanup: false
+    strategy: none
+    instructions: Tests are read-only or create temporary Pi sessions under .fleet/sessions. No cleanup required.
+
+  imagemagick:
+    installed: true
+    path: /opt/homebrew/bin/magick
+
+  github_action:
+    generate: true
+    required: optional
+    wait_for_preview: false
+    strategy: local_dev_server
+
+  failure_learning:
+    mode: suggest_in_report

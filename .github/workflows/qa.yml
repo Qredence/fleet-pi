@@ -1,0 +1,113 @@
+name: QA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to test"
+        required: false
+        default: ""
+
+concurrency:
+  group: qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      CI: true
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install ImageMagick
+        run: sudo apt-get install -y -qq imagemagick
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Run QA
+        id: qa
+        timeout-minutes: 20
+        continue-on-error: true
+        run: |
+          export PATH="$HOME/.factory/bin:$PATH"
+          droid exec --auto high --prompt "
+          You are running in a non-interactive CI environment. There is NO human available.
+          Do NOT use AskUser, do NOT wait for confirmations, do NOT pause for input.
+          Run the qa skill. Write the final report to qa-results/report.md.
+          "
+
+      - name: Prepare report for PR comment
+        id: prepare-report
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          mkdir -p qa-results
+          if [ -f qa-results/report.md ]; then
+            echo "report_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_found=false" >> "$GITHUB_OUTPUT"
+            echo "## QA Report" > qa-results/report.md
+            echo "" >> qa-results/report.md
+            echo "No report was generated. Check the workflow logs for details." >> qa-results/report.md
+          fi
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-results-${{ github.run_number }}
+          path: qa-results/
+          retention-days: 14
+
+      - name: Post QA report as PR comment
+        if: always() && github.event_name == 'pull_request' && steps.prepare-report.outputs.report_found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT_FILE="qa-results/report.md"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # Build comment body
+          COMMENT_BODY="<!-- qa-report -->
+          $(cat "$REPORT_FILE")
+
+          ---
+          **Artifact:** [qa-results-${{ github.run_number }}]($ARTIFACT_URL)
+          **Workflow run:** [#$GITHUB_RUN_NUMBER]($RUN_URL)
+          "
+
+          # Check for existing QA comment
+          EXISTING_COMMENT=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | startswith("<!-- qa-report -->")) | .id')
+
+          if [ -n "$EXISTING_COMMENT" ]; then
+            gh api repos/${{ github.repository }}/issues/comments/$EXISTING_COMMENT --method PATCH -f body="$COMMENT_BODY"
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT_BODY"
+          fi
