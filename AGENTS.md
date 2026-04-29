@@ -12,6 +12,8 @@
 - Type-check with `pnpm typecheck`.
 - Lint with `pnpm lint`.
 - Build with `pnpm build`.
+- Check dependency version consistency with `pnpm syncpack`.
+- Auto-fix dependency version drift with `pnpm syncpack:fix`.
 
 ## Pre-commit Hooks
 
