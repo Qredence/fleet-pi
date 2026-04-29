@@ -13,6 +13,18 @@
 - Lint with `pnpm lint`.
 - Build with `pnpm build`.
 
+## Pre-commit Hooks
+
+The repository uses **Husky** + **lint-staged** to enforce code quality before every commit.
+
+- The pre-commit hook is registered at `.husky/pre-commit` and runs `pnpm exec lint-staged`.
+- `git config core.hooksPath` must return `.husky`.
+- Staged files are automatically processed:
+  - **Prettier** (`prettier --write`) runs on `*.{ts,tsx,js,jsx,json,css,md}`
+  - **ESLint** (`eslint --fix`) runs on `{apps,packages}/**/*.{ts,tsx,js,jsx}`
+- Commits are blocked if ESLint reports errors that cannot be auto-fixed.
+- The root `eslint.config.js` delegates to workspace configs so lint-staged works from the repository root.
+
 ## Architecture Notes
 
 - `apps/web` is a TanStack Start app. File routes are generated into `apps/web/src/routeTree.gen.ts`; do not edit that generated file manually.
