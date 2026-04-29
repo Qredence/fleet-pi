@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
     "title": "Fleet Pi Chat API",
     "version": "1.0.0",
@@ -162,20 +162,12 @@
                             "state": {
                               "type": "string"
                             },
-                            "input": {
-                              "nullable": true
-                            },
-                            "output": {
-                              "nullable": true
-                            },
-                            "result": {
-                              "nullable": true
-                            }
+                            "input": {},
+                            "output": {},
+                            "result": {}
                           },
                           "required": ["type"],
-                          "additionalProperties": {
-                            "nullable": true
-                          },
+                          "additionalProperties": {},
                           "description": "Tool message part"
                         },
                         "messageId": {
@@ -464,20 +456,12 @@
                                       "state": {
                                         "type": "string"
                                       },
-                                      "input": {
-                                        "nullable": true
-                                      },
-                                      "output": {
-                                        "nullable": true
-                                      },
-                                      "result": {
-                                        "nullable": true
-                                      }
+                                      "input": {},
+                                      "output": {},
+                                      "result": {}
                                     },
                                     "required": ["type"],
-                                    "additionalProperties": {
-                                      "nullable": true
-                                    },
+                                    "additionalProperties": {},
                                     "description": "Tool message part"
                                   }
                                 ],
@@ -514,9 +498,7 @@
                             }
                           },
                           "required": ["id", "role", "parts"],
-                          "additionalProperties": {
-                            "nullable": true
-                          },
+                          "additionalProperties": {},
                           "description": "Chat message"
                         },
                         "sessionFile": {
@@ -976,20 +958,12 @@
                                     "state": {
                                       "type": "string"
                                     },
-                                    "input": {
-                                      "nullable": true
-                                    },
-                                    "output": {
-                                      "nullable": true
-                                    },
-                                    "result": {
-                                      "nullable": true
-                                    }
+                                    "input": {},
+                                    "output": {},
+                                    "result": {}
                                   },
                                   "required": ["type"],
-                                  "additionalProperties": {
-                                    "nullable": true
-                                  },
+                                  "additionalProperties": {},
                                   "description": "Tool message part"
                                 }
                               ],
@@ -1026,9 +1000,7 @@
                           }
                         },
                         "required": ["id", "role", "parts"],
-                        "additionalProperties": {
-                          "nullable": true
-                        },
+                        "additionalProperties": {},
                         "description": "Chat message"
                       }
                     },
@@ -1291,20 +1263,12 @@
                                     "state": {
                                       "type": "string"
                                     },
-                                    "input": {
-                                      "nullable": true
-                                    },
-                                    "output": {
-                                      "nullable": true
-                                    },
-                                    "result": {
-                                      "nullable": true
-                                    }
+                                    "input": {},
+                                    "output": {},
+                                    "result": {}
                                   },
                                   "required": ["type"],
-                                  "additionalProperties": {
-                                    "nullable": true
-                                  },
+                                  "additionalProperties": {},
                                   "description": "Tool message part"
                                 }
                               ],
@@ -1341,9 +1305,7 @@
                           }
                         },
                         "required": ["id", "role", "parts"],
-                        "additionalProperties": {
-                          "nullable": true
-                        },
+                        "additionalProperties": {},
                         "description": "Chat message"
                       }
                     },
@@ -1581,5 +1543,6 @@
         }
       }
     }
-  }
+  },
+  "webhooks": {}
 }
