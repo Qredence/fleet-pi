@@ -3,6 +3,7 @@ import type { AgentSessionEvent } from "@mariozechner/pi-coding-agent"
 import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
+import { sanitizePii } from "@/lib/pii/sanitizer"
 import {
   appendTextPart,
   createPiRuntime,
@@ -32,8 +33,9 @@ export const Route = createFileRoute("/api/chat")({
         const log = createRequestLogger(requestId)
 
         const body = (await request.json()) as ChatRequest
-        const prompt =
+        const rawPrompt =
           typeof body.message === "string" ? body.message.trim() : ""
+        const prompt = sanitizePii(rawPrompt)
 
         log.info(
           { mode: body.mode, hasMessage: Boolean(prompt) },
