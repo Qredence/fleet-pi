@@ -17,7 +17,8 @@
     "knip": "knip",
     "jscpd": "jscpd apps/web/src packages/ui/src",
     "tech-debt": "./scripts/scan-tech-debt.sh",
-    "validate-agents-md": "node scripts/validate-agents-md.js"
+    "validate-agents-md": "node scripts/validate-agents-md.js",
+    "generate:docs": "node scripts/generate-docs.js"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [

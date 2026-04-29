@@ -82,6 +82,21 @@ pnpm lint
 pnpm build
 ```
 
+## Documentation
+
+Generate API docs and architecture diagrams from source code:
+
+```zsh
+# from repo root
+pnpm generate:docs
+```
+
+This produces:
+
+- `docs/api.md` — Markdown API reference generated from `openapi.json`.
+- `docs/architecture.mmd` — Mermaid diagram of the system architecture.
+- `docs/project-structure.md` — Auto-generated project structure overview.
+
 Useful workspace-specific commands:
 
 ```zsh
