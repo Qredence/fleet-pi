@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # No explicit ignore rules are currently required.
+    # All dependencies in this monorepo are maintained through Dependabot.
+    # If a dependency needs to be pinned or excluded, add it here:
+    # ignore:
+    #   - dependency-name: "example-package"
+    #     versions: [">= 2.0.0"]
