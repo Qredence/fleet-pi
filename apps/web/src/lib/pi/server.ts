@@ -17,6 +17,10 @@ import {
   normalizeQuestionOutput,
   resolveQuestionnaireAnswer,
 } from "./plan-mode"
+import {
+  createBedrockCircuitBreaker,
+  createBedrockFallbackError,
+} from "./circuit-breaker"
 import type {
   AgentSessionEvent,
   AgentSessionRuntime,
@@ -78,6 +82,20 @@ type ActiveSessionRecord = {
   lastUsedAt: number
   disposeTimer?: ReturnType<typeof setTimeout>
 }
+
+async function invokeBedrockAgentSession(
+  params: Parameters<typeof createAgentSessionFromServices>[0]
+) {
+  return createAgentSessionFromServices(params)
+}
+
+export const bedrockCircuitBreaker = createBedrockCircuitBreaker(
+  invokeBedrockAgentSession
+)
+
+bedrockCircuitBreaker.fallback(() => {
+  throw createBedrockFallbackError()
+})
 
 const runtimeRecords = new Map<string, ActiveSessionRecord>()
 
@@ -195,7 +213,7 @@ export async function createPiRuntime(
       runtimeServices,
       modelSelection
     )
-    const result = await createAgentSessionFromServices({
+    const result = await bedrockCircuitBreaker.fire({
       services: runtimeServices,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
