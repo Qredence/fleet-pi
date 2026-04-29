@@ -14,8 +14,12 @@ node_modules
 coverage
 test-results/
 
-# jscpd reports
+# jscpd reports and cache
 report/
+.jscpd/
+
+# Tech debt report
+tech-debt-report.json
 
 # Turbo
 .turbo
