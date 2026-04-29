@@ -14,7 +14,8 @@
     "syncpack:format": "syncpack format --dependency-types prod,dev,peer",
     "knip": "knip",
     "jscpd": "jscpd apps/web/src packages/ui/src",
-    "tech-debt": "./scripts/scan-tech-debt.sh"
+    "tech-debt": "./scripts/scan-tech-debt.sh",
+    "validate-agents-md": "node scripts/validate-agents-md.js"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [
