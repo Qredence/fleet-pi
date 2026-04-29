@@ -92,6 +92,47 @@ pnpm --filter web lint
 pnpm --filter @workspace/ui lint
 ```
 
+## Testing
+
+Run unit tests with vitest:
+
+```zsh
+# from repo root
+pnpm test
+```
+
+Run end-to-end tests with Playwright (auto-starts the dev server):
+
+```zsh
+# from repo root
+pnpm e2e
+```
+
+Workspace-specific test commands:
+
+```zsh
+# from repo root
+pnpm --filter web test
+pnpm --filter web e2e
+```
+
+Run unit tests with coverage reporting:
+
+```zsh
+# from repo root
+pnpm --filter web test --coverage
+```
+
+## Devcontainer
+
+This repository includes a VS Code devcontainer configuration at
+`.devcontainer/devcontainer.json`. Open the project in a devcontainer to get a
+pre-configured environment with Node.js, pnpm, Git, and recommended editor
+extensions (ESLint, Prettier, Tailwind CSS, TypeScript).
+
+The devcontainer forwards port `3000` for the Fleet Pi dev server and runs
+`pnpm install` automatically after creation.
+
 ## Production Preview
 
 Build the workspace:

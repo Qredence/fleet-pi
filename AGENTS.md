@@ -12,11 +12,19 @@
 - Type-check with `pnpm typecheck`.
 - Lint with `pnpm lint`.
 - Build with `pnpm build`.
+- Run unit tests with `pnpm test`.
+- Run end-to-end tests with `pnpm e2e`.
 - Check dependency version consistency with `pnpm syncpack`.
 - Auto-fix dependency version drift with `pnpm syncpack:fix`.
 - Detect unused exports and dependencies with `pnpm knip`.
 - Detect duplicate code with `pnpm jscpd`.
+- Scan for tech debt markers with `pnpm tech-debt`.
+- Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
+
+## Devcontainer
+
+The repository includes a VS Code devcontainer configuration at `.devcontainer/devcontainer.json` with Node.js, pnpm, Git, and recommended editor extensions. Open the project in a devcontainer to get a fully pre-configured development environment. Port `3000` is forwarded automatically and `pnpm install` runs after container creation.
 
 ## Pre-commit Hooks
 
