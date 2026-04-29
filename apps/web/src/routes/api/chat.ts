@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import type { AgentSessionEvent } from "@mariozechner/pi-coding-agent"
 import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
+import { createRequestLogger } from "@/lib/logger"
 import {
   appendTextPart,
   createPiRuntime,
@@ -26,10 +27,21 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const requestId =
+          request.headers.get("x-request-id") ?? crypto.randomUUID()
+        const log = createRequestLogger(requestId)
+
         const body = (await request.json()) as ChatRequest
-        const prompt = typeof body.message === "string" ? body.message.trim() : ""
+        const prompt =
+          typeof body.message === "string" ? body.message.trim() : ""
+
+        log.info(
+          { mode: body.mode, hasMessage: Boolean(prompt) },
+          "chat request received"
+        )
 
         if (!prompt) {
+          log.warn("missing message in chat request")
           return new Response("Missing message", { status: 400 })
         }
 
@@ -37,9 +49,13 @@ export const Route = createFileRoute("/api/chat")({
           const queued = await queuePromptOnActiveSession(
             body,
             prompt,
-            body.streamingBehavior,
+            body.streamingBehavior
           )
           if (queued) {
+            log.info(
+              { streamingBehavior: body.streamingBehavior },
+              "prompt queued on active session"
+            )
             return streamEvents([
               {
                 type: "queue",
@@ -60,17 +76,27 @@ export const Route = createFileRoute("/api/chat")({
 
             let unsubscribe: (() => void) | undefined
             let releaseRuntime: (() => void) | undefined
-            let session: Awaited<
-              ReturnType<typeof createPiRuntime>
-            >["runtime"]["session"] | undefined
+            let session:
+              | Awaited<
+                  ReturnType<typeof createPiRuntime>
+                >["runtime"]["session"]
+              | undefined
             let parts: Array<ChatMessagePart> = []
             let thinkingText = ""
             const toolInputs = new Map<string, Record<string, unknown>>()
 
             try {
+              log.info("creating pi runtime")
               const result = await createPiRuntime(body, body.model)
               session = result.runtime.session
               releaseRuntime = retainPiRuntime(result.runtime)
+              log.info(
+                {
+                  sessionId: session.sessionId,
+                  sessionReset: result.sessionReset,
+                },
+                "pi runtime created"
+              )
               send(createPlanEvent(getPlanState(result.runtime)))
               const abort = () => void session?.abort()
 
@@ -90,7 +116,7 @@ export const Route = createFileRoute("/api/chat")({
                   parts,
                   thinkingText,
                   toolInputs,
-                  send,
+                  send
                 )
                 parts = nextParts.parts
                 thinkingText = nextParts.thinkingText
@@ -103,13 +129,13 @@ export const Route = createFileRoute("/api/chat")({
               if (body.planAction === "execute") {
                 const { state } = updateExecutionProgress(
                   result.runtime,
-                  assistantText,
+                  assistantText
                 )
                 send(createPlanEvent(state))
               } else if (body.mode === "plan") {
                 const state = updatePlanFromAssistantText(
                   result.runtime,
-                  assistantText,
+                  assistantText
                 )
                 const decisionPart = createPlanDecisionPart(assistantId, state)
                 if (decisionPart) {
@@ -119,6 +145,10 @@ export const Route = createFileRoute("/api/chat")({
                 send(createPlanEvent(state))
               }
 
+              log.info(
+                { assistantId, partCount: parts.length },
+                "chat stream completed"
+              )
               send({
                 type: "done",
                 message: toChatMessage(assistantId, "assistant", parts),
@@ -127,6 +157,7 @@ export const Route = createFileRoute("/api/chat")({
                 sessionReset: result.sessionReset,
               })
             } catch (error) {
+              log.error({ error: getErrorMessage(error) }, "chat stream error")
               if (!request.signal.aborted) {
                 send({ type: "error", message: getErrorMessage(error) })
               }
@@ -149,7 +180,7 @@ function handleSessionEvent(
   parts: Array<ChatMessagePart>,
   thinkingText: string,
   toolInputs: Map<string, Record<string, unknown>>,
-  send: (event: ChatStreamEvent) => void,
+  send: (event: ChatStreamEvent) => void
 ) {
   if (
     event.type === "message_update" &&
@@ -252,7 +283,7 @@ function textFromParts(parts: Array<ChatMessagePart>) {
 }
 
 function isAssistantErrorMessage(
-  message: unknown,
+  message: unknown
 ): message is { role: "assistant"; stopReason: "error"; errorMessage: string } {
   return (
     message !== null &&
@@ -266,9 +297,7 @@ function isAssistantErrorMessage(
   )
 }
 
-function isStateEvent(
-  event: AgentSessionEvent,
-): event is Extract<
+function isStateEvent(event: AgentSessionEvent): event is Extract<
   AgentSessionEvent,
   {
     type:
