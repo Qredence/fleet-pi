@@ -1,0 +1,1585 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Fleet Pi Chat API",
+    "version": "1.0.0",
+    "description": "OpenAPI specification for Fleet Pi chat protocol endpoints"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "schemas": {},
+    "parameters": {}
+  },
+  "paths": {
+    "/api/chat": {
+      "post": {
+        "description": "Send a chat message and receive a streaming response",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionFile": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "User message"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Model key string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "thinkingLevel": {
+                            "type": "string",
+                            "enum": [
+                              "off",
+                              "minimal",
+                              "low",
+                              "medium",
+                              "high",
+                              "xhigh"
+                            ],
+                            "description": "Thinking level"
+                          }
+                        },
+                        "required": ["provider", "id"],
+                        "description": "Model selection object"
+                      }
+                    ],
+                    "description": "Selected model"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["agent", "plan"],
+                    "description": "Chat mode"
+                  },
+                  "planAction": {
+                    "type": "string",
+                    "enum": ["execute", "refine"],
+                    "description": "Plan action"
+                  },
+                  "streamingBehavior": {
+                    "type": "string",
+                    "enum": ["steer", "followUp"],
+                    "description": "Streaming behavior"
+                  }
+                },
+                "description": "Chat request body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "NDJSON stream of chat events",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["start"]
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "sessionFile": {
+                          "type": "string"
+                        },
+                        "sessionId": {
+                          "type": "string"
+                        },
+                        "sessionReset": {
+                          "type": "boolean"
+                        },
+                        "diagnostics": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["type", "id", "sessionId"],
+                      "description": "Stream start event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["delta"]
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "messageId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "text"],
+                      "description": "Stream delta event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["tool"]
+                        },
+                        "part": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "toolCallId": {
+                              "type": "string"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "input": {
+                              "nullable": true
+                            },
+                            "output": {
+                              "nullable": true
+                            },
+                            "result": {
+                              "nullable": true
+                            }
+                          },
+                          "required": ["type"],
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Tool message part"
+                        },
+                        "messageId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "part"],
+                      "description": "Stream tool event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["plan"]
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": ["agent", "plan"],
+                          "description": "Chat mode"
+                        },
+                        "executing": {
+                          "type": "boolean"
+                        },
+                        "completed": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "mode",
+                        "executing",
+                        "completed",
+                        "total"
+                      ],
+                      "description": "Stream plan event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["state"]
+                        },
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "agent_start",
+                                "agent_end",
+                                "turn_start",
+                                "turn_end",
+                                "message_start",
+                                "message_end"
+                              ]
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["name"],
+                          "description": "Chat state event"
+                        }
+                      },
+                      "required": ["type", "state"],
+                      "description": "Stream state event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["queue"]
+                        },
+                        "steering": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "followUp": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["type", "steering", "followUp"],
+                      "description": "Stream queue event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["thinking"]
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "messageId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "text"],
+                      "description": "Stream thinking event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["compaction"]
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": ["start"]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "phase", "reason"],
+                      "description": "Compaction start event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["compaction"]
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": ["end"]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "aborted": {
+                          "type": "boolean"
+                        },
+                        "willRetry": {
+                          "type": "boolean"
+                        },
+                        "errorMessage": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "phase",
+                        "reason",
+                        "aborted",
+                        "willRetry"
+                      ],
+                      "description": "Compaction end event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["retry"]
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": ["start"]
+                        },
+                        "attempt": {
+                          "type": "number"
+                        },
+                        "maxAttempts": {
+                          "type": "number"
+                        },
+                        "delayMs": {
+                          "type": "number"
+                        },
+                        "errorMessage": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "phase",
+                        "attempt",
+                        "maxAttempts",
+                        "delayMs",
+                        "errorMessage"
+                      ],
+                      "description": "Retry start event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["retry"]
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": ["end"]
+                        },
+                        "success": {
+                          "type": "boolean"
+                        },
+                        "attempt": {
+                          "type": "number"
+                        },
+                        "finalError": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "phase", "success", "attempt"],
+                      "description": "Retry end event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["done"]
+                        },
+                        "message": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["user", "assistant"]
+                            },
+                            "parts": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": ["text"]
+                                      },
+                                      "text": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["type", "text"],
+                                    "description": "Text message part"
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": ["error"]
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      },
+                                      "message": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["type", "message"],
+                                    "description": "Error message part"
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "toolCallId": {
+                                        "type": "string"
+                                      },
+                                      "state": {
+                                        "type": "string"
+                                      },
+                                      "input": {
+                                        "nullable": true
+                                      },
+                                      "output": {
+                                        "nullable": true
+                                      },
+                                      "result": {
+                                        "nullable": true
+                                      }
+                                    },
+                                    "required": ["type"],
+                                    "additionalProperties": {
+                                      "nullable": true
+                                    },
+                                    "description": "Tool message part"
+                                  }
+                                ],
+                                "description": "Message part"
+                              }
+                            },
+                            "createdAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "experimental_attachments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contentType": {
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "required": ["id", "role", "parts"],
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Chat message"
+                        },
+                        "sessionFile": {
+                          "type": "string"
+                        },
+                        "sessionId": {
+                          "type": "string"
+                        },
+                        "sessionReset": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["type", "message", "sessionId"],
+                      "description": "Stream done event"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["error"]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "message"],
+                      "description": "Stream error event"
+                    }
+                  ],
+                  "description": "Chat stream event (NDJSON line)"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/models": {
+      "get": {
+        "description": "List available chat models",
+        "responses": {
+          "200": {
+            "description": "List of models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "reasoning": {
+                            "type": "boolean"
+                          },
+                          "input": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["text", "image"]
+                            }
+                          },
+                          "contextWindow": {
+                            "type": "number"
+                          },
+                          "maxTokens": {
+                            "type": "number"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "defaultThinkingLevel": {
+                            "type": "string",
+                            "enum": [
+                              "off",
+                              "minimal",
+                              "low",
+                              "medium",
+                              "high",
+                              "xhigh"
+                            ],
+                            "description": "Thinking level"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "provider",
+                          "id",
+                          "name",
+                          "reasoning",
+                          "input",
+                          "available"
+                        ],
+                        "description": "Chat model info"
+                      }
+                    },
+                    "selectedModelKey": {
+                      "type": "string"
+                    },
+                    "defaultProvider": {
+                      "type": "string"
+                    },
+                    "defaultModel": {
+                      "type": "string"
+                    },
+                    "defaultThinkingLevel": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "minimal",
+                        "low",
+                        "medium",
+                        "high",
+                        "xhigh"
+                      ],
+                      "description": "Thinking level"
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": ["models", "diagnostics"],
+                  "description": "Chat models response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/resources": {
+      "get": {
+        "description": "List available chat resources (skills, prompts, extensions)",
+        "responses": {
+          "200": {
+            "description": "List of resources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "prompts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "extensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "themes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "agentsFiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "skills",
+                    "prompts",
+                    "extensions",
+                    "themes",
+                    "agentsFiles",
+                    "diagnostics"
+                  ],
+                  "description": "Chat resources response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/session": {
+      "get": {
+        "description": "Hydrate a chat session by query parameters",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Session file path"
+            },
+            "required": false,
+            "description": "Session file path",
+            "name": "sessionFile",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Session ID"
+            },
+            "required": false,
+            "description": "Session ID",
+            "name": "sessionId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "sessionFile": {
+                          "type": "string",
+                          "description": "Session file path"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "description": "Session ID"
+                        }
+                      },
+                      "description": "Chat session metadata"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": ["user", "assistant"]
+                          },
+                          "parts": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["text"]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "text"],
+                                  "description": "Text message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["error"]
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "message"],
+                                  "description": "Error message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "toolCallId": {
+                                      "type": "string"
+                                    },
+                                    "state": {
+                                      "type": "string"
+                                    },
+                                    "input": {
+                                      "nullable": true
+                                    },
+                                    "output": {
+                                      "nullable": true
+                                    },
+                                    "result": {
+                                      "nullable": true
+                                    }
+                                  },
+                                  "required": ["type"],
+                                  "additionalProperties": {
+                                    "nullable": true
+                                  },
+                                  "description": "Tool message part"
+                                }
+                              ],
+                              "description": "Message part"
+                            }
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "experimental_attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "contentType": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": ["id", "role", "parts"],
+                        "additionalProperties": {
+                          "nullable": true
+                        },
+                        "description": "Chat message"
+                      }
+                    },
+                    "sessionReset": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["session", "messages"],
+                  "description": "Chat session response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "description": "List all chat sessions",
+        "responses": {
+          "200": {
+            "description": "List of sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "cwd": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "created": {
+                            "type": "string"
+                          },
+                          "modified": {
+                            "type": "string"
+                          },
+                          "messageCount": {
+                            "type": "number"
+                          },
+                          "firstMessage": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "id",
+                          "cwd",
+                          "created",
+                          "modified",
+                          "messageCount",
+                          "firstMessage"
+                        ],
+                        "description": "Chat session info"
+                      }
+                    }
+                  },
+                  "required": ["sessions"],
+                  "description": "Chat sessions list response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/new": {
+      "post": {
+        "description": "Create a new chat session",
+        "responses": {
+          "200": {
+            "description": "New session metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionFile": {
+                      "type": "string",
+                      "description": "Session file path"
+                    },
+                    "sessionId": {
+                      "type": "string",
+                      "description": "Session ID"
+                    }
+                  },
+                  "description": "Chat session metadata"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/resume": {
+      "post": {
+        "description": "Resume an existing chat session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionFile": {
+                    "type": "string",
+                    "description": "Session file path"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Session ID"
+                  }
+                },
+                "description": "Chat session metadata"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "sessionFile": {
+                          "type": "string",
+                          "description": "Session file path"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "description": "Session ID"
+                        }
+                      },
+                      "description": "Chat session metadata"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": ["user", "assistant"]
+                          },
+                          "parts": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["text"]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "text"],
+                                  "description": "Text message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["error"]
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "message"],
+                                  "description": "Error message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "toolCallId": {
+                                      "type": "string"
+                                    },
+                                    "state": {
+                                      "type": "string"
+                                    },
+                                    "input": {
+                                      "nullable": true
+                                    },
+                                    "output": {
+                                      "nullable": true
+                                    },
+                                    "result": {
+                                      "nullable": true
+                                    }
+                                  },
+                                  "required": ["type"],
+                                  "additionalProperties": {
+                                    "nullable": true
+                                  },
+                                  "description": "Tool message part"
+                                }
+                              ],
+                              "description": "Message part"
+                            }
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "experimental_attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "contentType": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": ["id", "role", "parts"],
+                        "additionalProperties": {
+                          "nullable": true
+                        },
+                        "description": "Chat message"
+                      }
+                    },
+                    "sessionReset": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["session", "messages"],
+                  "description": "Chat session response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/abort": {
+      "post": {
+        "description": "Abort the active chat session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionFile": {
+                    "type": "string",
+                    "description": "Session file path"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Session ID"
+                  }
+                },
+                "description": "Chat session metadata"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Abort result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "aborted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["aborted"]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/question": {
+      "post": {
+        "description": "Answer a question prompt from the assistant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionFile": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "answer": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": ["single", "multi", "text", "skip"]
+                      },
+                      "selectedIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["kind"],
+                    "description": "Question answer"
+                  }
+                },
+                "required": ["answer"],
+                "description": "Question answer request body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": ["agent", "plan"],
+                      "description": "Chat mode"
+                    },
+                    "planAction": {
+                      "type": "string",
+                      "enum": ["execute", "refine"],
+                      "description": "Plan action"
+                    }
+                  },
+                  "required": ["ok"],
+                  "description": "Question answer response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": ["agent", "plan"],
+                      "description": "Chat mode"
+                    },
+                    "planAction": {
+                      "type": "string",
+                      "enum": ["execute", "refine"],
+                      "description": "Plan action"
+                    }
+                  },
+                  "required": ["ok"],
+                  "description": "Question answer response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "Health check endpoint",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  },
+                  "required": ["status"],
+                  "description": "Health check response"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

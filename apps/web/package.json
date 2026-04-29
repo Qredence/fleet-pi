@@ -13,9 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "generate:openapi": "tsx scripts/generate-openapi.ts"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@mariozechner/pi-ai": "^0.70.6",
     "@mariozechner/pi-coding-agent": "^0.70.6",
     "@tailwindcss/vite": "^4.1.18",
@@ -33,9 +35,11 @@
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.1.18",
     "typebox": "1.1.33",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@apidevtools/swagger-cli": "^4.0.4",
     "@playwright/test": "^1.59.1",
     "@tanstack/eslint-config": "^0.3.0",
     "@types/node": "^25.1.0",
@@ -46,6 +50,7 @@
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^9.39.2",
     "rollup-plugin-visualizer": "^7.0.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.2",
     "vitest": "^4.1.5"

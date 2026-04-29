@@ -8,6 +8,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "e2e": "turbo e2e",
     "prepare": "husky",
     "syncpack": "syncpack lint --dependency-types prod,dev,peer",
     "syncpack:fix": "syncpack fix --dependency-types prod,dev,peer",

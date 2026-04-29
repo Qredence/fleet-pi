@@ -1,0 +1,366 @@
+import { z } from "zod"
+import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi"
+
+extendZodWithOpenApi(z)
+
+export const ChatModeSchema = z
+  .enum(["agent", "plan"])
+  .openapi({ description: "Chat mode" })
+
+export const ChatPlanActionSchema = z
+  .enum(["execute", "refine"])
+  .openapi({ description: "Plan action" })
+
+export const ChatThinkingLevelSchema = z
+  .enum(["off", "minimal", "low", "medium", "high", "xhigh"])
+  .openapi({ description: "Thinking level" })
+
+export const ChatModelSelectionSchema = z
+  .union([
+    z.string().openapi({ description: "Model key string" }),
+    z
+      .object({
+        provider: z.string(),
+        id: z.string(),
+        thinkingLevel: ChatThinkingLevelSchema.optional(),
+      })
+      .openapi({ description: "Model selection object" }),
+  ])
+  .openapi({ description: "Selected model" })
+
+export const ChatSessionMetadataSchema = z
+  .object({
+    sessionFile: z
+      .string()
+      .optional()
+      .openapi({ description: "Session file path" }),
+    sessionId: z.string().optional().openapi({ description: "Session ID" }),
+  })
+  .openapi({ description: "Chat session metadata" })
+
+export const ChatRequestSchema = z
+  .object({
+    sessionFile: z.string().optional(),
+    sessionId: z.string().optional(),
+    message: z.string().optional().openapi({ description: "User message" }),
+    model: ChatModelSelectionSchema.optional(),
+    mode: ChatModeSchema.optional(),
+    planAction: ChatPlanActionSchema.optional(),
+    streamingBehavior: z
+      .enum(["steer", "followUp"])
+      .optional()
+      .openapi({ description: "Streaming behavior" }),
+  })
+  .openapi({ description: "Chat request body" })
+
+export const ChatQuestionAnswerSchema = z
+  .object({
+    kind: z.enum(["single", "multi", "text", "skip"]),
+    selectedIds: z.array(z.string()).optional(),
+    text: z.string().optional(),
+  })
+  .openapi({ description: "Question answer" })
+
+export const ChatQuestionAnswerRequestSchema = z
+  .object({
+    sessionFile: z.string().optional(),
+    sessionId: z.string().optional(),
+    toolCallId: z.string().optional(),
+    answer: ChatQuestionAnswerSchema,
+  })
+  .openapi({ description: "Question answer request body" })
+
+export const ChatQuestionAnswerResponseSchema = z
+  .object({
+    ok: z.boolean(),
+    message: z.string().optional(),
+    mode: ChatModeSchema.optional(),
+    planAction: ChatPlanActionSchema.optional(),
+  })
+  .openapi({ description: "Question answer response" })
+
+export const ChatTextPartSchema = z
+  .object({
+    type: z.literal("text"),
+    text: z.string(),
+  })
+  .openapi({ description: "Text message part" })
+
+export const ChatErrorPartSchema = z
+  .object({
+    type: z.literal("error"),
+    title: z.string().optional(),
+    message: z.string(),
+  })
+  .openapi({ description: "Error message part" })
+
+export const ChatToolPartSchema = z
+  .object({
+    type: z.string(),
+    toolCallId: z.string().optional(),
+    state: z.string().optional(),
+    input: z.unknown().optional(),
+    output: z.unknown().optional(),
+    result: z.unknown().optional(),
+  })
+  .passthrough()
+  .openapi({ description: "Tool message part" })
+
+export const ChatMessagePartSchema = z
+  .union([ChatTextPartSchema, ChatErrorPartSchema, ChatToolPartSchema])
+  .openapi({ description: "Message part" })
+
+export const ChatMessageSchema = z
+  .object({
+    id: z.string(),
+    role: z.enum(["user", "assistant"]),
+    parts: z.array(ChatMessagePartSchema),
+    createdAt: z.union([z.date(), z.string(), z.number()]).optional(),
+    experimental_attachments: z
+      .array(
+        z.object({
+          contentType: z.string().optional(),
+          url: z.string().optional(),
+        })
+      )
+      .optional(),
+  })
+  .passthrough()
+  .openapi({ description: "Chat message" })
+
+export const ChatStateEventSchema = z
+  .object({
+    name: z.enum([
+      "agent_start",
+      "agent_end",
+      "turn_start",
+      "turn_end",
+      "message_start",
+      "message_end",
+    ]),
+    message: z.string().optional(),
+  })
+  .openapi({ description: "Chat state event" })
+
+export const ChatStartEventSchema = z
+  .object({
+    type: z.literal("start"),
+    id: z.string(),
+    sessionFile: z.string().optional(),
+    sessionId: z.string(),
+    sessionReset: z.boolean().optional(),
+    diagnostics: z.array(z.string()).optional(),
+  })
+  .openapi({ description: "Stream start event" })
+
+export const ChatDeltaEventSchema = z
+  .object({
+    type: z.literal("delta"),
+    text: z.string(),
+    messageId: z.string().optional(),
+  })
+  .openapi({ description: "Stream delta event" })
+
+export const ChatToolEventSchema = z
+  .object({
+    type: z.literal("tool"),
+    part: ChatToolPartSchema,
+    messageId: z.string().optional(),
+  })
+  .openapi({ description: "Stream tool event" })
+
+export const ChatPlanEventSchema = z
+  .object({
+    type: z.literal("plan"),
+    mode: ChatModeSchema,
+    executing: z.boolean(),
+    completed: z.number(),
+    total: z.number(),
+    message: z.string().optional(),
+  })
+  .openapi({ description: "Stream plan event" })
+
+export const ChatStateStreamEventSchema = z
+  .object({
+    type: z.literal("state"),
+    state: ChatStateEventSchema,
+  })
+  .openapi({ description: "Stream state event" })
+
+export const ChatQueueEventSchema = z
+  .object({
+    type: z.literal("queue"),
+    steering: z.array(z.string()),
+    followUp: z.array(z.string()),
+  })
+  .openapi({ description: "Stream queue event" })
+
+export const ChatThinkingEventSchema = z
+  .object({
+    type: z.literal("thinking"),
+    text: z.string(),
+    messageId: z.string().optional(),
+  })
+  .openapi({ description: "Stream thinking event" })
+
+export const ChatCompactionStartEventSchema = z
+  .object({
+    type: z.literal("compaction"),
+    phase: z.literal("start"),
+    reason: z.string(),
+  })
+  .openapi({ description: "Compaction start event" })
+
+export const ChatCompactionEndEventSchema = z
+  .object({
+    type: z.literal("compaction"),
+    phase: z.literal("end"),
+    reason: z.string(),
+    aborted: z.boolean(),
+    willRetry: z.boolean(),
+    errorMessage: z.string().optional(),
+  })
+  .openapi({ description: "Compaction end event" })
+
+export const ChatRetryStartEventSchema = z
+  .object({
+    type: z.literal("retry"),
+    phase: z.literal("start"),
+    attempt: z.number(),
+    maxAttempts: z.number(),
+    delayMs: z.number(),
+    errorMessage: z.string(),
+  })
+  .openapi({ description: "Retry start event" })
+
+export const ChatRetryEndEventSchema = z
+  .object({
+    type: z.literal("retry"),
+    phase: z.literal("end"),
+    success: z.boolean(),
+    attempt: z.number(),
+    finalError: z.string().optional(),
+  })
+  .openapi({ description: "Retry end event" })
+
+export const ChatDoneEventSchema = z
+  .object({
+    type: z.literal("done"),
+    message: ChatMessageSchema,
+    sessionFile: z.string().optional(),
+    sessionId: z.string(),
+    sessionReset: z.boolean().optional(),
+  })
+  .openapi({ description: "Stream done event" })
+
+export const ChatErrorEventSchema = z
+  .object({
+    type: z.literal("error"),
+    message: z.string(),
+  })
+  .openapi({ description: "Stream error event" })
+
+export const ChatStreamEventSchema = z
+  .union([
+    ChatStartEventSchema,
+    ChatDeltaEventSchema,
+    ChatToolEventSchema,
+    ChatPlanEventSchema,
+    ChatStateStreamEventSchema,
+    ChatQueueEventSchema,
+    ChatThinkingEventSchema,
+    ChatCompactionStartEventSchema,
+    ChatCompactionEndEventSchema,
+    ChatRetryStartEventSchema,
+    ChatRetryEndEventSchema,
+    ChatDoneEventSchema,
+    ChatErrorEventSchema,
+  ])
+  .openapi({ description: "Chat stream event (NDJSON line)" })
+
+export const ChatModelInfoSchema = z
+  .object({
+    key: z.string(),
+    provider: z.string(),
+    id: z.string(),
+    name: z.string(),
+    version: z.string().optional(),
+    reasoning: z.boolean(),
+    input: z.array(z.enum(["text", "image"])),
+    contextWindow: z.number().optional(),
+    maxTokens: z.number().optional(),
+    available: z.boolean(),
+    defaultThinkingLevel: ChatThinkingLevelSchema.optional(),
+  })
+  .openapi({ description: "Chat model info" })
+
+export const ChatModelsResponseSchema = z
+  .object({
+    models: z.array(ChatModelInfoSchema),
+    selectedModelKey: z.string().optional(),
+    defaultProvider: z.string().optional(),
+    defaultModel: z.string().optional(),
+    defaultThinkingLevel: ChatThinkingLevelSchema.optional(),
+    diagnostics: z.array(z.string()),
+  })
+  .openapi({ description: "Chat models response" })
+
+export const ChatSessionResponseSchema = z
+  .object({
+    session: ChatSessionMetadataSchema,
+    messages: z.array(ChatMessageSchema),
+    sessionReset: z.boolean().optional(),
+  })
+  .openapi({ description: "Chat session response" })
+
+export const ChatSessionInfoSchema = z
+  .object({
+    path: z.string(),
+    id: z.string(),
+    cwd: z.string(),
+    name: z.string().optional(),
+    created: z.string(),
+    modified: z.string(),
+    messageCount: z.number(),
+    firstMessage: z.string(),
+  })
+  .openapi({ description: "Chat session info" })
+
+export const ChatSessionsResponseSchema = z
+  .object({
+    sessions: z.array(ChatSessionInfoSchema),
+  })
+  .openapi({ description: "Chat sessions list response" })
+
+export const ChatResourceInfoSchema = z
+  .object({
+    name: z.string(),
+    description: z.string().optional(),
+    path: z.string().optional(),
+    source: z.string().optional(),
+    argumentHint: z.string().optional(),
+  })
+  .openapi({ description: "Chat resource info" })
+
+export const ChatResourcesResponseSchema = z
+  .object({
+    skills: z.array(ChatResourceInfoSchema),
+    prompts: z.array(ChatResourceInfoSchema),
+    extensions: z.array(ChatResourceInfoSchema),
+    themes: z.array(ChatResourceInfoSchema),
+    agentsFiles: z.array(ChatResourceInfoSchema),
+    diagnostics: z.array(z.string()),
+  })
+  .openapi({ description: "Chat resources response" })
+
+export const HealthResponseSchema = z
+  .object({
+    status: z.literal("ok"),
+  })
+  .openapi({ description: "Health check response" })
+
+export const ErrorResponseSchema = z
+  .object({
+    message: z.string(),
+  })
+  .openapi({ description: "Error response" })
