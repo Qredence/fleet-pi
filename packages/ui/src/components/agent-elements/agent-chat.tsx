@@ -1,16 +1,13 @@
-"use client";
+"use client"
 
-import { useRef, useState } from "react";
-import { MessageList } from "./message-list";
-import { InputBar } from "./input-bar";
-import { Suggestions } from "./input/suggestions";
-import { cn } from "./utils/cn";
-import type {
-  QuestionAnswer,
-  QuestionConfig,
-} from "./question/question-prompt";
-import type { SuggestionItem } from "./input/suggestions";
-import type { AgentChatProps } from "./types";
+import { useRef, useState } from "react"
+import { MessageList } from "./message-list"
+import { InputBar } from "./input-bar"
+import { Suggestions } from "./input/suggestions"
+import { cn } from "./utils/cn"
+import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
+import type { SuggestionItem } from "./input/suggestions"
+import type { AgentChatProps } from "./types"
 
 export function AgentChat({
   messages,
@@ -33,27 +30,27 @@ export function AgentChat({
   className,
   style,
 }: AgentChatProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [draft, setDraft] = useState("")
 
-  const ResolvedInputBar = slots?.InputBar ?? InputBar;
-  const isEmpty = !error && messages.length === 0;
-  const isCenteredEmptyState = isEmpty && emptyStatePosition === "center";
+  const ResolvedInputBar = slots?.InputBar ?? InputBar
+  const isEmpty = !error && messages.length === 0
+  const isCenteredEmptyState = isEmpty && emptyStatePosition === "center"
 
-  const pendingQuestion = findPendingQuestion(messages, questionTool);
-  const suggestionConfig = resolveSuggestions(suggestions);
+  const pendingQuestion = findPendingQuestion(messages, questionTool)
+  const suggestionConfig = resolveSuggestions(suggestions)
   const showInputSuggestions =
     emptySuggestionsPlacement === "input" ||
-    emptySuggestionsPlacement === "both";
+    emptySuggestionsPlacement === "both"
   const showEmptySuggestions =
     isCenteredEmptyState &&
     (emptySuggestionsPlacement === "empty" ||
       emptySuggestionsPlacement === "both") &&
-    suggestionConfig.items.length > 0;
+    suggestionConfig.items.length > 0
 
   const handleEmptySuggestionSelect = (item: SuggestionItem) => {
-    setDraft(item.value ?? item.label);
-  };
+    setDraft(item.value ?? item.label)
+  }
 
   const emptySuggestionsNode = showEmptySuggestions ? (
     <Suggestions
@@ -63,11 +60,14 @@ export function AgentChat({
       className={cn(
         "w-full justify-center",
         emptySuggestionsPosition === "top" ? "mb-3" : "mt-3",
-        suggestionConfig.className,
+        suggestionConfig.className
       )}
-      itemClassName={cn("h-8 rounded-full px-3", suggestionConfig.itemClassName)}
+      itemClassName={cn(
+        "h-8 rounded-full px-3",
+        suggestionConfig.itemClassName
+      )}
     />
-  ) : null;
+  ) : null
 
   const inputBarNode = (
     <ResolvedInputBar
@@ -108,26 +108,26 @@ export function AgentChat({
                         : 0
                     ],
                   answer,
-                });
+                })
               },
             }
           : undefined
       }
     />
-  );
+  )
 
   return (
     <div
       ref={rootRef}
       className={cn(
-        "flex flex-col h-full min-h-0",
+        "flex h-full min-h-0 flex-col",
         classNames?.root,
-        className,
+        className
       )}
       style={style}
     >
       {isCenteredEmptyState ? (
-        <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-4">
           <div className="w-full max-w-an">
             {emptySuggestionsPosition === "top" ? emptySuggestionsNode : null}
             {inputBarNode}
@@ -168,7 +168,7 @@ export function AgentChat({
       )}
       {!isCenteredEmptyState ? inputBarNode : null}
     </div>
-  );
+  )
 }
 
 function resolveSuggestions(suggestions: AgentChatProps["suggestions"]) {
@@ -177,50 +177,50 @@ function resolveSuggestions(suggestions: AgentChatProps["suggestions"]) {
       items: suggestions,
       className: undefined,
       itemClassName: undefined,
-    };
+    }
   }
   return {
     items: suggestions?.items ?? [],
     className: suggestions?.className,
     itemClassName: suggestions?.itemClassName,
-  };
+  }
 }
 
 function findPendingQuestion(
   messages: AgentChatProps["messages"],
-  questionTool: AgentChatProps["questionTool"],
+  questionTool: AgentChatProps["questionTool"]
 ) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
-    if (message?.role !== "assistant") continue;
-    const parts = message.parts ?? [];
+    const message = messages[i]
+    if (message?.role !== "assistant") continue
+    const parts = message.parts ?? []
     for (let p = parts.length - 1; p >= 0; p -= 1) {
       const part = parts[p] as {
-        type?: string;
-        toolCallId?: string;
+        type?: string
+        toolCallId?: string
         input?: {
-          questions?: Array<QuestionConfig>;
-          question?: QuestionConfig;
-          questionIndex?: number;
-          totalQuestions?: number;
-          onPreviousQuestion?: () => void;
-          onNextQuestion?: () => void;
-          submitLabel?: string;
-          skipLabel?: string;
-          allowSkip?: boolean;
-        };
+          questions?: Array<QuestionConfig>
+          question?: QuestionConfig
+          questionIndex?: number
+          totalQuestions?: number
+          onPreviousQuestion?: () => void
+          onNextQuestion?: () => void
+          submitLabel?: string
+          skipLabel?: string
+          allowSkip?: boolean
+        }
         output?: {
-          answer?: QuestionAnswer;
-          answers?: Array<QuestionAnswer>;
-        };
-      };
-      if (part?.type !== "tool-Question") continue;
-      const input = part.input;
-      const questions = input?.questions ?? [];
-      const firstQuestion = questions[0] ?? input?.question;
-      if (!firstQuestion) continue;
+          answer?: QuestionAnswer
+          answers?: Array<QuestionAnswer>
+        }
+      }
+      if (part?.type !== "tool-Question") continue
+      const input = part.input
+      const questions = input?.questions ?? []
+      const firstQuestion = questions[0] ?? input?.question
+      if (!firstQuestion) continue
       if (part.output?.answer || (part.output?.answers?.length ?? 0) > 0) {
-        return null;
+        return null
       }
       return {
         id: part.toolCallId ?? `question-${i}-${p}`,
@@ -236,11 +236,8 @@ function findPendingQuestion(
         submitLabel: questionTool?.submitLabel ?? input?.submitLabel,
         skipLabel: questionTool?.skipLabel ?? input?.skipLabel,
         allowSkip: questionTool?.allowSkip ?? input?.allowSkip,
-      };
+      }
     }
   }
-  return null;
+  return null
 }
-
-// Legacy component alias kept for compatibility.
-export const AnAgentChat = AgentChat;

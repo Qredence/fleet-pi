@@ -54,7 +54,7 @@ export type ChatQuestionAnswerResponse = {
   planAction?: ChatPlanAction
 }
 
-export type ChatStartEvent = {
+type ChatStartEvent = {
   type: "start"
   id: string
   sessionFile?: string
@@ -111,7 +111,7 @@ export type ChatStreamEvent =
     }
   | { type: "error"; message: string }
 
-export type ChatStateEvent = {
+type ChatStateEvent = {
   name:
     | "agent_start"
     | "agent_end"
@@ -162,7 +162,7 @@ export type ChatSessionInfo = {
   firstMessage: string
 }
 
-export type ChatResourceInfo = {
+type ChatResourceInfo = {
   name: string
   description?: string
   path?: string

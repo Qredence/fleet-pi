@@ -14,6 +14,7 @@
 - Build with `pnpm build`.
 - Check dependency version consistency with `pnpm syncpack`.
 - Auto-fix dependency version drift with `pnpm syncpack:fix`.
+- Detect unused exports and dependencies with `pnpm knip`.
 
 ## Pre-commit Hooks
 

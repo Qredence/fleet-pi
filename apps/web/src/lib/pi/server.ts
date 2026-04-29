@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, realpathSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
 import {
   SessionManager,
-  buildSessionContext,
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   createAgentSessionServices,
@@ -60,7 +59,6 @@ const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "xhigh",
 ])
 
-type PiSessionResult = Awaited<ReturnType<typeof createPiRuntime>>
 type SessionAgentMessage = Extract<SessionEntry, { type: "message" }>["message"]
 
 type SessionManagerResult = {
@@ -83,8 +81,10 @@ type ActiveSessionRecord = {
 
 const runtimeRecords = new Map<string, ActiveSessionRecord>()
 
-export function getRepoRoot() {
-  return realpathSync(resolve(process.env.FLEET_PI_REPO_ROOT ?? DEFAULT_REPO_ROOT))
+function getRepoRoot() {
+  return realpathSync(
+    resolve(process.env.FLEET_PI_REPO_ROOT ?? DEFAULT_REPO_ROOT)
+  )
 }
 
 export function encodeEvent(event: unknown) {
@@ -125,7 +125,7 @@ export async function abortActiveSession(metadata: ChatSessionMetadata) {
 export async function queuePromptOnActiveSession(
   metadata: ChatSessionMetadata,
   prompt: string,
-  streamingBehavior: "steer" | "followUp",
+  streamingBehavior: "steer" | "followUp"
 ) {
   const active = findRuntimeRecord(metadata)
   const session = active?.runtime.session
@@ -144,14 +144,15 @@ export async function queuePromptOnActiveSession(
 
 export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
-  modelSelection?: ChatModelSelection,
+  modelSelection?: ChatModelSelection
 ) {
   const repoRoot = getRepoRoot()
   const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
   const sessionDir = getSessionDir(repoRoot, services)
   const mayReuseRuntime =
-    !metadata.sessionFile || isUsableSessionFile(metadata.sessionFile, sessionDir)
+    !metadata.sessionFile ||
+    isUsableSessionFile(metadata.sessionFile, sessionDir)
   const reusable = mayReuseRuntime ? findRuntimeRecord(metadata) : undefined
 
   if (reusable) {
@@ -167,7 +168,7 @@ export async function createPiRuntime(
       sessionReset: false,
       diagnostics: collectDiagnostics(
         reusable.runtime.services,
-        reusable.runtime.modelFallbackMessage,
+        reusable.runtime.modelFallbackMessage
       ),
     }
   }
@@ -175,7 +176,7 @@ export async function createPiRuntime(
   const { sessionManager, sessionReset } = await createSessionManager(
     metadata,
     repoRoot,
-    sessionDir,
+    sessionDir
   )
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd,
@@ -192,7 +193,7 @@ export async function createPiRuntime(
     })
     const { model, thinkingLevel } = resolveModelSelection(
       runtimeServices,
-      modelSelection,
+      modelSelection
     )
     const result = await createAgentSessionFromServices({
       services: runtimeServices,
@@ -221,27 +222,24 @@ export async function createPiRuntime(
 
   return {
     runtime,
-    diagnostics: collectDiagnostics(runtime.services, runtime.modelFallbackMessage),
+    diagnostics: collectDiagnostics(
+      runtime.services,
+      runtime.modelFallbackMessage
+    ),
     sessionReset,
   }
 }
 
-export function applyRuntimePlanMode(
-  runtime: AgentSessionRuntime,
-  metadata: Pick<ChatRuntimeMetadata, "mode" | "planAction">,
-) {
-  return applyPlanMode(runtime, metadata.mode, metadata.planAction)
-}
-
 export function answerChatQuestion(
-  request: ChatQuestionAnswerRequest,
+  request: ChatQuestionAnswerRequest
 ): ChatQuestionAnswerResponse {
   if (isPlanDecisionToolCall(request.toolCallId)) {
     const active = findRuntimeRecord(request)
     if (!active) {
       return {
         ok: false,
-        message: "Plan session is no longer active. Send a new message to continue.",
+        message:
+          "Plan session is no longer active. Send a new message to continue.",
       }
     }
     return answerPlanDecision(active.runtime, request.answer)
@@ -262,7 +260,7 @@ export async function createNewChatSession(): Promise<ChatSessionResponse> {
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
   const sessionManager = SessionManager.create(
     repoRoot,
-    getSessionDir(repoRoot, services),
+    getSessionDir(repoRoot, services)
   )
 
   return {
@@ -272,7 +270,7 @@ export async function createNewChatSession(): Promise<ChatSessionResponse> {
 }
 
 export async function hydrateChatSession(
-  metadata: ChatSessionMetadata,
+  metadata: ChatSessionMetadata
 ): Promise<ChatSessionResponse> {
   const repoRoot = getRepoRoot()
   const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
@@ -311,7 +309,7 @@ export async function listChatSessions(): Promise<Array<ChatSessionInfo>> {
   const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
   const sessions = await SessionManager.list(
     repoRoot,
-    getSessionDir(repoRoot, services),
+    getSessionDir(repoRoot, services)
   )
 
   return sessions.map((session) => ({
@@ -337,20 +335,19 @@ export async function loadChatModels(): Promise<ChatModelsResponse> {
     toChatModelInfo(
       model,
       available.length === 0 || availableKeys.has(modelKey(model)),
-      services.settingsManager.getDefaultThinkingLevel(),
-    ),
+      services.settingsManager.getDefaultThinkingLevel()
+    )
   )
   const defaultProvider =
     services.settingsManager.getDefaultProvider() ?? "amazon-bedrock"
   const defaultModel =
     services.settingsManager.getDefaultModel() ?? DEFAULT_BEDROCK_MODEL
   const defaultThinkingLevel = normalizeThinkingLevel(
-    services.settingsManager.getDefaultThinkingLevel(),
+    services.settingsManager.getDefaultThinkingLevel()
   )
   const selected =
     models.find(
-      (model) =>
-        model.provider === defaultProvider && model.id === defaultModel,
+      (model) => model.provider === defaultProvider && model.id === defaultModel
     ) ??
     (defaultProvider === "amazon-bedrock"
       ? findChatModelByCandidates(models, bedrockModelCandidates(defaultModel))
@@ -410,12 +407,12 @@ export function toToolPart(
         | "tool_execution_end"
     }
   >,
-  fallbackInput?: Record<string, unknown>,
+  fallbackInput?: Record<string, unknown>
 ): ChatToolPart {
   const toolName = normalizeToolName(event.toolName)
   const input = normalizeToolInput(
     toolName,
-    "args" in event ? event.args : (fallbackInput ?? {}),
+    "args" in event ? event.args : (fallbackInput ?? {})
   )
   const rawOutput =
     event.type === "tool_execution_update"
@@ -445,24 +442,20 @@ export function toToolPart(
 
 export function upsertToolPart(
   parts: Array<ChatMessagePart>,
-  part: ChatToolPart,
+  part: ChatToolPart
 ) {
   const index = parts.findIndex(
     (current) =>
       current.type === part.type &&
       "toolCallId" in current &&
-      current.toolCallId === part.toolCallId,
+      current.toolCallId === part.toolCallId
   )
 
   if (index === -1) {
     const textIndex = parts.findIndex((current) => current.type === "text")
     if (textIndex === -1) return [...parts, part]
 
-    return [
-      ...parts.slice(0, textIndex),
-      part,
-      ...parts.slice(textIndex),
-    ]
+    return [...parts.slice(0, textIndex), part, ...parts.slice(textIndex)]
   }
 
   const next = [...parts]
@@ -484,7 +477,7 @@ export function appendTextPart(parts: Array<ChatMessagePart>, delta: string) {
 export function upsertThinkingPart(
   parts: Array<ChatMessagePart>,
   text: string,
-  toolCallId = "thinking",
+  toolCallId = "thinking"
 ) {
   return upsertToolPart(parts, {
     type: "tool-Thinking",
@@ -499,7 +492,7 @@ export function toChatMessage(
   id: string,
   role: ChatMessage["role"],
   parts: Array<ChatMessagePart>,
-  createdAt: number = Date.now(),
+  createdAt: number = Date.now()
 ): ChatMessage {
   return {
     id,
@@ -551,13 +544,16 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
   record.lastUsedAt = Date.now()
   if (record.disposeTimer) clearTimeout(record.disposeTimer)
 
-  record.disposeTimer = setTimeout(() => {
-    const current = runtimeRecords.get(record.sessionId)
-    if (current !== record || current.runtime.session.isStreaming) return
+  record.disposeTimer = setTimeout(
+    () => {
+      const current = runtimeRecords.get(record.sessionId)
+      if (current !== record || current.runtime.session.isStreaming) return
 
-    runtimeRecords.delete(record.sessionId)
-    void current.runtime.dispose()
-  }, Math.max(0, RUNTIME_TTL_MS))
+      runtimeRecords.delete(record.sessionId)
+      void current.runtime.dispose()
+    },
+    Math.max(0, RUNTIME_TTL_MS)
+  )
 }
 
 function getSessionDir(repoRoot: string, services: AgentSessionServices) {
@@ -577,7 +573,7 @@ function getDefaultRepoSessionDir(repoRoot: string) {
 async function createSessionManager(
   metadata: ChatSessionMetadata,
   repoRoot: string,
-  sessionDir: string,
+  sessionDir: string
 ): Promise<SessionManagerResult> {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
   const createFreshSession = (sessionReset: boolean) => ({
@@ -586,7 +582,9 @@ async function createSessionManager(
   })
 
   if (!sessionFile) {
-    return createFreshSession(Boolean(metadata.sessionFile || metadata.sessionId))
+    return createFreshSession(
+      Boolean(metadata.sessionFile || metadata.sessionId)
+    )
   }
 
   const opened = openSessionManager(sessionFile, sessionDir, repoRoot)
@@ -598,7 +596,7 @@ async function createSessionManager(
 async function resolveSessionFile(
   metadata: ChatSessionMetadata,
   repoRoot: string,
-  sessionDir: string,
+  sessionDir: string
 ) {
   const fromFile = metadata.sessionFile
   if (fromFile && isUsableSessionFile(fromFile, sessionDir)) {
@@ -630,7 +628,7 @@ function isUsableSessionFile(sessionFile: string, sessionDir: string) {
 function openSessionManager(
   sessionFile: string,
   sessionDir: string,
-  repoRoot: string,
+  repoRoot: string
 ) {
   try {
     return SessionManager.open(sessionFile, sessionDir, repoRoot)
@@ -652,7 +650,9 @@ function safeRealpath(path: string) {
   }
 }
 
-function toSessionMetadata(sessionManager: SessionManager): ChatSessionMetadata {
+function toSessionMetadata(
+  sessionManager: SessionManager
+): ChatSessionMetadata {
   return {
     sessionFile: sessionManager.getSessionFile(),
     sessionId: sessionManager.getSessionId(),
@@ -661,11 +661,11 @@ function toSessionMetadata(sessionManager: SessionManager): ChatSessionMetadata 
 
 async function applyModelSelection(
   runtime: AgentSessionRuntime,
-  selection?: ChatModelSelection,
+  selection?: ChatModelSelection
 ) {
   const { model, thinkingLevel } = resolveModelSelection(
     runtime.services,
-    selection,
+    selection
   )
 
   if (
@@ -685,7 +685,7 @@ async function applyModelSelection(
 
 function resolveModelSelection(
   services: AgentSessionServices,
-  selection?: ChatModelSelection,
+  selection?: ChatModelSelection
 ) {
   if (!selection) return {}
 
@@ -696,14 +696,18 @@ function resolveModelSelection(
   const model =
     typeof selection === "string"
       ? resolveLegacyModelSelection(services, selection)
-      : resolveStructuredModelSelection(services, selection.provider, selection.id)
+      : resolveStructuredModelSelection(
+          services,
+          selection.provider,
+          selection.id
+        )
 
   return { model, thinkingLevel }
 }
 
 function resolveLegacyModelSelection(
   services: AgentSessionServices,
-  selection: string,
+  selection: string
 ) {
   const [provider, ...modelParts] = selection.split("/")
   if (provider && modelParts.length > 0) {
@@ -726,8 +730,8 @@ function resolveLegacyModelSelection(
       .map((candidate) =>
         all.find(
           (model) =>
-            model.provider === "amazon-bedrock" && model.id === candidate,
-        ),
+            model.provider === "amazon-bedrock" && model.id === candidate
+        )
       )
       .find((model): model is Model<any> => model !== undefined) ??
     candidates
@@ -739,7 +743,7 @@ function resolveLegacyModelSelection(
 function resolveStructuredModelSelection(
   services: AgentSessionServices,
   provider: string,
-  id: string,
+  id: string
 ) {
   if (provider !== "amazon-bedrock") {
     return services.modelRegistry.find(provider, id)
@@ -761,7 +765,7 @@ function bedrockModelCandidates(id: string, extra: Array<string> = []) {
 
 function findChatModelByCandidates(
   models: Array<ChatModelInfo>,
-  candidates: Array<string>,
+  candidates: Array<string>
 ) {
   return candidates
     .map((candidate) => models.find((model) => model.id === candidate))
@@ -769,7 +773,8 @@ function findChatModelByCandidates(
 }
 
 function normalizeThinkingLevel(value: unknown): ChatThinkingLevel | undefined {
-  return typeof value === "string" && THINKING_LEVELS.has(value as ChatThinkingLevel)
+  return typeof value === "string" &&
+    THINKING_LEVELS.has(value as ChatThinkingLevel)
     ? (value as ChatThinkingLevel)
     : undefined
 }
@@ -781,7 +786,7 @@ function modelKey(model: Pick<Model<any>, "provider" | "id">) {
 function toChatModelInfo(
   model: Model<any>,
   available: boolean,
-  defaultThinkingLevel: string | undefined,
+  defaultThinkingLevel: string | undefined
 ): ChatModelInfo {
   return {
     key: modelKey(model),
@@ -828,7 +833,7 @@ function stringValue(value: unknown) {
 
 function collectDiagnostics(
   services: AgentSessionServices,
-  modelFallbackMessage?: string,
+  modelFallbackMessage?: string
 ) {
   const diagnostics = new Set<string>()
 
@@ -875,7 +880,9 @@ function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
         id: entry.id,
         role: "user",
         createdAt: message.timestamp,
-        parts: [{ type: "text", text: textFromMessageContent(message.content) }],
+        parts: [
+          { type: "text", text: textFromMessageContent(message.content) },
+        ],
       })
       continue
     }
@@ -914,7 +921,7 @@ function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
         entry.id,
         "assistant",
         parts,
-        message.timestamp,
+        message.timestamp
       )
       messages.push(chatMessage)
 
@@ -953,7 +960,7 @@ function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
         target.message.parts = upsertToolPart(target.message.parts, part)
       } else {
         messages.push(
-          toChatMessage(entry.id, "assistant", [part], message.timestamp),
+          toChatMessage(entry.id, "assistant", [part], message.timestamp)
         )
       }
     }
@@ -963,19 +970,19 @@ function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
 }
 
 function isUserMessage(
-  message: SessionAgentMessage,
+  message: SessionAgentMessage
 ): message is Extract<SessionAgentMessage, { role: "user" }> {
   return isMessageWithRole(message, "user")
 }
 
 function isAssistantMessage(
-  message: SessionAgentMessage,
+  message: SessionAgentMessage
 ): message is Extract<SessionAgentMessage, { role: "assistant" }> {
   return isMessageWithRole(message, "assistant")
 }
 
 function isToolResultMessage(
-  message: SessionAgentMessage,
+  message: SessionAgentMessage
 ): message is Extract<SessionAgentMessage, { role: "toolResult" }> {
   return isMessageWithRole(message, "toolResult")
 }
@@ -1046,7 +1053,9 @@ function textFromToolResult(result: unknown) {
 
 function normalizeToolInput(toolName: string, args: unknown) {
   const input =
-    args && typeof args === "object" ? { ...(args as Record<string, unknown>) } : {}
+    args && typeof args === "object"
+      ? { ...(args as Record<string, unknown>) }
+      : {}
 
   if (toolName === "Question") {
     return normalizeQuestionInput(input)
@@ -1073,7 +1082,7 @@ function normalizeToolOutput(
   toolName: string,
   input: Record<string, unknown>,
   result: unknown,
-  isError = false,
+  isError = false
 ) {
   const text = textFromToolResult(result)
   const details =
@@ -1119,9 +1128,3 @@ function normalizeToolOutput(
     details,
   }
 }
-
-export function sessionContextFromEntries(entries: Array<SessionEntry>) {
-  return buildSessionContext(entries)
-}
-
-export type { PiSessionResult }

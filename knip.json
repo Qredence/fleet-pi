@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["eslint.config.js"],
+      "ignoreDependencies": ["@mariozechner/pi-coding-agent"],
+      "ignoreBinaries": ["eslint"]
+    },
+    "apps/web": {
+      "entry": [
+        "src/router.tsx",
+        "src/routes/__root.tsx",
+        "src/routes/**/*.tsx",
+        "src/routes/api/**/*.ts",
+        "src/lib/**/*.test.ts",
+        "src/lib/**/*.spec.ts"
+      ],
+      "ignoreDependencies": ["nitro", "@tanstack/router-plugin", "tailwindcss"]
+    },
+    "packages/ui": {
+      "entry": ["src/**/*.tsx", "src/**/*.ts"]
+    }
+  }
+}

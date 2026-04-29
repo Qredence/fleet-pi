@@ -10,18 +10,10 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatQuestionAnswer,
-  ChatSessionMetadata,
 } from "./chat-protocol"
 
-export const PLAN_MODE_TOOLS = [
-  "read",
-  "bash",
-  "grep",
-  "find",
-  "ls",
-  "questionnaire",
-]
-export const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write"]
+const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "questionnaire"]
+const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write"]
 export const CHAT_TOOL_ALLOWLIST = [
   ...NORMAL_MODE_TOOLS,
   "grep",
@@ -123,13 +115,13 @@ const SAFE_PATTERNS = [
   /^\s*eza\b/,
 ]
 
-export type TodoItem = {
+type TodoItem = {
   step: number
   text: string
   completed: boolean
 }
 
-export type PlanModeState = {
+type PlanModeState = {
   enabled: boolean
   executing: boolean
   todos: Array<TodoItem>
@@ -168,7 +160,9 @@ const pendingQuestions = new Map<string, PendingQuestion>()
 const QuestionnaireOptionSchema = Type.Object({
   value: Type.String({ description: "The value returned when selected" }),
   label: Type.String({ description: "Display label for the option" }),
-  description: Type.Optional(Type.String({ description: "Optional description" })),
+  description: Type.Optional(
+    Type.String({ description: "Optional description" })
+  ),
 })
 
 const QuestionnaireQuestionSchema = Type.Object({
@@ -176,7 +170,9 @@ const QuestionnaireQuestionSchema = Type.Object({
   label: Type.Optional(Type.String({ description: "Short label" })),
   prompt: Type.String({ description: "The question text to display" }),
   options: Type.Array(QuestionnaireOptionSchema),
-  allowOther: Type.Optional(Type.Boolean({ description: "Allow custom answer" })),
+  allowOther: Type.Optional(
+    Type.Boolean({ description: "Allow custom answer" })
+  ),
 })
 
 const QuestionnaireParamsSchema = Type.Object({
@@ -185,7 +181,7 @@ const QuestionnaireParamsSchema = Type.Object({
 
 export function isSafeCommand(command: string) {
   const isDestructive = DESTRUCTIVE_PATTERNS.some((pattern) =>
-    pattern.test(command),
+    pattern.test(command)
   )
   const isSafe = SAFE_PATTERNS.some((pattern) => pattern.test(command))
   return !isDestructive && isSafe
@@ -197,7 +193,7 @@ export function cleanStepText(text: string) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(
       /^(Use|Run|Execute|Create|Write|Read|Check|Verify|Update|Modify|Add|Remove|Delete|Install)\s+(the\s+)?/i,
-      "",
+      ""
     )
     .replace(/\s+/g, " ")
     .trim()
@@ -214,12 +210,15 @@ export function extractTodoItems(message: string) {
   if (!headerMatch) return items
 
   const planSection = message.slice(
-    message.indexOf(headerMatch[0]) + headerMatch[0].length,
+    message.indexOf(headerMatch[0]) + headerMatch[0].length
   )
   const numberedPattern = /^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/gm
 
   for (const match of planSection.matchAll(numberedPattern)) {
-    const text = match[2].trim().replace(/\*{1,2}$/, "").trim()
+    const text = match[2]
+      .trim()
+      .replace(/\*{1,2}$/, "")
+      .trim()
     if (
       text.length > 5 &&
       !text.startsWith("`") &&
@@ -366,7 +365,7 @@ Execute each step in order. After completing a step, include a [DONE:n] tag in y
 export function applyPlanMode(
   runtime: AgentSessionRuntime,
   mode?: ChatMode,
-  planAction?: ChatPlanAction,
+  planAction?: ChatPlanAction
 ) {
   const state = getPlanState(runtime)
 
@@ -401,7 +400,7 @@ export function getPlanState(runtime: AgentSessionRuntime): PlanModeState {
 
 export function updatePlanFromAssistantText(
   runtime: AgentSessionRuntime,
-  text: string,
+  text: string
 ) {
   const state = getPlanState(runtime)
   if (!state.enabled) return state
@@ -418,7 +417,7 @@ export function updatePlanFromAssistantText(
 
 export function updateExecutionProgress(
   runtime: AgentSessionRuntime,
-  assistantText: string,
+  assistantText: string
 ) {
   const state = getPlanState(runtime)
   if (!state.executing) return { state, changed: false }
@@ -434,7 +433,7 @@ export function updateExecutionProgress(
 
 export function createPlanDecisionPart(
   assistantId: string,
-  state: PlanModeState,
+  state: PlanModeState
 ): ChatToolPart | undefined {
   if (!state.pendingDecision) return undefined
 
@@ -503,7 +502,7 @@ export function isPlanDecisionToolCall(toolCallId?: string) {
 
 export function answerPlanDecision(
   runtime: AgentSessionRuntime,
-  answer: ChatQuestionAnswer,
+  answer: ChatQuestionAnswer
 ) {
   const state = getPlanState(runtime)
   const selected = answer.selectedIds?.[0]
@@ -547,7 +546,7 @@ export function answerPlanDecision(
 
 export function resolveQuestionnaireAnswer(
   toolCallId: string | undefined,
-  answer: ChatQuestionAnswer,
+  answer: ChatQuestionAnswer
 ) {
   if (!toolCallId) return false
   const pending = pendingQuestions.get(toolCallId)
@@ -608,7 +607,9 @@ export function normalizeQuestionInput(input: Record<string, unknown>) {
         customPlaceholder: "Type something else",
       }
     })
-    .filter((question): question is Record<string, unknown> => Boolean(question))
+    .filter((question): question is Record<string, unknown> =>
+      Boolean(question)
+    )
 
   return {
     ...input,
@@ -675,15 +676,18 @@ function restorePlanState(runtime: AgentSessionRuntime): PlanModeState {
 
 function persistPlanState(runtime: AgentSessionRuntime, state: PlanModeState) {
   planStates.set(runtime.session.sessionId, state)
-  runtime.session.sessionManager.appendCustomEntry(PLAN_STATE_CUSTOM_TYPE, state)
+  runtime.session.sessionManager.appendCustomEntry(
+    PLAN_STATE_CUSTOM_TYPE,
+    state
+  )
 }
 
 function setActiveToolsForState(
   runtime: AgentSessionRuntime,
-  state: PlanModeState,
+  state: PlanModeState
 ) {
   runtime.session.setActiveToolsByName(
-    state.enabled ? PLAN_MODE_TOOLS : NORMAL_MODE_TOOLS,
+    state.enabled ? PLAN_MODE_TOOLS : NORMAL_MODE_TOOLS
   )
 }
 
@@ -709,7 +713,7 @@ async function executeQuestionnaireTool(
   toolCallId: string,
   params: QuestionnaireParams,
   signal: AbortSignal | undefined,
-  ctx: ExtensionContext,
+  ctx: ExtensionContext
 ) {
   if (params.questions.length === 0) {
     return {
@@ -723,7 +727,7 @@ async function executeQuestionnaireTool(
     ctx.sessionManager.getSessionId(),
     toolCallId,
     params,
-    signal,
+    signal
   )
   const answers = questionnaireAnswers(params, answer)
   const cancelled = answer.kind === "skip"
@@ -749,7 +753,7 @@ function waitForQuestionAnswer(
   sessionId: string,
   toolCallId: string,
   params: QuestionnaireParams,
-  signal: AbortSignal | undefined,
+  signal: AbortSignal | undefined
 ) {
   return new Promise<ChatQuestionAnswer>((resolve, reject) => {
     const pending: PendingQuestion = {
@@ -776,7 +780,7 @@ function waitForQuestionAnswer(
 
 function questionnaireAnswers(
   params: QuestionnaireParams,
-  answer: ChatQuestionAnswer,
+  answer: ChatQuestionAnswer
 ) {
   const question = params.questions[0]
   if (answer.kind === "skip") return []
@@ -805,8 +809,14 @@ function questionnaireAnswers(
       }
     })
     .filter(
-      (item): item is { id: string; value: string; label: string; wasCustom: boolean } =>
-        Boolean(item),
+      (
+        item
+      ): item is {
+        id: string
+        value: string
+        label: string
+        wasCustom: boolean
+      } => Boolean(item)
     )
 
   if (answer.text?.trim()) {
@@ -819,8 +829,4 @@ function questionnaireAnswers(
   }
 
   return answers
-}
-
-export function sessionMetadataKey(metadata: ChatSessionMetadata) {
-  return metadata.sessionId ?? metadata.sessionFile
 }
