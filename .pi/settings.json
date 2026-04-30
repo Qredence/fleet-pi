@@ -1,0 +1,8 @@
+{
+  "packages": [
+    "npm:pi-autoresearch",
+    "npm:pi-skill-palette",
+    "npm:pi-autocontext"
+  ],
+  "extensions": ["extensions/vendor/filechanges", "extensions/vendor/subagents"]
+}

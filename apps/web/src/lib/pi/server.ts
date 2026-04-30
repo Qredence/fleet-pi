@@ -89,7 +89,7 @@ async function invokeBedrockAgentSession(
   return createAgentSessionFromServices(params)
 }
 
-export const bedrockCircuitBreaker = createBedrockCircuitBreaker(
+const bedrockCircuitBreaker = createBedrockCircuitBreaker(
   invokeBedrockAgentSession
 )
 

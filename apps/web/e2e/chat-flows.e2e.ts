@@ -29,6 +29,53 @@ const MOCK_MODELS = {
   diagnostics: [],
 }
 
+const MOCK_RESOURCES = {
+  skills: [
+    {
+      name: "fleet-pi-orientation",
+      description: "Map the Fleet Pi codebase before planning or editing.",
+      path: "/tmp/fleet-pi/.pi/skills/fleet-pi-orientation/SKILL.md",
+      source: "project",
+    },
+  ],
+  prompts: [],
+  extensions: [
+    {
+      name: ".pi/extensions/project-inventory.ts",
+      path: "/tmp/fleet-pi/.pi/extensions/project-inventory.ts",
+      source: "project",
+    },
+    {
+      name: "pi-autoresearch",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      source: "npm:pi-autoresearch",
+    },
+    {
+      name: "pi-skill-palette",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-skill-palette/index.ts",
+      source: "npm:pi-skill-palette",
+    },
+    {
+      name: "pi-autocontext",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-autocontext/src/index.ts",
+      source: "npm:pi-autocontext",
+    },
+    {
+      name: "filechanges",
+      path: "/tmp/fleet-pi/.pi/extensions/vendor/filechanges/index.ts",
+      source: "project",
+    },
+    {
+      name: "subagents",
+      path: "/tmp/fleet-pi/.pi/extensions/vendor/subagents/index.ts",
+      source: "project",
+    },
+  ],
+  themes: [],
+  agentsFiles: [],
+  diagnostics: [],
+}
+
 function mockChatModels(page: Page) {
   return page.route(
     "http://localhost:3000/api/chat/models",
@@ -50,6 +97,19 @@ function mockChatSessions(page: Page) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ sessions: [] }),
+      })
+    }
+  )
+}
+
+function mockChatResources(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/chat/resources",
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_RESOURCES),
       })
     }
   )
@@ -187,6 +247,7 @@ test.describe("chat flows", () => {
   test("page loads and chat UI is visible", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
 
     await page.goto("/")
 
@@ -206,6 +267,7 @@ test.describe("chat flows", () => {
   test("creates new session and shows empty state", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
     await mockChatNew(page)
 
     await page.goto("/")
@@ -224,6 +286,7 @@ test.describe("chat flows", () => {
   test("sends message and streaming content appears", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
     await mockChatStream(page, {
       assistantText: "Hello! How can I help you today?",
     })
@@ -249,6 +312,7 @@ test.describe("chat flows", () => {
   }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
     await mockChatStream(page, {
       assistantText: "Hello! How can I help you today?",
     })
@@ -281,6 +345,7 @@ test.describe("chat flows", () => {
   test("opens model picker and changes selection", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
@@ -304,6 +369,112 @@ test.describe("chat flows", () => {
     await expect(modelPicker).toContainText("Claude Opus 4.6")
   })
 
+  test("opens Pi resources as a docked desktop canvas", async ({ page }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    const resourcesButton = page.locator('[aria-label="Pi resources"]')
+    await expect(resourcesButton).toBeVisible()
+    await resourcesButton.click()
+
+    const chatColumn = page.locator('[data-testid="chat-column"]')
+    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(canvas).toBeVisible()
+
+    const chatBox = await chatColumn.boundingBox()
+    const canvasBox = await canvas.boundingBox()
+    expect(chatBox).not.toBeNull()
+    expect(canvasBox).not.toBeNull()
+    expect(canvasBox?.x).toBeGreaterThan((chatBox?.x ?? 0) + 600)
+    expect(canvasBox?.width).toBeGreaterThanOrEqual(320)
+
+    await expect(canvas.getByText("Pi Resources")).toBeVisible()
+    await expect(
+      canvas.getByText("fleet-pi-orientation", { exact: true })
+    ).toBeVisible()
+    await expect(
+      canvas
+        .locator("span")
+        .filter({ hasText: ".pi/extensions/project-inventory.ts" })
+        .first()
+    ).toBeVisible()
+    await expect(
+      canvas.getByText("pi-autoresearch", { exact: true })
+    ).toBeVisible()
+    await expect(
+      canvas.getByText("pi-skill-palette", { exact: true })
+    ).toBeVisible()
+    await expect(
+      canvas.getByText("pi-autocontext", { exact: true })
+    ).toBeVisible()
+    await expect(canvas.getByText("filechanges", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("subagents", { exact: true })).toBeVisible()
+  })
+
+  test("resizes and persists the Pi resources canvas", async ({ page }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
+    const handle = page.locator('[data-testid="pi-resources-resize-handle"]')
+    await expect(canvas).toBeVisible()
+
+    const before = await canvas.boundingBox()
+    const handleBox = await handle.boundingBox()
+    expect(before).not.toBeNull()
+    expect(handleBox).not.toBeNull()
+
+    await page.mouse.move(
+      (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2,
+      (handleBox?.y ?? 0) + 80
+    )
+    await page.mouse.down()
+    await page.mouse.move((handleBox?.x ?? 0) - 90, (handleBox?.y ?? 0) + 80)
+    await page.mouse.up()
+
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.width ?? 0)
+      .toBeGreaterThan((before?.width ?? 0) + 60)
+
+    const storedWidth = await page.evaluate(() =>
+      window.localStorage.getItem("fleet-pi-resource-canvas-width")
+    )
+    expect(Number(storedWidth)).toBeGreaterThan((before?.width ?? 0) + 60)
+  })
+
+  test("opens Pi resources as a mobile overlay", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    await expect(
+      page.locator('[data-testid="pi-resources-canvas"]')
+    ).not.toBeVisible()
+    const mobilePanel = page.locator(
+      '[data-testid="pi-resources-mobile-panel"]'
+    )
+    await expect(mobilePanel).toBeVisible()
+    await expect(
+      mobilePanel.getByText("fleet-pi-orientation", { exact: true })
+    ).toBeVisible()
+  })
+
   test("switches to Plan mode and shows numbered Plan output", async ({
     page,
   }) => {
@@ -312,6 +483,7 @@ test.describe("chat flows", () => {
 
     await mockChatModels(page)
     await mockChatSessions(page)
+    await mockChatResources(page)
     await mockChatStream(page, {
       assistantText: planText,
       planMode: true,

@@ -44,7 +44,10 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@mariozechner/pi-coding-agent": "^0.70.6"
+    "@mariozechner/pi-coding-agent": "^0.70.6",
+    "@mariozechner/pi-tui": "^0.70.6",
+    "diff": "^5.2.0",
+    "typebox": "1.1.33"
   },
   "pnpm": {
     "overrides": {

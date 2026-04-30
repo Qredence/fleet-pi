@@ -204,6 +204,36 @@ Supporting endpoints:
 - `POST /api/chat/new` - create fresh session metadata.
 - `POST /api/chat/abort` - abort the live runtime for active session metadata.
 
+The chat UI includes a Pi resources browser backed by `/api/chat/resources`.
+On desktop it opens as a resizable right-side canvas beside the chat; on mobile
+it stays as a compact overlay. Use it to inspect which skills, prompts,
+extensions, themes, context files, and loader diagnostics are available to the
+current session.
+
+## Project Pi Resources
+
+Committed project-local resources live under `.pi/`:
+
+- `.pi/settings.json` - project Pi package configuration. It loads
+  `npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, and the
+  vendored `filechanges`/`subagents` extension directories.
+- `.pi/skills/agent-elements` - symlink to the shared Agent Elements skill in
+  `.agents/skills/agent-elements`.
+- `.pi/skills/fleet-pi-orientation` - fast codebase map for broad analysis.
+- `.pi/skills/chat-runtime-debugging` - chat/session/Plan mode debugging guide.
+- `.pi/skills/agent-ui-workflows` - Agent Elements UI modification guide.
+- `.pi/extensions/project-inventory.ts` - registers the read-only
+  `project_inventory` tool for agent and Plan mode orientation.
+- `.pi/extensions/vendor/filechanges` - vendored upstream file-change review
+  commands: `/filechanges`, `/filechanges-accept`, and
+  `/filechanges-decline`.
+- `.pi/extensions/vendor/subagents` - vendored upstream `subagent` tool and
+  scout/researcher/worker agent definitions.
+
+Pi installs project npm packages into `.pi/npm/`, which is ignored. Keep
+`.pi/settings.json`, project-local skills, and vendored extension source
+committed; do not commit generated package installs.
+
 ## Adding UI Components
 
 This workspace uses shadcn/ui with components generated into `packages/ui`.

@@ -162,7 +162,7 @@ export type ChatSessionInfo = {
   firstMessage: string
 }
 
-type ChatResourceInfo = {
+export type ChatResourceInfo = {
   name: string
   description?: string
   path?: string

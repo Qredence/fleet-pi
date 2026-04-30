@@ -8,9 +8,6 @@ export const BEDROCK_CIRCUIT_BREAKER_OPTIONS = {
   name: "bedrock-api",
 } as const
 
-export type BedrockCircuitBreakerOptions =
-  typeof BEDROCK_CIRCUIT_BREAKER_OPTIONS
-
 export function createBedrockCircuitBreaker<
   TI extends Array<unknown> = Array<unknown>,
   TR = unknown,
