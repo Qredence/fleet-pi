@@ -12,8 +12,44 @@ import type {
   ChatQuestionAnswer,
 } from "./chat-protocol"
 
-const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls", "questionnaire"]
-const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write"]
+const PROJECT_RESOURCE_TOOLS = ["project_inventory"]
+const AUTOCONTEXT_STATUS_TOOLS = [
+  "autocontext_status",
+  "autocontext_scenarios",
+  "autocontext_runtime_snapshot",
+]
+const AUTOCONTEXT_AGENT_TOOLS = [
+  "autocontext_judge",
+  "autocontext_improve",
+  ...AUTOCONTEXT_STATUS_TOOLS,
+  "autocontext_queue",
+]
+const AUTORESEARCH_AGENT_TOOLS = [
+  "init_experiment",
+  "run_experiment",
+  "log_experiment",
+]
+const SUBAGENT_AGENT_TOOLS = ["subagent"]
+const PLAN_MODE_TOOLS = [
+  "read",
+  "bash",
+  "grep",
+  "find",
+  "ls",
+  "questionnaire",
+  ...PROJECT_RESOURCE_TOOLS,
+  ...AUTOCONTEXT_STATUS_TOOLS,
+]
+const NORMAL_MODE_TOOLS = [
+  "read",
+  "bash",
+  "edit",
+  "write",
+  ...PROJECT_RESOURCE_TOOLS,
+  ...AUTOCONTEXT_AGENT_TOOLS,
+  ...AUTORESEARCH_AGENT_TOOLS,
+  ...SUBAGENT_AGENT_TOOLS,
+]
 export const CHAT_TOOL_ALLOWLIST = [
   ...NORMAL_MODE_TOOLS,
   "grep",

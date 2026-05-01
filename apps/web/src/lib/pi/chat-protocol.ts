@@ -162,7 +162,7 @@ export type ChatSessionInfo = {
   firstMessage: string
 }
 
-type ChatResourceInfo = {
+export type ChatResourceInfo = {
   name: string
   description?: string
   path?: string
@@ -177,4 +177,24 @@ export type ChatResourcesResponse = {
   themes: Array<ChatResourceInfo>
   agentsFiles: Array<ChatResourceInfo>
   diagnostics: Array<string>
+}
+
+export type WorkspaceTreeNode = {
+  name: string
+  path: string
+  type: "directory" | "file"
+  children?: Array<WorkspaceTreeNode>
+}
+
+export type WorkspaceTreeResponse = {
+  root: string
+  nodes: Array<WorkspaceTreeNode>
+  diagnostics: Array<string>
+}
+
+export type WorkspaceFileResponse = {
+  path: string
+  name: string
+  content: string
+  mediaType: "text/markdown" | "text/plain"
 }

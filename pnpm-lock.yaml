@@ -19,6 +19,15 @@ importers:
       '@mariozechner/pi-coding-agent':
         specifier: ^0.70.6
         version: 0.70.6
+      '@mariozechner/pi-tui':
+        specifier: ^0.70.6
+        version: 0.70.6
+      diff:
+        specifier: ^5.2.0
+        version: 5.2.2
+      typebox:
+        specifier: 1.1.33
+        version: 1.1.33
     devDependencies:
       husky:
         specifier: ^9.1.7
@@ -82,7 +91,7 @@ importers:
         version: 1.12.0(react@19.2.5)
       nitro:
         specifier: latest
-        version: 3.0.260415-beta(dotenv@17.4.2)(jiti@2.6.1)(lru-cache@11.3.5)(rollup@4.60.2)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 3.0.260429-beta(dotenv@17.4.2)(jiti@2.6.1)(lru-cache@11.3.5)(rollup@4.60.2)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
       opossum:
         specifier: ^9.0.0
         version: 9.0.0
@@ -3233,6 +3242,10 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
+  diff@5.2.2:
+    resolution: {integrity: sha512-vtcDfH3TOjP8UekytvnHH1o1P4FcUdt4eQ1Y+Abap1tk/OB2MWQvcwS2ClCd1zuIhc3JKOx6p3kod8Vfys3E+A==}
+    engines: {node: '>=0.3.1'}
+
   diff@8.0.3:
     resolution: {integrity: sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ==}
     engines: {node: '>=0.3.1'}
@@ -4595,16 +4608,16 @@ packages:
   nf3@0.3.16:
     resolution: {integrity: sha512-Gs0xRPpUm2nDkqbi40NJ9g7qDIcjcJzgExiydnq6LAyqhI2jfno8wG3NKTL+IiJsx799UHOb1CnSd4Wg4SG4Pw==}
 
-  nitro@3.0.260415-beta:
-    resolution: {integrity: sha512-J0ntJERWtIdvweZdmkCiF8eOFvP9fIAJR2gpeIDrHbAlYavK41WQfADo/YoZ/LF7RMTZBiPaH/pt2s/nPru9Iw==}
+  nitro@3.0.260429-beta:
+    resolution: {integrity: sha512-KweLVCUN5X9v9g+4yxAyRcz3FcOlnjmt9FyrAIWDxJETJmNT7I0JV0clgsONjo2nI0U5gwedXYA3RaNtF5XWzg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
-      '@vercel/queue': ^0.1.4
+      '@vercel/queue': ^0.1.6
       dotenv: '*'
       giget: '*'
       jiti: ^2.6.1
-      rollup: ^4.60.1
+      rollup: ^4.60.2
       vite: ^7 || ^8
       xml2js: ^0.6.2
       zephyr-agent: ^0.2.0
@@ -9593,6 +9606,8 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
+  diff@5.2.2: {}
+
   diff@8.0.3: {}
 
   diff@8.0.4: {}
@@ -11293,7 +11308,7 @@ snapshots:
 
   nf3@0.3.16: {}
 
-  nitro@3.0.260415-beta(dotenv@17.4.2)(jiti@2.6.1)(lru-cache@11.3.5)(rollup@4.60.2)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)):
+  nitro@3.0.260429-beta(dotenv@17.4.2)(jiti@2.6.1)(lru-cache@11.3.5)(rollup@4.60.2)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.5(srvx@0.11.15)

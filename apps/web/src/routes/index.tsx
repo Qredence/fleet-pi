@@ -1,17 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Bot, ClipboardList, History, Plus, Square } from "lucide-react"
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AgentChat } from "@workspace/ui/components/agent-elements/agent-chat"
 import { InputBar } from "@workspace/ui/components/agent-elements/input-bar"
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
 import { ModeSelector } from "@workspace/ui/components/agent-elements/input/mode-selector"
 import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loader"
+import type { PointerEvent as ReactPointerEvent } from "react"
 import type {
   ChatMessage,
   ChatStatus,
@@ -26,17 +21,37 @@ import type {
   ChatModelsResponse,
   ChatPlanAction,
   ChatQuestionAnswerResponse,
+  ChatResourcesResponse,
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
   ChatStreamEvent,
+  WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
+import type {
+  ResourceCanvasTab,
+  ThemePreference,
+} from "@/components/pi/resource-library"
+import {
+  ResourceCanvas,
+  ResourceLauncher,
+  ResourceMobilePanel,
+  applyThemePreference,
+  clampResourceCanvasWidth,
+  getResourceCanvasInitialWidth,
+  readStoredResourceCanvasWidth,
+  readStoredThemePreference,
+  storeResourceCanvasWidth,
+  storeThemePreference,
+} from "@/components/pi/resource-library"
 
 export const Route = createFileRoute("/")({ component: Chat })
 
 type ChatModelOption = ModelOption & {
   provider: string
   modelId: string
+  available?: boolean
+  reasoning?: boolean
   thinkingLevel?: ChatModelInfo["defaultThinkingLevel"]
 }
 
@@ -69,7 +84,7 @@ const CHAT_MODES = [
 function createTextMessage(
   role: ChatMessage["role"],
   text: string,
-  id: string = crypto.randomUUID(),
+  id: string = crypto.randomUUID()
 ): ChatMessage {
   return {
     id,
@@ -82,7 +97,7 @@ function createTextMessage(
 function appendAssistantDelta(
   messages: Array<ChatMessage>,
   assistantId: string,
-  delta: string,
+  delta: string
 ) {
   return messages.map((message) => {
     if (message.id !== assistantId) return message
@@ -103,7 +118,7 @@ function appendAssistantDelta(
 function upsertAssistantToolPart(
   messages: Array<ChatMessage>,
   assistantId: string,
-  toolPart: ChatToolPart,
+  toolPart: ChatToolPart
 ) {
   return messages.map((message) => {
     if (message.id !== assistantId) return message
@@ -139,7 +154,7 @@ function upsertAssistantToolPart(
 function upsertAssistantThinkingPart(
   messages: Array<ChatMessage>,
   assistantId: string,
-  thought: string,
+  thought: string
 ) {
   return upsertAssistantToolPart(messages, assistantId, {
     type: "tool-Thinking",
@@ -178,7 +193,7 @@ function storeSession(metadata: ChatSessionMetadata) {
 
   window.localStorage.setItem(
     CHAT_SESSION_STORAGE_KEY,
-    JSON.stringify(metadata),
+    JSON.stringify(metadata)
   )
 }
 
@@ -205,7 +220,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 async function readChatStream(
   response: Response,
-  onEvent: (event: ChatStreamEvent) => void,
+  onEvent: (event: ChatStreamEvent) => void
 ) {
   const reader = response.body?.getReader()
   if (!reader) throw new Error("Chat response did not include a stream")
@@ -253,8 +268,9 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
   const [error, setError] = useState<Error | null>(null)
-  const [sessionMetadata, setSessionMetadata] =
-    useState<ChatSessionMetadata>(() => readStoredSession())
+  const [sessionMetadata, setSessionMetadata] = useState<ChatSessionMetadata>(
+    () => readStoredSession()
+  )
   const [sessions, setSessions] = useState<Array<ChatSessionInfo>>([])
   const [activityLabel, setActivityLabel] = useState<string | undefined>()
   const [planLabel, setPlanLabel] = useState<string | undefined>()
@@ -267,16 +283,15 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
     (
       updater:
         | Array<ChatMessage>
-        | ((current: Array<ChatMessage>) => Array<ChatMessage>),
+        | ((current: Array<ChatMessage>) => Array<ChatMessage>)
     ) => {
       setMessages((current) => {
-        const next =
-          typeof updater === "function" ? updater(current) : updater
+        const next = typeof updater === "function" ? updater(current) : updater
         messagesRef.current = next
         return next
       })
     },
-    [],
+    []
   )
 
   const setSessionMetadataSynced = useCallback(
@@ -285,7 +300,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
       setSessionMetadata(metadata)
       storeSession(metadata)
     },
-    [],
+    []
   )
 
   const refreshSessions = useCallback(async () => {
@@ -318,7 +333,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
     let cancelled = false
     const loadStoredSession = async () => {
       const result = await fetchJson<ChatSessionResponse>(
-        `/api/chat/session?${metadataUrl(stored)}`,
+        `/api/chat/session?${metadataUrl(stored)}`
       )
       if (cancelled) return
       setSessionMetadataSynced(result.session)
@@ -337,10 +352,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
   }, [setMessagesSynced, setSessionMetadataSynced])
 
   const handleStreamEvent = useCallback(
-    (
-      event: ChatStreamEvent,
-      assistantIdRef: { current: string | null },
-    ) => {
+    (event: ChatStreamEvent, assistantIdRef: { current: string | null }) => {
       if (event.type === "start") {
         assistantIdRef.current = event.id
         setSessionMetadataSynced({
@@ -361,7 +373,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
       if (event.type === "delta" && assistantIdRef.current) {
         const activeAssistantId = assistantIdRef.current
         setMessagesSynced((current) =>
-          appendAssistantDelta(current, activeAssistantId, event.text),
+          appendAssistantDelta(current, activeAssistantId, event.text)
         )
         return
       }
@@ -369,7 +381,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
       if (event.type === "thinking" && assistantIdRef.current) {
         const activeAssistantId = assistantIdRef.current
         setMessagesSynced((current) =>
-          upsertAssistantThinkingPart(current, activeAssistantId, event.text),
+          upsertAssistantThinkingPart(current, activeAssistantId, event.text)
         )
         return
       }
@@ -377,7 +389,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
       if (event.type === "tool" && assistantIdRef.current) {
         const activeAssistantId = assistantIdRef.current
         setMessagesSynced((current) =>
-          upsertAssistantToolPart(current, activeAssistantId, event.part),
+          upsertAssistantToolPart(current, activeAssistantId, event.part)
         )
         return
       }
@@ -399,7 +411,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
 
       if (event.type === "compaction") {
         setActivityLabel(
-          event.phase === "start" ? "Compacting session" : "Compaction finished",
+          event.phase === "start" ? "Compacting session" : "Compaction finished"
         )
         return
       }
@@ -410,7 +422,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
             ? `Retrying request ${event.attempt}/${event.maxAttempts}`
             : event.success
               ? "Retry succeeded"
-              : "Retry failed",
+              : "Retry failed"
         )
         return
       }
@@ -423,9 +435,9 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
         setMessagesSynced((current) =>
           current.some((message) => message.id === event.message.id)
             ? current.map((message) =>
-                message.id === event.message.id ? event.message : message,
+                message.id === event.message.id ? event.message : message
               )
-            : [...current, event.message],
+            : [...current, event.message]
         )
         setQueue({ steering: [], followUp: [] })
         setActivityLabel(undefined)
@@ -437,11 +449,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
         throw new Error(event.message)
       }
     },
-    [
-      refreshSessions,
-      setMessagesSynced,
-      setSessionMetadataSynced,
-    ],
+    [refreshSessions, setMessagesSynced, setSessionMetadataSynced]
   )
 
   const queueFollowUp = useCallback(
@@ -478,7 +486,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
         }
       })
     },
-    [model, setMessagesSynced],
+    [model, setMessagesSynced]
   )
 
   const sendMessage = useCallback(
@@ -528,7 +536,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
         }
 
         await readChatStream(response, (event) =>
-          handleStreamEvent(event, assistantIdRef),
+          handleStreamEvent(event, assistantIdRef)
         )
 
         setStatus("ready")
@@ -543,14 +551,7 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
         }
       }
     },
-    [
-      handleStreamEvent,
-      mode,
-      model,
-      queueFollowUp,
-      setMessagesSynced,
-      status,
-    ],
+    [handleStreamEvent, mode, model, queueFollowUp, setMessagesSynced, status]
   )
 
   const stop = useCallback(() => {
@@ -588,12 +589,12 @@ function usePiChat(model: ChatModelSelection | undefined, mode: ChatMode) {
       setMessagesSynced(result.messages)
       setQueue({ steering: [], followUp: [] })
       setActivityLabel(
-        result.sessionReset ? "Started a fresh Pi session" : undefined,
+        result.sessionReset ? "Started a fresh Pi session" : undefined
       )
       setPlanLabel(undefined)
       await refreshSessions()
     },
-    [refreshSessions, setMessagesSynced, setSessionMetadataSynced],
+    [refreshSessions, setMessagesSynced, setSessionMetadataSynced]
   )
 
   return {
@@ -647,12 +648,14 @@ function toModelOption(model: ChatModelInfo): ChatModelOption {
     name: model.name,
     provider: model.provider,
     modelId: model.id,
+    available: model.available,
+    reasoning: model.reasoning,
     thinkingLevel: model.defaultThinkingLevel,
   }
 }
 
 function toModelSelection(
-  model: ChatModelOption | undefined,
+  model: ChatModelOption | undefined
 ): ChatModelSelection | undefined {
   if (!model) return undefined
   return {
@@ -685,12 +688,12 @@ function SessionControls({
         <Plus className="size-3.5" />
       </button>
       <div className="relative min-w-0">
-        <History className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-foreground/35" />
+        <History className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-foreground/35" />
         <select
           value={activeSessionId ?? ""}
           onChange={(event) => {
             const session = sessions.find(
-              (item) => item.id === event.target.value,
+              (item) => item.id === event.target.value
             )
             if (session) {
               onResumeSession({
@@ -699,7 +702,7 @@ function SessionControls({
               })
             }
           }}
-          className="h-7 max-w-[190px] rounded-[6px] border-0 bg-transparent pl-6 pr-2 text-[12px] leading-4 text-foreground/45 outline-none transition-colors hover:bg-foreground/6"
+          className="h-7 max-w-[190px] rounded-[6px] border-0 bg-transparent pr-2 pl-6 text-[12px] leading-4 text-foreground/45 transition-colors outline-none hover:bg-foreground/6"
           aria-label="Resume session"
           title="Resume session"
         >
@@ -719,6 +722,22 @@ function Chat() {
   const [models, setModels] = useState<Array<ChatModelOption>>([])
   const [modelKey, setModelKey] = useState<string | undefined>()
   const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
+  const [resources, setResources] = useState<ChatResourcesResponse | null>(null)
+  const [resourcesError, setResourcesError] = useState<Error | null>(null)
+  const [resourcesLoading, setResourcesLoading] = useState(false)
+  const [resourcesOpen, setResourcesOpen] = useState(false)
+  const [resourceCanvasTab, setResourceCanvasTab] =
+    useState<ResourceCanvasTab>("resources")
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    readStoredThemePreference()
+  )
+  const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
+    readStoredResourceCanvasWidth()
+  )
+  const [workspaceTree, setWorkspaceTree] =
+    useState<WorkspaceTreeResponse | null>(null)
+  const [workspaceError, setWorkspaceError] = useState<Error | null>(null)
+  const [workspaceLoading, setWorkspaceLoading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -727,7 +746,9 @@ function Chat() {
       if (cancelled) return
       const nextModels = result.models.map(toModelOption)
       setModels(nextModels)
-      setModelKey((current) => current ?? result.selectedModelKey ?? nextModels[0]?.id)
+      setModelKey(
+        (current) => current ?? result.selectedModelKey ?? nextModels[0]?.id
+      )
     }
 
     void loadModels()
@@ -736,16 +757,133 @@ function Chat() {
     }
   }, [])
 
+  useEffect(() => {
+    applyThemePreference(themePreference)
+
+    if (themePreference !== "system") return
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleChange = () => applyThemePreference("system")
+    media.addEventListener("change", handleChange)
+    return () => media.removeEventListener("change", handleChange)
+  }, [themePreference])
+
+  const handleThemePreferenceChange = useCallback(
+    (preference: ThemePreference) => {
+      setThemePreference(preference)
+      storeThemePreference(preference)
+      applyThemePreference(preference)
+    },
+    []
+  )
+
+  const refreshResources = useCallback(async () => {
+    setResourcesLoading(true)
+    setResourcesError(null)
+    try {
+      setResources(
+        await fetchJson<ChatResourcesResponse>("/api/chat/resources")
+      )
+    } catch (err) {
+      setResourcesError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      setResourcesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshResources()
+  }, [refreshResources])
+
+  const refreshWorkspace = useCallback(async () => {
+    setWorkspaceLoading(true)
+    setWorkspaceError(null)
+    try {
+      setWorkspaceTree(
+        await fetchJson<WorkspaceTreeResponse>("/api/workspace/tree")
+      )
+    } catch (err) {
+      setWorkspaceError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      setWorkspaceLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (
+      resourcesOpen &&
+      resourceCanvasTab === "workspace" &&
+      !workspaceTree &&
+      !workspaceLoading
+    ) {
+      void refreshWorkspace()
+    }
+  }, [
+    refreshWorkspace,
+    resourceCanvasTab,
+    resourcesOpen,
+    workspaceLoading,
+    workspaceTree,
+  ])
+
+  useEffect(() => {
+    if (!resourcesOpen) return
+    const initialWidth = getResourceCanvasInitialWidth()
+    setResourceCanvasWidth(initialWidth)
+    storeResourceCanvasWidth(initialWidth)
+  }, [resourcesOpen])
+
+  useEffect(() => {
+    if (!resourcesOpen) return
+
+    const handleViewportResize = () => {
+      setResourceCanvasWidth((currentWidth) => {
+        const nextWidth = clampResourceCanvasWidth(currentWidth)
+        storeResourceCanvasWidth(nextWidth)
+        return nextWidth
+      })
+    }
+
+    window.addEventListener("resize", handleViewportResize)
+    return () => {
+      window.removeEventListener("resize", handleViewportResize)
+    }
+  }, [resourcesOpen])
+
   const handleModeChange = useCallback((nextMode: string) => {
     const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
     setMode(normalized)
     storeMode(normalized)
   }, [])
 
+  const handleResourceCanvasResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault()
+      const startX = event.clientX
+      const startWidth = resourceCanvasWidth
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const nextWidth = clampResourceCanvasWidth(
+          startWidth - (moveEvent.clientX - startX)
+        )
+        setResourceCanvasWidth(nextWidth)
+        storeResourceCanvasWidth(nextWidth)
+      }
+
+      const handlePointerUp = () => {
+        window.removeEventListener("pointermove", handlePointerMove)
+        window.removeEventListener("pointerup", handlePointerUp)
+      }
+
+      window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointerup", handlePointerUp, { once: true })
+    },
+    [resourceCanvasWidth]
+  )
+
   const selectedModel = models.find((model) => model.id === modelKey)
   const modelSelection = useMemo(
     () => toModelSelection(selectedModel),
-    [selectedModel],
+    [selectedModel]
   )
   const {
     activityLabel,
@@ -782,7 +920,7 @@ function Chat() {
             toolCallId,
             answer,
           }),
-        },
+        }
       )
 
       if (result.mode) {
@@ -796,83 +934,129 @@ function Chat() {
         })
       }
     },
-    [handleModeChange, sendMessage, sessionMetadata],
+    [handleModeChange, sendMessage, sessionMetadata]
   )
 
   return (
-    <div className="relative h-svh">
-      <div className="fixed left-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-full border border-border/70 bg-background/85 px-1.5 py-1 shadow-sm backdrop-blur">
-        <SessionControls
-          activeSessionId={sessionMetadata.sessionId}
-          sessions={sessions}
-          onNewSession={() => void startNewSession()}
-          onResumeSession={(metadata) => void resumeSession(metadata)}
+    <div
+      className="relative flex h-svh min-w-0 overflow-hidden"
+      data-testid="chat-shell"
+    >
+      <div className="relative min-w-0 flex-1" data-testid="chat-column">
+        <div className="fixed top-3 left-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-full border border-border/70 bg-background/85 px-1.5 py-1 shadow-sm backdrop-blur">
+          <SessionControls
+            activeSessionId={sessionMetadata.sessionId}
+            sessions={sessions}
+            onNewSession={() => void startNewSession()}
+            onResumeSession={(metadata) => void resumeSession(metadata)}
+          />
+        </div>
+        <ResourceLauncher
+          onOpenChange={setResourcesOpen}
+          open={resourcesOpen}
+          resources={resources}
+        />
+        <ResourceMobilePanel
+          activeTab={resourceCanvasTab}
+          error={resourcesError}
+          loading={resourcesLoading}
+          models={models}
+          onOpenChange={setResourcesOpen}
+          onRefresh={() => void refreshResources()}
+          onRefreshWorkspace={() => void refreshWorkspace()}
+          onTabChange={setResourceCanvasTab}
+          onThemePreferenceChange={handleThemePreferenceChange}
+          open={resourcesOpen}
+          resources={resources}
+          themePreference={themePreference}
+          workspace={workspaceTree}
+          workspaceError={workspaceError}
+          workspaceLoading={workspaceLoading}
+        />
+        <AgentChat
+          messages={messages}
+          status={status}
+          onSend={(msg) => sendMessage({ text: msg.content })}
+          onStop={stop}
+          questionTool={{
+            submitLabel: "Continue",
+            allowSkip: true,
+            onAnswer: ({ toolCallId, answer }) => {
+              void answerQuestion({ toolCallId, answer }).catch(() => undefined)
+            },
+          }}
+          error={error ?? undefined}
+          emptyStatePosition="center"
+          suggestions={[
+            { id: "1", label: "What can you do?" },
+            { id: "2", label: "Tell me about this project" },
+          ]}
+          slots={{
+            InputBar: (props) => (
+              <InputBar
+                {...props}
+                status={status === "streaming" ? "ready" : props.status}
+                infoBar={
+                  infoDescription
+                    ? { description: infoDescription, position: "top" }
+                    : undefined
+                }
+                leftActions={
+                  <>
+                    <ModeSelector
+                      modes={CHAT_MODES}
+                      value={mode}
+                      onChange={handleModeChange}
+                    />
+                    <ModelPicker
+                      models={models}
+                      value={modelKey}
+                      onChange={setModelKey}
+                      placeholder="Model"
+                    />
+                  </>
+                }
+                rightActions={
+                  <div className="flex items-center gap-1">
+                    {(status === "streaming" || status === "submitted") && (
+                      <SpiralLoader size={16} />
+                    )}
+                    {status === "streaming" && (
+                      <button
+                        type="button"
+                        onClick={stop}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+                        aria-label="Stop"
+                        title="Stop"
+                      >
+                        <Square className="size-3" />
+                      </button>
+                    )}
+                  </div>
+                }
+              />
+            ),
+          }}
         />
       </div>
-      <AgentChat
-        messages={messages}
-        status={status}
-        onSend={(msg) => sendMessage({ text: msg.content })}
-        onStop={stop}
-        questionTool={{
-          submitLabel: "Continue",
-          allowSkip: true,
-          onAnswer: ({ toolCallId, answer }) => {
-            void answerQuestion({ toolCallId, answer }).catch(() => undefined)
-          },
-        }}
-        error={error ?? undefined}
-        emptyStatePosition="center"
-        suggestions={[
-          { id: "1", label: "What can you do?" },
-          { id: "2", label: "Tell me about this project" },
-        ]}
-        slots={{
-          InputBar: (props) => (
-            <InputBar
-              {...props}
-              status={status === "streaming" ? "ready" : props.status}
-              infoBar={
-                infoDescription
-                  ? { description: infoDescription, position: "top" }
-                  : undefined
-              }
-              leftActions={
-                <>
-                  <ModeSelector
-                    modes={CHAT_MODES}
-                    value={mode}
-                    onChange={handleModeChange}
-                  />
-                  <ModelPicker
-                    models={models}
-                    value={modelKey}
-                    onChange={setModelKey}
-                    placeholder="Model"
-                  />
-                </>
-              }
-              rightActions={
-                <div className="flex items-center gap-1">
-                  {(status === "streaming" || status === "submitted") && (
-                    <SpiralLoader size={16} />
-                  )}
-                  {status === "streaming" && (
-                    <button
-                      type="button"
-                      onClick={stop}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
-                      aria-label="Stop"
-                      title="Stop"
-                    >
-                      <Square className="size-3" />
-                    </button>
-                  )}
-                </div>
-              }
-            />
-          ),
-        }}
+      <ResourceCanvas
+        activeTab={resourceCanvasTab}
+        error={resourcesError}
+        loading={resourcesLoading}
+        models={models}
+        onClose={() => setResourcesOpen(false)}
+        onRefresh={() => void refreshResources()}
+        onRefreshWorkspace={() => void refreshWorkspace()}
+        onResizeStart={handleResourceCanvasResizeStart}
+        onTabChange={setResourceCanvasTab}
+        onThemePreferenceChange={handleThemePreferenceChange}
+        open={resourcesOpen}
+        resources={resources}
+        themePreference={themePreference}
+        width={resourceCanvasWidth}
+        workspace={workspaceTree}
+        workspaceError={workspaceError}
+        workspaceLoading={workspaceLoading}
       />
     </div>
   )

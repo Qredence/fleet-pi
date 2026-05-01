@@ -89,7 +89,7 @@ async function invokeBedrockAgentSession(
   return createAgentSessionFromServices(params)
 }
 
-export const bedrockCircuitBreaker = createBedrockCircuitBreaker(
+const bedrockCircuitBreaker = createBedrockCircuitBreaker(
   invokeBedrockAgentSession
 )
 
@@ -99,7 +99,7 @@ bedrockCircuitBreaker.fallback(() => {
 
 const runtimeRecords = new Map<string, ActiveSessionRecord>()
 
-function getRepoRoot() {
+export function getRepoRoot() {
   return realpathSync(
     resolve(process.env.FLEET_PI_REPO_ROOT ?? DEFAULT_REPO_ROOT)
   )

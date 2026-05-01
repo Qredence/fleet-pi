@@ -203,6 +203,61 @@ Supporting endpoints:
 - `GET /api/chat/sessions` - list repo-scoped Pi sessions.
 - `POST /api/chat/new` - create fresh session metadata.
 - `POST /api/chat/abort` - abort the live runtime for active session metadata.
+- `GET /api/workspace/tree` - ensure and return the read-only
+  `agent-workspace` filesystem tree.
+- `GET /api/workspace/file?path=<path>` - return read-only file contents for
+  files inside `agent-workspace`.
+
+The chat UI includes a Pi resources browser backed by `/api/chat/resources`.
+On desktop it opens as a resizable right-side canvas beside the chat; on mobile
+it stays as a compact overlay. The desktop canvas opens at 70% of the viewport
+width and clamps resizing to that same maximum. Use it to inspect which skills,
+prompts, extensions, themes, context files, and loader diagnostics are available
+to the current session. The same canvas includes a `Workspace` tab that renders
+the read-only repo-local `agent-workspace` tree and Markdown file previews, plus
+a `Configurations` tab for UI-first tools, connectors, provider, model
+allowlist, and personalization controls.
+
+## Agent Workspace
+
+`agent-workspace/` is the repo-local filesystem workspace for agent identity,
+memory, research notes, skills, artifacts, and scratch files. The server helper
+creates the expected directory tree and seeded Markdown stubs without
+overwriting existing files. The Workspace tab is read-only in the UI and can
+preview Markdown file contents; edits still happen through normal repo-scoped
+agent tools.
+
+## Local Configuration Surface
+
+The `Configurations` canvas tab is intentionally UI-first for tools,
+connectors, provider setup, and model allowlist drafts. It does not mutate
+`.pi/settings.json` or Pi runtime settings. Theme personalization is functional:
+Light, Dark, and System preferences are stored in localStorage under
+`fleet-pi-theme-preference` and applied through the root `.dark` class.
+
+## Project Pi Resources
+
+Committed project-local resources live under `.pi/`:
+
+- `.pi/settings.json` - project Pi package configuration. It loads
+  `npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, and the
+  vendored `filechanges`/`subagents` extension directories.
+- `.pi/skills/agent-elements` - symlink to the shared Agent Elements skill in
+  `.agents/skills/agent-elements`.
+- `.pi/skills/fleet-pi-orientation` - fast codebase map for broad analysis.
+- `.pi/skills/chat-runtime-debugging` - chat/session/Plan mode debugging guide.
+- `.pi/skills/agent-ui-workflows` - Agent Elements UI modification guide.
+- `.pi/extensions/project-inventory.ts` - registers the read-only
+  `project_inventory` tool for agent and Plan mode orientation.
+- `.pi/extensions/vendor/filechanges` - vendored upstream file-change review
+  commands: `/filechanges`, `/filechanges-accept`, and
+  `/filechanges-decline`.
+- `.pi/extensions/vendor/subagents` - vendored upstream `subagent` tool and
+  scout/researcher/worker agent definitions.
+
+Pi installs project npm packages into `.pi/npm/`, which is ignored. Keep
+`.pi/settings.json`, project-local skills, and vendored extension source
+committed; do not commit generated package installs.
 
 ## Adding UI Components
 

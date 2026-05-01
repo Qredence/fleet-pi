@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiWorkspaceTreeRouteImport } from './routes/api/workspace/tree'
+import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
 import { Route as ApiChatResumeRouteImport } from './routes/api/chat/resume'
@@ -34,6 +36,16 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceTreeRoute = ApiWorkspaceTreeRouteImport.update({
+  id: '/api/workspace/tree',
+  path: '/api/workspace/tree',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
+  id: '/api/workspace/file',
+  path: '/api/workspace/file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatSessionsRoute = ApiChatSessionsRouteImport.update({
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/api/chat/resume': typeof ApiChatResumeRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +116,8 @@ export interface FileRoutesByTo {
   '/api/chat/resume': typeof ApiChatResumeRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +132,8 @@ export interface FileRoutesById {
   '/api/chat/resume': typeof ApiChatResumeRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +149,8 @@ export interface FileRouteTypes {
     | '/api/chat/resume'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/workspace/file'
+    | '/api/workspace/tree'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +164,8 @@ export interface FileRouteTypes {
     | '/api/chat/resume'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/workspace/file'
+    | '/api/workspace/tree'
   id:
     | '__root__'
     | '/'
@@ -157,12 +179,16 @@ export interface FileRouteTypes {
     | '/api/chat/resume'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/workspace/file'
+    | '/api/workspace/tree'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
+  ApiWorkspaceTreeRoute: typeof ApiWorkspaceTreeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -186,6 +212,20 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/tree': {
+      id: '/api/workspace/tree'
+      path: '/api/workspace/tree'
+      fullPath: '/api/workspace/tree'
+      preLoaderRoute: typeof ApiWorkspaceTreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/file': {
+      id: '/api/workspace/file'
+      path: '/api/workspace/file'
+      fullPath: '/api/workspace/file'
+      preLoaderRoute: typeof ApiWorkspaceFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat/sessions': {
@@ -276,6 +316,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
+  ApiWorkspaceTreeRoute: ApiWorkspaceTreeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

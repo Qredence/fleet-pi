@@ -37,7 +37,6 @@
   "exports": {
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*",
-    "./components/*": "./src/components/*",
-    "./hooks/*": "./src/hooks/*"
+    "./components/*": "./src/components/*"
   }
 }

@@ -48,6 +48,7 @@ npm-debug.log*
 
 # Local runtime state
 .fleet/
+.pi/npm/
 
 .playwright-mcp/
 

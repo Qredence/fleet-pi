@@ -1,13 +1,14 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
-      "entry": ["eslint.config.js"],
-      "ignoreDependencies": ["@mariozechner/pi-coding-agent"],
+      "entry": ["eslint.config.js", ".pi/extensions/**/*.ts"],
       "ignoreBinaries": ["eslint"]
     },
     "apps/web": {
       "entry": [
+        "scripts/**/*.ts",
         "src/router.tsx",
         "src/routes/__root.tsx",
         "src/routes/**/*.tsx",
@@ -15,7 +16,13 @@
         "src/lib/**/*.test.ts",
         "src/lib/**/*.spec.ts"
       ],
-      "ignoreDependencies": ["nitro", "@tanstack/router-plugin", "tailwindcss"]
+      "ignoreDependencies": [
+        "nitro",
+        "@tanstack/router-plugin",
+        "tailwindcss",
+        "pino-pretty",
+        "@apidevtools/swagger-cli"
+      ]
     },
     "packages/ui": {
       "entry": ["src/**/*.tsx", "src/**/*.ts"]
