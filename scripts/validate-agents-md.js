@@ -28,8 +28,10 @@ const PNPM_BUILTINS = new Set([
   "version",
 ])
 
-// Scripts that modify files and should only be checked for existence, not executed
-const MODIFYING_SCRIPTS = new Set(["syncpack:fix"])
+// Scripts that should only be checked for existence, not executed.
+// Some mutate files, while others require extra runtime setup that this validator
+// job does not provision.
+const EXISTENCE_ONLY_SCRIPTS = new Set(["syncpack:fix", "e2e"])
 
 // Commands to skip (Pi tool commands, examples with placeholders, self-referencing)
 const SKIP_PATTERNS = [
@@ -122,11 +124,15 @@ function main() {
       continue
     }
 
-    // For modifying scripts, only check existence, don't execute
-    if (MODIFYING_SCRIPTS.has(scriptName)) {
-      console.log(
-        `✅ PASS: "${command}" (existence check only - modifies files)`
-      )
+    // For scripts that mutate files or require extra runtime setup, only check
+    // existence instead of executing them in the validator job.
+    if (EXISTENCE_ONLY_SCRIPTS.has(scriptName)) {
+      const reason =
+        scriptName === "syncpack:fix"
+          ? "existence check only - modifies files"
+          : "existence check only - requires e2e runtime setup"
+
+      console.log(`✅ PASS: "${command}" (${reason})`)
       passed++
       continue
     }
