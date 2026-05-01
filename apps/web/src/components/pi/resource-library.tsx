@@ -509,10 +509,12 @@ function ResourcesTab({
         />
       )}
       {!error &&
-        groups.map((group) => <ResourceGroup key={group.id} {...group} />)}
+        groups.map((group) => (
+          <ResourceChipSection key={group.id} {...group} />
+        ))}
       {!error && diagnostics.length > 0 && (
-        <div className="mt-2 border-t border-border/60 pt-2">
-          <ResourceGroup
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <ResourceChipSection
             id="diagnostics"
             label="Diagnostics"
             icon={CircleAlert}
@@ -888,7 +890,7 @@ function WorkspaceTab({
         </div>
         {workspace.diagnostics.length > 0 && (
           <div className="mt-2 border-t border-border/60 pt-2">
-            <ResourceGroup
+            <ResourceChipSection
               id="workspace-diagnostics"
               label="Diagnostics"
               icon={CircleAlert}
@@ -1031,7 +1033,7 @@ function findWorkspaceNode(
   return null
 }
 
-function ResourceGroup({
+function ResourceChipSection({
   icon: Icon,
   items,
   label,
@@ -1042,51 +1044,70 @@ function ResourceGroup({
   label: string
 }) {
   return (
-    <div className="py-1.5">
-      <div className="mb-1 flex items-center gap-2 text-[11px] font-medium tracking-normal text-foreground/35 uppercase">
-        <Icon className="size-3" />
-        <span>{label}</span>
-        <span className="ml-auto tabular-nums">{items.length}</span>
+    <section
+      className="grid grid-cols-[82px_minmax(0,1fr)] gap-x-3 gap-y-2 py-2.5"
+      aria-label={`${label} resources`}
+    >
+      <div className="flex min-w-0 items-center self-start pt-1.5 text-[14px] leading-5 text-foreground/45">
+        <span className="truncate underline decoration-foreground/25 underline-offset-2">
+          {label}
+        </span>
+        <span className="ml-1 shrink-0 text-[11px] leading-4 text-foreground/30 tabular-nums no-underline">
+          {items.length}
+        </span>
       </div>
-      <div className="space-y-1">
+      <div
+        className="flex min-w-0 flex-wrap items-start gap-2"
+        role="list"
+        data-testid={`resource-chip-section-${label.toLowerCase()}`}
+      >
         {items.length === 0 ? (
-          <div className="rounded-[6px] px-2 py-1.5 text-[12px] text-foreground/35">
+          <span className="inline-flex h-[30px] items-center rounded-[10px] border border-border/60 bg-background px-3 text-[14px] leading-5 text-foreground/35 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
             Empty
-          </div>
+          </span>
         ) : (
           items.map((item) => (
-            <ResourceItem key={resourceKey(item)} item={item} />
+            <ResourceChip key={resourceKey(item)} icon={Icon} item={item} />
           ))
         )}
       </div>
+    </section>
+  )
+}
+
+function ResourceChip({
+  icon,
+  item,
+}: {
+  icon: LucideIcon
+  item: ChatResourceInfo
+}) {
+  const title = getResourceChipTitle(item)
+
+  return (
+    <div
+      role="listitem"
+      className="inline-flex h-[30px] max-w-full items-center gap-1 rounded-[10px] border border-border/70 bg-background px-2.5 text-[14px] leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]"
+      aria-label={title}
+      data-testid="resource-chip"
+      title={title}
+    >
+      <ResourceChipIcon icon={icon} />
+      <span className="min-w-0 truncate">{item.name}</span>
+      {item.source && (
+        <span className="max-w-20 shrink-0 truncate rounded-[5px] bg-foreground/5 px-1.5 py-0.5 text-[10px] leading-3 text-foreground/35">
+          {item.source}
+        </span>
+      )}
     </div>
   )
 }
 
-function ResourceItem({ item }: { item: ChatResourceInfo }) {
+function ResourceChipIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <div className="rounded-[6px] px-2 py-1.5 transition-colors hover:bg-foreground/5">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
-          {item.name}
-        </span>
-        {item.source && (
-          <span className="shrink-0 rounded-[4px] bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
-            {item.source}
-          </span>
-        )}
-      </div>
-      {item.description && (
-        <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-foreground/40">
-          {item.description}
-        </p>
-      )}
-      {item.path && (
-        <p className="mt-0.5 truncate text-[10px] text-foreground/25">
-          {displayResourcePath(item.path)}
-        </p>
-      )}
-    </div>
+    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/[0.04] text-foreground/45">
+      <Icon className="size-3.5" />
+    </span>
   )
 }
 
@@ -1116,6 +1137,17 @@ function displayResourcePath(path: string) {
   const marker = "/fleet-pi/"
   const index = path.indexOf(marker)
   return index >= 0 ? path.slice(index + marker.length) : path
+}
+
+function getResourceChipTitle(item: ChatResourceInfo) {
+  return [
+    item.name,
+    item.source ? `Source: ${item.source}` : null,
+    item.description ?? null,
+    item.path ? displayResourcePath(item.path) : null,
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
 function resourceKey(item: ChatResourceInfo) {

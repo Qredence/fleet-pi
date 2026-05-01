@@ -520,14 +520,33 @@ test.describe("chat flows", () => {
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
     await expect(
-      canvas.getByText("fleet-pi-orientation", { exact: true })
+      canvas.getByTestId("resource-chip-section-skills")
     ).toBeVisible()
     await expect(
-      canvas
-        .locator("span")
-        .filter({ hasText: ".pi/extensions/project-inventory.ts" })
-        .first()
+      canvas.getByTestId("resource-chip-section-extensions")
     ).toBeVisible()
+    await expect(
+      canvas.getByTestId("resource-chip-section-context")
+    ).toBeVisible()
+    await expect(canvas.getByText("Skills", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("Extensions", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("Context", { exact: true })).toBeVisible()
+    await expect(
+      canvas.getByText("fleet-pi-orientation", { exact: true })
+    ).toBeVisible()
+    const projectInventoryChip = canvas.getByRole("listitem", {
+      name: /\.pi\/extensions\/project-inventory\.ts/,
+    })
+    await expect(projectInventoryChip).toBeVisible()
+    await expect(projectInventoryChip).toHaveAttribute(
+      "title",
+      /\.pi\/extensions\/project-inventory\.ts/
+    )
+    await expect(
+      canvas.getByRole("button", {
+        name: /\.pi\/extensions\/project-inventory\.ts/,
+      })
+    ).toHaveCount(0)
     await expect(
       canvas.getByText("pi-autoresearch", { exact: true })
     ).toBeVisible()
