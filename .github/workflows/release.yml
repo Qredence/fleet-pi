@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
 
     steps:
@@ -32,7 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: setup
 
@@ -58,7 +58,7 @@ jobs:
         run: pnpm lint
 
   typecheck:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: setup
 
@@ -84,7 +84,7 @@ jobs:
         run: pnpm typecheck
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: [lint, typecheck]
 
@@ -110,7 +110,7 @@ jobs:
         run: pnpm --filter web test
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     needs: [lint, typecheck]
 
@@ -136,7 +136,7 @@ jobs:
         run: pnpm build
 
   syncpack:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     needs: setup
 
@@ -162,7 +162,7 @@ jobs:
         run: pnpm syncpack
 
   knip:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: setup
 
@@ -188,7 +188,7 @@ jobs:
         run: pnpm knip
 
   jscpd:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: setup
 
@@ -214,7 +214,7 @@ jobs:
         run: pnpm jscpd
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [test, build, syncpack, knip, jscpd]
     permissions:
       contents: write
