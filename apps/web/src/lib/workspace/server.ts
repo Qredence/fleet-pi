@@ -269,11 +269,13 @@ function resolveWorkspacePath(filePath: string | null) {
 
   const resolvedPath = resolve(getRepoRoot(), filePath)
   const relativeToWorkspace = relative(AGENT_WORKSPACE_ROOT, resolvedPath)
-  if (
-    relativeToWorkspace === "" ||
-    relativeToWorkspace.startsWith("..") ||
-    isAbsolute(relativeToWorkspace)
-  ) {
+  if (relativeToWorkspace === "") {
+    throw new WorkspaceFileError(
+      "Workspace path is a directory. Provide a path to a specific file.",
+      400
+    )
+  }
+  if (relativeToWorkspace.startsWith("..") || isAbsolute(relativeToWorkspace)) {
     throw new WorkspaceFileError(
       "Workspace file path is outside agent-workspace.",
       403

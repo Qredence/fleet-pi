@@ -509,6 +509,7 @@ function ResourcesTab({
         />
       )}
       {!error &&
+        resources &&
         groups.map((group) => (
           <ResourceChipSection key={group.id} {...group} />
         ))}

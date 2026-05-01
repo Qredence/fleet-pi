@@ -8,6 +8,7 @@ import { spawn } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { fileURLToPath } from "node:url"
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -87,7 +88,7 @@ interface ExtensionConfig {
   maxConcurrency?: number
 }
 
-const EXT_DIR = path.dirname(new URL(import.meta.url).pathname)
+const EXT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const AGENTS_DIR = path.join(EXT_DIR, "agents")
 const TOOLS_DIR = path.join(EXT_DIR, "tools")
 const CONFIG_PATH = path.join(EXT_DIR, "config.json")
@@ -117,7 +118,7 @@ const BUILTIN_TOOLS = new Set([
 
 // Custom tools that require loading an extension into the subagent process
 const EXT_BASE = path.join(
-  process.env.HOME || "~",
+  os.homedir(),
   ".pi",
   "agent",
   "extensions"
