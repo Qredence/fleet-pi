@@ -26,12 +26,15 @@ import type {
   ChatSessionMetadata,
   ChatSessionResponse,
   ChatStreamEvent,
+  WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
+import type { ResourceCanvasTab } from "@/components/pi/resource-library"
 import {
   ResourceCanvas,
   ResourceLauncher,
   ResourceMobilePanel,
   clampResourceCanvasWidth,
+  getResourceCanvasInitialWidth,
   readStoredResourceCanvasWidth,
   storeResourceCanvasWidth,
 } from "@/components/pi/resource-library"
@@ -713,9 +716,15 @@ function Chat() {
   const [resourcesError, setResourcesError] = useState<Error | null>(null)
   const [resourcesLoading, setResourcesLoading] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
+  const [resourceCanvasTab, setResourceCanvasTab] =
+    useState<ResourceCanvasTab>("resources")
   const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
     readStoredResourceCanvasWidth()
   )
+  const [workspaceTree, setWorkspaceTree] =
+    useState<WorkspaceTreeResponse | null>(null)
+  const [workspaceError, setWorkspaceError] = useState<Error | null>(null)
+  const [workspaceLoading, setWorkspaceLoading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -752,6 +761,61 @@ function Chat() {
   useEffect(() => {
     void refreshResources()
   }, [refreshResources])
+
+  const refreshWorkspace = useCallback(async () => {
+    setWorkspaceLoading(true)
+    setWorkspaceError(null)
+    try {
+      setWorkspaceTree(
+        await fetchJson<WorkspaceTreeResponse>("/api/workspace/tree")
+      )
+    } catch (err) {
+      setWorkspaceError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      setWorkspaceLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (
+      resourcesOpen &&
+      resourceCanvasTab === "workspace" &&
+      !workspaceTree &&
+      !workspaceLoading
+    ) {
+      void refreshWorkspace()
+    }
+  }, [
+    refreshWorkspace,
+    resourceCanvasTab,
+    resourcesOpen,
+    workspaceLoading,
+    workspaceTree,
+  ])
+
+  useEffect(() => {
+    if (!resourcesOpen) return
+    const initialWidth = getResourceCanvasInitialWidth()
+    setResourceCanvasWidth(initialWidth)
+    storeResourceCanvasWidth(initialWidth)
+  }, [resourcesOpen])
+
+  useEffect(() => {
+    if (!resourcesOpen) return
+
+    const handleViewportResize = () => {
+      setResourceCanvasWidth((currentWidth) => {
+        const nextWidth = clampResourceCanvasWidth(currentWidth)
+        storeResourceCanvasWidth(nextWidth)
+        return nextWidth
+      })
+    }
+
+    window.addEventListener("resize", handleViewportResize)
+    return () => {
+      window.removeEventListener("resize", handleViewportResize)
+    }
+  }, [resourcesOpen])
 
   const handleModeChange = useCallback((nextMode: string) => {
     const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
@@ -861,12 +925,18 @@ function Chat() {
           resources={resources}
         />
         <ResourceMobilePanel
+          activeTab={resourceCanvasTab}
           error={resourcesError}
           loading={resourcesLoading}
           onOpenChange={setResourcesOpen}
           onRefresh={() => void refreshResources()}
+          onRefreshWorkspace={() => void refreshWorkspace()}
+          onTabChange={setResourceCanvasTab}
           open={resourcesOpen}
           resources={resources}
+          workspace={workspaceTree}
+          workspaceError={workspaceError}
+          workspaceLoading={workspaceLoading}
         />
         <AgentChat
           messages={messages}
@@ -935,14 +1005,20 @@ function Chat() {
         />
       </div>
       <ResourceCanvas
+        activeTab={resourceCanvasTab}
         error={resourcesError}
         loading={resourcesLoading}
         onClose={() => setResourcesOpen(false)}
         onRefresh={() => void refreshResources()}
+        onRefreshWorkspace={() => void refreshWorkspace()}
         onResizeStart={handleResourceCanvasResizeStart}
+        onTabChange={setResourceCanvasTab}
         open={resourcesOpen}
         resources={resources}
         width={resourceCanvasWidth}
+        workspace={workspaceTree}
+        workspaceError={workspaceError}
+        workspaceLoading={workspaceLoading}
       />
     </div>
   )

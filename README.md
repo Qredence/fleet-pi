@@ -203,12 +203,27 @@ Supporting endpoints:
 - `GET /api/chat/sessions` - list repo-scoped Pi sessions.
 - `POST /api/chat/new` - create fresh session metadata.
 - `POST /api/chat/abort` - abort the live runtime for active session metadata.
+- `GET /api/workspace/tree` - ensure and return the read-only
+  `agent-workspace` filesystem tree.
+- `GET /api/workspace/file?path=<path>` - return read-only file contents for
+  files inside `agent-workspace`.
 
 The chat UI includes a Pi resources browser backed by `/api/chat/resources`.
 On desktop it opens as a resizable right-side canvas beside the chat; on mobile
-it stays as a compact overlay. Use it to inspect which skills, prompts,
-extensions, themes, context files, and loader diagnostics are available to the
-current session.
+it stays as a compact overlay. The desktop canvas opens at 70% of the viewport
+width and clamps resizing to that same maximum. Use it to inspect which skills,
+prompts, extensions, themes, context files, and loader diagnostics are available
+to the current session. The same canvas includes a `Workspace` tab that renders
+the read-only repo-local `agent-workspace` tree and Markdown file previews.
+
+## Agent Workspace
+
+`agent-workspace/` is the repo-local filesystem workspace for agent identity,
+memory, research notes, skills, artifacts, and scratch files. The server helper
+creates the expected directory tree and seeded Markdown stubs without
+overwriting existing files. The Workspace tab is read-only in the UI and can
+preview Markdown file contents; edits still happen through normal repo-scoped
+agent tools.
 
 ## Project Pi Resources
 

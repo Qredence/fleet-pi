@@ -76,6 +76,93 @@ const MOCK_RESOURCES = {
   diagnostics: [],
 }
 
+const MOCK_WORKSPACE_TREE = {
+  root: "agent-workspace",
+  nodes: [
+    {
+      name: "system",
+      path: "agent-workspace/system",
+      type: "directory",
+      children: [
+        {
+          name: "identity.md",
+          path: "agent-workspace/system/identity.md",
+          type: "file",
+        },
+      ],
+    },
+    {
+      name: "memory",
+      path: "agent-workspace/memory",
+      type: "directory",
+      children: [
+        {
+          name: "daily",
+          path: "agent-workspace/memory/daily",
+          type: "directory",
+          children: [
+            {
+              name: "2026-05-01.md",
+              path: "agent-workspace/memory/daily/2026-05-01.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "research",
+          path: "agent-workspace/memory/research",
+          type: "directory",
+          children: [
+            {
+              name: "factory.md",
+              path: "agent-workspace/memory/research/factory.md",
+              type: "file",
+            },
+            {
+              name: "hermes.md",
+              path: "agent-workspace/memory/research/hermes.md",
+              type: "file",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "skills",
+      path: "agent-workspace/skills",
+      type: "directory",
+      children: [
+        {
+          name: "codebase-research",
+          path: "agent-workspace/skills/codebase-research",
+          type: "directory",
+          children: [
+            {
+              name: "skill.md",
+              path: "agent-workspace/skills/codebase-research/skill.md",
+              type: "file",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  diagnostics: [],
+}
+
+const MOCK_WORKSPACE_FILES = new Map([
+  [
+    "agent-workspace/memory/research/factory.md",
+    {
+      path: "agent-workspace/memory/research/factory.md",
+      name: "factory.md",
+      content:
+        "# Factory\n\nPurpose: Research notes for Factory.\n\nStatus: Seeded stub.\n",
+      mediaType: "text/markdown",
+    },
+  ],
+])
+
 function mockChatModels(page: Page) {
   return page.route(
     "http://localhost:3000/api/chat/models",
@@ -110,6 +197,38 @@ function mockChatResources(page: Page) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(MOCK_RESOURCES),
+      })
+    }
+  )
+}
+
+function mockWorkspaceTree(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/workspace/tree",
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_WORKSPACE_TREE),
+      })
+    }
+  )
+}
+
+function mockWorkspaceFile(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/workspace/file?**",
+    async (route: Route) => {
+      const url = new URL(route.request().url())
+      const path = url.searchParams.get("path") ?? ""
+      const file = MOCK_WORKSPACE_FILES.get(path)
+
+      await route.fulfill({
+        status: file ? 200 : 404,
+        contentType: "application/json",
+        body: JSON.stringify(
+          file ?? { message: `No mocked workspace file for ${path}` }
+        ),
       })
     }
   )
@@ -373,6 +492,8 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
@@ -387,10 +508,15 @@ test.describe("chat flows", () => {
 
     const chatBox = await chatColumn.boundingBox()
     const canvasBox = await canvas.boundingBox()
+    const viewport = page.viewportSize()
     expect(chatBox).not.toBeNull()
     expect(canvasBox).not.toBeNull()
-    expect(canvasBox?.x).toBeGreaterThan((chatBox?.x ?? 0) + 600)
-    expect(canvasBox?.width).toBeGreaterThanOrEqual(320)
+    expect(canvasBox?.x).toBeGreaterThanOrEqual(
+      (chatBox?.x ?? 0) + (chatBox?.width ?? 0) - 1
+    )
+    expect(canvasBox?.width).toBeGreaterThanOrEqual(
+      Math.floor((viewport?.width ?? 0) * 0.7) - 1
+    )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
     await expect(
@@ -415,10 +541,57 @@ test.describe("chat flows", () => {
     await expect(canvas.getByText("subagents", { exact: true })).toBeVisible()
   })
 
-  test("resizes and persists the Pi resources canvas", async ({ page }) => {
+  test("shows the agent workspace filesystem tab", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(canvas).toBeVisible()
+    await canvas.getByRole("button", { name: "Workspace", exact: true }).click()
+
+    const workspaceTree = canvas.locator('[data-testid="workspace-tree"]')
+    await expect(workspaceTree).toBeVisible()
+    await expect(workspaceTree.getByText("agent-workspace")).toBeVisible()
+    await expect(workspaceTree.getByText("identity.md")).toBeVisible()
+    await expect(workspaceTree.getByText("2026-05-01.md")).toBeVisible()
+    await expect(workspaceTree.getByText("hermes.md")).toBeVisible()
+    await expect(workspaceTree.getByText("skill.md")).toBeVisible()
+
+    await workspaceTree.getByRole("button", { name: "factory.md" }).click()
+    const workspacePreview = canvas.locator('[data-testid="workspace-preview"]')
+    await expect(workspacePreview).toBeVisible()
+    await expect(
+      workspacePreview.getByText("factory.md", { exact: true })
+    ).toBeVisible()
+    await expect(
+      workspacePreview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+    await expect(
+      workspacePreview.getByText("Purpose: Research notes for Factory.")
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "factory.md" })
+    ).toHaveAttribute("aria-pressed", "true")
+
+    await canvas.getByRole("button", { name: "Resources", exact: true }).click()
+    await expect(
+      canvas.getByText("fleet-pi-orientation", { exact: true })
+    ).toBeVisible()
+  })
+
+  test("resizes and persists the Pi resources canvas", async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 820 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
@@ -433,23 +606,43 @@ test.describe("chat flows", () => {
     const handleBox = await handle.boundingBox()
     expect(before).not.toBeNull()
     expect(handleBox).not.toBeNull()
+    expect(before?.width ?? 0).toBeGreaterThan(830)
+    expect(before?.width ?? 0).toBeLessThanOrEqual(841)
 
     await page.mouse.move(
       (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2,
       (handleBox?.y ?? 0) + 80
     )
     await page.mouse.down()
-    await page.mouse.move((handleBox?.x ?? 0) - 90, (handleBox?.y ?? 0) + 80)
+    await page.mouse.move((handleBox?.x ?? 0) + 160, (handleBox?.y ?? 0) + 80)
     await page.mouse.up()
 
     await expect
       .poll(async () => (await canvas.boundingBox())?.width ?? 0)
-      .toBeGreaterThan((before?.width ?? 0) + 60)
+      .toBeLessThan((before?.width ?? 0) - 120)
 
     const storedWidth = await page.evaluate(() =>
       window.localStorage.getItem("fleet-pi-resource-canvas-width")
     )
-    expect(Number(storedWidth)).toBeGreaterThan((before?.width ?? 0) + 60)
+    expect(Number(storedWidth)).toBeLessThan((before?.width ?? 0) - 120)
+
+    const resized = await canvas.boundingBox()
+    const resizedHandleBox = await handle.boundingBox()
+    await page.mouse.move(
+      (resizedHandleBox?.x ?? 0) + (resizedHandleBox?.width ?? 0) / 2,
+      (resizedHandleBox?.y ?? 0) + 80
+    )
+    await page.mouse.down()
+    await page.mouse.move(
+      (resizedHandleBox?.x ?? 0) - 500,
+      (resizedHandleBox?.y ?? 0) + 80
+    )
+    await page.mouse.up()
+
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.width ?? 0)
+      .toBeGreaterThan((resized?.width ?? 0) + 120)
+    expect((await canvas.boundingBox())?.width ?? 0).toBeLessThanOrEqual(841)
   })
 
   test("opens Pi resources as a mobile overlay", async ({ page }) => {
@@ -457,6 +650,7 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockWorkspaceTree(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")

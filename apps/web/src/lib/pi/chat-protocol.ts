@@ -178,3 +178,23 @@ export type ChatResourcesResponse = {
   agentsFiles: Array<ChatResourceInfo>
   diagnostics: Array<string>
 }
+
+export type WorkspaceTreeNode = {
+  name: string
+  path: string
+  type: "directory" | "file"
+  children?: Array<WorkspaceTreeNode>
+}
+
+export type WorkspaceTreeResponse = {
+  root: string
+  nodes: Array<WorkspaceTreeNode>
+  diagnostics: Array<string>
+}
+
+export type WorkspaceFileResponse = {
+  path: string
+  name: string
+  content: string
+  mediaType: "text/markdown" | "text/plain"
+}
