@@ -1,30 +1,39 @@
 import {
   BookOpen,
+  Bot,
+  Cable,
   CircleAlert,
   ClipboardList,
+  Cpu,
   File,
   FileText,
   Folder,
   HardDrive,
   Library,
+  Monitor,
+  Moon,
   Palette,
   Plug,
   RefreshCw,
+  Sun,
+  Wrench,
   X,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Markdown } from "@workspace/ui/components/agent-elements/markdown"
 import type { LucideIcon } from "lucide-react"
-import type { PointerEvent as ReactPointerEvent } from "react"
+import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 import type {
   ChatResourceInfo,
   ChatResourcesResponse,
+  ChatThinkingLevel,
   WorkspaceFileResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
 
 const RESOURCE_CANVAS_WIDTH_STORAGE_KEY = "fleet-pi-resource-canvas-width"
+const THEME_PREFERENCE_STORAGE_KEY = "fleet-pi-theme-preference"
 const RESOURCE_CANVAS_MIN_WIDTH = 320
 const RESOURCE_CANVAS_VIEWPORT_RATIO = 0.7
 
@@ -35,7 +44,20 @@ type ResourceGroupId =
   | "themes"
   | "agentsFiles"
 
-export type ResourceCanvasTab = "resources" | "workspace"
+export type ResourceCanvasTab = "resources" | "workspace" | "configurations"
+
+export type ThemePreference = "light" | "dark" | "system"
+
+export type ConfigModelInfo = {
+  id: string
+  name: string
+  provider: string
+  modelId: string
+  version?: string
+  reasoning?: boolean
+  available?: boolean
+  thinkingLevel?: ChatThinkingLevel
+}
 
 export function getResourceCanvasInitialWidth() {
   if (typeof window === "undefined") return RESOURCE_CANVAS_MIN_WIDTH
@@ -74,6 +96,29 @@ export function storeResourceCanvasWidth(width: number) {
     RESOURCE_CANVAS_WIDTH_STORAGE_KEY,
     String(clampResourceCanvasWidth(width))
   )
+}
+
+export function readStoredThemePreference(): ThemePreference {
+  if (typeof window === "undefined") return "system"
+
+  const value = window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY)
+  return value === "light" || value === "dark" || value === "system"
+    ? value
+    : "system"
+}
+
+export function storeThemePreference(preference: ThemePreference) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, preference)
+}
+
+export function applyThemePreference(preference: ThemePreference) {
+  if (typeof window === "undefined") return
+
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+  const dark = preference === "dark" || (preference === "system" && systemDark)
+  document.documentElement.classList.toggle("dark", dark)
+  document.documentElement.dataset.theme = dark ? "dark" : "light"
 }
 
 export function ResourceLauncher({
@@ -115,12 +160,15 @@ export function ResourceMobilePanel({
   activeTab,
   error,
   loading,
+  models,
   onOpenChange,
   onRefresh,
   onRefreshWorkspace,
   onTabChange,
+  onThemePreferenceChange,
   open,
   resources,
+  themePreference,
   workspace,
   workspaceError,
   workspaceLoading,
@@ -128,12 +176,15 @@ export function ResourceMobilePanel({
   activeTab: ResourceCanvasTab
   error?: Error | null
   loading: boolean
+  models: Array<ConfigModelInfo>
   onOpenChange: (open: boolean) => void
   onRefresh: () => void
   onRefreshWorkspace: () => void
   onTabChange: (tab: ResourceCanvasTab) => void
+  onThemePreferenceChange: (preference: ThemePreference) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  themePreference: ThemePreference
   workspace: WorkspaceTreeResponse | null
   workspaceError?: Error | null
   workspaceLoading: boolean
@@ -150,12 +201,15 @@ export function ResourceMobilePanel({
         bodyClassName="max-h-[min(620px,calc(100svh-5.75rem))]"
         error={error}
         loading={loading}
+        models={models}
         onClose={() => onOpenChange(false)}
         onRefresh={onRefresh}
         onRefreshWorkspace={onRefreshWorkspace}
         onTabChange={onTabChange}
+        onThemePreferenceChange={onThemePreferenceChange}
         resources={resources}
         shellClassName="w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur"
+        themePreference={themePreference}
         workspace={workspace}
         workspaceError={workspaceError}
         workspaceLoading={workspaceLoading}
@@ -168,13 +222,16 @@ export function ResourceCanvas({
   activeTab,
   error,
   loading,
+  models,
   onClose,
   onRefresh,
   onRefreshWorkspace,
   onResizeStart,
   onTabChange,
+  onThemePreferenceChange,
   open,
   resources,
+  themePreference,
   width,
   workspace,
   workspaceError,
@@ -183,13 +240,16 @@ export function ResourceCanvas({
   activeTab: ResourceCanvasTab
   error?: Error | null
   loading: boolean
+  models: Array<ConfigModelInfo>
   onClose: () => void
   onRefresh: () => void
   onRefreshWorkspace: () => void
   onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void
   onTabChange: (tab: ResourceCanvasTab) => void
+  onThemePreferenceChange: (preference: ThemePreference) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  themePreference: ThemePreference
   width: number
   workspace: WorkspaceTreeResponse | null
   workspaceError?: Error | null
@@ -215,12 +275,15 @@ export function ResourceCanvas({
         bodyClassName="flex-1"
         error={error}
         loading={loading}
+        models={models}
         onClose={onClose}
         onRefresh={onRefresh}
         onRefreshWorkspace={onRefreshWorkspace}
         onTabChange={onTabChange}
+        onThemePreferenceChange={onThemePreferenceChange}
         resources={resources}
         shellClassName="flex h-full min-w-0 flex-1 flex-col overflow-hidden"
+        themePreference={themePreference}
         workspace={workspace}
         workspaceError={workspaceError}
         workspaceLoading={workspaceLoading}
@@ -274,12 +337,15 @@ function ResourcePanel({
   bodyClassName,
   error,
   loading,
+  models,
   onClose,
   onRefresh,
   onRefreshWorkspace,
   onTabChange,
+  onThemePreferenceChange,
   resources,
   shellClassName,
+  themePreference,
   workspace,
   workspaceError,
   workspaceLoading,
@@ -288,21 +354,30 @@ function ResourcePanel({
   bodyClassName: string
   error?: Error | null
   loading: boolean
+  models: Array<ConfigModelInfo>
   onClose: () => void
   onRefresh: () => void
   onRefreshWorkspace: () => void
   onTabChange: (tab: ResourceCanvasTab) => void
+  onThemePreferenceChange: (preference: ThemePreference) => void
   resources: ChatResourcesResponse | null
   shellClassName: string
+  themePreference: ThemePreference
   workspace: WorkspaceTreeResponse | null
   workspaceError?: Error | null
   workspaceLoading: boolean
 }) {
   const groups = getResourceGroups(resources)
   const diagnostics = resources?.diagnostics ?? []
-  const activeLoading = activeTab === "resources" ? loading : workspaceLoading
+  const activeLoading =
+    activeTab === "resources"
+      ? loading
+      : activeTab === "workspace"
+        ? workspaceLoading
+        : false
   const handleRefresh =
     activeTab === "resources" ? onRefresh : onRefreshWorkspace
+  const refreshDisabled = activeTab === "configurations"
 
   return (
     <section className={shellClassName}>
@@ -314,8 +389,9 @@ function ResourcePanel({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={handleRefresh}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+            onClick={refreshDisabled ? undefined : handleRefresh}
+            disabled={refreshDisabled}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-foreground/40"
             aria-label={`Refresh ${activeTab}`}
             title={`Refresh ${activeTab}`}
           >
@@ -345,6 +421,11 @@ function ResourcePanel({
           label="Workspace"
           onClick={() => onTabChange("workspace")}
         />
+        <CanvasTabButton
+          active={activeTab === "configurations"}
+          label="Configurations"
+          onClick={() => onTabChange("configurations")}
+        />
       </div>
       <div className={`${bodyClassName} overflow-y-auto px-3 py-2`}>
         {activeTab === "resources" ? (
@@ -355,11 +436,17 @@ function ResourcePanel({
             loading={loading}
             resources={resources}
           />
-        ) : (
+        ) : activeTab === "workspace" ? (
           <WorkspaceTab
             error={workspaceError}
             loading={workspaceLoading}
             workspace={workspace}
+          />
+        ) : (
+          <ConfigurationsTab
+            models={models}
+            onThemePreferenceChange={onThemePreferenceChange}
+            themePreference={themePreference}
           />
         )}
       </div>
@@ -437,6 +524,251 @@ function ResourcesTab({
         </div>
       )}
     </>
+  )
+}
+
+function ConfigurationsTab({
+  models,
+  onThemePreferenceChange,
+  themePreference,
+}: {
+  models: Array<ConfigModelInfo>
+  onThemePreferenceChange: (preference: ThemePreference) => void
+  themePreference: ThemePreference
+}) {
+  const [allowedModelIds, setAllowedModelIds] = useState<Set<string>>(
+    () => new Set(models.map((model) => model.id))
+  )
+
+  useEffect(() => {
+    setAllowedModelIds((current) => {
+      const next = new Set(current)
+      for (const model of models) next.add(model.id)
+      return next
+    })
+  }, [models])
+
+  const toggleModel = (modelId: string, checked: boolean) => {
+    setAllowedModelIds((current) => {
+      const next = new Set(current)
+      if (checked) next.add(modelId)
+      else next.delete(modelId)
+      return next
+    })
+  }
+
+  return (
+    <div className="space-y-3" data-testid="configurations-tab">
+      <ConfigurationSection icon={Wrench} label="Tools">
+        <ConfigurationRow
+          action="Coming soon"
+          description="Add Pi tools and project extensions to the active workspace."
+          status="UI draft"
+          title="Add tools"
+        />
+        <ConfigurationRow
+          action="Manage"
+          description="Review enabled coding, planning, research, and context tools."
+          status="Local"
+          title="Tool policy"
+        />
+      </ConfigurationSection>
+
+      <ConfigurationSection icon={Cable} label="Connectors">
+        <ConfigurationRow
+          action="Add"
+          description="Prepare external connectors such as GitHub, Linear, Drive, and Slack."
+          status="UI draft"
+          title="Connector catalog"
+        />
+      </ConfigurationSection>
+
+      <ConfigurationSection icon={Cpu} label="LLM Providers">
+        <ConfigurationRow
+          action="Manage"
+          description="Amazon Bedrock is the current provider; additional providers can be configured later."
+          status="Active"
+          title="Amazon Bedrock"
+        />
+        <ConfigurationRow
+          action="Add"
+          description="Reserve space for OpenAI-compatible, local, or custom provider entries."
+          status="UI draft"
+          title="Provider setup"
+        />
+      </ConfigurationSection>
+
+      <ConfigurationSection icon={Bot} label="Allowed Models">
+        {models.length === 0 ? (
+          <div className="rounded-[6px] px-2 py-1.5 text-[12px] text-foreground/35">
+            No models loaded.
+          </div>
+        ) : (
+          models.map((model) => (
+            <ModelAllowRow
+              key={model.id}
+              checked={allowedModelIds.has(model.id)}
+              model={model}
+              onCheckedChange={(checked) => toggleModel(model.id, checked)}
+            />
+          ))
+        )}
+      </ConfigurationSection>
+
+      <ConfigurationSection icon={Palette} label="Personalization">
+        <div className="rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+          <div className="mb-2 flex min-w-0 items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-medium text-foreground/75">
+                Theme
+              </div>
+              <p className="mt-0.5 text-[11px] leading-4 text-foreground/40">
+                Choose Light, Dark, or follow the system appearance.
+              </p>
+            </div>
+          </div>
+          <div className="flex rounded-[7px] bg-foreground/5 p-0.5">
+            <ThemeSegment
+              active={themePreference === "light"}
+              icon={Sun}
+              label="Light"
+              onClick={() => onThemePreferenceChange("light")}
+            />
+            <ThemeSegment
+              active={themePreference === "dark"}
+              icon={Moon}
+              label="Dark"
+              onClick={() => onThemePreferenceChange("dark")}
+            />
+            <ThemeSegment
+              active={themePreference === "system"}
+              icon={Monitor}
+              label="System"
+              onClick={() => onThemePreferenceChange("system")}
+            />
+          </div>
+        </div>
+      </ConfigurationSection>
+    </div>
+  )
+}
+
+function ConfigurationSection({
+  children,
+  icon: Icon,
+  label,
+}: {
+  children: ReactNode
+  icon: LucideIcon
+  label: string
+}) {
+  return (
+    <div className="py-1">
+      <div className="mb-1 flex items-center gap-2 text-[11px] font-medium tracking-normal text-foreground/35 uppercase">
+        <Icon className="size-3" />
+        <span>{label}</span>
+      </div>
+      <div className="space-y-1">{children}</div>
+    </div>
+  )
+}
+
+function ConfigurationRow({
+  action,
+  description,
+  status,
+  title,
+}: {
+  action: string
+  description: string
+  status: string
+  title: string
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
+            {title}
+          </span>
+          <span className="shrink-0 rounded-[4px] bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
+            {status}
+          </span>
+        </div>
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-foreground/40">
+          {description}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled
+        className="shrink-0 rounded-[6px] border border-border/60 px-2 py-1 text-[11px] font-medium text-foreground/35"
+      >
+        {action}
+      </button>
+    </div>
+  )
+}
+
+function ModelAllowRow({
+  checked,
+  model,
+  onCheckedChange,
+}: {
+  checked: boolean
+  model: ConfigModelInfo
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <label className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onCheckedChange(event.target.checked)}
+        className="size-3.5 shrink-0 accent-foreground"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
+            {model.name}
+          </span>
+          <span className="shrink-0 rounded-[4px] bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
+            {model.available === false ? "Unavailable" : "Available"}
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-[11px] leading-4 text-foreground/40">
+          {model.provider} / {model.modelId}
+        </p>
+      </div>
+    </label>
+  )
+}
+
+function ThemeSegment({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  icon: LucideIcon
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`flex h-7 min-w-0 flex-1 items-center justify-center gap-1 rounded-[6px] px-2 text-[11px] font-medium transition-colors ${
+        active
+          ? "bg-background text-foreground/75 shadow-sm"
+          : "text-foreground/40 hover:text-foreground/65"
+      }`}
+    >
+      <Icon className="size-3" />
+      <span className="truncate">{label}</span>
+    </button>
   )
 }
 

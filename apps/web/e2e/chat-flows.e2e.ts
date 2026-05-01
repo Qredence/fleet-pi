@@ -586,6 +586,71 @@ test.describe("chat flows", () => {
     ).toBeVisible()
   })
 
+  test("shows configurations and applies theme preference", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(canvas).toBeVisible()
+    await canvas
+      .getByRole("button", { name: "Configurations", exact: true })
+      .click()
+
+    const configurations = canvas.locator('[data-testid="configurations-tab"]')
+    await expect(configurations).toBeVisible()
+    await expect(
+      configurations.getByText("Tools", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Connectors", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("LLM Providers", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Allowed Models", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Personalization", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Claude Sonnet 4.6", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Claude Opus 4.6", { exact: true })
+    ).toBeVisible()
+
+    await configurations.getByRole("button", { name: "Dark" }).click()
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.classList.contains("dark"))
+      )
+      .toBe(true)
+
+    await configurations.getByRole("button", { name: "Light" }).click()
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.classList.contains("dark"))
+      )
+      .toBe(false)
+
+    await canvas.getByRole("button", { name: "Resources", exact: true }).click()
+    await expect(
+      canvas.getByText("fleet-pi-orientation", { exact: true })
+    ).toBeVisible()
+    await canvas.getByRole("button", { name: "Workspace", exact: true }).click()
+    await expect(canvas.locator('[data-testid="workspace-tree"]')).toBeVisible()
+  })
+
   test("resizes and persists the Pi resources canvas", async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 820 })
     await mockChatModels(page)

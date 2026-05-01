@@ -214,7 +214,9 @@ it stays as a compact overlay. The desktop canvas opens at 70% of the viewport
 width and clamps resizing to that same maximum. Use it to inspect which skills,
 prompts, extensions, themes, context files, and loader diagnostics are available
 to the current session. The same canvas includes a `Workspace` tab that renders
-the read-only repo-local `agent-workspace` tree and Markdown file previews.
+the read-only repo-local `agent-workspace` tree and Markdown file previews, plus
+a `Configurations` tab for UI-first tools, connectors, provider, model
+allowlist, and personalization controls.
 
 ## Agent Workspace
 
@@ -224,6 +226,14 @@ creates the expected directory tree and seeded Markdown stubs without
 overwriting existing files. The Workspace tab is read-only in the UI and can
 preview Markdown file contents; edits still happen through normal repo-scoped
 agent tools.
+
+## Local Configuration Surface
+
+The `Configurations` canvas tab is intentionally UI-first for tools,
+connectors, provider setup, and model allowlist drafts. It does not mutate
+`.pi/settings.json` or Pi runtime settings. Theme personalization is functional:
+Light, Dark, and System preferences are stored in localStorage under
+`fleet-pi-theme-preference` and applied through the root `.dark` class.
 
 ## Project Pi Resources
 

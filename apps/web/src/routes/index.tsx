@@ -28,15 +28,21 @@ import type {
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
-import type { ResourceCanvasTab } from "@/components/pi/resource-library"
+import type {
+  ResourceCanvasTab,
+  ThemePreference,
+} from "@/components/pi/resource-library"
 import {
   ResourceCanvas,
   ResourceLauncher,
   ResourceMobilePanel,
+  applyThemePreference,
   clampResourceCanvasWidth,
   getResourceCanvasInitialWidth,
   readStoredResourceCanvasWidth,
+  readStoredThemePreference,
   storeResourceCanvasWidth,
+  storeThemePreference,
 } from "@/components/pi/resource-library"
 
 export const Route = createFileRoute("/")({ component: Chat })
@@ -44,6 +50,8 @@ export const Route = createFileRoute("/")({ component: Chat })
 type ChatModelOption = ModelOption & {
   provider: string
   modelId: string
+  available?: boolean
+  reasoning?: boolean
   thinkingLevel?: ChatModelInfo["defaultThinkingLevel"]
 }
 
@@ -640,6 +648,8 @@ function toModelOption(model: ChatModelInfo): ChatModelOption {
     name: model.name,
     provider: model.provider,
     modelId: model.id,
+    available: model.available,
+    reasoning: model.reasoning,
     thinkingLevel: model.defaultThinkingLevel,
   }
 }
@@ -718,6 +728,9 @@ function Chat() {
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const [resourceCanvasTab, setResourceCanvasTab] =
     useState<ResourceCanvasTab>("resources")
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    readStoredThemePreference()
+  )
   const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
     readStoredResourceCanvasWidth()
   )
@@ -743,6 +756,25 @@ function Chat() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    applyThemePreference(themePreference)
+
+    if (themePreference !== "system") return
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleChange = () => applyThemePreference("system")
+    media.addEventListener("change", handleChange)
+    return () => media.removeEventListener("change", handleChange)
+  }, [themePreference])
+
+  const handleThemePreferenceChange = useCallback(
+    (preference: ThemePreference) => {
+      setThemePreference(preference)
+      storeThemePreference(preference)
+      applyThemePreference(preference)
+    },
+    []
+  )
 
   const refreshResources = useCallback(async () => {
     setResourcesLoading(true)
@@ -928,12 +960,15 @@ function Chat() {
           activeTab={resourceCanvasTab}
           error={resourcesError}
           loading={resourcesLoading}
+          models={models}
           onOpenChange={setResourcesOpen}
           onRefresh={() => void refreshResources()}
           onRefreshWorkspace={() => void refreshWorkspace()}
           onTabChange={setResourceCanvasTab}
+          onThemePreferenceChange={handleThemePreferenceChange}
           open={resourcesOpen}
           resources={resources}
+          themePreference={themePreference}
           workspace={workspaceTree}
           workspaceError={workspaceError}
           workspaceLoading={workspaceLoading}
@@ -1008,13 +1043,16 @@ function Chat() {
         activeTab={resourceCanvasTab}
         error={resourcesError}
         loading={resourcesLoading}
+        models={models}
         onClose={() => setResourcesOpen(false)}
         onRefresh={() => void refreshResources()}
         onRefreshWorkspace={() => void refreshWorkspace()}
         onResizeStart={handleResourceCanvasResizeStart}
         onTabChange={setResourceCanvasTab}
+        onThemePreferenceChange={handleThemePreferenceChange}
         open={resourcesOpen}
         resources={resources}
+        themePreference={themePreference}
         width={resourceCanvasWidth}
         workspace={workspaceTree}
         workspaceError={workspaceError}
