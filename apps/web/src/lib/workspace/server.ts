@@ -1,12 +1,5 @@
 import { constants } from "node:fs"
-import {
-  access,
-  mkdir,
-  readFile,
-  readdir,
-  stat,
-  writeFile,
-} from "node:fs/promises"
+import { access, mkdir, open, readdir, writeFile } from "node:fs/promises"
 import {
   basename,
   extname,
@@ -181,20 +174,26 @@ export async function loadAgentWorkspaceFile(
   await ensureAgentWorkspace()
 
   const resolvedPath = resolveWorkspacePath(filePath)
-  const fileStats = await stat(resolvedPath)
-  if (!fileStats.isFile()) {
-    throw new WorkspaceFileError("Workspace path is not a file.", 400)
-  }
+  const fileHandle = await open(resolvedPath, "r")
 
-  const content = await readFile(resolvedPath, "utf8")
-  return {
-    path: toWorkspacePath(resolvedPath),
-    name: basename(resolvedPath),
-    content,
-    mediaType:
-      extname(resolvedPath).toLowerCase() === ".md"
-        ? "text/markdown"
-        : "text/plain",
+  try {
+    const fileStats = await fileHandle.stat()
+    if (!fileStats.isFile()) {
+      throw new WorkspaceFileError("Workspace path is not a file.", 400)
+    }
+
+    const content = await fileHandle.readFile({ encoding: "utf8" })
+    return {
+      path: toWorkspacePath(resolvedPath),
+      name: basename(resolvedPath),
+      content,
+      mediaType:
+        extname(resolvedPath).toLowerCase() === ".md"
+          ? "text/markdown"
+          : "text/plain",
+    }
+  } finally {
+    await fileHandle.close()
   }
 }
 
