@@ -53,30 +53,31 @@ Hook implementations live under `scripts/symphony/`.
 
 Validate the effective workflow config:
 
-```zsh
+```bash
 # from repo root
-zsh ./scripts/symphony/validate-workflow.zsh
+bash ./scripts/symphony/validate-workflow.sh
 ```
 
 Run the Symphony service:
 
-```zsh
+```bash
 # from repo root
-zsh ./scripts/symphony/run-service.zsh
+bash ./scripts/symphony/run-service.sh
 ```
 
 Run the plugin test lane from the `qredence-plugins` checkout:
 
-```zsh
+```bash
 # from repo root
-zsh ./scripts/symphony/test-plugin.zsh
+bash ./scripts/symphony/test-plugin.sh
 ```
 
 All three wrappers default to the sibling checkout at
 `/Volumes/SSD-T7/qredence-environnement/qredence-plugins`. Override that by
 setting `SYMPHONY_PLUGIN_REPO` when needed.
 
-The validation and runtime wrappers source the repo-root `.env` by default, so
+The validation and runtime wrappers load values from the repo-root `.env` by
+default, so
 keep `LINEAR_API_KEY=...` there for local operator runs. To bypass the file and
 use the current shell environment directly, set `SYMPHONY_SKIP_DOTENV=1`.
 

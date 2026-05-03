@@ -7,7 +7,7 @@
 - Run workspace commands with `pnpm --filter <workspace> <script>` when only one package is affected.
 - Use the root `desktop:dev` script when you need the Electron shell and local web server to share desktop auth/state wiring during development.
 - Use the root Symphony wrapper scripts when operating Fleet Pi through Symphony: `pnpm symphony:validate` for config validation, `pnpm symphony:test-plugin` for the upstream plugin test lane, and the `symphony:run` package script for the long-running service.
-- The shell-based Symphony validation/runtime wrappers source the repo-root `.env` by default; keep `LINEAR_API_KEY` there unless you intentionally bypass it with `SYMPHONY_SKIP_DOTENV=1`.
+- The shell-based Symphony validation/runtime wrappers load values from the repo-root `.env` by default; keep `LINEAR_API_KEY` there unless you intentionally bypass it with `SYMPHONY_SKIP_DOTENV=1`.
 - In `WORKFLOW.md`, `tracker.project_slug` must use Linear's project `slugId` (for Fleet Pi: `7c8589daab4e`), not the human-readable project name.
 
 ## Validation
