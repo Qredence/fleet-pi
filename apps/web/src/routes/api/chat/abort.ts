@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { ChatSessionMetadata } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
-import { abortActiveSession, getErrorMessage } from "@/lib/pi/server"
+import { resolveAppRuntimeContext } from "@/lib/desktop/server"
+import { abortActiveSession } from "@/lib/pi/server"
+import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/abort")({
   server: {
@@ -11,19 +13,20 @@ export const Route = createFileRoute("/api/chat/abort")({
           request.headers.get("x-request-id") ?? crypto.randomUUID()
         const log = createRequestLogger(requestId)
 
-        try {
-          const metadata = (await request.json()) as ChatSessionMetadata
-          log.info({ sessionId: metadata.sessionId }, "abort request received")
-          const aborted = await abortActiveSession(metadata)
-          log.info({ aborted }, "abort request completed")
-          return Response.json({ aborted })
-        } catch (error) {
-          log.error({ error: getErrorMessage(error) }, "abort request failed")
-          return Response.json(
-            { message: getErrorMessage(error) },
-            { status: 500 }
-          )
-        }
+        return wrapApiHandler(
+          async () => {
+            resolveAppRuntimeContext(request, { requireProject: false })
+            const metadata = (await request.json()) as ChatSessionMetadata
+            log.info(
+              { sessionId: metadata.sessionId },
+              "abort request received"
+            )
+            const aborted = await abortActiveSession(metadata)
+            log.info({ aborted }, "abort request completed")
+            return Response.json({ aborted })
+          },
+          { log }
+        )
       },
     },
   },

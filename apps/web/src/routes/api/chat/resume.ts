@@ -1,21 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { ChatSessionMetadata } from "@/lib/pi/chat-protocol"
-import { getErrorMessage, hydrateChatSession } from "@/lib/pi/server"
+import { resolveAppRuntimeContext } from "@/lib/desktop/server"
+import { hydrateChatSession } from "@/lib/pi/server"
+import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/resume")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        try {
+      POST: async ({ request }) =>
+        wrapApiHandler(async () => {
           const metadata = (await request.json()) as ChatSessionMetadata
-          return Response.json(await hydrateChatSession(metadata))
-        } catch (error) {
           return Response.json(
-            { message: getErrorMessage(error) },
-            { status: 500 },
+            await hydrateChatSession(
+              resolveAppRuntimeContext(request),
+              metadata
+            )
           )
-        }
-      },
+        }),
     },
   },
 })

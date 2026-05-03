@@ -4,7 +4,9 @@ import type {
   ChatQuestionAnswerResponse,
 } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
+import { resolveAppRuntimeContext } from "@/lib/desktop/server"
 import { answerChatQuestion } from "@/lib/pi/server"
+import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/question")({
   server: {
@@ -14,19 +16,28 @@ export const Route = createFileRoute("/api/chat/question")({
           request.headers.get("x-request-id") ?? crypto.randomUUID()
         const log = createRequestLogger(requestId)
 
-        const body =
-          (await request.json()) as Partial<ChatQuestionAnswerRequest>
-        if (!body.answer) {
-          log.warn("missing answer in question request")
-          return new Response("Missing answer", { status: 400 })
-        }
+        return wrapApiHandler(
+          async () => {
+            resolveAppRuntimeContext(request, { requireProject: false })
+            const body =
+              (await request.json()) as Partial<ChatQuestionAnswerRequest>
+            if (!body.answer) {
+              log.warn("missing answer in question request")
+              return new Response("Missing answer", { status: 400 })
+            }
 
-        log.info({ toolCallId: body.toolCallId }, "question answer received")
-        const result: ChatQuestionAnswerResponse = answerChatQuestion(
-          body as ChatQuestionAnswerRequest
+            log.info(
+              { toolCallId: body.toolCallId },
+              "question answer received"
+            )
+            const result: ChatQuestionAnswerResponse = answerChatQuestion(
+              body as ChatQuestionAnswerRequest
+            )
+            log.info({ ok: result.ok }, "question answer processed")
+            return Response.json(result, { status: result.ok ? 200 : 404 })
+          },
+          { log }
         )
-        log.info({ ok: result.ok }, "question answer processed")
-        return Response.json(result, { status: result.ok ? 200 : 404 })
       },
     },
   },
