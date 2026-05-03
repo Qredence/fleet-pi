@@ -58,7 +58,11 @@ PY
   )
 }
 
-if [[ "${SYMPHONY_SKIP_DOTENV:-0}" != "1" ]]; then
+if [[ "${SYMPHONY_SKIP_DOTENV:-0}" != "1" && -f "$dotenv_path" ]]; then
+  command -v python3 >/dev/null 2>&1 || {
+    echo "python3 is required to load $dotenv_path" >&2
+    exit 1
+  }
   load_dotenv "$dotenv_path"
 fi
 
