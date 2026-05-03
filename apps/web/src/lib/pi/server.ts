@@ -50,8 +50,8 @@ import type {
   ChatSessionResponse,
   ChatThinkingLevel,
 } from "./chat-protocol"
+import type { AppRuntimeContext } from "@/lib/desktop/server"
 
-const DEFAULT_REPO_ROOT = "/Volumes/SSD-T7/work-location/fleet-pi/fleet-pi"
 const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"
 const RUNTIME_TTL_MS = Number(process.env.FLEET_PI_RUNTIME_TTL_MS ?? 600_000)
 const THINKING_LEVELS = new Set<ChatThinkingLevel>([
@@ -98,12 +98,6 @@ bedrockCircuitBreaker.fallback(() => {
 })
 
 const runtimeRecords = new Map<string, ActiveSessionRecord>()
-
-export function getRepoRoot() {
-  return realpathSync(
-    resolve(process.env.FLEET_PI_REPO_ROOT ?? DEFAULT_REPO_ROOT)
-  )
-}
 
 export function encodeEvent(event: unknown) {
   return new TextEncoder().encode(`${JSON.stringify(event)}\n`)
@@ -161,13 +155,12 @@ export async function queuePromptOnActiveSession(
 }
 
 export async function createPiRuntime(
+  context: AppRuntimeContext,
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
-  const sessionDir = getSessionDir(repoRoot, services)
+  const services = await createSessionServices(context)
+  const sessionDir = getSessionDir(context, context.projectRoot, services)
   const mayReuseRuntime =
     !metadata.sessionFile ||
     isUsableSessionFile(metadata.sessionFile, sessionDir)
@@ -193,7 +186,7 @@ export async function createPiRuntime(
 
   const { sessionManager, sessionReset } = await createSessionManager(
     metadata,
-    repoRoot,
+    context.projectRoot,
     sessionDir
   )
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
@@ -202,7 +195,7 @@ export async function createPiRuntime(
     sessionManager: runtimeSessionManager,
     sessionStartEvent,
   }) => {
-    const runtimeServices = await createAgentSessionServices({
+    const runtimeServices = await createSessionServices(context, {
       cwd,
       agentDir: runtimeAgentDir,
       resourceLoaderOptions: {
@@ -231,8 +224,8 @@ export async function createPiRuntime(
     }
   }
   const runtime = await createAgentSessionRuntime(createRuntime, {
-    cwd: repoRoot,
-    agentDir,
+    cwd: context.projectRoot,
+    agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
     sessionManager,
   })
   trackRuntime(runtime)
@@ -272,13 +265,13 @@ export function answerChatQuestion(
       }
 }
 
-export async function createNewChatSession(): Promise<ChatSessionResponse> {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
+export async function createNewChatSession(
+  context: AppRuntimeContext
+): Promise<ChatSessionResponse> {
+  const services = await createSessionServices(context)
   const sessionManager = SessionManager.create(
-    repoRoot,
-    getSessionDir(repoRoot, services)
+    context.projectRoot,
+    getSessionDir(context, context.projectRoot, services)
   )
 
   return {
@@ -288,16 +281,22 @@ export async function createNewChatSession(): Promise<ChatSessionResponse> {
 }
 
 export async function hydrateChatSession(
+  context: AppRuntimeContext,
   metadata: ChatSessionMetadata
 ): Promise<ChatSessionResponse> {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
-  const sessionDir = getSessionDir(repoRoot, services)
-  const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
+  const services = await createSessionServices(context)
+  const sessionDir = getSessionDir(context, context.projectRoot, services)
+  const sessionFile = await resolveSessionFile(
+    metadata,
+    context.projectRoot,
+    sessionDir
+  )
 
   if (!sessionFile) {
-    const sessionManager = SessionManager.create(repoRoot, sessionDir)
+    const sessionManager = SessionManager.create(
+      context.projectRoot,
+      sessionDir
+    )
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -305,9 +304,13 @@ export async function hydrateChatSession(
     }
   }
 
-  const sessionManager = openSessionManager(sessionFile, sessionDir, repoRoot)
+  const sessionManager = openSessionManager(
+    sessionFile,
+    sessionDir,
+    context.projectRoot
+  )
   if (!sessionManager) {
-    const fresh = SessionManager.create(repoRoot, sessionDir)
+    const fresh = SessionManager.create(context.projectRoot, sessionDir)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -321,13 +324,13 @@ export async function hydrateChatSession(
   }
 }
 
-export async function listChatSessions(): Promise<Array<ChatSessionInfo>> {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
+export async function listChatSessions(
+  context: AppRuntimeContext
+): Promise<Array<ChatSessionInfo>> {
+  const services = await createSessionServices(context)
   const sessions = await SessionManager.list(
-    repoRoot,
-    getSessionDir(repoRoot, services)
+    context.projectRoot,
+    getSessionDir(context, context.projectRoot, services)
   )
 
   return sessions.map((session) => ({
@@ -342,10 +345,10 @@ export async function listChatSessions(): Promise<Array<ChatSessionInfo>> {
   }))
 }
 
-export async function loadChatModels(): Promise<ChatModelsResponse> {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
+export async function loadChatModels(
+  context: AppRuntimeContext
+): Promise<ChatModelsResponse> {
+  const services = await createSessionServices(context)
   const available = services.modelRegistry.getAvailable()
   const availableKeys = new Set(available.map(modelKey))
   const all = services.modelRegistry.getAll()
@@ -382,10 +385,10 @@ export async function loadChatModels(): Promise<ChatModelsResponse> {
   }
 }
 
-export async function loadChatResources(): Promise<ChatResourcesResponse> {
-  const repoRoot = getRepoRoot()
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const services = await createAgentSessionServices({ cwd: repoRoot, agentDir })
+export async function loadChatResources(
+  context: AppRuntimeContext
+): Promise<ChatResourcesResponse> {
+  const services = await createSessionServices(context)
   const skills = services.resourceLoader.getSkills()
   const prompts = services.resourceLoader.getPrompts()
   const extensions = services.resourceLoader.getExtensions()
@@ -574,7 +577,27 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
   )
 }
 
-function getSessionDir(repoRoot: string, services: AgentSessionServices) {
+async function createSessionServices(
+  context: AppRuntimeContext,
+  overrides?: Parameters<typeof createAgentSessionServices>[0]
+) {
+  return createAgentSessionServices({
+    cwd: context.projectRoot,
+    agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
+    ...overrides,
+  })
+}
+
+function getSessionDir(
+  context: AppRuntimeContext,
+  repoRoot: string,
+  services: AgentSessionServices
+) {
+  if (context.sessionDir) {
+    mkdirSync(context.sessionDir, { recursive: true })
+    return context.sessionDir
+  }
+
   const configuredSessionDir = services.settingsManager.getSessionDir()
   const sessionDir = configuredSessionDir
     ? resolve(repoRoot, configuredSessionDir)

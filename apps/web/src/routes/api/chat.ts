@@ -5,6 +5,10 @@ import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 import {
+  getResponseStatus,
+  resolveAppRuntimeContext,
+} from "@/lib/desktop/server"
+import {
   appendTextPart,
   createPiRuntime,
   encodeEvent,
@@ -32,146 +36,165 @@ export const Route = createFileRoute("/api/chat")({
           request.headers.get("x-request-id") ?? crypto.randomUUID()
         const log = createRequestLogger(requestId)
 
-        const body = (await request.json()) as ChatRequest
-        const rawPrompt =
-          typeof body.message === "string" ? body.message.trim() : ""
-        const prompt = sanitizePii(rawPrompt)
+        try {
+          const runtimeContext = resolveAppRuntimeContext(request)
+          const body = (await request.json()) as ChatRequest
+          const rawPrompt =
+            typeof body.message === "string" ? body.message.trim() : ""
+          const prompt = sanitizePii(rawPrompt)
 
-        log.info(
-          { mode: body.mode, hasMessage: Boolean(prompt) },
-          "chat request received"
-        )
-
-        if (!prompt) {
-          log.warn("missing message in chat request")
-          return new Response("Missing message", { status: 400 })
-        }
-
-        if (body.streamingBehavior) {
-          const queued = await queuePromptOnActiveSession(
-            body,
-            prompt,
-            body.streamingBehavior
+          log.info(
+            { mode: body.mode, hasMessage: Boolean(prompt) },
+            "chat request received"
           )
-          if (queued) {
-            log.info(
-              { streamingBehavior: body.streamingBehavior },
-              "prompt queued on active session"
-            )
-            return streamEvents([
-              {
-                type: "queue",
-                steering: queued.steering,
-                followUp: queued.followUp,
-              },
-            ])
+
+          if (!prompt) {
+            log.warn("missing message in chat request")
+            return new Response("Missing message", { status: 400 })
           }
-        }
 
-        const assistantId = crypto.randomUUID()
-
-        const readable = new ReadableStream<Uint8Array>({
-          async start(controller) {
-            const send = (event: ChatStreamEvent) => {
-              controller.enqueue(encodeEvent(event))
-            }
-
-            let unsubscribe: (() => void) | undefined
-            let releaseRuntime: (() => void) | undefined
-            let session:
-              | Awaited<
-                  ReturnType<typeof createPiRuntime>
-                >["runtime"]["session"]
-              | undefined
-            let parts: Array<ChatMessagePart> = []
-            let thinkingText = ""
-            const toolInputs = new Map<string, Record<string, unknown>>()
-
-            try {
-              log.info("creating pi runtime")
-              const result = await createPiRuntime(body, body.model)
-              session = result.runtime.session
-              releaseRuntime = retainPiRuntime(result.runtime)
+          if (body.streamingBehavior) {
+            const queued = await queuePromptOnActiveSession(
+              body,
+              prompt,
+              body.streamingBehavior
+            )
+            if (queued) {
               log.info(
+                { streamingBehavior: body.streamingBehavior },
+                "prompt queued on active session"
+              )
+              return streamEvents([
                 {
+                  type: "queue",
+                  steering: queued.steering,
+                  followUp: queued.followUp,
+                },
+              ])
+            }
+          }
+
+          const assistantId = crypto.randomUUID()
+
+          const readable = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const send = (event: ChatStreamEvent) => {
+                controller.enqueue(encodeEvent(event))
+              }
+
+              let unsubscribe: (() => void) | undefined
+              let releaseRuntime: (() => void) | undefined
+              let session:
+                | Awaited<
+                    ReturnType<typeof createPiRuntime>
+                  >["runtime"]["session"]
+                | undefined
+              let parts: Array<ChatMessagePart> = []
+              let thinkingText = ""
+              const toolInputs = new Map<string, Record<string, unknown>>()
+
+              try {
+                log.info("creating pi runtime")
+                const result = await createPiRuntime(
+                  runtimeContext,
+                  body,
+                  body.model
+                )
+                session = result.runtime.session
+                releaseRuntime = retainPiRuntime(result.runtime)
+                log.info(
+                  {
+                    sessionId: session.sessionId,
+                    sessionReset: result.sessionReset,
+                  },
+                  "pi runtime created"
+                )
+                send(createPlanEvent(getPlanState(result.runtime)))
+                const abort = () => void session?.abort()
+
+                request.signal.addEventListener("abort", abort, { once: true })
+                send({
+                  type: "start",
+                  id: assistantId,
+                  sessionFile: session.sessionFile,
                   sessionId: session.sessionId,
                   sessionReset: result.sessionReset,
-                },
-                "pi runtime created"
-              )
-              send(createPlanEvent(getPlanState(result.runtime)))
-              const abort = () => void session?.abort()
+                  diagnostics: result.diagnostics,
+                })
 
-              request.signal.addEventListener("abort", abort, { once: true })
-              send({
-                type: "start",
-                id: assistantId,
-                sessionFile: session.sessionFile,
-                sessionId: session.sessionId,
-                sessionReset: result.sessionReset,
-                diagnostics: result.diagnostics,
-              })
+                unsubscribe = session.subscribe((event) => {
+                  const nextParts = handleSessionEvent(
+                    event,
+                    parts,
+                    thinkingText,
+                    toolInputs,
+                    send
+                  )
+                  parts = nextParts.parts
+                  thinkingText = nextParts.thinkingText
+                })
 
-              unsubscribe = session.subscribe((event) => {
-                const nextParts = handleSessionEvent(
-                  event,
-                  parts,
-                  thinkingText,
-                  toolInputs,
-                  send
-                )
-                parts = nextParts.parts
-                thinkingText = nextParts.thinkingText
-              })
+                await session.prompt(prompt, { expandPromptTemplates: true })
+                request.signal.removeEventListener("abort", abort)
 
-              await session.prompt(prompt, { expandPromptTemplates: true })
-              request.signal.removeEventListener("abort", abort)
-
-              const assistantText = textFromParts(parts)
-              if (body.planAction === "execute") {
-                const { state } = updateExecutionProgress(
-                  result.runtime,
-                  assistantText
-                )
-                send(createPlanEvent(state))
-              } else if (body.mode === "plan") {
-                const state = updatePlanFromAssistantText(
-                  result.runtime,
-                  assistantText
-                )
-                const decisionPart = createPlanDecisionPart(assistantId, state)
-                if (decisionPart) {
-                  parts = upsertToolPart(parts, decisionPart)
-                  send({ type: "tool", part: decisionPart })
+                const assistantText = textFromParts(parts)
+                if (body.planAction === "execute") {
+                  const { state } = updateExecutionProgress(
+                    result.runtime,
+                    assistantText
+                  )
+                  send(createPlanEvent(state))
+                } else if (body.mode === "plan") {
+                  const state = updatePlanFromAssistantText(
+                    result.runtime,
+                    assistantText
+                  )
+                  const decisionPart = createPlanDecisionPart(
+                    assistantId,
+                    state
+                  )
+                  if (decisionPart) {
+                    parts = upsertToolPart(parts, decisionPart)
+                    send({ type: "tool", part: decisionPart })
+                  }
+                  send(createPlanEvent(state))
                 }
-                send(createPlanEvent(state))
-              }
 
-              log.info(
-                { assistantId, partCount: parts.length },
-                "chat stream completed"
-              )
-              send({
-                type: "done",
-                message: toChatMessage(assistantId, "assistant", parts),
-                sessionFile: session.sessionFile,
-                sessionId: session.sessionId,
-                sessionReset: result.sessionReset,
-              })
-            } catch (error) {
-              log.error({ error: getErrorMessage(error) }, "chat stream error")
-              if (!request.signal.aborted) {
-                send({ type: "error", message: getErrorMessage(error) })
+                log.info(
+                  { assistantId, partCount: parts.length },
+                  "chat stream completed"
+                )
+                send({
+                  type: "done",
+                  message: toChatMessage(assistantId, "assistant", parts),
+                  sessionFile: session.sessionFile,
+                  sessionId: session.sessionId,
+                  sessionReset: result.sessionReset,
+                })
+              } catch (error) {
+                log.error(
+                  { error: getErrorMessage(error) },
+                  "chat stream error"
+                )
+                if (!request.signal.aborted) {
+                  send({ type: "error", message: getErrorMessage(error) })
+                }
+              } finally {
+                unsubscribe?.()
+                releaseRuntime?.()
+                controller.close()
               }
-            } finally {
-              unsubscribe?.()
-              releaseRuntime?.()
-              controller.close()
-            }
-          },
-        })
+            },
+          })
 
-        return createNdjsonResponse(readable)
+          return createNdjsonResponse(readable)
+        } catch (error) {
+          log.error({ error: getErrorMessage(error) }, "chat request failed")
+          return Response.json(
+            { message: getErrorMessage(error) },
+            { status: getResponseStatus(error) }
+          )
+        }
       },
     },
   },
