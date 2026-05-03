@@ -6,7 +6,7 @@ environments:
     url: http://localhost:3000
     restrictions:
       - "Requires AWS credentials with Bedrock access for chat functionality"
-      - "No persistent data — sessions stored locally in .fleet/sessions"
+      - "No persistent user data — sessions stored locally in .fleet/sessions"
 
 default_target: dev
 
@@ -26,6 +26,7 @@ personas:
       - sessions
       - plan_mode
       - model_selection
+      - workspace_browser
     cannot_do: []
 
   - name: fresh_session
@@ -44,7 +45,7 @@ apps:
       - "packages/ui/**"
     skill: qa-web
     test_tool: agent-browser
-    build_command: "pnpm build"
+    build_command: "pnpm --filter web build"
 
 feature_flags:
   provider: none
@@ -58,8 +59,12 @@ integrations:
     notes: "Chat functionality requires valid AWS credentials with Bedrock model access"
 
 cleanup:
-  auto_cleanup: false
-  strategy: none
-  instructions: "Tests create temporary Pi sessions under .fleet/sessions. These are ephemeral and can be left for manual cleanup or ignored."
+  auto_cleanup: true
+  strategy: api-call
+  instructions: >
+    Delete temporary Pi sessions via the session API and workspace temp files
+    via the workspace file API as needed. Ephemeral sessions under .fleet/sessions
+    and any files created in agent-workspace/ during testing should be removed
+    after the test run.
 
 failure_learning: suggest_in_report

@@ -148,4 +148,3 @@ Do NOT suggest updates for failures already covered in Known Failure Modes, bad 
 Read the `failure_learning` field from config.yaml to determine the strategy:
 
 - `suggest_in_report` (default): include the table in the PR comment report only. Do NOT write `skill-updates.json`.
-- `auto_commit` or `open_pr`: include the table in the report AND write a `qa-results/skill-updates.json` file so the workflow can apply the edits outside the sandbox. The workflow handles committing/PR creation -- the agent just writes the JSON.

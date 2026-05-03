@@ -1,4 +1,4 @@
-# QA Install Progress — generated 2026-04-29
+# QA Install Progress — generated 2026-05-03
 # Delete this file to restart the questionnaire from scratch.
 
 phase: completed
@@ -7,11 +7,12 @@ categories:
     environments:
       - dev (localhost:3000)
     default_target: dev
-    restrictions: []
+    restrictions:
+      - "Requires AWS credentials with Bedrock access for chat functionality"
 
   personas:
     - name: anonymous
-      description: Anonymous user with no authentication
+      description: Anonymous user with no authentication required
       email: null
       credentials_source: null
       test_focus:
@@ -19,18 +20,31 @@ categories:
         - tools
         - sessions
         - plan_mode
+        - model_selection
+        - workspace_browser
       cannot_do: []
 
+    - name: fresh_session
+      description: New session with no prior chat history
+      email_pattern: null
+      test_focus:
+        - onboarding
+        - empty_states
+        - first_message
+        - session_creation
+
   critical_flows:
-    - chat message + streaming response
-    - tool cards (read/write/edit/bash)
-    - session management (new/resume/list/hydrate)
-    - model selection
-    - agent/plan mode switching
-    - plan mode with questions
-    - follow-up queuing
-    - abort stream
-    - page refresh hydration
+    - Page Load & Initial State
+    - Send Chat Message & Stream Response
+    - Tool Execution Cards (read/write/edit/bash)
+    - Session Management (new/resume/list/hydrate)
+    - Model Selection
+    - Agent / Plan Mode Switching
+    - Plan Mode Question Prompts
+    - Follow-up Queuing
+    - Abort Streaming
+    - Workspace / Resources Browser
+    - Error Handling & Graceful Fallbacks
 
   external_services:
     - provider: amazon-bedrock
@@ -38,9 +52,9 @@ categories:
       notes: LLM inference requires valid AWS credentials with Bedrock access
 
   cleanup:
-    auto_cleanup: false
-    strategy: none
-    instructions: Tests are read-only or create temporary Pi sessions under .fleet/sessions. No cleanup required.
+    auto_cleanup: true
+    strategy: delete-test-users
+    instructions: Delete temporary Pi sessions via /api/chat/sessions and workspace files via /api/workspace/file as needed. Sessions under .fleet/sessions and agent-workspace/ temp files should be removed after testing.
 
   imagemagick:
     installed: true

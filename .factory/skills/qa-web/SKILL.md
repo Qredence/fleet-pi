@@ -2,8 +2,9 @@
 name: qa-web
 description: >
   QA tests for the Fleet Pi web app. Tests the browser-based chat UI including
-  messaging, tool rendering, session management, model selection, and plan mode.
-  Uses agent-browser for interactive web testing against a local dev server.
+  messaging, tool rendering, session management, model selection, plan mode,
+  and the workspace/resources browser. Uses agent-browser for interactive web
+  testing against a local dev server.
 ---
 
 # QA Tests for Fleet Pi Web App
@@ -31,6 +32,7 @@ This project has **no preview deployments**. The QA workflow starts a local dev 
 No authentication is required. The app is fully accessible as an anonymous user.
 
 **AWS Credentials for Bedrock:** Chat functionality requires AWS credentials with Bedrock access. These are provided via environment variables in CI:
+
 - `AWS_REGION` (defaults to `us-east-1`)
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
@@ -40,6 +42,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 ## Available Test Flows
 
 ### Flow 1: Page Load & Initial State
+
 **Maps to:** `apps/web/src/routes/index.tsx`, `apps/web/src/routes/__root.tsx`, `packages/ui/src/components/agent-elements/agent-chat.tsx`
 
 1. Navigate to `http://localhost:3000`
@@ -54,6 +57,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 5. Capture accessibility tree snapshot for evidence
 
 ### Flow 2: Send Chat Message & Stream Response
+
 **Maps to:** `apps/web/src/routes/index.tsx` (usePiChat), `apps/web/src/routes/api/chat.ts`
 
 1. Start a new session (click "New session" button)
@@ -67,6 +71,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 **Negative test:** Send an empty message and verify it is not submitted.
 
 ### Flow 3: Tool Execution Cards
+
 **Maps to:** `packages/ui/src/components/agent-elements/tools/`, `apps/web/src/lib/pi/server.ts`
 
 1. Send a message that triggers a tool: "read package.json"
@@ -82,6 +87,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 **Negative test:** Send a message requesting a file outside the repo (e.g., "/etc/hosts") and verify the tool card shows an error or the request is blocked.
 
 ### Flow 4: Session Management
+
 **Maps to:** `apps/web/src/routes/api/chat/new.ts`, `apps/web/src/routes/api/chat/session.ts`, `apps/web/src/routes/api/chat/sessions.ts`, `apps/web/src/routes/api/chat/resume.ts`
 
 1. Send a message to create some chat history
@@ -98,6 +104,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 **Negative test:** Corrupt localStorage with an outside session file path and verify the app starts a fresh repo-scoped session instead of showing an error.
 
 ### Flow 5: Model Selection
+
 **Maps to:** `apps/web/src/routes/api/chat/models.ts`, `packages/ui/src/components/agent-elements/input/model-picker.tsx`
 
 1. Open the model picker dropdown
@@ -107,6 +114,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 5. Verify the message streams a response (confirming the selected model is used)
 
 ### Flow 6: Agent / Plan Mode Switching
+
 **Maps to:** `apps/web/src/lib/pi/plan-mode.ts`, `packages/ui/src/components/agent-elements/input/mode-selector.tsx`
 
 1. Verify the mode selector shows "Agent" by default
@@ -118,6 +126,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 7. Verify full tools are available again
 
 ### Flow 7: Plan Mode Question Prompts
+
 **Maps to:** `apps/web/src/routes/api/chat/question.ts`, `packages/ui/src/components/agent-elements/question/`
 
 1. Switch to Plan mode
@@ -128,6 +137,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 6. Verify the plan decision card appears with Execute/Refine/Stay options
 
 ### Flow 8: Follow-up Queuing
+
 **Maps to:** `apps/web/src/routes/index.tsx` (queueFollowUp), `apps/web/src/routes/api/chat.ts`
 
 1. Send a message that will take some time to respond
@@ -137,6 +147,7 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 5. Verify the follow-up is then processed
 
 ### Flow 9: Abort Streaming
+
 **Maps to:** `apps/web/src/routes/api/chat/abort.ts`, `apps/web/src/routes/index.tsx` (stop)
 
 1. Send a message that will stream a long response
@@ -145,7 +156,26 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 4. Verify the status returns to "ready"
 5. Verify partial assistant message remains visible
 
-### Flow 10: Error Handling
+### Flow 10: Workspace & Resources Browser
+
+**Maps to:** `apps/web/src/components/pi/resource-library.tsx`, `apps/web/src/routes/api/chat/resources.ts`, `apps/web/src/routes/api/workspace/tree.ts`, `apps/web/src/routes/api/workspace/file.ts`
+
+1. Click the resources/browser icon to open the Pi resources panel
+2. Verify the panel opens (desktop: right-side canvas; mobile: overlay)
+3. Verify the "Resources" tab is active and shows discovered skills, prompts, extensions
+4. Switch to the "Workspace" tab
+5. Verify `agent-workspace/` directory and seeded files appear in the tree
+6. Click a Markdown file in the workspace tree
+7. Verify the preview panel renders the file contents
+8. Switch to the "Configurations" tab
+9. Verify UI-first configuration rows appear
+10. Verify the theme control (Light/Dark/System) is present and functional
+11. Close the resources panel and verify the chat interface returns to full width
+
+**Negative test:** Attempt to access a file outside the workspace root and verify it is blocked.
+
+### Flow 11: Error Handling
+
 **Maps to:** Error states in `usePiChat`, `/api/chat` error events
 
 1. If AWS credentials are unavailable, verify the chat shows an error message instead of crashing
@@ -155,10 +185,12 @@ If AWS credentials are missing or invalid, chat tests will fail with a 500 error
 ## Per-Persona Variations
 
 ### Anonymous User
+
 All flows above are run as an anonymous user. No login step is needed.
 
 ### Fresh Session User
-Run Flows 1, 2, 3, 6 with a fresh session to test empty states and first-run behavior.
+
+Run Flows 1, 2, 3, 6, 10 with a fresh session to test empty states and first-run behavior.
 
 ## Error Handling Specific to This App
 
@@ -167,6 +199,7 @@ Run Flows 1, 2, 3, 6 with a fresh session to test empty states and first-run beh
 - **Model unavailable:** If the selected Bedrock model is not available in the configured region, the chat stream will error. Report as BLOCKED and suggest checking `AWS_REGION`.
 - **Session file corruption:** Invalid session metadata in localStorage is handled gracefully by starting a fresh session.
 - **Empty message submission:** The UI blocks empty messages (trim check in `sendMessage`).
+- **Workspace file access blocked:** Attempts to access files outside `workspaceRoot` are rejected by the server.
 
 ## Known Failure Modes
 
@@ -176,3 +209,4 @@ Run Flows 1, 2, 3, 6 with a fresh session to test empty states and first-run beh
 4. **Plan mode requires specific prompt structure.** Plan mode works best with explicit requests like "Plan how to..." rather than vague prompts. Use clear, actionable prompts for plan mode tests.
 5. **LocalStorage session mismatch.** If the server restarts between tests, stored session metadata may reference a session file that no longer exists. The app handles this by starting fresh, but the test should verify this graceful fallback.
 6. **Model picker empty.** If Bedrock credentials are invalid, `/api/chat/models` may return an empty list. In this case, model selection tests should be reported as BLOCKED.
+7. **Resources panel resize on desktop.** The right-side canvas opens at 70% viewport width and clamps resizing to that maximum. On mobile it opens as a compact overlay. Tests should verify both open and close behaviors.
