@@ -35,6 +35,13 @@ dist
 .vinxi
 bundle-report/
 
+# Electron
+release/
+dist-electron/
+
+# Desktop app (ignored for now)
+apps/desktop/
+
 # Debug
 npm-debug.log*
 
@@ -53,3 +60,5 @@ npm-debug.log*
 .playwright-mcp/
 
 node_modules/
+
+qa-results/

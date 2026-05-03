@@ -1,15 +1,21 @@
 # Fleet Pi
 
-Fleet Pi is a pnpm/Turborepo workspace for a browser-based coding-agent chat UI.
+Fleet Pi is a pnpm/Turborepo workspace for a coding-agent chat UI that now runs
+in two modes:
+
+- a browser-first TanStack Start web app for this repo-local development setup
+- an installable Electron desktop app that can open arbitrary local projects
+
 The web app is built with TanStack Start, React, Tailwind CSS v4, and a shared
 agent-elements component package. The chat backend uses Pi's coding agent
 runtime with Amazon Bedrock models and streams newline-delimited JSON events to
-the browser.
+the browser or desktop renderer.
 
 ## Workspace
 
 ```text
 apps/
+  desktop/      Electron shell and desktop state bridge
   web/          TanStack Start app and `/api/chat` backend route
 packages/
   ui/           Shared React components, styles, and agent-elements UI
@@ -19,6 +25,10 @@ Key files:
 
 - `apps/web/src/routes/index.tsx` - chat page and client-side stream handling.
 - `apps/web/src/routes/api/chat.ts` - Pi coding-agent session route.
+- `apps/desktop/src/main.ts` - Electron app lifecycle, security hardening, and
+  project picker/menu wiring.
+- `apps/desktop/src/desktop-state.ts` - persisted desktop project/session state
+  under Electron `userData`.
 - `packages/ui/src/components/agent-elements/` - reusable chat and tool UI.
 - `packages/ui/src/components/agent-elements/chat-types.ts` - shared chat
   message and tool-part types.
@@ -44,9 +54,9 @@ export PI_AGENT_DIR=<custom-pi-agent-dir>
 ```
 
 `AWS_REGION` defaults to `us-east-1` when unset. The Vite config loads `.env`
-from the repository root for server-side routes. Pi session JSONL files are
-stored under `.fleet/sessions` by default, while committed agent resources stay
-under `.pi/`.
+from the repository root for server-side routes. Browser-mode Pi session JSONL
+files are stored under `.fleet/sessions` by default, while committed agent
+resources stay under `.pi/`.
 
 ## Setup
 
@@ -73,6 +83,17 @@ To run only the web app:
 pnpm --filter web dev
 ```
 
+To run the Electron desktop app against the local web dev server:
+
+```zsh
+# from repo root
+pnpm desktop:dev
+```
+
+`pnpm desktop:dev` launches the web dev server and Electron together, sharing a
+desktop auth token and a temporary Electron state directory so the renderer can
+talk to the repo-local backend in desktop mode.
+
 ## Validation
 
 ```zsh
@@ -80,6 +101,23 @@ pnpm --filter web dev
 pnpm typecheck
 pnpm lint
 pnpm build
+pnpm syncpack
+```
+
+Desktop-specific validation:
+
+```zsh
+# from repo root
+pnpm --filter desktop test
+pnpm desktop:build
+```
+
+Symphony-specific operator commands:
+
+```zsh
+# from repo root
+pnpm symphony:validate
+pnpm symphony:test-plugin
 ```
 
 ## Documentation
@@ -164,11 +202,18 @@ Preview the web app build:
 pnpm --filter web preview
 ```
 
+Package the macOS desktop app:
+
+```zsh
+# from repo root
+pnpm desktop:pack
+```
+
 ## Chat Architecture
 
 The browser posts a single user message to `/api/chat`. The route creates or
-resumes a Pi coding-agent session, scoped to this repository root, and streams
-events back as `application/x-ndjson`.
+resumes a Pi coding-agent session, scoped to the active runtime project root,
+and streams events back as `application/x-ndjson`.
 
 The stream event types are:
 
@@ -184,14 +229,16 @@ The server enables Pi's built-in `read`, `write`, `edit`, and `bash` tools.
 Tool execution events are normalized into `tool-Read`, `tool-Write`,
 `tool-Edit`, and `tool-Bash` parts so the shared UI can render them.
 
-The client stores Pi session metadata in `localStorage` under
+In browser mode, the client stores Pi session metadata in `localStorage` under
 `fleet-pi-chat-session`, allowing later messages to resume the same coding-agent
-session when the server accepts the stored session file.
+session when the server accepts the stored session file. In Electron desktop
+mode, the selected project and active Pi session metadata live in Electron
+`userData`; the renderer keeps only lightweight UI state locally.
 
 The server keeps live Pi `AgentSessionRuntime` instances in memory for a short
 TTL so queued follow-ups and `/api/chat/abort` address the same runtime that is
 currently streaming. Invalid or outside session files are ignored and replaced
-with a fresh repo-scoped session.
+with a fresh project-scoped session.
 
 Supporting endpoints:
 
@@ -200,11 +247,11 @@ Supporting endpoints:
   themes, context files, and diagnostics.
 - `GET /api/chat/session` and `POST /api/chat/resume` - hydrate a visible
   transcript from Pi JSONL session metadata.
-- `GET /api/chat/sessions` - list repo-scoped Pi sessions.
+- `GET /api/chat/sessions` - list runtime-scoped Pi sessions.
 - `POST /api/chat/new` - create fresh session metadata.
 - `POST /api/chat/abort` - abort the live runtime for active session metadata.
 - `GET /api/workspace/tree` - ensure and return the read-only
-  `agent-workspace` filesystem tree.
+  `agent-workspace` filesystem tree for the active runtime workspace root.
 - `GET /api/workspace/file?path=<path>` - return read-only file contents for
   files inside `agent-workspace`.
 
@@ -218,14 +265,67 @@ the read-only repo-local `agent-workspace` tree and Markdown file previews, plus
 a `Configurations` tab for UI-first tools, connectors, provider, model
 allowlist, and personalization controls.
 
+## Desktop App
+
+The installable desktop app targets macOS first and treats Fleet Pi as a
+project-linked coding surface rather than a window around this repo. On first
+launch, the app asks for an existing local project directory and creates
+`<project>/agent-workspace/` if it is missing.
+
+Desktop mode uses a dual-root runtime contract:
+
+- Agent mode tools run against the selected project root.
+- Workspace APIs and the Workspace tab read from
+  `<project>/agent-workspace/`.
+- Pi session JSONL files live in Electron `userData`, keyed per project
+  workspace.
+
+The Electron shell provides:
+
+- native project picker and recent-project list
+- reveal-in-Finder actions for the project root and linked workspace root
+- a single-instance app window
+- blocked in-window external navigation, with non-app URLs opened in the system
+  browser
+
+Desktop mode does not clone repositories for you in v1; it starts from an
+existing local directory.
+
+## Symphony Orchestration
+
+Fleet Pi includes a repo-owned Symphony workflow at `WORKFLOW.md` so Linear
+issues can be executed through a Symphony-managed Codex app-server flow.
+
+The intended Fleet Pi Symphony model is:
+
+- Linear project: `fleet-pi`
+- intake states: `Todo`, `In Progress`
+- execution label: `symphony-ready`
+- git worktrees under `~/code/symphony-workspaces/fleet-pi`
+- on-request approvals with workspace-write thread sandboxing
+
+The hooks stay intentionally small:
+
+- `after_create` creates a worktree from this source checkout on branch
+  `codex/<workspace_key>`
+- `before_run` fetches `origin/main --prune` and installs dependencies on
+  first bootstrap or when the tracked dependency manifests and lockfile change
+  in a reused worktree
+- `after_run` prints `git status --short`
+
+See [docs/symphony.md](./docs/symphony.md)
+for operator notes, validation commands, and the current upstream dependency on
+Symphony label-filter support.
+
 ## Agent Workspace
 
-`agent-workspace/` is the repo-local filesystem workspace for agent identity,
-memory, research notes, skills, artifacts, and scratch files. The server helper
-creates the expected directory tree and seeded Markdown stubs without
-overwriting existing files. The Workspace tab is read-only in the UI and can
-preview Markdown file contents; edits still happen through normal repo-scoped
-agent tools.
+`agent-workspace/` is the filesystem workspace for agent identity, memory,
+research notes, skills, artifacts, and scratch files. In browser mode it lives
+in this repo. In desktop mode it lives under the selected project at
+`<project>/agent-workspace/`. The server helper creates the expected directory
+tree and seeded Markdown stubs without overwriting existing files. The
+Workspace tab is read-only in the UI and can preview Markdown file contents;
+edits still happen through normal project-scoped agent tools.
 
 ## Local Configuration Surface
 
