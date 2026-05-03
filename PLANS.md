@@ -14,7 +14,8 @@ Progress:
 - [x] Confirm the current workflow validates through `pnpm symphony:validate`.
 - [x] Remove non-spec label-gating assumptions from the repo-owned contract.
 - [x] Add deterministic worktree cleanup for Symphony workspace removal.
-- [x] Update repo docs and operator checks to match the implemented runtime.
+- [x] Update `WORKFLOW.md` and operator checks for the current runtime
+      contract shipped in this change set.
 - [x] Re-run workflow validation and targeted lifecycle smoke checks.
 
 Decision Log:
