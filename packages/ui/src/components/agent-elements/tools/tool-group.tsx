@@ -1,94 +1,85 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { getToolStatus } from "../utils/format-tool";
-import { cn } from "../utils/cn";
-import { toolRegistry } from "./tool-registry";
-import { GenericTool } from "./generic-tool";
-import { ToolRowBase } from "./tool-row-base";
+import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { formatElapsedTime, getToolStatus } from "../utils/format-tool"
+import { useElapsedTime } from "../hooks/use-elapsed-time"
+import { cn } from "../utils/cn"
+import { toolRegistry } from "./tool-registry"
+import { GenericTool } from "./generic-tool"
+import { ToolRowBase } from "./tool-row-base"
 
 export type ToolGroupProps = {
-  part: any;
-  nestedTools?: Array<any>;
-  chatStatus?: string;
-  completeLabel: string;
-  shimmerLabel?: string;
-  interruptedLabel: string;
-  maxVisibleTools?: number;
-  defaultOpen?: boolean;
-  showElapsed?: boolean;
-};
-
-function formatElapsedTime(ms: number): string {
-  if (ms < 1000) return "";
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) return `${minutes}m`;
-  return `${minutes}m ${remainingSeconds}s`;
+  part: any
+  nestedTools?: Array<any>
+  chatStatus?: string
+  completeLabel: string
+  shimmerLabel?: string
+  interruptedLabel: string
+  maxVisibleTools?: number
+  defaultOpen?: boolean
+  showElapsed?: boolean
 }
 
 function formatCount(value: number, label: string): string {
-  return `${value} ${value === 1 ? label : `${label}s`}`;
+  return `${value} ${value === 1 ? label : `${label}s`}`
 }
 
 function summarizeNestedTools(nestedTools: Array<any>): string {
-  if (nestedTools.length === 0) return "";
-  const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"]);
+  if (nestedTools.length === 0) return ""
+  const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"])
   const searchTypes = new Set([
     "tool-Search",
     "tool-Grep",
     "tool-Glob",
     "tool-WebSearch",
-  ]);
-  const commandTypes = new Set(["tool-Bash"]);
+  ])
+  const commandTypes = new Set(["tool-Bash"])
 
-  let fileCount = 0;
-  let searchCount = 0;
-  let commandCount = 0;
+  let fileCount = 0
+  let searchCount = 0
+  let commandCount = 0
 
   for (const tool of nestedTools) {
-    if (fileTypes.has(tool.type)) fileCount += 1;
-    else if (searchTypes.has(tool.type)) searchCount += 1;
-    else if (commandTypes.has(tool.type)) commandCount += 1;
+    if (fileTypes.has(tool.type)) fileCount += 1
+    else if (searchTypes.has(tool.type)) searchCount += 1
+    else if (commandTypes.has(tool.type)) commandCount += 1
   }
 
-  const parts: Array<string> = [];
-  if (fileCount > 0) parts.push(formatCount(fileCount, "file"));
+  const parts: Array<string> = []
+  if (fileCount > 0) parts.push(formatCount(fileCount, "file"))
   if (searchCount > 0)
-    parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`);
-  if (commandCount > 0) parts.push(formatCount(commandCount, "command"));
+    parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`)
+  if (commandCount > 0) parts.push(formatCount(commandCount, "command"))
 
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0];
-  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
-  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  if (parts.length === 0) return ""
+  if (parts.length === 1) return parts[0]
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`
 }
 
 function getNestedCounts(nestedTools: Array<any>) {
-  const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"]);
+  const fileTypes = new Set(["tool-Read", "tool-Edit", "tool-Write"])
   const searchTypes = new Set([
     "tool-Search",
     "tool-Grep",
     "tool-Glob",
     "tool-WebSearch",
-  ]);
-  let fileCount = 0;
-  let searchCount = 0;
+  ])
+  let fileCount = 0
+  let searchCount = 0
 
   for (const tool of nestedTools) {
-    if (fileTypes.has(tool.type)) fileCount += 1;
-    else if (searchTypes.has(tool.type)) searchCount += 1;
+    if (fileTypes.has(tool.type)) fileCount += 1
+    else if (searchTypes.has(tool.type)) searchCount += 1
   }
 
-  return { fileCount, searchCount };
+  return { fileCount, searchCount }
 }
 
 function formatStreamCounts(fileCount: number, searchCount: number): string {
-  const parts: Array<string> = [];
-  if (fileCount > 0) parts.push(formatCount(fileCount, "file"));
+  const parts: Array<string> = []
+  if (fileCount > 0) parts.push(formatCount(fileCount, "file"))
   if (searchCount > 0)
-    parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`);
-  return parts.join(", ");
+    parts.push(`${searchCount} ${searchCount === 1 ? "search" : "searches"}`)
+  return parts.join(", ")
 }
 
 export const ToolGroup = memo(function ToolGroup({
@@ -102,115 +93,105 @@ export const ToolGroup = memo(function ToolGroup({
   defaultOpen,
   showElapsed = true,
 }: ToolGroupProps) {
-  const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
-  const description = part.input?.description || "";
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [expanded, setExpanded] = useState(defaultOpen ?? false);
-  const [visibleCount, setVisibleCount] = useState(0);
+  const { isPending, isInterrupted } = getToolStatus(part, chatStatus)
+  const description = part.input?.description || ""
+  const [expanded, setExpanded] = useState(defaultOpen ?? false)
+  const [visibleCount, setVisibleCount] = useState(0)
   const startedAt =
     (part.callProviderMetadata?.custom?.startedAt as number | undefined) ??
-    (part.startedAt as number | undefined);
-  const hasNestedTools = nestedTools.length > 0;
-  const streamKey = part.toolCallId ?? part.id ?? "";
+    (part.startedAt as number | undefined)
+  const hasNestedTools = nestedTools.length > 0
+  const streamKey = part.toolCallId ?? part.id ?? ""
   const outputDuration =
     part.output?.totalDurationMs ||
     part.output?.duration ||
-    part.output?.duration_ms;
-  const maskThreshold = 4;
-  const streamHeight = Math.max(1, maxVisibleTools) * 28;
+    part.output?.duration_ms
+  const maskThreshold = 4
+  const streamHeight = Math.max(1, maxVisibleTools) * 28
   const visibleToolCount = isPending
     ? Math.max(visibleCount, 0)
-    : nestedTools.length;
-  const wasPendingRef = useRef(isPending);
-  const userToggledRef = useRef(false);
-  const openTimerRef = useRef<number | null>(null);
+    : nestedTools.length
+  const wasPendingRef = useRef(isPending)
+  const userToggledRef = useRef(false)
+  const openTimerRef = useRef<number | null>(null)
   const { fileCount, searchCount } = useMemo(() => {
     const visibleTools = isPending
       ? nestedTools.slice(0, Math.max(visibleCount, 0))
-      : nestedTools;
-    return getNestedCounts(visibleTools);
-  }, [isPending, nestedTools, visibleCount]);
-  const streamCounts = formatStreamCounts(fileCount, searchCount);
-  const listRef = useRef<HTMLDivElement | null>(null);
+      : nestedTools
+    return getNestedCounts(visibleTools)
+  }, [isPending, nestedTools, visibleCount])
+  const streamCounts = formatStreamCounts(fileCount, searchCount)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const elapsedMs = useElapsedTime(startedAt, isPending)
 
   useEffect(() => {
-    if (isPending && startedAt) {
-      setElapsedMs(Date.now() - startedAt);
-      const interval = setInterval(() => {
-        setElapsedMs(Date.now() - startedAt);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isPending, startedAt]);
-
-  useEffect(() => {
-    const wasPending = wasPendingRef.current;
+    const wasPending = wasPendingRef.current
     if (openTimerRef.current) {
-      window.clearTimeout(openTimerRef.current);
-      openTimerRef.current = null;
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
     }
     if (isPending && !wasPending) {
       if (!userToggledRef.current && defaultOpen !== false) {
-        setExpanded(false);
+        setExpanded(false)
         openTimerRef.current = window.setTimeout(() => {
-          setExpanded(true);
-        }, 60);
+          setExpanded(true)
+        }, 60)
       }
     }
     if (!isPending && wasPending) {
-      setExpanded(false);
-      userToggledRef.current = false;
+      setExpanded(false)
+      userToggledRef.current = false
     }
-    wasPendingRef.current = isPending;
+    wasPendingRef.current = isPending
     return () => {
       if (openTimerRef.current) {
-        window.clearTimeout(openTimerRef.current);
-        openTimerRef.current = null;
+        window.clearTimeout(openTimerRef.current)
+        openTimerRef.current = null
       }
-    };
-  }, [defaultOpen, isPending]);
+    }
+  }, [defaultOpen, isPending])
 
   useEffect(() => {
     if (!isPending || nestedTools.length === 0) {
-      setVisibleCount(nestedTools.length);
-      return;
+      setVisibleCount(nestedTools.length)
+      return
     }
-    let index = 1;
-    setVisibleCount(Math.min(index, nestedTools.length));
+    let index = 1
+    setVisibleCount(Math.min(index, nestedTools.length))
     const interval = setInterval(() => {
-      index += 1;
-      setVisibleCount(Math.min(index, nestedTools.length));
-      if (index >= nestedTools.length) clearInterval(interval);
-    }, 450);
-    return () => clearInterval(interval);
-  }, [isPending, nestedTools.length, streamKey]);
+      index += 1
+      setVisibleCount(Math.min(index, nestedTools.length))
+      if (index >= nestedTools.length) clearInterval(interval)
+    }, 450)
+    return () => clearInterval(interval)
+  }, [isPending, nestedTools.length, streamKey])
 
   useEffect(() => {
-    if (!isPending || !listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [isPending, visibleCount]);
+    if (!isPending || !listRef.current) return
+    listRef.current.scrollTop = listRef.current.scrollHeight
+  }, [isPending, visibleCount])
 
   const subtitle = (() => {
     if (isPending && hasNestedTools) {
-      return streamCounts;
+      return streamCounts
     }
 
     if (!isPending && hasNestedTools) {
-      const summary = summarizeNestedTools(nestedTools);
-      if (summary) return summary;
+      const summary = summarizeNestedTools(nestedTools)
+      if (summary) return summary
     }
 
-    if (!description) return "";
+    if (!description) return ""
     return description.length > 60
       ? `${description.slice(0, 57)}...`
-      : description;
-  })();
+      : description
+  })()
   const elapsedTimeDisplay = formatElapsedTime(
-    !isPending && outputDuration ? outputDuration : elapsedMs,
-  );
+    !isPending && outputDuration ? outputDuration : elapsedMs
+  )
 
   if (isInterrupted && !part.output) {
-    return <ToolRowBase completeLabel={interruptedLabel} isAnimating={false} />;
+    return <ToolRowBase completeLabel={interruptedLabel} isAnimating={false} />
   }
 
   return (
@@ -222,12 +203,12 @@ export const ToolGroup = memo(function ToolGroup({
       expandable={hasNestedTools}
       expanded={expanded}
       onToggleExpand={() => {
-        userToggledRef.current = true;
-        setExpanded((prev) => !prev);
+        userToggledRef.current = true
+        setExpanded((prev) => !prev)
       }}
       trailingContent={
         showElapsed && elapsedTimeDisplay ? (
-          <span className="font-normal tabular-nums shrink-0 text-an-foreground-muted/60">
+          <span className="shrink-0 font-normal text-an-foreground-muted/60 tabular-nums">
             {elapsedTimeDisplay}
           </span>
         ) : undefined
@@ -235,7 +216,7 @@ export const ToolGroup = memo(function ToolGroup({
     >
       <div className="relative">
         {isPending && expanded && visibleToolCount > maskThreshold && (
-          <div className="absolute inset-x-0 top-0 h-10 z-10 pointer-events-none bg-linear-to-b from-an-background to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-linear-to-b from-an-background to-transparent" />
         )}
         <div
           ref={listRef}
@@ -244,7 +225,7 @@ export const ToolGroup = memo(function ToolGroup({
             isPending &&
               expanded &&
               visibleToolCount > maskThreshold &&
-              "overflow-y-auto",
+              "overflow-y-auto"
           )}
           style={
             isPending && expanded && visibleToolCount > maskThreshold
@@ -264,11 +245,11 @@ export const ToolGroup = memo(function ToolGroup({
                       ? "input-streaming"
                       : "output-available",
                 }
-              : nestedPart;
-            const nestedMeta = toolRegistry[derivedPart.type];
-            if (!nestedMeta) return null;
+              : nestedPart
+            const nestedMeta = toolRegistry[derivedPart.type]
+            if (!nestedMeta) return null
             const { isPending: nestedIsPending, isError: nestedIsError } =
-              getToolStatus(derivedPart, chatStatus);
+              getToolStatus(derivedPart, chatStatus)
             return (
               <GenericTool
                 key={idx}
@@ -278,10 +259,10 @@ export const ToolGroup = memo(function ToolGroup({
                 isPending={nestedIsPending}
                 isError={nestedIsError}
               />
-            );
+            )
           })}
         </div>
       </div>
     </ToolRowBase>
-  );
-});
+  )
+})

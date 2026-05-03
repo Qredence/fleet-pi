@@ -1,79 +1,60 @@
-import { memo, useEffect, useState } from "react";
-import { getToolStatus } from "../utils/format-tool";
-import { cn } from "../utils/cn";
-import { toolRegistry } from "./tool-registry";
-import { GenericTool } from "./generic-tool";
-import { ToolRowBase } from "./tool-row-base";
+import { memo } from "react"
+import { formatElapsedTime, getToolStatus } from "../utils/format-tool"
+import { useElapsedTime } from "../hooks/use-elapsed-time"
+import { cn } from "../utils/cn"
+import { toolRegistry } from "./tool-registry"
+import { GenericTool } from "./generic-tool"
+import { ToolRowBase } from "./tool-row-base"
 
 export type SubagentToolProps = {
-  part: any;
-  nestedTools?: Array<any>;
-  chatStatus?: string;
-};
-
-const MAX_VISIBLE_TOOLS = 5;
-
-function formatElapsedTime(ms: number): string {
-  if (ms < 1000) return "";
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) return `${minutes}m`;
-  return `${minutes}m ${remainingSeconds}s`;
+  part: any
+  nestedTools?: Array<any>
+  chatStatus?: string
 }
+
+const MAX_VISIBLE_TOOLS = 5
 
 export const SubagentTool = memo(function SubagentTool({
   part,
   nestedTools = [],
   chatStatus,
 }: SubagentToolProps) {
-  const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
-  const description = part.input?.description || "";
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const { isPending, isInterrupted } = getToolStatus(part, chatStatus)
+  const description = part.input?.description || ""
   const startedAt =
     (part.callProviderMetadata?.custom?.startedAt as number | undefined) ??
-    (part.startedAt as number | undefined);
-  const hasNestedTools = nestedTools.length > 0;
+    (part.startedAt as number | undefined)
+  const hasNestedTools = nestedTools.length > 0
   const outputDuration =
     part.output?.totalDurationMs ||
     part.output?.duration ||
-    part.output?.duration_ms;
-
-  useEffect(() => {
-    if (isPending && startedAt) {
-      setElapsedMs(Date.now() - startedAt);
-      const interval = setInterval(() => {
-        setElapsedMs(Date.now() - startedAt);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isPending, startedAt]);
+    part.output?.duration_ms
+  const elapsedMs = useElapsedTime(startedAt, isPending)
 
   const subtitle = (() => {
     if (isPending && hasNestedTools) {
-      const lastTool = nestedTools[nestedTools.length - 1];
-      const meta = lastTool ? toolRegistry[lastTool.type] : null;
+      const lastTool = nestedTools[nestedTools.length - 1]
+      const meta = lastTool ? toolRegistry[lastTool.type] : null
       if (meta) {
-        const title = meta.title(lastTool);
-        const nestedSubtitle = meta.subtitle?.(lastTool);
-        return nestedSubtitle ? `${title} ${nestedSubtitle}` : title;
+        const title = meta.title(lastTool)
+        const nestedSubtitle = meta.subtitle?.(lastTool)
+        return nestedSubtitle ? `${title} ${nestedSubtitle}` : title
       }
     }
 
-    if (!description) return "";
+    if (!description) return ""
     return description.length > 60
       ? `${description.slice(0, 57)}...`
-      : description;
-  })();
+      : description
+  })()
   const elapsedTimeDisplay = formatElapsedTime(
-    !isPending && outputDuration ? outputDuration : elapsedMs,
-  );
+    !isPending && outputDuration ? outputDuration : elapsedMs
+  )
 
   if (isInterrupted && !part.output) {
     return (
       <ToolRowBase completeLabel="Subagent interrupted" isAnimating={false} />
-    );
+    )
   }
 
   return (
@@ -86,7 +67,7 @@ export const SubagentTool = memo(function SubagentTool({
         expandable={hasNestedTools}
         trailingContent={
           elapsedTimeDisplay ? (
-            <span className="font-normal tabular-nums shrink-0 text-an-foreground-muted/60">
+            <span className="shrink-0 font-normal text-an-foreground-muted/60 tabular-nums">
               {elapsedTimeDisplay}
             </span>
           ) : undefined
@@ -94,18 +75,18 @@ export const SubagentTool = memo(function SubagentTool({
       >
         <div className="relative">
           {isPending && nestedTools.length > MAX_VISIBLE_TOOLS && (
-            <div className="absolute inset-x-0 top-0 h-8 z-10 pointer-events-none bg-linear-to-b from-an-background to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-linear-to-b from-an-background to-transparent" />
           )}
           <div
             className={cn(
               nestedTools.length > 1 ? "space-y-2" : "space-y-0",
               isPending &&
                 nestedTools.length > MAX_VISIBLE_TOOLS &&
-                "overflow-y-auto max-h-[120px]",
+                "max-h-[120px] overflow-y-auto"
             )}
           >
             {nestedTools.map((nestedPart, idx) => {
-              const nestedMeta = toolRegistry[nestedPart.type];
+              const nestedMeta = toolRegistry[nestedPart.type]
               if (!nestedMeta) {
                 return (
                   <ToolRowBase
@@ -115,10 +96,10 @@ export const SubagentTool = memo(function SubagentTool({
                     }
                     isAnimating={false}
                   />
-                );
+                )
               }
               const { isPending: nestedIsPending, isError: nestedIsError } =
-                getToolStatus(nestedPart, chatStatus);
+                getToolStatus(nestedPart, chatStatus)
               return (
                 <GenericTool
                   key={idx}
@@ -128,11 +109,11 @@ export const SubagentTool = memo(function SubagentTool({
                   isPending={nestedIsPending}
                   isError={nestedIsError}
                 />
-              );
+              )
             })}
           </div>
         </div>
       </ToolRowBase>
     </div>
-  );
-});
+  )
+})

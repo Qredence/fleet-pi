@@ -1,59 +1,60 @@
-import type { StepState, TimelineStep } from "../types/timeline";
+import type { StepState, TimelineStep } from "../types/timeline"
 
 function calculateDiffStatsFromPatch(
-  patches: Array<{ lines?: Array<string> }>,
+  patches: Array<{ lines?: Array<string> }>
 ): string | undefined {
-  let addedLines = 0;
-  let removedLines = 0;
+  let addedLines = 0
+  let removedLines = 0
 
   for (const patch of patches) {
-    if (!patch.lines) continue;
+    if (!patch.lines) continue
     for (const line of patch.lines) {
-      if (line.startsWith("+")) addedLines++;
-      else if (line.startsWith("-")) removedLines++;
+      if (line.startsWith("+")) addedLines++
+      else if (line.startsWith("-")) removedLines++
     }
   }
 
-  if (addedLines === 0 && removedLines === 0) return undefined;
+  if (addedLines === 0 && removedLines === 0) return undefined
 
-  const parts: Array<string> = [];
-  if (addedLines > 0) parts.push(`+${addedLines}`);
-  if (removedLines > 0) parts.push(`-${removedLines}`);
-  return parts.join(" ");
+  const parts: Array<string> = []
+  if (addedLines > 0) parts.push(`+${addedLines}`)
+  if (removedLines > 0) parts.push(`-${removedLines}`)
+  return parts.join(" ")
 }
 
 function getDiffLinesFromPatch(
-  patches: Array<{ lines?: Array<string> }>,
+  patches: Array<{ lines?: Array<string> }>
 ): Array<{ type: "add" | "remove" | "context"; content: string }> {
-  const result: Array<{ type: "add" | "remove" | "context"; content: string }> = [];
+  const result: Array<{ type: "add" | "remove" | "context"; content: string }> =
+    []
 
   for (const patch of patches) {
-    if (!patch.lines) continue;
+    if (!patch.lines) continue
     for (const line of patch.lines) {
       if (line.startsWith("+")) {
-        result.push({ type: "add", content: line.slice(1) });
+        result.push({ type: "add", content: line.slice(1) })
       } else if (line.startsWith("-")) {
-        result.push({ type: "remove", content: line.slice(1) });
+        result.push({ type: "remove", content: line.slice(1) })
       } else if (line.startsWith(" ")) {
-        result.push({ type: "context", content: line.slice(1) });
+        result.push({ type: "context", content: line.slice(1) })
       }
     }
   }
 
-  return result;
+  return result
 }
 
 export function mapToolStateToStepState(
-  aiState: "partial-call" | "call" | "result",
+  aiState: "partial-call" | "call" | "result"
 ): StepState {
-  return aiState === "result" ? "complete" : "animating";
+  return aiState === "result" ? "complete" : "animating"
 }
 
 export function mapToolNameToVariant(
-  toolName: string,
+  toolName: string
 ): "thinking" | "action" | "search" | undefined {
-  const lower = toolName.toLowerCase();
-  if (lower === "thinking" || lower === "reasoning") return "thinking";
+  const lower = toolName.toLowerCase()
+  if (lower === "thinking" || lower === "reasoning") return "thinking"
   if (
     lower === "websearch" ||
     lower === "web_search" ||
@@ -62,55 +63,55 @@ export function mapToolNameToVariant(
     lower === "webfetch" ||
     lower === "web_fetch"
   )
-    return "search";
-  return undefined;
+    return "search"
+  return undefined
 }
 
 function extractToolDetail(
   toolName: string,
-  args: Record<string, any>,
+  args: Record<string, any>
 ): string {
   switch (toolName) {
     case "Bash":
-      return args?.command ? String(args.command).slice(0, 80) : "";
+      return args?.command ? String(args.command).slice(0, 80) : ""
     case "Edit":
     case "Write":
     case "Read":
       return args?.file_path
         ? (String(args.file_path).split("/").pop() ?? "")
-        : "";
+        : ""
     case "Grep":
-      return args?.pattern ? String(args.pattern) : "";
+      return args?.pattern ? String(args.pattern) : ""
     case "Glob":
-      return args?.pattern ? String(args.pattern) : "";
+      return args?.pattern ? String(args.pattern) : ""
     case "WebSearch":
     case "web_search":
-      return args?.query ? String(args.query) : "";
+      return args?.query ? String(args.query) : ""
     case "WebFetch":
     case "web_fetch":
-      return args?.url ? String(args.url).slice(0, 60) : "";
+      return args?.url ? String(args.url).slice(0, 60) : ""
     default:
-      return "";
+      return ""
   }
 }
 
 export function mapToolInvocationToStep(
   toolCallId: string,
   toolInvocation: {
-    toolName: string;
-    args?: Record<string, any>;
-    state: "partial-call" | "call" | "result";
-    result?: any;
-  },
+    toolName: string
+    args?: Record<string, any>
+    state: "partial-call" | "call" | "result"
+    result?: any
+  }
 ): Extract<TimelineStep, { type: "tool-call" }> {
-  const { toolName, args = {}, result } = toolInvocation;
+  const { toolName, args = {}, result } = toolInvocation
   const displayToolName =
     toolName === "PlanWrite"
       ? "Plan"
       : toolName === "TodoWrite"
         ? "Todo"
-        : toolName;
-  const detail = extractToolDetail(toolName, args);
+        : toolName
+  const detail = extractToolDetail(toolName, args)
 
   const step: Extract<TimelineStep, { type: "tool-call" }> = {
     id: toolCallId,
@@ -119,36 +120,36 @@ export function mapToolInvocationToStep(
     toolDetail: detail,
     duration: Number.MAX_SAFE_INTEGER,
     toolVariant: mapToolNameToVariant(toolName),
-  };
+  }
 
   if (toolName === "Bash") {
-    step.bashCommand = args?.command ? String(args.command) : undefined;
+    step.bashCommand = args?.command ? String(args.command) : undefined
     if (toolInvocation.state === "result" && result) {
       if (typeof result === "string") {
-        step.bashOutput = result;
-        step.bashSuccess = true;
+        step.bashOutput = result
+        step.bashSuccess = true
       } else if (typeof result === "object") {
         const stdout =
           typeof result?.stdout === "string"
             ? result.stdout
             : typeof result?.output === "string"
               ? result.output
-              : "";
-        const stderr = typeof result?.stderr === "string" ? result.stderr : "";
+              : ""
+        const stderr = typeof result?.stderr === "string" ? result.stderr : ""
         step.bashOutput = [stdout, stderr]
           .filter(Boolean)
-          .join(stdout && stderr ? "\n" : "");
-        const exitCode = result?.exitCode ?? result?.exit_code;
-        step.bashSuccess = exitCode === undefined ? true : exitCode === 0;
+          .join(stdout && stderr ? "\n" : "")
+        const exitCode = result?.exitCode ?? result?.exit_code
+        step.bashSuccess = exitCode === undefined ? true : exitCode === 0
       } else {
-        step.bashOutput = JSON.stringify(result);
-        step.bashSuccess = true;
+        step.bashOutput = JSON.stringify(result)
+        step.bashSuccess = true
       }
     }
   }
 
   if (toolName === "Edit" || toolName === "Write" || toolName === "Read") {
-    step.filePath = args?.file_path ? String(args.file_path) : undefined;
+    step.filePath = args?.file_path ? String(args.file_path) : undefined
   }
 
   if (toolName === "Write") {
@@ -157,21 +158,21 @@ export function mapToolInvocationToStep(
         ? result.content
         : typeof args?.content === "string"
           ? args.content
-          : "";
+          : ""
 
     if (content) {
-      const lines = content.split("\n");
-      step.diffStats = `+${lines.length}`;
+      const lines = content.split("\n")
+      step.diffStats = `+${lines.length}`
       step.diffLines = lines.map((line: string) => ({
         type: "add",
         content: line,
-      }));
+      }))
     }
   }
 
   if (toolName === "Edit" && Array.isArray(result?.structuredPatch)) {
-    step.diffStats = calculateDiffStatsFromPatch(result.structuredPatch);
-    step.diffLines = getDiffLinesFromPatch(result.structuredPatch);
+    step.diffStats = calculateDiffStatsFromPatch(result.structuredPatch)
+    step.diffLines = getDiffLinesFromPatch(result.structuredPatch)
   }
 
   if (
@@ -183,9 +184,9 @@ export function mapToolInvocationToStep(
     step.searchQuery =
       (args?.query ?? args?.pattern)
         ? String(args?.query ?? args?.pattern)
-        : undefined;
+        : undefined
     step.searchSource =
-      toolName === "WebSearch" || toolName === "web_search" ? "web" : "code";
+      toolName === "WebSearch" || toolName === "web_search" ? "web" : "code"
   }
 
   if (
@@ -197,8 +198,46 @@ export function mapToolInvocationToStep(
         ? args.thought
         : typeof result === "string"
           ? result
-          : undefined;
+          : undefined
   }
 
-  return step;
+  return step
+}
+
+export function resolveToolPartState(
+  partState?: string
+): "partial-call" | "call" | "result" {
+  if (partState === "output-available") return "result"
+  if (partState === "input-streaming") return "partial-call"
+  return "call"
+}
+
+export function adaptToolPart(
+  part: {
+    id?: string
+    toolCallId?: string
+    type?: string
+    state?: string
+    input?: Record<string, unknown>
+    args?: Record<string, unknown>
+    output?: unknown
+    result?: unknown
+  },
+  toolName: string
+): {
+  step: Extract<TimelineStep, { type: "tool-call" }>
+  stepState: StepState
+} {
+  const state = resolveToolPartState(part.state)
+  const step = mapToolInvocationToStep(
+    part.toolCallId ?? part.id ?? toolName.toLowerCase(),
+    {
+      toolName,
+      args: part.input ?? part.args ?? {},
+      state,
+      result: part.output ?? part.result,
+    }
+  )
+  const stepState = mapToolStateToStepState(state)
+  return { step, stepState }
 }

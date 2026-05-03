@@ -1,24 +1,21 @@
-import { memo } from "react";
-import { IconFileText } from "@tabler/icons-react";
-import { useToolComplete } from "../hooks/use-tool-complete";
-import {
-  mapToolInvocationToStep,
-  mapToolStateToStepState,
-} from "../utils/tool-adapters";
-import { cn } from "../utils/cn";
-import { ToolRowBase } from "./tool-row-base";
-import type { SourceType } from "../icons/source-icons";
-import type { StepState, TimelineStep } from "../types/timeline";
+import { memo } from "react"
+import { IconFileText } from "@tabler/icons-react"
+import { useToolComplete } from "../hooks/use-tool-complete"
+import { adaptToolPart } from "../utils/tool-adapters"
+import { cn } from "../utils/cn"
+import { ToolRowBase } from "./tool-row-base"
+import type { SourceType } from "../icons/source-icons"
+import type { StepState, TimelineStep } from "../types/timeline"
 
-export type SearchResult = { source: SourceType; title: string; date: string };
+export type SearchResult = { source: SourceType; title: string; date: string }
 
 export type SearchGroupRichProps = {
-  toolSteps: Array<Extract<TimelineStep, { type: "tool-call" }>>;
-  stepStates: Record<string, StepState>;
-  onStepComplete: (id: string) => void;
-  results?: Array<SearchResult>;
-  defaultOpen?: boolean;
-};
+  toolSteps: Array<Extract<TimelineStep, { type: "tool-call" }>>
+  stepStates: Record<string, StepState>
+  onStepComplete: (id: string) => void
+  results?: Array<SearchResult>
+  defaultOpen?: boolean
+}
 
 export function SearchGroupRich({
   toolSteps,
@@ -27,25 +24,25 @@ export function SearchGroupRich({
   results = [],
   defaultOpen,
 }: SearchGroupRichProps) {
-  const anyAnimating = toolSteps.some((s) => stepStates[s.id] === "animating");
+  const anyAnimating = toolSteps.some((s) => stepStates[s.id] === "animating")
   const searchQuery =
-    toolSteps.find((s) => s.searchQuery)?.searchQuery ?? "searching...";
-  const totalResults = results.length;
+    toolSteps.find((s) => s.searchQuery)?.searchQuery ?? "searching..."
+  const totalResults = results.length
   // Only expose the expand affordance once there is something useful to show.
   // While the search is still streaming we have no results yet and the panel
   // header is just "Searched for <same query>" — redundant with the row
   // label. Once results arrive the panel becomes meaningful.
-  const hasExpandableContent = totalResults > 0;
+  const hasExpandableContent = totalResults > 0
 
   function CompleteTracker({
     step,
   }: {
-    step: Extract<TimelineStep, { type: "tool-call" }>;
+    step: Extract<TimelineStep, { type: "tool-call" }>
   }) {
     useToolComplete(stepStates[step.id] === "animating", step.duration, () =>
-      onStepComplete(step.id),
-    );
-    return null;
+      onStepComplete(step.id)
+    )
+    return null
   }
 
   return (
@@ -60,10 +57,10 @@ export function SearchGroupRich({
         expandable={hasExpandableContent}
         defaultOpen={defaultOpen}
       >
-        <div className="rounded-an-tool-border-radius overflow-hidden bg-an-tool-background border border-border">
-          <div className="flex items-center px-2.5 py-0 border-b border-an-tool-border-color h-7 text-xs gap-1">
-            <span className="text-foreground font-medium">Searched for</span>{" "}
-            <span className="text-muted-foreground truncate">
+        <div className="overflow-hidden rounded-an-tool-border-radius border border-border bg-an-tool-background">
+          <div className="flex h-7 items-center gap-1 border-b border-an-tool-border-color px-2.5 py-0 text-xs">
+            <span className="font-medium text-foreground">Searched for</span>{" "}
+            <span className="truncate text-muted-foreground">
               &ldquo;{searchQuery}&rdquo;
             </span>
           </div>
@@ -73,17 +70,17 @@ export function SearchGroupRich({
                 <div
                   key={i}
                   className={cn(
-                    "flex items-center gap-2 px-2 py-1 rounded-[calc(var(--an-tool-border-radius)-4px)] cursor-default",
-                    "hover:bg-muted/50",
+                    "flex cursor-default items-center gap-2 rounded-[calc(var(--an-tool-border-radius)-4px)] px-2 py-1",
+                    "hover:bg-muted/50"
                   )}
                 >
-                  <div className="flex items-center justify-center w-4 h-4 shrink-0 text-muted-foreground">
-                    <IconFileText className="w-4 h-4" />
+                  <div className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
+                    <IconFileText className="h-4 w-4" />
                   </div>
-                  <span className="text-sm text-foreground/90 truncate flex-1 min-w-0">
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground/90">
                     {result.title}
                   </span>
-                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                  <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
                     {result.date || result.source}
                   </span>
                 </div>
@@ -93,43 +90,43 @@ export function SearchGroupRich({
         </div>
       </ToolRowBase>
     </>
-  );
+  )
 }
 
 export type SearchToolProps = {
   part: {
-    id?: string;
-    toolCallId?: string;
-    type?: string;
-    state?: string;
-    input?: Record<string, unknown>;
-    args?: Record<string, unknown>;
-    output?: Record<string, unknown>;
-    result?: Record<string, unknown>;
-  };
-  results?: Array<SearchResult>;
-  defaultOpen?: boolean;
-};
+    id?: string
+    toolCallId?: string
+    type?: string
+    state?: string
+    input?: Record<string, unknown>
+    args?: Record<string, unknown>
+    output?: Record<string, unknown>
+    result?: Record<string, unknown>
+  }
+  results?: Array<SearchResult>
+  defaultOpen?: boolean
+}
 
 function normalizeResults(value: unknown): Array<SearchResult> | undefined {
-  if (!Array.isArray(value)) return undefined;
+  if (!Array.isArray(value)) return undefined
   const parsed = value
     .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const source = (item as { source?: unknown }).source;
-      const title = (item as { title?: unknown }).title;
-      const date = (item as { date?: unknown }).date;
+      if (!item || typeof item !== "object") return null
+      const source = (item as { source?: unknown }).source
+      const title = (item as { title?: unknown }).title
+      const date = (item as { date?: unknown }).date
       if (
         typeof source !== "string" ||
         typeof title !== "string" ||
         typeof date !== "string"
       ) {
-        return null;
+        return null
       }
-      return { source: source as SourceType, title, date };
+      return { source: source as SourceType, title, date }
     })
-    .filter((item): item is SearchResult => Boolean(item));
-  return parsed.length > 0 ? parsed : undefined;
+    .filter((item): item is SearchResult => Boolean(item))
+  return parsed.length > 0 ? parsed : undefined
 }
 
 export const SearchTool = memo(function SearchTool({
@@ -137,26 +134,10 @@ export const SearchTool = memo(function SearchTool({
   results,
   defaultOpen,
 }: SearchToolProps) {
-  const step = mapToolInvocationToStep(part.toolCallId ?? part.id ?? "search", {
-    toolName: part.type?.replace("tool-", "") || "WebSearch",
-    args: part.input ?? part.args ?? {},
-    state:
-      part.state === "output-available"
-        ? "result"
-        : part.state === "input-streaming"
-          ? "partial-call"
-          : "call",
-    result: part.output ?? part.result,
-  });
-  const stepState = mapToolStateToStepState(
-    part.state === "output-available"
-      ? "result"
-      : part.state === "input-streaming"
-        ? "partial-call"
-        : "call",
-  );
-  const stepStates = { [step.id]: stepState };
-  const noop = () => {};
+  const toolName = part.type?.replace("tool-", "") || "WebSearch"
+  const { step, stepState } = adaptToolPart(part, toolName)
+  const stepStates = { [step.id]: stepState }
+  const noop = () => {}
 
   return (
     <SearchGroupRich
@@ -170,5 +151,5 @@ export const SearchTool = memo(function SearchTool({
       }
       defaultOpen={defaultOpen}
     />
-  );
-});
+  )
+})

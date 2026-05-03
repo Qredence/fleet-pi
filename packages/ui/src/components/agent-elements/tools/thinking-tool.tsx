@@ -1,20 +1,17 @@
-import { memo } from "react";
-import { useToolComplete } from "../hooks/use-tool-complete";
-import {
-  mapToolInvocationToStep,
-  mapToolStateToStepState,
-} from "../utils/tool-adapters";
-import { ToolRowBase } from "./tool-row-base";
-import type { StepState, TimelineStep } from "../types/timeline";
+import { memo } from "react"
+import { useToolComplete } from "../hooks/use-tool-complete"
+import { adaptToolPart } from "../utils/tool-adapters"
+import { ToolRowBase } from "./tool-row-base"
+import type { StepState, TimelineStep } from "../types/timeline"
 
 export type ThinkingCollapsedProps = {
-  step: Extract<TimelineStep, { type: "tool-call" }>;
-  state: StepState;
-  onComplete: () => void;
-  defaultOpen?: boolean;
-  expanded?: boolean;
-  onToggleExpand?: () => void;
-};
+  step: Extract<TimelineStep, { type: "tool-call" }>
+  state: StepState
+  onComplete: () => void
+  defaultOpen?: boolean
+  expanded?: boolean
+  onToggleExpand?: () => void
+}
 
 export function ThinkingCollapsed({
   step,
@@ -24,7 +21,7 @@ export function ThinkingCollapsed({
   expanded,
   onToggleExpand,
 }: ThinkingCollapsedProps) {
-  useToolComplete(state === "animating", step.duration, onComplete);
+  useToolComplete(state === "animating", step.duration, onComplete)
 
   return (
     <ToolRowBase
@@ -37,23 +34,23 @@ export function ThinkingCollapsed({
       onToggleExpand={onToggleExpand}
     >
       <div className="max-h-[175px] overflow-y-auto">
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+        <p className="text-sm whitespace-pre-wrap text-muted-foreground">
           {step.thoughtContent}
         </p>
       </div>
     </ToolRowBase>
-  );
+  )
 }
 
 export type ThinkingToolProps = {
-  part?: any;
-  step?: Extract<TimelineStep, { type: "tool-call" }>;
-  state?: StepState;
-  onComplete?: () => void;
-  defaultOpen?: boolean;
-  expanded?: boolean;
-  onToggleExpand?: () => void;
-};
+  part?: any
+  step?: Extract<TimelineStep, { type: "tool-call" }>
+  state?: StepState
+  onComplete?: () => void
+  defaultOpen?: boolean
+  expanded?: boolean
+  onToggleExpand?: () => void
+}
 
 export const ThinkingTool = memo(function ThinkingTool({
   part,
@@ -64,36 +61,21 @@ export const ThinkingTool = memo(function ThinkingTool({
   expanded,
   onToggleExpand,
 }: ThinkingToolProps) {
-  let step: Extract<TimelineStep, { type: "tool-call" }>;
-  let stepState: StepState;
-  let onComplete: () => void;
+  let step: Extract<TimelineStep, { type: "tool-call" }>
+  let stepState: StepState
+  let onComplete: () => void
 
   if (externalStep && externalState && externalOnComplete) {
-    step = externalStep;
-    stepState = externalState;
-    onComplete = externalOnComplete;
+    step = externalStep
+    stepState = externalState
+    onComplete = externalOnComplete
   } else if (part) {
-    step = mapToolInvocationToStep(part.toolCallId ?? part.id ?? "thinking", {
-      toolName: "Thinking",
-      args: part.input ?? part.args ?? {},
-      state:
-        part.state === "output-available"
-          ? "result"
-          : part.state === "input-streaming"
-            ? "partial-call"
-            : "call",
-      result: part.output ?? part.result,
-    });
-    stepState = mapToolStateToStepState(
-      part.state === "output-available"
-        ? "result"
-        : part.state === "input-streaming"
-          ? "partial-call"
-          : "call",
-    );
-    onComplete = () => {};
+    const adapted = adaptToolPart(part, "Thinking")
+    step = adapted.step
+    stepState = adapted.stepState
+    onComplete = () => {}
   } else {
-    return null;
+    return null
   }
 
   return (
@@ -105,5 +87,5 @@ export const ThinkingTool = memo(function ThinkingTool({
       expanded={expanded}
       onToggleExpand={onToggleExpand}
     />
-  );
-});
+  )
+})
