@@ -168,6 +168,7 @@ export function ResourceMobilePanel({
   onThemePreferenceChange,
   open,
   resources,
+  requestInit,
   themePreference,
   workspace,
   workspaceError,
@@ -184,6 +185,7 @@ export function ResourceMobilePanel({
   onThemePreferenceChange: (preference: ThemePreference) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  requestInit?: RequestInit
   themePreference: ThemePreference
   workspace: WorkspaceTreeResponse | null
   workspaceError?: Error | null
@@ -207,6 +209,7 @@ export function ResourceMobilePanel({
         onRefreshWorkspace={onRefreshWorkspace}
         onTabChange={onTabChange}
         onThemePreferenceChange={onThemePreferenceChange}
+        requestInit={requestInit}
         resources={resources}
         shellClassName="w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur"
         themePreference={themePreference}
@@ -231,6 +234,7 @@ export function ResourceCanvas({
   onThemePreferenceChange,
   open,
   resources,
+  requestInit,
   themePreference,
   width,
   workspace,
@@ -249,6 +253,7 @@ export function ResourceCanvas({
   onThemePreferenceChange: (preference: ThemePreference) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  requestInit?: RequestInit
   themePreference: ThemePreference
   width: number
   workspace: WorkspaceTreeResponse | null
@@ -281,6 +286,7 @@ export function ResourceCanvas({
         onRefreshWorkspace={onRefreshWorkspace}
         onTabChange={onTabChange}
         onThemePreferenceChange={onThemePreferenceChange}
+        requestInit={requestInit}
         resources={resources}
         shellClassName="flex h-full min-w-0 flex-1 flex-col overflow-hidden"
         themePreference={themePreference}
@@ -343,6 +349,7 @@ function ResourcePanel({
   onRefreshWorkspace,
   onTabChange,
   onThemePreferenceChange,
+  requestInit,
   resources,
   shellClassName,
   themePreference,
@@ -360,6 +367,7 @@ function ResourcePanel({
   onRefreshWorkspace: () => void
   onTabChange: (tab: ResourceCanvasTab) => void
   onThemePreferenceChange: (preference: ThemePreference) => void
+  requestInit?: RequestInit
   resources: ChatResourcesResponse | null
   shellClassName: string
   themePreference: ThemePreference
@@ -440,6 +448,7 @@ function ResourcePanel({
           <WorkspaceTab
             error={workspaceError}
             loading={workspaceLoading}
+            requestInit={requestInit}
             workspace={workspace}
           />
         ) : (
@@ -778,10 +787,12 @@ function ThemeSegment({
 function WorkspaceTab({
   error,
   loading,
+  requestInit,
   workspace,
 }: {
   error?: Error | null
   loading: boolean
+  requestInit?: RequestInit
   workspace: WorkspaceTreeResponse | null
 }) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -809,7 +820,8 @@ function WorkspaceTab({
       setPreviewError(null)
       try {
         const response = await fetch(
-          `/api/workspace/file?path=${encodeURIComponent(selectedPath ?? "")}`
+          `/api/workspace/file?path=${encodeURIComponent(selectedPath ?? "")}`,
+          requestInit
         )
         const body: unknown = await response.json()
         if (!response.ok) {
@@ -837,7 +849,7 @@ function WorkspaceTab({
     return () => {
       cancelled = true
     }
-  }, [selectedPath, workspace])
+  }, [requestInit, selectedPath, workspace])
 
   if (error) {
     return (

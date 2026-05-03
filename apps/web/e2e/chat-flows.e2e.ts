@@ -1,8 +1,38 @@
+/* eslint-disable max-lines-per-function -- shared mocked chat harness keeps the suite readable in one place */
 import { expect, test } from "@playwright/test"
 import type { Page, Route } from "@playwright/test"
+import type { DesktopContext, DesktopEvent } from "../src/lib/desktop/types"
+import type { ChatSessionMetadata } from "../src/lib/pi/chat-protocol"
 
 const MOCK_SESSION_FILE = "/tmp/fleet-pi-test-session.json"
 const MOCK_SESSION_ID = "test-session-id"
+const MOCK_DESKTOP_TOKEN = "desktop-token"
+const MOCK_PROJECT_ROOT = "/tmp/desktop-project"
+const MOCK_WORKSPACE_ROOT = "/tmp/desktop-project/agent-workspace"
+
+const MOCK_DESKTOP_CONTEXT: DesktopContext = {
+  isDesktop: true,
+  requestToken: MOCK_DESKTOP_TOKEN,
+  recentProjects: [
+    {
+      projectRoot: MOCK_PROJECT_ROOT,
+      workspaceRoot: MOCK_WORKSPACE_ROOT,
+      workspaceId: "workspace-1",
+      name: "desktop-project",
+      lastOpenedAt: "2026-05-02T10:00:00.000Z",
+    },
+  ],
+  activeProjectRoot: MOCK_PROJECT_ROOT,
+  activeWorkspaceRoot: MOCK_WORKSPACE_ROOT,
+  workspaceId: "workspace-1",
+  sessionDir: "/tmp/fleet-pi-desktop/workspaces/workspace-1/sessions",
+}
+
+const MOCK_DESKTOP_EMPTY_CONTEXT: DesktopContext = {
+  isDesktop: true,
+  requestToken: MOCK_DESKTOP_TOKEN,
+  recentProjects: MOCK_DESKTOP_CONTEXT.recentProjects,
+}
 
 const MOCK_MODELS = {
   models: [
@@ -253,6 +283,59 @@ function mockChatNew(page: Page) {
   )
 }
 
+async function mockDesktopBridge(
+  page: Page,
+  options: {
+    initialContext: DesktopContext
+    pickedContext?: DesktopContext
+  }
+) {
+  await page.addInitScript(({ initialContext, pickedContext }) => {
+    let context = initialContext
+    const listeners = new Set<(event: DesktopEvent) => void>()
+
+    const notify = (event: DesktopEvent) => {
+      for (const listener of listeners) listener(event)
+    }
+
+    window.fleetPiDesktop = {
+      getDesktopContext: () => Promise.resolve(context),
+      pickProjectDirectory: () => {
+        context = pickedContext ?? context
+        notify({ type: "context-changed", context })
+        return Promise.resolve(context)
+      },
+      openRecentProject: (projectRoot: string) => {
+        if (
+          pickedContext &&
+          typeof pickedContext.activeProjectRoot === "string" &&
+          pickedContext.activeProjectRoot === projectRoot
+        ) {
+          context = pickedContext
+        }
+        notify({ type: "context-changed", context })
+        return Promise.resolve(context)
+      },
+      clearRecentProjects: () => {
+        context = { ...context, recentProjects: [] }
+        notify({ type: "context-changed", context })
+        return Promise.resolve(context)
+      },
+      revealPath: () => Promise.resolve(true),
+      setActiveSession: (metadata: ChatSessionMetadata) => {
+        context = { ...context, activeSession: metadata }
+        return Promise.resolve(context)
+      },
+      onEvent: (listener: (event: DesktopEvent) => void) => {
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
+      },
+    }
+  }, options)
+}
+
 function mockChatSession(page: Page) {
   return page.route(
     "http://localhost:3000/api/chat/session?**",
@@ -363,14 +446,130 @@ function mockChatStream(
 }
 
 test.describe("chat flows", () => {
+  test("shows the desktop empty state before a project is selected", async ({
+    page,
+  }) => {
+    await mockDesktopBridge(page, {
+      initialContext: MOCK_DESKTOP_EMPTY_CONTEXT,
+      pickedContext: MOCK_DESKTOP_CONTEXT,
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await expect(
+      page.getByRole("heading", {
+        name: "Open a local project to start a desktop agent workspace",
+      })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Open project folder" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "desktop-project" })
+    ).toBeVisible()
+  })
+
+  test("opens a desktop project and sends desktop auth headers", async ({
+    page,
+  }) => {
+    await mockDesktopBridge(page, {
+      initialContext: MOCK_DESKTOP_EMPTY_CONTEXT,
+      pickedContext: MOCK_DESKTOP_CONTEXT,
+    })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await page.route("http://localhost:3000/api/chat/new", async (route) => {
+      expect(route.request().headers()["x-fleet-pi-desktop-token"]).toBe(
+        MOCK_DESKTOP_TOKEN
+      )
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          session: {
+            sessionFile: MOCK_SESSION_FILE,
+            sessionId: MOCK_SESSION_ID,
+          },
+          messages: [],
+        }),
+      })
+    })
+
+    await page.goto("/")
+    await page.getByRole("button", { name: "Open project folder" }).click()
+
+    await expect(page.locator('[aria-label="Select model"]')).toBeVisible()
+    await expect(page.locator('[aria-label="Open project"]')).toBeVisible()
+    await expect(page.locator("text=desktop-project").first()).toBeVisible()
+  })
+
+  test("hydrates the desktop-owned session on load", async ({ page }) => {
+    await mockDesktopBridge(page, {
+      initialContext: {
+        ...MOCK_DESKTOP_CONTEXT,
+        activeSession: {
+          sessionFile: MOCK_SESSION_FILE,
+          sessionId: MOCK_SESSION_ID,
+        },
+      },
+    })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await page.route(
+      "http://localhost:3000/api/chat/session?**",
+      async (route) => {
+        expect(route.request().headers()["x-fleet-pi-desktop-token"]).toBe(
+          MOCK_DESKTOP_TOKEN
+        )
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            session: {
+              sessionFile: MOCK_SESSION_FILE,
+              sessionId: MOCK_SESSION_ID,
+            },
+            messages: [
+              {
+                id: "user-msg-1",
+                role: "user",
+                createdAt: Date.now() - 1000,
+                parts: [{ type: "text", text: "Desktop hello" }],
+              },
+              {
+                id: "assistant-msg-1",
+                role: "assistant",
+                createdAt: Date.now(),
+                parts: [{ type: "text", text: "Desktop session restored" }],
+              },
+            ],
+          }),
+        })
+      }
+    )
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await expect(page.getByTestId("chat-shell")).toBeVisible()
+
+    await expect(page.locator("text=Desktop hello")).toBeVisible()
+    await expect(page.locator("text=Desktop session restored")).toBeVisible()
+  })
+
   test("page loads and chat UI is visible", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
 
     await page.goto("/")
+    await expect(page.getByTestId("chat-shell")).toBeVisible()
 
-    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    const textarea = page.getByRole("textbox", {
+      name: "Send a message...",
+    })
     await expect(textarea).toBeVisible()
 
     const newSessionButton = page.locator('[aria-label="New session"]')
@@ -390,12 +589,15 @@ test.describe("chat flows", () => {
     await mockChatNew(page)
 
     await page.goto("/")
+    await expect(page.getByTestId("chat-shell")).toBeVisible()
 
     const newSessionButton = page.locator('[aria-label="New session"]')
     await expect(newSessionButton).toBeVisible()
     await newSessionButton.click()
 
-    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    const textarea = page.getByRole("textbox", {
+      name: "Send a message...",
+    })
     await expect(textarea).toBeVisible()
 
     await expect(page.locator("text=What can you do?")).toBeVisible()
