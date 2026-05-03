@@ -7,6 +7,8 @@
 - Run workspace commands with `pnpm --filter <workspace> <script>` when only one package is affected.
 - Use the root `desktop:dev` script when you need the Electron shell and local web server to share desktop auth/state wiring during development.
 - Use the root Symphony wrapper scripts when operating Fleet Pi through Symphony: `pnpm symphony:validate` for config validation, `pnpm symphony:test-plugin` for the upstream plugin test lane, and the `symphony:run` package script for the long-running service.
+- The shell-based Symphony validation/runtime wrappers source the repo-root `.env` by default; keep `LINEAR_API_KEY` there unless you intentionally bypass it with `SYMPHONY_SKIP_DOTENV=1`.
+- In `WORKFLOW.md`, `tracker.project_slug` must use Linear's project `slugId` (for Fleet Pi: `7c8589daab4e`), not the human-readable project name.
 
 ## Validation
 
@@ -78,7 +80,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - `.pi/extensions/vendor/filechanges` provides `/filechanges`, `/filechanges-accept`, and `/filechanges-decline`; `.pi/extensions/vendor/subagents` registers the `subagent` tool. Keep each folder's `UPSTREAM.md` current when refreshing vendored source.
 - Agent mode explicitly allows external tools `init_experiment`, `run_experiment`, `log_experiment`, `autocontext_judge`, `autocontext_improve`, `autocontext_status`, `autocontext_scenarios`, `autocontext_queue`, `autocontext_runtime_snapshot`, and `subagent`. Do not add mutating research, file-change, or subagent tools to Plan mode.
 - Electron desktop requests attach `x-fleet-pi-desktop-token` through the preload bridge. Keep desktop-only fetches going through the shared desktop client helper so auth stays consistent.
-- Fleet Pi's Symphony workflow is label-gated by `symphony-ready` in contract, but current production use should wait for the upstream Symphony plugin support that enforces `tracker.required_labels`.
+- Fleet Pi's Symphony workflow follows the current upstream spec: issue intake is driven by the configured Linear project plus `tracker.active_states`, not repo-local label gating.
 - Bedrock credentials should come from standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1` when unset.
 
 ## Manual Chat Checks
@@ -99,4 +101,4 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - In the desktop app, start a session, refresh the renderer window, and verify the visible transcript hydrates from the Electron-owned session metadata instead of browser localStorage alone.
 - In the desktop app, click a non-local external link and verify it opens in the system browser instead of navigating inside the Electron window.
 - Run `pnpm symphony:validate` and verify the Fleet Pi workflow config resolves through the Symphony plugin repo checkout.
-- Confirm the Symphony hook scripts create a `codex/<workspace_key>` worktree under `~/code/symphony-workspaces/fleet-pi` and that `git worktree prune` is part of operator cleanup after workspace removal.
+- Confirm the Symphony hook scripts create a `codex/<workspace_key>` worktree under `~/code/symphony-workspaces/fleet-pi` and that workspace removal unregisters the worktree cleanly from `git worktree list`.

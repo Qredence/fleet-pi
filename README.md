@@ -298,9 +298,8 @@ issues can be executed through a Symphony-managed Codex app-server flow.
 
 The intended Fleet Pi Symphony model is:
 
-- Linear project: `fleet-pi`
+- Linear project: `fleet-pi` (`slugId: 7c8589daab4e`)
 - intake states: `Todo`, `In Progress`
-- execution label: `symphony-ready`
 - git worktrees under `~/code/symphony-workspaces/fleet-pi`
 - on-request approvals with workspace-write thread sandboxing
 
@@ -312,10 +311,12 @@ The hooks stay intentionally small:
   first bootstrap or when the tracked dependency manifests and lockfile change
   in a reused worktree
 - `after_run` prints `git status --short`
+- `before_remove` unregisters the git worktree, prunes git worktree metadata,
+  and leaves Symphony an empty directory to delete
 
 See [docs/symphony.md](./docs/symphony.md)
-for operator notes, validation commands, and the current upstream dependency on
-Symphony label-filter support.
+for operator notes, validation commands, and the spec-aligned issue-intake
+contract.
 
 ## Agent Workspace
 

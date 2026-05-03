@@ -5,25 +5,27 @@ orchestrator.
 
 ## Operating Model
 
-- Tracker: Linear project `fleet-pi`
+- Tracker: Linear project `fleet-pi` (`slugId: 7c8589daab4e`)
 - Eligible states: `Todo`, `In Progress`
-- Intended execution label: `symphony-ready`
 - Workspace model: one git worktree per issue under
   `~/code/symphony-workspaces/fleet-pi/<issue-key>`
 - Codex approvals: `on-request`
 - Thread sandbox: `workspace-write`
 
 The repo-owned workflow definition lives at [WORKFLOW.md](../WORKFLOW.md).
+For Linear-backed Symphony dispatch, `tracker.project_slug` must use the
+project `slugId` from the Linear URL or API, not the human-readable project
+name.
 
-## Important Caveat
+## Issue Intake
 
-Fleet Pi adopts the `tracker.required_labels` contract now, but the current
-reference Symphony service still needs upstream support to enforce it. That work
-is tracked as a Linear dependency and should land in the Symphony plugin codebase
-before Fleet Pi is run in production with automatic label-gated pickup.
+Fleet Pi now follows the current Symphony spec and current plugin behavior:
+issue eligibility is driven by the configured Linear project plus
+`tracker.active_states`.
 
-Until that dependency is done, treat the workflow as configuration-in-place,
-not launch-ready automation.
+If you want a narrower rollout than "all `Todo`/`In Progress` issues in this
+project", do that with Linear project/state hygiene or a separate workflow, not
+with repo-local label assumptions that Symphony does not dispatch on.
 
 ## Hook Behavior
 
@@ -39,6 +41,11 @@ Fleet Pi keeps the hooks small and deterministic:
     tracked dependency manifests or lockfile change in a reused worktree
 - `after_run`
   - prints `git status --short`
+- `before_remove`
+  - unregisters the git worktree from the source checkout
+  - runs `git worktree prune`
+  - recreates an empty directory so Symphony's own workspace deletion can
+    finish cleanly
 
 Hook implementations live under `scripts/symphony/`.
 
@@ -55,7 +62,6 @@ Run the Symphony service:
 
 ```zsh
 # from repo root
-export LINEAR_API_KEY=...
 zsh ./scripts/symphony/run-service.zsh
 ```
 
@@ -70,17 +76,19 @@ All three wrappers default to the sibling checkout at
 `/Volumes/SSD-T7/qredence-environnement/qredence-plugins`. Override that by
 setting `SYMPHONY_PLUGIN_REPO` when needed.
 
+The validation and runtime wrappers source the repo-root `.env` by default, so
+keep `LINEAR_API_KEY=...` there for local operator runs. To bypass the file and
+use the current shell environment directly, set `SYMPHONY_SKIP_DOTENV=1`.
+
 ## Operator Smoke Checks
 
 Before enabling real execution:
 
 1. Validate `WORKFLOW.md` with the wrapper command.
-2. Confirm the Symphony plugin repo contains the label-filter change for
-   `tracker.required_labels`.
-3. Create one labeled `symphony-ready` issue in `Todo` and one unlabeled issue
-   in `Todo`.
-4. Confirm only the labeled issue is eligible.
-5. Confirm the workspace path resolves under
+2. Create one issue in `Todo` and one issue in a terminal state such as `Done`.
+3. Confirm only the active-state issue is eligible for dispatch.
+4. Confirm the workspace path resolves under
    `~/code/symphony-workspaces/fleet-pi/<issue-key>`.
-6. Confirm the created worktree branch is `codex/<workspace_key>`.
-7. After cleanup, run `git -C /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi worktree prune`.
+5. Confirm the created worktree branch is `codex/<workspace_key>`.
+6. After cleanup, confirm `git -C /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi worktree list`
+   no longer includes the retired workspace path.

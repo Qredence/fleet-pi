@@ -2,7 +2,7 @@
 tracker:
   kind: linear
   endpoint: https://api.linear.app/graphql
-  project_slug: "fleet-pi"
+  project_slug: "7c8589daab4e"
   api_key: $LINEAR_API_KEY
   active_states:
     - Todo
@@ -13,12 +13,6 @@ tracker:
     - Cancelled
     - Canceled
     - Duplicate
-  # Forward-looking contract for the Symphony label-gating dependency tracked
-  # in Linear. The current Fleet Pi workflow adopts the field now; the
-  # reference Symphony service will begin enforcing it once upstream support
-  # lands in the plugin codebase.
-  required_labels:
-    - symphony-ready
 polling:
   interval_ms: 30000
 workspace:
@@ -30,6 +24,8 @@ hooks:
     zsh /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi/scripts/symphony/before-run-bootstrap.zsh
   after_run: |
     zsh /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi/scripts/symphony/after-run-status.zsh
+  before_remove: |
+    zsh /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi/scripts/symphony/before-remove-worktree.zsh
   timeout_ms: 60000
 agent:
   max_concurrent_agents: 2
