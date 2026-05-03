@@ -43,7 +43,9 @@ jobs:
           cache: pnpm
 
       - name: Install ImageMagick
-        run: sudo apt-get install -y -qq imagemagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq imagemagick
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
