@@ -67,6 +67,19 @@ const MOCK_RESOURCES = {
       path: "/tmp/fleet-pi/.pi/skills/fleet-pi-orientation/SKILL.md",
       source: "project",
     },
+    {
+      name: "agent-elements",
+      description:
+        "Build or inspect chat UI surfaces and interaction patterns.",
+      path: "/tmp/fleet-pi/.pi/skills/agent-elements/SKILL.md",
+      source: "project",
+    },
+    {
+      name: "chat-runtime-debugging",
+      description: "Troubleshoot streaming sessions and runtime state.",
+      path: "/tmp/fleet-pi/.pi/skills/chat-runtime-debugging/SKILL.md",
+      source: "project",
+    },
   ],
   prompts: [],
   extensions: [
@@ -736,6 +749,15 @@ test.describe("chat flows", () => {
     await expect(
       canvas.getByText("fleet-pi-orientation", { exact: true })
     ).toBeVisible()
+    const skillsSection = canvas.getByTestId("resource-chip-section-skills")
+    const skillItems = skillsSection.getByTestId("resource-chip")
+    await expect(skillItems).toHaveCount(3)
+    const firstSkillBox = await skillItems.nth(0).boundingBox()
+    const secondSkillBox = await skillItems.nth(1).boundingBox()
+    expect(firstSkillBox).not.toBeNull()
+    expect(secondSkillBox).not.toBeNull()
+    expect(Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))).toBe(0)
+    expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
       name: /\.pi\/extensions\/project-inventory\.ts/,
     })

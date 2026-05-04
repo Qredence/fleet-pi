@@ -56,7 +56,8 @@ export PI_AGENT_DIR=<custom-pi-agent-dir>
 `AWS_REGION` defaults to `us-east-1` when unset. The Vite config loads `.env`
 from the repository root for server-side routes. Browser-mode Pi session JSONL
 files are stored under `.fleet/sessions` by default, while committed agent
-resources stay under `.pi/`.
+resources stay under `.pi/`. Repo-local agent memory, plans, skills, artifacts,
+and scratch files live under `agent-workspace/`.
 
 ## Setup
 
