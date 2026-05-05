@@ -21,7 +21,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     if (memoryStatus) parts.push(`Memory: ${memoryStatus}`)
 
     parts.push(
-      "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research/**/plans/** = needs rationale; system/**/skills/**/evals/** = protected."
+      "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
     )
     parts.push(
       "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
@@ -43,15 +43,8 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     const messages = event.messages
     let lastWorkspaceContextIndex = -1
     for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i]
-      if (
-        msg.role === "user" &&
-        Array.isArray(msg.content) &&
-        msg.content.some(
-          (c: { type: string; customType?: string }) =>
-            c.type === "custom" && c.customType === CUSTOM_TYPE
-        )
-      ) {
+      const msg = messages[i] as { customType?: string }
+      if (msg.customType === CUSTOM_TYPE) {
         lastWorkspaceContextIndex = i
         break
       }
@@ -61,12 +54,8 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
 
     const filtered = messages.filter((msg, i) => {
       if (i === lastWorkspaceContextIndex) return true
-      if (msg.role !== "user" || !Array.isArray(msg.content)) return true
-      const isStaleContext = msg.content.every(
-        (c: { type: string; customType?: string }) =>
-          c.type === "custom" && c.customType === CUSTOM_TYPE
-      )
-      return !isStaleContext
+      const custom = msg as { customType?: string }
+      return custom.customType !== CUSTOM_TYPE
     })
 
     if (filtered.length === messages.length) return undefined

@@ -1068,7 +1068,9 @@ function getWorkspaceSkillResources(
     .map((node) => {
       const skillFile =
         node.children?.find(
-          (child) => child.type === "file" && child.name === "skill.md"
+          (child) =>
+            child.type === "file" &&
+            child.name.toLowerCase() === "skill.md"
         ) ?? null
 
       return {

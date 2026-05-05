@@ -37,7 +37,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
     name: "workspace_write",
     label: "Workspace Write",
     description:
-      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use rationale param for memory/project/**, plans/**, memory/research/**, and skills/**. Protected paths (system/**, evals/**) require override:true.",
+      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use rationale param for memory/project/**, memory/research/**, memory/summaries/**, plans/**, and skills/**. Protected paths (system/**, evals/**) require override:true.",
     promptSnippet:
       "workspace_write: write files to agent-workspace/ (memory, plans, artifacts, scratch)",
     parameters: Type.Object({
@@ -57,7 +57,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
       override: Type.Optional(
         Type.Boolean({
           description:
-            "Set true to write to protected paths (system/**, skills/**, evals/**). Use with caution.",
+            "Set true to write to protected paths (system/**, evals/**). Use with caution.",
         })
       ),
     }),
@@ -87,7 +87,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
 
       if (tier === "protected" && !params.override) {
         return error(
-          `"${params.path}" is in a protected area (system/**, skills/**, evals/**). ` +
+          `"${params.path}" is in a protected area (system/**, evals/**). ` +
             `Set override:true only if this task explicitly concerns agent behavior or workspace design.`
         )
       }

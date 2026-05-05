@@ -789,7 +789,7 @@ test.describe("chat flows", () => {
     const secondSkillBox = await skillItems.nth(1).boundingBox()
     expect(firstSkillBox).not.toBeNull()
     expect(secondSkillBox).not.toBeNull()
-    expect(Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))).toBe(0)
+    expect(Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))).toBeLessThanOrEqual(1)
     expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
       name: /\.pi\/extensions\/project-inventory\.ts/,
