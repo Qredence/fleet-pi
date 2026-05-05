@@ -39,7 +39,7 @@ manually.
 ## Prerequisites
 
 - Node.js 20 or newer.
-- pnpm 9.15.9, matching the `packageManager` field in `package.json`.
+- pnpm 10.33.2, matching the `packageManager` field in `package.json`.
 - AWS credentials with access to the configured Amazon Bedrock models.
 
 Use the standard AWS environment/profile chain for credentials. The server route
@@ -351,6 +351,8 @@ Committed project-local resources live under `.pi/`:
 - `.pi/skills/agent-ui-workflows` - Agent Elements UI modification guide.
 - `.pi/extensions/project-inventory.ts` - registers the read-only
   `project_inventory` tool for agent and Plan mode orientation.
+- `.pi/extensions/workspace-index.ts` - registers the read-only
+  `workspace_index` tool for agent-workspace discovery in Agent and Plan mode.
 - `.pi/extensions/vendor/filechanges` - vendored upstream file-change review
   commands: `/filechanges`, `/filechanges-accept`, and
   `/filechanges-decline`.

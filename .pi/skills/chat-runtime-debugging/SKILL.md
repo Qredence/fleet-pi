@@ -21,7 +21,7 @@ Use this skill when chat requests fail, sessions do not resume, tool cards look 
 - Stored `sessionFile` values must resolve inside `.fleet/sessions`.
 - Live follow-ups and aborts depend on `FLEET_PI_RUNTIME_TTL_MS`.
 - Pi tool lifecycle events should normalize into `tool-Read`, `tool-Write`, `tool-Edit`, `tool-Bash`, or generic `tool-*` cards.
-- Plan mode can use `read`, `bash`, `grep`, `find`, `ls`, `questionnaire`, and `project_inventory`; it must not use `edit` or `write`.
+- Plan mode can use `read`, `bash`, `grep`, `find`, `ls`, `questionnaire`, `project_inventory`, and `workspace_index`; it must not use `edit` or `write`.
 
 ## Validation
 

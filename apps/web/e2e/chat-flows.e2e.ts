@@ -176,13 +176,37 @@ const MOCK_WORKSPACE_TREE = {
       type: "directory",
       children: [
         {
-          name: "codebase-research",
-          path: "agent-workspace/skills/codebase-research",
+          name: "doc-gardening",
+          path: "agent-workspace/skills/doc-gardening",
           type: "directory",
           children: [
             {
               name: "skill.md",
-              path: "agent-workspace/skills/codebase-research/skill.md",
+              path: "agent-workspace/skills/doc-gardening/skill.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "execution-plan",
+          path: "agent-workspace/skills/execution-plan",
+          type: "directory",
+          children: [
+            {
+              name: "skill.md",
+              path: "agent-workspace/skills/execution-plan/skill.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "memory-synthesis",
+          path: "agent-workspace/skills/memory-synthesis",
+          type: "directory",
+          children: [
+            {
+              name: "skill.md",
+              path: "agent-workspace/skills/memory-synthesis/skill.md",
               type: "file",
             },
           ],
@@ -746,12 +770,21 @@ test.describe("chat flows", () => {
     await expect(canvas.getByText("Skills", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Extensions", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Context", { exact: true })).toBeVisible()
-    await expect(
-      canvas.getByText("fleet-pi-orientation", { exact: true })
-    ).toBeVisible()
     const skillsSection = canvas.getByTestId("resource-chip-section-skills")
     const skillItems = skillsSection.getByTestId("resource-chip")
     await expect(skillItems).toHaveCount(3)
+    await expect(
+      skillsSection.getByText("doc-gardening", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("execution-plan", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("memory-synthesis", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("fleet-pi-orientation", { exact: true })
+    ).toHaveCount(0)
     const firstSkillBox = await skillItems.nth(0).boundingBox()
     const secondSkillBox = await skillItems.nth(1).boundingBox()
     expect(firstSkillBox).not.toBeNull()

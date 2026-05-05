@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {
   BookOpen,
   Bot,
@@ -125,12 +126,14 @@ export function ResourceLauncher({
   onOpenChange,
   open,
   resources,
+  workspace,
 }: {
   onOpenChange: (open: boolean) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  workspace: WorkspaceTreeResponse | null
 }) {
-  const total = getResourceGroups(resources).reduce(
+  const total = getResourceGroups(resources, workspace).reduce(
     (count, group) => count + group.items.length,
     0
   )
@@ -298,7 +301,10 @@ export function ResourceCanvas({
   )
 }
 
-function getResourceGroups(resources: ChatResourcesResponse | null): Array<{
+function getResourceGroups(
+  resources: ChatResourcesResponse | null,
+  workspace: WorkspaceTreeResponse | null
+): Array<{
   id: ResourceGroupId
   label: string
   icon: LucideIcon
@@ -309,7 +315,7 @@ function getResourceGroups(resources: ChatResourcesResponse | null): Array<{
       id: "skills",
       label: "Skills",
       icon: BookOpen,
-      items: resources?.skills ?? [],
+      items: getWorkspaceSkillResources(workspace),
     },
     {
       id: "prompts",
@@ -375,11 +381,11 @@ function ResourcePanel({
   workspaceError?: Error | null
   workspaceLoading: boolean
 }) {
-  const groups = getResourceGroups(resources)
+  const groups = getResourceGroups(resources, workspace)
   const diagnostics = resources?.diagnostics ?? []
   const activeLoading =
     activeTab === "resources"
-      ? loading
+      ? loading || workspaceLoading
       : activeTab === "workspace"
         ? workspaceLoading
         : false
@@ -1046,6 +1052,34 @@ function findWorkspaceNode(
   return null
 }
 
+function getWorkspaceSkillResources(
+  workspace: WorkspaceTreeResponse | null
+): Array<ChatResourceInfo> {
+  if (!workspace) return []
+
+  const skillsRoot = findWorkspaceNode(
+    workspace.nodes,
+    "agent-workspace/skills"
+  )
+  if (!skillsRoot?.children?.length) return []
+
+  return skillsRoot.children
+    .filter((node) => node.type === "directory")
+    .map((node) => {
+      const skillFile =
+        node.children?.find(
+          (child) => child.type === "file" && child.name === "skill.md"
+        ) ?? null
+
+      return {
+        name: node.name,
+        path: skillFile?.path ?? node.path,
+        source: "workspace",
+      }
+    })
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
 function ResourceChipSection({
   id,
   icon: Icon,
@@ -1166,13 +1200,13 @@ function ResourceNotice({
   )
 }
 
-function displayResourcePath(path: string) {
+export function displayResourcePath(path: string) {
   const marker = "/fleet-pi/"
   const index = path.indexOf(marker)
   return index >= 0 ? path.slice(index + marker.length) : path
 }
 
-function getResourceChipTitle(item: ChatResourceInfo) {
+export function getResourceChipTitle(item: ChatResourceInfo) {
   return [
     item.name,
     item.source ? `Source: ${item.source}` : null,
@@ -1183,6 +1217,6 @@ function getResourceChipTitle(item: ChatResourceInfo) {
     .join("\n")
 }
 
-function resourceKey(item: ChatResourceInfo) {
+export function resourceKey(item: ChatResourceInfo) {
   return `${item.source ?? "resource"}:${item.path ?? item.name}`
 }

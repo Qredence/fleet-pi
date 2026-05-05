@@ -4,5 +4,9 @@
     "npm:pi-skill-palette",
     "npm:pi-autocontext"
   ],
-  "extensions": ["extensions/vendor/filechanges", "extensions/vendor/subagents"]
+  "extensions": [
+    "extensions/bedrock-bearer-auth",
+    "extensions/vendor/filechanges",
+    "extensions/vendor/subagents"
+  ]
 }
