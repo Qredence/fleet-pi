@@ -54,16 +54,18 @@ Progress:
 
 Decision Log:
 
-- Keep the first scaffold intentionally small and Markdown-first instead of
-  inventing new extensions in the same change.
-- Treat future `.pi/extensions/*` support as planned follow-up work, not part
-  of this initial seed.
+- Keep the first scaffold intentionally small and Markdown-first.
+- Extension tools (workspace_index, workspace_write, workspace_context, web_fetch,
+  bedrock-bearer-auth) were included in this same change to make the workspace
+  immediately useful — the initial plan deferred this, but shipping them together
+  avoids a split-context review cycle.
 
 Outcome:
 
 - The root `agent-workspace/` now has a clean index, policies, project-memory
-  stubs, research guidance, plan directories, eval checklists, and three
-  starter skills.
+  stubs, research guidance, plan directories, eval checklists, and five
+  starter skills (codebase-research, doc-gardening, execution-plan,
+  frontend-design, memory-synthesis).
 - Private inspiration-note placeholders were removed from the committed
   workspace structure.
 - The repo README now briefly points readers to `agent-workspace/` without

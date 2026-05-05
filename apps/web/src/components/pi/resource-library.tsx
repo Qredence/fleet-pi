@@ -315,7 +315,10 @@ function getResourceGroups(
       id: "skills",
       label: "Skills",
       icon: BookOpen,
-      items: getWorkspaceSkillResources(workspace),
+      items: mergeSkillResources(
+        getWorkspaceSkillResources(workspace),
+        resources?.skills ?? []
+      ),
     },
     {
       id: "prompts",
@@ -1080,6 +1083,21 @@ function getWorkspaceSkillResources(
       }
     })
     .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function mergeSkillResources(
+  workspaceSkills: Array<ChatResourceInfo>,
+  apiSkills: Array<ChatResourceInfo>
+): Array<ChatResourceInfo> {
+  const seen = new Set(workspaceSkills.map((s) => s.name))
+  const merged = [...workspaceSkills]
+  for (const s of apiSkills) {
+    if (!seen.has(s.name)) {
+      seen.add(s.name)
+      merged.push(s)
+    }
+  }
+  return merged.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 function ResourceChipSection({

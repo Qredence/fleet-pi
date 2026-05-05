@@ -176,13 +176,25 @@ const MOCK_WORKSPACE_TREE = {
       type: "directory",
       children: [
         {
+          name: "codebase-research",
+          path: "agent-workspace/skills/codebase-research",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/codebase-research/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
           name: "doc-gardening",
           path: "agent-workspace/skills/doc-gardening",
           type: "directory",
           children: [
             {
-              name: "skill.md",
-              path: "agent-workspace/skills/doc-gardening/skill.md",
+              name: "SKILL.md",
+              path: "agent-workspace/skills/doc-gardening/SKILL.md",
               type: "file",
             },
           ],
@@ -193,8 +205,20 @@ const MOCK_WORKSPACE_TREE = {
           type: "directory",
           children: [
             {
-              name: "skill.md",
-              path: "agent-workspace/skills/execution-plan/skill.md",
+              name: "SKILL.md",
+              path: "agent-workspace/skills/execution-plan/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "frontend-design",
+          path: "agent-workspace/skills/frontend-design",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/frontend-design/SKILL.md",
               type: "file",
             },
           ],
@@ -205,8 +229,8 @@ const MOCK_WORKSPACE_TREE = {
           type: "directory",
           children: [
             {
-              name: "skill.md",
-              path: "agent-workspace/skills/memory-synthesis/skill.md",
+              name: "SKILL.md",
+              path: "agent-workspace/skills/memory-synthesis/SKILL.md",
               type: "file",
             },
           ],
@@ -772,12 +796,18 @@ test.describe("chat flows", () => {
     await expect(canvas.getByText("Context", { exact: true })).toBeVisible()
     const skillsSection = canvas.getByTestId("resource-chip-section-skills")
     const skillItems = skillsSection.getByTestId("resource-chip")
-    await expect(skillItems).toHaveCount(3)
+    await expect(skillItems).toHaveCount(5)
+    await expect(
+      skillsSection.getByText("codebase-research", { exact: true })
+    ).toBeVisible()
     await expect(
       skillsSection.getByText("doc-gardening", { exact: true })
     ).toBeVisible()
     await expect(
       skillsSection.getByText("execution-plan", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("frontend-design", { exact: true })
     ).toBeVisible()
     await expect(
       skillsSection.getByText("memory-synthesis", { exact: true })

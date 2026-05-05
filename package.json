@@ -48,7 +48,7 @@
   },
   "packageManager": "pnpm@10.33.3",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@mariozechner/pi-coding-agent": "^0.73.0",

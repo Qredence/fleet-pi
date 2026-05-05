@@ -38,7 +38,7 @@ manually.
 
 ## Prerequisites
 
-- Node.js 20 or newer.
+- Node.js 22 or newer.
 - pnpm 10.33.3, matching the `packageManager` field in `package.json`.
 - AWS credentials with access to the configured Amazon Bedrock models.
 

@@ -7,16 +7,24 @@ const FETCH_TIMEOUT_MS = 15_000
 const GITHUB_BLOB_RE =
   /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/
 
+// Private IPv4 ranges, loopback, link-local, and localhost
+const BLOCKED_HOSTNAME_RE =
+  /^(localhost|.*\.localhost)$|^127\.|^0\.|^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\.|^169\.254\.|^\[?::1\]?$|^\[?fc|^\[?fd/i
+
+function isBlockedHost(hostname: string): boolean {
+  return BLOCKED_HOSTNAME_RE.test(hostname)
+}
+
 export default function webFetchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
     description:
-      "Fetch the contents of a URL and return it as text. GitHub blob URLs are automatically rewritten to raw content URLs. Only text responses are returned; binary content is rejected.",
+      "Fetch the contents of a public HTTPS URL and return it as text. GitHub blob URLs are automatically rewritten to raw content URLs. Only text responses are returned; binary content is rejected. Private/internal network addresses are blocked.",
     promptSnippet: "web_fetch: fetch a URL and return its text content",
     parameters: Type.Object({
       url: Type.String({
-        description: "URL to fetch",
+        description: "HTTPS URL to fetch (http:// is also accepted for GitHub raw URLs)",
       }),
       maxBytes: Type.Optional(
         Type.Number({
@@ -28,6 +36,43 @@ export default function webFetchExtension(pi: ExtensionAPI) {
       const limit = params.maxBytes ?? DEFAULT_MAX_BYTES
       const rawUrl = rewriteUrl(params.url)
 
+      let parsed: URL
+      try {
+        parsed = new URL(rawUrl)
+      } catch {
+        return {
+          content: [{ type: "text" as const, text: `Invalid URL: ${rawUrl}` }],
+          details: undefined,
+          isError: true,
+        }
+      }
+
+      if (parsed.protocol !== "https:") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Blocked: only https:// URLs are allowed (got ${parsed.protocol}).`,
+            },
+          ],
+          details: undefined,
+          isError: true,
+        }
+      }
+
+      if (isBlockedHost(parsed.hostname)) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Blocked: private or internal host "${parsed.hostname}" is not allowed.`,
+            },
+          ],
+          details: undefined,
+          isError: true,
+        }
+      }
+
       const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
       const combinedSignal = signal
         ? AbortSignal.any([signal, timeoutSignal])
@@ -37,6 +82,7 @@ export default function webFetchExtension(pi: ExtensionAPI) {
       try {
         response = await fetch(rawUrl, {
           signal: combinedSignal,
+          redirect: "follow",
           headers: { "User-Agent": "fleet-pi-agent/1.0" },
         })
       } catch (err) {
@@ -75,13 +121,62 @@ export default function webFetchExtension(pi: ExtensionAPI) {
         }
       }
 
-      const buffer = await response.arrayBuffer()
-      const bytes = buffer.byteLength
-      const truncated = bytes > limit
-      const slice = truncated ? buffer.slice(0, limit) : buffer
-      const text = new TextDecoder("utf-8", { fatal: false }).decode(slice)
+      // Check content-length header early to avoid streaming a huge body
+      const contentLength = response.headers.get("content-length")
+      if (contentLength !== null) {
+        const declaredBytes = parseInt(contentLength, 10)
+        if (!isNaN(declaredBytes) && declaredBytes > limit * 10) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Rejected: content-length ${declaredBytes} exceeds maximum allowed size.`,
+              },
+            ],
+            details: undefined,
+            isError: true,
+          }
+        }
+      }
+
+      // Stream body and stop once limit is reached
+      const chunks: Array<Uint8Array> = []
+      let totalBytes = 0
+      let truncated = false
+
+      if (response.body) {
+        const reader = response.body.getReader()
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            if (value) {
+              const remaining = limit - totalBytes
+              if (value.byteLength > remaining) {
+                chunks.push(value.slice(0, remaining))
+                totalBytes += remaining
+                truncated = true
+                reader.cancel().catch(() => undefined)
+                break
+              }
+              chunks.push(value)
+              totalBytes += value.byteLength
+            }
+          }
+        } catch {
+          // partial read is fine — decode what we have
+        }
+      }
+
+      const combined = new Uint8Array(totalBytes)
+      let offset = 0
+      for (const chunk of chunks) {
+        combined.set(chunk, offset)
+        offset += chunk.byteLength
+      }
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(combined)
       const body = truncated
-        ? `${text}\n\n[Truncated: showed ${limit} of ${bytes} bytes]`
+        ? `${text}\n\n[Truncated: showed ${limit} of ${totalBytes}+ bytes]`
         : text
 
       return {
@@ -90,7 +185,7 @@ export default function webFetchExtension(pi: ExtensionAPI) {
           url: params.url,
           finalUrl: rawUrl,
           contentType,
-          bytes,
+          bytes: totalBytes,
           truncated,
         },
       }

@@ -27,7 +27,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
       "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
     )
     parts.push(
-      "On skill install: copy source file verbatim with workspace_write to agent-workspace/skills/<name>/SKILL.md — never summarize."
+      "On skill install: copy source file verbatim with workspace_write to agent-workspace/skills/<name>/SKILL.md — never summarize. Provide rationale (required for skills/**)."
     )
 
     return {
