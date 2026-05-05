@@ -186,7 +186,7 @@ async function discoverSkills(cwd: string): Promise<Array<WorkspaceEntry>> {
   return resolveEntries(
     cwd,
     directories.map((name) =>
-      fileEntry(`agent-workspace/skills/${name}/skill.md`)
+      fileEntry(`agent-workspace/skills/${name}/SKILL.md`)
     )
   )
 }

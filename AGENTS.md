@@ -18,7 +18,7 @@
 - Build with `pnpm build`.
 - Run unit tests with `pnpm test`.
 - Run end-to-end tests with `pnpm e2e`.
-- Run desktop state tests with `pnpm test --filter desktop`.
+- Run desktop state tests with pnpm --filter desktop test (not yet applicable; desktop package not in workspace).
 - Build the packaged desktop surface with `pnpm desktop:build`.
 - Check dependency version consistency with `pnpm syncpack`.
 - Auto-fix dependency version drift with `pnpm syncpack:fix`.
