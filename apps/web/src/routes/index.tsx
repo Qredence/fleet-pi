@@ -400,21 +400,10 @@ function ChatWorkspaceShell({
   }, [desktopContext])
 
   useEffect(() => {
-    if (
-      resourcesOpen &&
-      resourceCanvasTab === "workspace" &&
-      !workspaceTree &&
-      !workspaceLoading
-    ) {
+    if (resourcesOpen && !workspaceTree && !workspaceLoading) {
       void refreshWorkspace()
     }
-  }, [
-    refreshWorkspace,
-    resourceCanvasTab,
-    resourcesOpen,
-    workspaceLoading,
-    workspaceTree,
-  ])
+  }, [refreshWorkspace, resourcesOpen, workspaceLoading, workspaceTree])
 
   useEffect(() => {
     if (!resourcesOpen) return
@@ -602,6 +591,7 @@ function ChatWorkspaceShell({
           onOpenChange={setResourcesOpen}
           open={resourcesOpen}
           resources={resources}
+          workspace={workspaceTree}
         />
         <ResourceMobilePanel
           activeTab={resourceCanvasTab}

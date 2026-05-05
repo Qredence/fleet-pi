@@ -14,6 +14,11 @@ dotenvConfig({
   override: false,
 })
 
+// Ensure server-side code resolves projectRoot to the monorepo root, not apps/web/
+if (!process.env.FLEET_PI_REPO_ROOT) {
+  process.env.FLEET_PI_REPO_ROOT = resolve(import.meta.dirname, "../..")
+}
+
 const config = defineConfig({
   plugins: [
     viteTsConfigPaths({

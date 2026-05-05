@@ -38,8 +38,8 @@ manually.
 
 ## Prerequisites
 
-- Node.js 20 or newer.
-- pnpm 9.15.9, matching the `packageManager` field in `package.json`.
+- Node.js 22 or newer.
+- pnpm 10.33.3, matching the `packageManager` field in `package.json`.
 - AWS credentials with access to the configured Amazon Bedrock models.
 
 Use the standard AWS environment/profile chain for credentials. The server route
@@ -56,7 +56,8 @@ export PI_AGENT_DIR=<custom-pi-agent-dir>
 `AWS_REGION` defaults to `us-east-1` when unset. The Vite config loads `.env`
 from the repository root for server-side routes. Browser-mode Pi session JSONL
 files are stored under `.fleet/sessions` by default, while committed agent
-resources stay under `.pi/`.
+resources stay under `.pi/`. Repo-local agent memory, plans, skills, artifacts,
+and scratch files live under `agent-workspace/`.
 
 ## Setup
 
@@ -350,6 +351,8 @@ Committed project-local resources live under `.pi/`:
 - `.pi/skills/agent-ui-workflows` - Agent Elements UI modification guide.
 - `.pi/extensions/project-inventory.ts` - registers the read-only
   `project_inventory` tool for agent and Plan mode orientation.
+- `.pi/extensions/workspace-index.ts` - registers the read-only
+  `workspace_index` tool for agent-workspace discovery in Agent and Plan mode.
 - `.pi/extensions/vendor/filechanges` - vendored upstream file-change review
   commands: `/filechanges`, `/filechanges-accept`, and
   `/filechanges-decline`.

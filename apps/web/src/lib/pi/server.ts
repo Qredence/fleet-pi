@@ -212,7 +212,7 @@ export async function createPiRuntime(
       sessionStartEvent,
       model,
       thinkingLevel,
-      // Pi 0.70.2 exposes an allowlist of active tool names here. The SDK also
+      // Pi exposes an allowlist of active tool names here. The SDK also
       // exports createCodingTools(cwd), but createAgentSession* expects names.
       tools: CHAT_TOOL_ALLOWLIST,
     })

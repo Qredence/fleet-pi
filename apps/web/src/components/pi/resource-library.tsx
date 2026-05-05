@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {
   BookOpen,
   Bot,
@@ -125,12 +126,14 @@ export function ResourceLauncher({
   onOpenChange,
   open,
   resources,
+  workspace,
 }: {
   onOpenChange: (open: boolean) => void
   open: boolean
   resources: ChatResourcesResponse | null
+  workspace: WorkspaceTreeResponse | null
 }) {
-  const total = getResourceGroups(resources).reduce(
+  const total = getResourceGroups(resources, workspace).reduce(
     (count, group) => count + group.items.length,
     0
   )
@@ -298,7 +301,10 @@ export function ResourceCanvas({
   )
 }
 
-function getResourceGroups(resources: ChatResourcesResponse | null): Array<{
+function getResourceGroups(
+  resources: ChatResourcesResponse | null,
+  workspace: WorkspaceTreeResponse | null
+): Array<{
   id: ResourceGroupId
   label: string
   icon: LucideIcon
@@ -309,7 +315,10 @@ function getResourceGroups(resources: ChatResourcesResponse | null): Array<{
       id: "skills",
       label: "Skills",
       icon: BookOpen,
-      items: resources?.skills ?? [],
+      items: mergeSkillResources(
+        getWorkspaceSkillResources(workspace),
+        resources?.skills ?? []
+      ),
     },
     {
       id: "prompts",
@@ -375,11 +384,11 @@ function ResourcePanel({
   workspaceError?: Error | null
   workspaceLoading: boolean
 }) {
-  const groups = getResourceGroups(resources)
+  const groups = getResourceGroups(resources, workspace)
   const diagnostics = resources?.diagnostics ?? []
   const activeLoading =
     activeTab === "resources"
-      ? loading
+      ? loading || workspaceLoading
       : activeTab === "workspace"
         ? workspaceLoading
         : false
@@ -1046,7 +1055,53 @@ function findWorkspaceNode(
   return null
 }
 
+function getWorkspaceSkillResources(
+  workspace: WorkspaceTreeResponse | null
+): Array<ChatResourceInfo> {
+  if (!workspace) return []
+
+  const skillsRoot = findWorkspaceNode(
+    workspace.nodes,
+    "agent-workspace/skills"
+  )
+  if (!skillsRoot?.children?.length) return []
+
+  return skillsRoot.children
+    .filter((node) => node.type === "directory")
+    .map((node) => {
+      const skillFile =
+        node.children?.find(
+          (child) =>
+            child.type === "file" &&
+            child.name.toLowerCase() === "skill.md"
+        ) ?? null
+
+      return {
+        name: node.name,
+        path: skillFile?.path ?? node.path,
+        source: "workspace",
+      }
+    })
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function mergeSkillResources(
+  workspaceSkills: Array<ChatResourceInfo>,
+  apiSkills: Array<ChatResourceInfo>
+): Array<ChatResourceInfo> {
+  const seen = new Set(workspaceSkills.map((s) => s.name))
+  const merged = [...workspaceSkills]
+  for (const s of apiSkills) {
+    if (!seen.has(s.name)) {
+      seen.add(s.name)
+      merged.push(s)
+    }
+  }
+  return merged.sort((a, b) => a.name.localeCompare(b.name))
+}
+
 function ResourceChipSection({
+  id,
   icon: Icon,
   items,
   label,
@@ -1056,6 +1111,8 @@ function ResourceChipSection({
   items: Array<ChatResourceInfo>
   label: string
 }) {
+  const stacked = id === "skills"
+
   return (
     <section
       className="grid grid-cols-[82px_minmax(0,1fr)] gap-x-3 gap-y-2 py-2.5"
@@ -1070,7 +1127,11 @@ function ResourceChipSection({
         </span>
       </div>
       <div
-        className="flex min-w-0 flex-wrap items-start gap-2"
+        className={
+          stacked
+            ? "flex min-w-0 flex-col items-stretch gap-1.5"
+            : "flex min-w-0 flex-wrap items-start gap-2"
+        }
         role="list"
         data-testid={`resource-chip-section-${label.toLowerCase()}`}
       >
@@ -1080,7 +1141,12 @@ function ResourceChipSection({
           </span>
         ) : (
           items.map((item) => (
-            <ResourceChip key={resourceKey(item)} icon={Icon} item={item} />
+            <ResourceChip
+              key={resourceKey(item)}
+              icon={Icon}
+              item={item}
+              stacked={stacked}
+            />
           ))
         )}
       </div>
@@ -1091,22 +1157,30 @@ function ResourceChipSection({
 function ResourceChip({
   icon,
   item,
+  stacked = false,
 }: {
   icon: LucideIcon
   item: ChatResourceInfo
+  stacked?: boolean
 }) {
   const title = getResourceChipTitle(item)
 
   return (
     <div
       role="listitem"
-      className="inline-flex h-[30px] max-w-full items-center gap-1 rounded-[10px] border border-border/70 bg-background px-2.5 text-[14px] leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]"
+      className={`max-w-full rounded-[10px] border border-border/70 bg-background px-2.5 text-[14px] leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)] ${
+        stacked
+          ? "flex min-h-[36px] w-full min-w-0 items-center gap-2 py-1.5"
+          : "inline-flex h-[30px] items-center gap-1"
+      }`}
       aria-label={title}
       data-testid="resource-chip"
       title={title}
     >
-      <ResourceChipIcon icon={icon} />
-      <span className="min-w-0 truncate">{item.name}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <ResourceChipIcon icon={icon} />
+        <span className="min-w-0 truncate">{item.name}</span>
+      </div>
       {item.source && (
         <span className="max-w-20 shrink-0 truncate rounded-[5px] bg-foreground/5 px-1.5 py-0.5 text-[10px] leading-3 text-foreground/35">
           {item.source}
@@ -1146,13 +1220,13 @@ function ResourceNotice({
   )
 }
 
-function displayResourcePath(path: string) {
+export function displayResourcePath(path: string) {
   const marker = "/fleet-pi/"
   const index = path.indexOf(marker)
   return index >= 0 ? path.slice(index + marker.length) : path
 }
 
-function getResourceChipTitle(item: ChatResourceInfo) {
+export function getResourceChipTitle(item: ChatResourceInfo) {
   return [
     item.name,
     item.source ? `Source: ${item.source}` : null,
@@ -1163,6 +1237,6 @@ function getResourceChipTitle(item: ChatResourceInfo) {
     .join("\n")
 }
 
-function resourceKey(item: ChatResourceInfo) {
+export function resourceKey(item: ChatResourceInfo) {
   return `${item.source ?? "resource"}:${item.path ?? item.name}`
 }

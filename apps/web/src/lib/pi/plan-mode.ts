@@ -12,7 +12,7 @@ import type {
   ChatQuestionAnswer,
 } from "./chat-protocol"
 
-const PROJECT_RESOURCE_TOOLS = ["project_inventory"]
+const PROJECT_RESOURCE_TOOLS = ["project_inventory", "workspace_index"]
 const AUTOCONTEXT_STATUS_TOOLS = [
   "autocontext_status",
   "autocontext_scenarios",
@@ -45,6 +45,9 @@ const NORMAL_MODE_TOOLS = [
   "bash",
   "edit",
   "write",
+  "workspace_write",
+  "questionnaire",
+  "web_fetch",
   ...PROJECT_RESOURCE_TOOLS,
   ...AUTOCONTEXT_AGENT_TOOLS,
   ...AUTORESEARCH_AGENT_TOOLS,

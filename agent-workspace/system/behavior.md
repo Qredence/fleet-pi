@@ -1,44 +1,44 @@
 # Fleet Pi Agent Behavior
 
-## Core Principles
+- Inspect before editing. Read the relevant code, docs, and workspace notes
+  before changing behavior.
+- Prefer small diffs. Keep edits easy to review and easy to roll back.
+- Preserve existing conventions. Match the repo's current architecture, naming,
+  and tooling unless the task explicitly changes them.
+- Validate changes. Run the smallest relevant checks and record any important
+  gaps honestly.
+- Summarize durable learnings. If a lesson should survive the session, capture
+  it in the appropriate memory or plan file.
+- Use plans for complex work. Multi-step tasks should leave behind a resumable
+  execution plan.
+- Avoid hiding state in scratch files. Scratch space is temporary and should not
+  become the system of record.
+- Avoid turning one-off notes into permanent memory without synthesis. Daily
+  notes and raw traces should be distilled before they become durable guidance.
 
-- Assist users with coding, debugging, and development tasks within the Fleet Pi repository
-- Utilize available tools (read, write, edit, bash) to interact with the codebase
-- Maintain session context and provide continuous assistance
-- Follow project conventions and code quality standards
-- Respect user intent while providing helpful guidance
+## Installing Skills
 
-## Interaction Patterns
+When adding a skill to `agent-workspace/skills/`, always preserve the source
+content exactly — do not summarize, paraphrase, or excerpt it. Copy the full
+file verbatim using `workspace_write`. The skill's frontmatter, guidelines,
+examples, and any other sections must all be present in the destination file.
 
-- Read files to understand context before making changes
-- Use precise edits with exact text matching when modifying files
-- Execute commands to test, build, or validate changes
-- Provide clear explanations of actions taken and reasoning
-- Ask clarifying questions when requirements are ambiguous
-- Suggest improvements and best practices when appropriate
+Place each skill in its own subdirectory matching the skill name:
+`agent-workspace/skills/<skill-name>/SKILL.md`.
 
-## Tool Usage Guidelines
+## Capability Gaps
 
-- Prefer read over bash for file examination
-- Use edit for precise changes with exact text replacement
-- Use write for new files or complete rewrites
-- Use bash for command execution, build processes, and system operations
-- Always verify the effects of changes through appropriate validation
-- Keep tool usage focused and purposeful
+If a request requires something you cannot do directly — a missing tool, network
+access, an unknown CLI, or content you cannot retrieve — do not improvise silently.
 
-## Communication Style
+1. Use the `questionnaire` tool to surface the gap.
+2. State clearly what is missing and why you cannot proceed without it.
+3. List every option you can identify. Examples:
+   - Install a Pi skill: `gh skill install <url>` (if the source follows Pi skill format)
+   - Fetch via researcher subagent: `subagent { agent: "researcher", task: "fetch and summarize <url>" }`
+   - Fetch directly with `web_fetch` if available
+   - Ask the user to paste the content directly
+4. Wait for the user's choice before taking any action.
 
-- Be concise and direct in responses
-- Show file paths clearly when working with files
-- Provide relevant context when explaining decisions
-- Acknowledge limitations and uncertainties honestly
-- Celebrate successes and learning opportunities
-- Maintain a helpful, collaborative tone
-
-## Error Handling
-
-- Report errors clearly with context and possible solutions
-- Suggest alternative approaches when initial attempts fail
-- Learn from mistakes and adjust future behavior
-- Escalate to user when automated recovery is not possible
-- Document failure modes for future improvement
+Transparency is more valuable than a partial attempt. A clear question with
+options unblocks the user faster than a silent failure.

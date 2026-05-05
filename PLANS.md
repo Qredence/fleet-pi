@@ -36,3 +36,37 @@ Outcome:
   `codex_initialized`, `thread_started`, `session_started`, and `turn_started`
   for `QRE-365`, then removed the worktree cleanly after the issue moved to
   `Done`.
+
+## Agent Workspace Foundation
+
+Purpose:
+Seed a minimal root `agent-workspace/` that gives Fleet Pi a clean repo-local
+substrate for durable memory, plans, skills, evals, artifacts, and reviewable
+self-improvement.
+
+Progress:
+
+- [x] Audit the existing `agent-workspace/` scaffold and remove private-note
+      remnants that should not survive in the repo.
+- [x] Create the requested directory structure and seed concise Markdown files.
+- [x] Add a short root `README.md` mention and run lightweight structural
+      validation.
+
+Decision Log:
+
+- Keep the first scaffold intentionally small and Markdown-first.
+- Extension tools (workspace_index, workspace_write, workspace_context, web_fetch,
+  bedrock-bearer-auth) were included in this same change to make the workspace
+  immediately useful — the initial plan deferred this, but shipping them together
+  avoids a split-context review cycle.
+
+Outcome:
+
+- The root `agent-workspace/` now has a clean index, policies, project-memory
+  stubs, research guidance, plan directories, eval checklists, and five
+  starter skills (codebase-research, doc-gardening, execution-plan,
+  frontend-design, memory-synthesis).
+- Private inspiration-note placeholders were removed from the committed
+  workspace structure.
+- The repo README now briefly points readers to `agent-workspace/` without
+  over-documenting it.

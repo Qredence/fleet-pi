@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "@mariozechner/pi-ai": "^0.70.6",
-    "@mariozechner/pi-coding-agent": "^0.70.6",
+    "@mariozechner/pi-ai": "^0.73.0",
+    "@mariozechner/pi-coding-agent": "^0.73.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.0",

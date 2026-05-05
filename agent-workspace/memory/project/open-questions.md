@@ -1,5 +1,14 @@
 # Open Questions
 
-Purpose: Unresolved questions and follow-up prompts.
+Use this file for unresolved questions that block design clarity or repeatedly
+surface during implementation.
 
-Status: Seeded stub.
+Template:
+
+## Question
+
+- Question:
+- Why it matters:
+- Current evidence:
+- Next step:
+- Owner:

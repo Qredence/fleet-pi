@@ -67,6 +67,19 @@ const MOCK_RESOURCES = {
       path: "/tmp/fleet-pi/.pi/skills/fleet-pi-orientation/SKILL.md",
       source: "project",
     },
+    {
+      name: "agent-elements",
+      description:
+        "Build or inspect chat UI surfaces and interaction patterns.",
+      path: "/tmp/fleet-pi/.pi/skills/agent-elements/SKILL.md",
+      source: "project",
+    },
+    {
+      name: "chat-runtime-debugging",
+      description: "Troubleshoot streaming sessions and runtime state.",
+      path: "/tmp/fleet-pi/.pi/skills/chat-runtime-debugging/SKILL.md",
+      source: "project",
+    },
   ],
   prompts: [],
   extensions: [
@@ -168,8 +181,56 @@ const MOCK_WORKSPACE_TREE = {
           type: "directory",
           children: [
             {
-              name: "skill.md",
-              path: "agent-workspace/skills/codebase-research/skill.md",
+              name: "SKILL.md",
+              path: "agent-workspace/skills/codebase-research/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "doc-gardening",
+          path: "agent-workspace/skills/doc-gardening",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/doc-gardening/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "execution-plan",
+          path: "agent-workspace/skills/execution-plan",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/execution-plan/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "frontend-design",
+          path: "agent-workspace/skills/frontend-design",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/frontend-design/SKILL.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "memory-synthesis",
+          path: "agent-workspace/skills/memory-synthesis",
+          type: "directory",
+          children: [
+            {
+              name: "SKILL.md",
+              path: "agent-workspace/skills/memory-synthesis/SKILL.md",
               type: "file",
             },
           ],
@@ -733,9 +794,33 @@ test.describe("chat flows", () => {
     await expect(canvas.getByText("Skills", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Extensions", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Context", { exact: true })).toBeVisible()
+    const skillsSection = canvas.getByTestId("resource-chip-section-skills")
+    const skillItems = skillsSection.getByTestId("resource-chip")
+    await expect(skillItems).toHaveCount(5)
     await expect(
-      canvas.getByText("fleet-pi-orientation", { exact: true })
+      skillsSection.getByText("codebase-research", { exact: true })
     ).toBeVisible()
+    await expect(
+      skillsSection.getByText("doc-gardening", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("execution-plan", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("frontend-design", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("memory-synthesis", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("fleet-pi-orientation", { exact: true })
+    ).toHaveCount(0)
+    const firstSkillBox = await skillItems.nth(0).boundingBox()
+    const secondSkillBox = await skillItems.nth(1).boundingBox()
+    expect(firstSkillBox).not.toBeNull()
+    expect(secondSkillBox).not.toBeNull()
+    expect(Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))).toBeLessThanOrEqual(1)
+    expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
       name: /\.pi\/extensions\/project-inventory\.ts/,
     })

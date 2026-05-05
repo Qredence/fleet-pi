@@ -1,5 +1,14 @@
 # Preferences
 
-Purpose: User and project preferences to preserve.
+Use this file for stable user or project preferences that repeatedly affect how
+work should be done.
 
-Status: Seeded stub.
+Template:
+
+## Preference
+
+- Preference:
+- Applies to:
+- Why it matters:
+- Evidence:
+- Last confirmed:

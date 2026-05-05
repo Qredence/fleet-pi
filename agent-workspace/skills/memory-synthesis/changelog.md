@@ -1,5 +1,3 @@
 # Memory Synthesis Changelog
 
-Purpose: Track changes to the memory synthesis skill.
-
-Status: Seeded stub.
+- 2026-05-04: Created the initial memory-synthesis skill scaffold.
