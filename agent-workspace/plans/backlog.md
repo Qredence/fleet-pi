@@ -21,7 +21,8 @@
 
 ## Pi extension opportunities
 
-- `.pi/extensions/workspace-index.ts`
+- `.pi/extensions/workspace-index.ts` implemented as the first read-only bridge
+  from Pi into `agent-workspace/`; keep the output compact and map-focused.
 - `.pi/extensions/workspace-policy.ts`
 - `.pi/extensions/session-inspector.ts`
 

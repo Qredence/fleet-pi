@@ -18,6 +18,7 @@ memory/summaries/**
 plans/**
 memory/project/**
 memory/research/**
+skills/**
 ```
 
 Protected unless the task explicitly concerns agent behavior or workspace
@@ -25,7 +26,6 @@ design:
 
 ```text
 system/**
-skills/**
 evals/**
 ```
 
