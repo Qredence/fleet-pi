@@ -154,7 +154,7 @@ Outcome:
 
 Purpose:
 Move Symphony workers off the operator's global `~/.codex` state so issue runs
-are not blocked by stale ChatGPT refresh tokens, dead home-local MCP servers, or
+are not blocked by stale provider tokens, dead home-local MCP servers, or
 broken shell profile startup.
 
 Progress:
@@ -162,7 +162,7 @@ Progress:
 - [x] Add a repo-owned Symphony worker launcher that seeds and uses an isolated
       `.codex-home`.
 - [x] Add an isolated Codex config template for Symphony worker sessions.
-- [x] Reuse the operator's ChatGPT Codex auth inside the isolated worker home.
+- [x] Pass through the operator's Anthropic/Bedrock environment variables to the isolated worker home.
 - [x] Update workflow/docs to describe the isolated worker contract.
 
 Decision Log:
@@ -176,5 +176,6 @@ Outcome:
 
 - Fleet Pi now launches Symphony workers through
   `scripts/symphony/codex-app-server.zsh` instead of bare `codex app-server`.
-- Worker auth/cache now reuses `~/.codex/auth.json` inside `.codex-home`
-  without inheriting the rest of the operator's global Codex config.
+- Worker config is isolated in `.codex-home` with Anthropic/Bedrock
+  credentials passed through environment variables without inheriting the rest
+  of the operator's global Codex config.

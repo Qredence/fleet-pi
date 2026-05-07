@@ -8,7 +8,7 @@
 - Use the root Symphony wrapper scripts when operating Fleet Pi through Symphony: `pnpm symphony:validate` for config validation, `pnpm symphony:test-plugin` for the upstream plugin test lane, and the `symphony:run` package script for the long-running service.
 - The shell-based Symphony validation/runtime wrappers load values from the repo-root `.env` by default; keep `LINEAR_API_KEY` there unless you intentionally bypass it with `SYMPHONY_SKIP_DOTENV=1`.
 - `pnpm symphony:validate` and `pnpm symphony:run` fail fast if `LINEAR_API_KEY` is still unresolved after that `.env` load.
-- `pnpm symphony:run` reuses the operator's ChatGPT Codex subscription auth by copying `~/.codex/auth.json` into an isolated `.codex-home` under the shared Symphony workspace root before starting the worker.
+- `pnpm symphony:run` uses the operator's Anthropic/Bedrock credentials from environment variables passed through to the isolated `.codex-home` under the shared Symphony workspace root before starting the worker. Required: at least one of `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_KEY`, or `AWS_BEARER_TOKEN_BEDROCK`. Optional: `CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`, `ANTHROPIC_MODEL`.
 - In `WORKFLOW.md`, `tracker.project_slug` must use Linear's project `slugId` (for Fleet Pi: `7c8589daab4e`), not the human-readable project name.
 
 ## Validation
@@ -60,7 +60,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 ## Architecture Notes
 
 - `WORKFLOW.md` is the Fleet Pi Symphony orchestration contract. `scripts/symphony/` contains the worktree/bootstrap wrappers used by Symphony hooks, while `docs/symphony.md` is the operator guide.
-- `scripts/symphony/codex-app-server.zsh` is the repo-owned Symphony worker launcher. It seeds `.codex-home/config.toml` from `.codex/symphony/config.toml`, isolates worker auth/cache from `~/.codex`, and starts `codex app-server` from that isolated home.
+- `scripts/symphony/codex-app-server.zsh` is the repo-owned Symphony worker launcher. It seeds `.codex-home/config.toml` from `.codex/symphony/config.toml`, isolates worker config from `~/.codex`, passes through Anthropic/Bedrock environment variables, and starts `codex app-server` from that isolated home.
 - `apps/web` is a TanStack Start app. File routes are generated into `apps/web/src/routeTree.gen.ts`; do not edit that generated file manually.
 - `packages/ui` contains shared React UI components exported under `@workspace/ui/*`.
 - Chat UI types live in `packages/ui/src/components/agent-elements/chat-types.ts`.

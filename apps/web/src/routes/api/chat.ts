@@ -6,17 +6,19 @@ import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
-  appendTextPart,
   createPiRuntime,
   encodeEvent,
   getErrorMessage,
   queuePromptOnActiveSession,
   retainPiRuntime,
+} from "@/lib/pi/server"
+import {
+  appendTextPart,
   toChatMessage,
   toToolPart,
   upsertThinkingPart,
   upsertToolPart,
-} from "@/lib/pi/server"
+} from "@/lib/pi/server-utils"
 import {
   createPlanDecisionPart,
   createPlanEvent,

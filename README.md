@@ -95,9 +95,12 @@ pnpm symphony:test-plugin
 
 `pnpm symphony:validate` and `pnpm symphony:run` both load `LINEAR_API_KEY`
 from the repo-root `.env` by default and fail fast if it is still unresolved.
-`pnpm symphony:run` now reuses the logged-in ChatGPT Codex subscription from
-`~/.codex/auth.json` while still keeping Symphony workers inside an isolated
-`.codex-home` under the shared workspace root.
+`pnpm symphony:run` now uses the operator's Anthropic/Bedrock credentials from
+environment variables while still keeping Symphony workers inside an isolated
+`.codex-home` under the shared workspace root. At least one credential
+variable must be set: `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_KEY`, or
+`AWS_BEARER_TOKEN_BEDROCK`. Optional: `CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`,
+`ANTHROPIC_MODEL`.
 
 ## Documentation
 
@@ -259,8 +262,8 @@ The hooks stay intentionally small:
 - `before_remove` unregisters the git worktree, prunes git worktree metadata,
   and leaves Symphony an empty directory to delete
 - `codex.command` runs a repo-owned launcher that seeds an isolated Codex
-  config and performs API-key login inside `.codex-home` before starting
-  `codex app-server`
+  config and passes through Anthropic/Bedrock environment variables inside
+  `.codex-home` before starting `codex app-server`
 
 See [docs/symphony.md](./docs/symphony.md)
 for operator notes, validation commands, and the spec-aligned issue-intake

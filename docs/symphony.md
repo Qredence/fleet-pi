@@ -11,7 +11,7 @@ orchestrator.
   `~/code/symphony-workspaces/fleet-pi/<issue-key>`
 - Codex approvals: `never`
 - Thread sandbox: `workspace-write`
-- Worker auth: isolated ChatGPT-backed Codex home under
+- Worker auth: isolated Codex home with Anthropic/Bedrock credentials under
   `~/code/symphony-workspaces/fleet-pi/.codex-home`
 
 The repo-owned workflow definition lives at [WORKFLOW.md](../WORKFLOW.md).
@@ -52,8 +52,8 @@ Fleet Pi keeps the hooks small and deterministic:
   - runs `scripts/symphony/codex-app-server.zsh`
   - seeds an isolated `.codex-home/config.toml` from
     `.codex/symphony/config.toml`
-  - copies `~/.codex/auth.json` into that isolated home so the worker uses the
-    operator's ChatGPT subscription login without inheriting the rest of
+  - passes through Anthropic/Bedrock environment variables so the worker uses
+    the operator's configured credentials without inheriting the rest of
     `~/.codex`
 
 Hook implementations live under `scripts/symphony/`.
@@ -92,11 +92,23 @@ the file and use the current shell environment directly, set
 unresolved after that step, so `pnpm symphony:validate` reflects the real
 operator setup instead of a placeholder token.
 
-`pnpm symphony:run` uses the operator's existing ChatGPT Codex login. Fleet Pi
-copies `~/.codex/auth.json` into the isolated Symphony worker home under
-`~/code/symphony-workspaces/fleet-pi/.codex-home`, so the worker reuses the
-subscription login while still avoiding the rest of the operator's global
-Codex config.
+`pnpm symphony:run` uses the operator's Anthropic/Bedrock credentials from
+environment variables. Fleet Pi passes these through to the isolated Symphony
+worker home under `~/code/symphony-workspaces/fleet-pi/.codex-home`, so the
+worker reuses the configured credentials while still avoiding the rest of the
+operator's global Codex config.
+
+Required environment variables (at least one must be set):
+
+- `ANTHROPIC_API_KEY` - Anthropic API key
+- `ANTHROPIC_OAUTH_KEY` - Anthropic OAuth token
+- `AWS_BEARER_TOKEN_BEDROCK` - AWS Bedrock bearer token
+
+Optional environment variables:
+
+- `CLAUDE_CODE_USE_BEDROCK` - Set to "true" or "false" to force Bedrock usage
+- `AWS_REGION` - AWS region (e.g., us-east-1, defaults to us-east-1)
+- `ANTHROPIC_MODEL` - Anthropic model identifier (e.g., anthropic.claude-sonnet-4-6)
 
 ## Codex Multi-Agent V2
 
@@ -138,6 +150,9 @@ Before enabling real execution:
    `~/code/symphony-workspaces/fleet-pi/<issue-key>`.
 5. Confirm the created worktree branch is `codex/<workspace_key>`.
 6. Confirm `~/code/symphony-workspaces/fleet-pi/.codex-home` exists and that
-   `codex login status` succeeds when run with `CODEX_HOME` pointed there.
+   at least one required credential variable (`ANTHROPIC_API_KEY`,
+   `ANTHROPIC_OAUTH_KEY`, or `AWS_BEARER_TOKEN_BEDROCK`) is set in the operator
+   environment. Optional variables (`CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`,
+   `ANTHROPIC_MODEL`) may also be set as needed.
 7. After cleanup, confirm `git -C /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi worktree list`
    no longer includes the retired workspace path.
