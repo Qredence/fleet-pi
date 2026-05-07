@@ -1,5 +1,5 @@
 import { constants } from "node:fs"
-import { access, open, readdir, realpath } from "node:fs/promises"
+import { access, open, readdir, realpath, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
 import { AGENT_WORKSPACE_DIRECTORY, seedAgentWorkspace } from "./layout"
 import type {
@@ -68,7 +68,14 @@ export async function loadAgentWorkspaceFile(
       }
     }
 
-    if (await isBinaryFile(fileHandle, fileStats.size)) {
+    // Read file content first to check for binary
+    const buffer = await fileHandle.readFile()
+
+    // Check if file is binary by examining the buffer
+    const bytesToCheck = Math.min(buffer.length, BINARY_SAMPLE_BYTES)
+    const isBinary = buffer.subarray(0, bytesToCheck).includes(0)
+
+    if (isBinary) {
       return {
         ...baseResponse,
         content: "",
@@ -77,7 +84,7 @@ export async function loadAgentWorkspaceFile(
       }
     }
 
-    const content = await fileHandle.readFile({ encoding: "utf8" })
+    const content = buffer.toString("utf8")
     return {
       ...baseResponse,
       content,
@@ -187,37 +194,84 @@ async function resolveWorkspacePreviewFile(
 ) {
   const resolvedPath = resolveWorkspacePath(context, filePath)
   const realWorkspaceRoot = await realpath(context.workspaceRoot)
-  let realPath: string
 
+  // Check if file exists first to provide proper error handling
   try {
-    realPath = await realpath(resolvedPath)
+    await access(resolvedPath, constants.R_OK)
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       throw new WorkspaceFileError("Workspace file was not found.", 404)
     }
-    throw error
+    if (
+      isNodeError(error) &&
+      (error.code === "EACCES" || error.code === "EPERM")
+    ) {
+      throw new WorkspaceFileError(
+        "Permission denied accessing workspace file.",
+        403
+      )
+    }
+    throw new WorkspaceFileError("Failed to access workspace file.", 500)
   }
 
-  if (!isPathInside(realWorkspaceRoot, realPath)) {
-    throw new WorkspaceFileError(
-      "Workspace file path is outside agent-workspace.",
-      403
-    )
+  // Atomic validation: open the file first, then validate the resolved path
+  const fileHandle = await open(resolvedPath, "r")
+  let realPath: string
+
+  try {
+    // Get the file descriptor's real path atomically
+    realPath = await realpath(resolvedPath)
+
+    // Validate that the resolved path is still within the workspace
+    if (!isPathInside(realWorkspaceRoot, realPath)) {
+      throw new WorkspaceFileError(
+        "Workspace file path is outside agent-workspace.",
+        403
+      )
+    }
+
+    // Double-check by verifying the file descriptor's stat matches
+    const fileStats = await fileHandle.stat()
+    const realStats = await stat(realPath)
+
+    if (fileStats.ino !== realStats.ino || fileStats.dev !== realStats.dev) {
+      throw new WorkspaceFileError(
+        "Workspace file path validation failed.",
+        403
+      )
+    }
+
+    return { resolvedPath, realPath }
+  } catch (error) {
+    try {
+      await fileHandle.close()
+    } catch (closeError) {
+      // Log close error but don't suppress the original error
+      console.error(
+        "Failed to close file handle during error handling:",
+        closeError
+      )
+    }
+
+    if (error instanceof WorkspaceFileError) {
+      throw error
+    }
+
+    if (isNodeError(error)) {
+      if (error.code === "ENOENT") {
+        throw new WorkspaceFileError("Workspace file was not found.", 404)
+      }
+      if (error.code === "EACCES" || error.code === "EPERM") {
+        throw new WorkspaceFileError(
+          "Permission denied accessing workspace file.",
+          403
+        )
+      }
+    }
+
+    // Always wrap unknown errors in a generic message
+    throw new WorkspaceFileError("Failed to resolve workspace file.", 500)
   }
-
-  return { resolvedPath, realPath }
-}
-
-async function isBinaryFile(
-  fileHandle: Awaited<ReturnType<typeof open>>,
-  fileSize: number
-) {
-  const bytesToRead = Math.min(fileSize, BINARY_SAMPLE_BYTES)
-  if (bytesToRead === 0) return false
-
-  const buffer = Buffer.alloc(bytesToRead)
-  const { bytesRead } = await fileHandle.read(buffer, 0, bytesToRead, 0)
-  return buffer.subarray(0, bytesRead).includes(0)
 }
 
 function getWorkspaceMediaType(

@@ -120,8 +120,35 @@ const GIT_READ_ONLY_SUBCOMMANDS = new Set([
 const PACKAGE_MANAGER_READ_ONLY_SUBCOMMANDS = new Set(["list", "ls", "why"])
 
 export function evaluatePlanCommand(command: string): CommandPolicyResult {
+  // Input validation: reject null/undefined and non-string inputs
+  if (!command || typeof command !== "string") {
+    return deny("Invalid command input.")
+  }
+
   const trimmed = command.trim()
   if (!trimmed) return deny("Command is empty.")
+
+  // Reject commands with control characters (except tab, newline, carriage return)
+  const hasControlChars = [...trimmed].some((char) => {
+    const code = char.charCodeAt(0)
+    // Allow: tab (9), newline (10), carriage return (13)
+    // Block: all other control characters (0-8, 11-12, 14-31, 127)
+    return (
+      (code >= 0 && code <= 8) ||
+      code === 11 ||
+      code === 12 ||
+      (code >= 14 && code <= 31) ||
+      code === 127
+    )
+  })
+  if (hasControlChars) {
+    return deny("Command contains invalid control characters.")
+  }
+
+  // Reject excessively long commands to prevent DoS
+  if (trimmed.length > 10000) {
+    return deny("Command is too long.")
+  }
 
   if (BLOCKED_COMMAND_SEPARATORS.test(trimmed)) {
     return deny("Command separators are not allowed in Plan mode.")
@@ -133,7 +160,8 @@ export function evaluatePlanCommand(command: string): CommandPolicyResult {
     )
   }
 
-  for (const segment of trimmed.split("|").map((part) => part.trim())) {
+  const segments = parsePipelineSegments(trimmed)
+  for (const segment of segments) {
     const result = evaluatePipelineSegment(segment)
     if (!result.allowed) return result
   }
@@ -254,6 +282,54 @@ function normalizeCommandName(command: string) {
 
 function isEnvAssignment(token: string) {
   return /^[A-Za-z_][A-Za-z0-9_]*=/.test(token)
+}
+
+function parsePipelineSegments(command: string): Array<string> {
+  const segments: Array<string> = []
+  let current = ""
+  let quote: '"' | "'" | undefined
+  let escaped = false
+
+  for (const char of command) {
+    if (escaped) {
+      current += char
+      escaped = false
+      continue
+    }
+
+    if (char === "\\") {
+      escaped = true
+      continue
+    }
+
+    if (quote) {
+      if (char === quote) {
+        quote = undefined
+      } else {
+        current += char
+      }
+      continue
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char
+      continue
+    }
+
+    if (char === "|") {
+      segments.push(current.trim())
+      current = ""
+      continue
+    }
+
+    current += char
+  }
+
+  if (current) {
+    segments.push(current.trim())
+  }
+
+  return segments.filter((segment) => segment.length > 0)
 }
 
 function deny(reason: string): CommandPolicyResult {
