@@ -103,7 +103,7 @@ export function ConfigurationsPanelContent({
           </div>
         ) : (
           <div
-            className="max-h-[400px] space-y-1 overflow-y-auto pr-1"
+            className="max-h-100 space-y-1 overflow-y-auto pr-1"
             data-testid="allowed-models-list"
           >
             {models.map((model) => (
@@ -119,7 +119,7 @@ export function ConfigurationsPanelContent({
       </ConfigurationSection>
 
       <ConfigurationSection icon={Palette} label="Personalization">
-        <div className="rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+        <div className="rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
           <div className="mb-2 flex min-w-0 items-center gap-2">
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12px] font-medium text-foreground/75">
@@ -188,13 +188,13 @@ function ConfigurationRow({
   title: string
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+    <div className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
             {title}
           </span>
-          <span className="shrink-0 rounded-[4px] bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
+          <span className="shrink-0 rounded-lg bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
             {status}
           </span>
         </div>
@@ -223,7 +223,7 @@ function ModelAllowRow({
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/[0.02] px-2.5 py-2">
+    <label className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
       <input
         type="checkbox"
         checked={checked}
@@ -235,7 +235,7 @@ function ModelAllowRow({
           <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
             {model.name}
           </span>
-          <span className="shrink-0 rounded-[4px] bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
+          <span className="shrink-0 rounded-lg bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
             {model.available === false ? "Unavailable" : "Available"}
           </span>
         </div>

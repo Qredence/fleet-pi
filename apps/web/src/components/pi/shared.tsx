@@ -182,7 +182,7 @@ export function ResourceChipSection({
         data-testid={`resource-chip-section-${label.toLowerCase()}`}
       >
         {items.length === 0 ? (
-          <span className="inline-flex h-[30px] items-center rounded-[10px] border border-border/60 bg-background px-3 text-[14px] leading-5 text-foreground/35 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
+          <span className="inline-flex h-7.5 items-center rounded-[10px] border border-border/60 bg-background px-3 text-[14px] leading-5 text-foreground/35 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
             Empty
           </span>
         ) : (
@@ -216,8 +216,8 @@ export function ResourceChip({
       role="listitem"
       className={`max-w-full rounded-[10px] border border-border/70 bg-background px-2.5 text-[14px] leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)] ${
         stacked
-          ? "flex min-h-[36px] w-full min-w-0 items-center gap-2 py-1.5"
-          : "inline-flex h-[30px] items-center gap-1"
+          ? "flex min-h-9 w-full min-w-0 items-center gap-2 py-1.5"
+          : "inline-flex h-7.5 items-center gap-1"
       }`}
       aria-label={title}
       data-testid="resource-chip"
@@ -238,7 +238,7 @@ export function ResourceChip({
 
 export function ResourceChipIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/[0.04] text-foreground/45">
+    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/4 text-foreground/45">
       <Icon className="size-3.5" />
     </span>
   )

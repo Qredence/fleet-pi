@@ -223,7 +223,7 @@ function WorkspacePreview({
 }) {
   return (
     <div
-      className="min-h-[220px] min-w-0 rounded-[8px] border border-border/60 bg-background"
+      className="min-h-55 min-w-0 rounded-[8px] border border-border/60 bg-background"
       data-testid="workspace-preview"
     >
       <div className="flex min-h-9 min-w-0 items-center gap-2 border-b border-border/60 px-2.5">
