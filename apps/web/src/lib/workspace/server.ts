@@ -1,5 +1,5 @@
 import { constants } from "node:fs"
-import { access, open, readdir } from "node:fs/promises"
+import { access, open, readdir, realpath } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
 import { AGENT_WORKSPACE_DIRECTORY, seedAgentWorkspace } from "./layout"
 import type {
@@ -7,7 +7,10 @@ import type {
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
 } from "../pi/chat-protocol"
-import type { AppRuntimeContext } from "../desktop/server"
+import type { AppRuntimeContext } from "../app-runtime"
+
+const WORKSPACE_PREVIEW_MAX_BYTES = 256 * 1024
+const BINARY_SAMPLE_BYTES = 8 * 1024
 
 export async function ensureAgentWorkspace(context: AppRuntimeContext) {
   await seedAgentWorkspace(context.workspaceRoot)
@@ -41,8 +44,8 @@ export async function loadAgentWorkspaceFile(
 ): Promise<WorkspaceFileResponse> {
   await ensureAgentWorkspace(context)
 
-  const resolvedPath = resolveWorkspacePath(context, filePath)
-  const fileHandle = await open(resolvedPath, "r")
+  const previewFile = await resolveWorkspacePreviewFile(context, filePath)
+  const fileHandle = await open(previewFile.realPath, "r")
 
   try {
     const fileStats = await fileHandle.stat()
@@ -50,15 +53,36 @@ export async function loadAgentWorkspaceFile(
       throw new WorkspaceFileError("Workspace path is not a file.", 400)
     }
 
+    const baseResponse = {
+      path: toWorkspacePath(context.projectRoot, previewFile.resolvedPath),
+      name: basename(previewFile.resolvedPath),
+      size: fileStats.size,
+    }
+
+    if (fileStats.size > WORKSPACE_PREVIEW_MAX_BYTES) {
+      return {
+        ...baseResponse,
+        content: "",
+        mediaType: "text/plain",
+        status: "too-large",
+      }
+    }
+
+    if (await isBinaryFile(fileHandle, fileStats.size)) {
+      return {
+        ...baseResponse,
+        content: "",
+        mediaType: "application/octet-stream",
+        status: "unsupported",
+      }
+    }
+
     const content = await fileHandle.readFile({ encoding: "utf8" })
     return {
-      path: toWorkspacePath(context.projectRoot, resolvedPath),
-      name: basename(resolvedPath),
+      ...baseResponse,
       content,
-      mediaType:
-        extname(resolvedPath).toLowerCase() === ".md"
-          ? "text/markdown"
-          : "text/plain",
+      mediaType: getWorkspaceMediaType(previewFile.resolvedPath),
+      status: "ok",
     }
   } finally {
     await fileHandle.close()
@@ -155,6 +179,58 @@ function resolveWorkspacePath(
   }
 
   return resolvedPath
+}
+
+async function resolveWorkspacePreviewFile(
+  context: AppRuntimeContext,
+  filePath: string | null
+) {
+  const resolvedPath = resolveWorkspacePath(context, filePath)
+  const realWorkspaceRoot = await realpath(context.workspaceRoot)
+  let realPath: string
+
+  try {
+    realPath = await realpath(resolvedPath)
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      throw new WorkspaceFileError("Workspace file was not found.", 404)
+    }
+    throw error
+  }
+
+  if (!isPathInside(realWorkspaceRoot, realPath)) {
+    throw new WorkspaceFileError(
+      "Workspace file path is outside agent-workspace.",
+      403
+    )
+  }
+
+  return { resolvedPath, realPath }
+}
+
+async function isBinaryFile(
+  fileHandle: Awaited<ReturnType<typeof open>>,
+  fileSize: number
+) {
+  const bytesToRead = Math.min(fileSize, BINARY_SAMPLE_BYTES)
+  if (bytesToRead === 0) return false
+
+  const buffer = Buffer.alloc(bytesToRead)
+  const { bytesRead } = await fileHandle.read(buffer, 0, bytesToRead, 0)
+  return buffer.subarray(0, bytesRead).includes(0)
+}
+
+function getWorkspaceMediaType(
+  filePath: string
+): WorkspaceFileResponse["mediaType"] {
+  return extname(filePath).toLowerCase() === ".md"
+    ? "text/markdown"
+    : "text/plain"
+}
+
+function isPathInside(parent: string, child: string) {
+  const path = relative(parent, child)
+  return path === "" || (!path.startsWith("..") && !isAbsolute(path))
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

@@ -1,4 +1,5 @@
 import { Type } from "typebox"
+import { evaluatePlanCommand } from "./command-policy"
 import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai"
 import type {
   AgentSessionRuntime,
@@ -63,96 +64,6 @@ export const CHAT_TOOL_ALLOWLIST = [
 
 const PLAN_STATE_CUSTOM_TYPE = "plan-mode"
 const PLAN_DECISION_TOOL_PREFIX = "plan-mode-decision"
-
-const DESTRUCTIVE_PATTERNS = [
-  /\brm\b/i,
-  /\brmdir\b/i,
-  /\bmv\b/i,
-  /\bcp\b/i,
-  /\bmkdir\b/i,
-  /\btouch\b/i,
-  /\bchmod\b/i,
-  /\bchown\b/i,
-  /\bchgrp\b/i,
-  /\bln\b/i,
-  /\btee\b/i,
-  /\btruncate\b/i,
-  /\bdd\b/i,
-  /\bshred\b/i,
-  /(^|[^<])>(?!>)/,
-  />>/,
-  /\bnpm\s+(install|uninstall|update|ci|link|publish)/i,
-  /\byarn\s+(add|remove|install|publish)/i,
-  /\bpnpm\s+(add|remove|install|publish)/i,
-  /\bpip\s+(install|uninstall)/i,
-  /\bapt(-get)?\s+(install|remove|purge|update|upgrade)/i,
-  /\bbrew\s+(install|uninstall|upgrade)/i,
-  /\bgit\s+(add|commit|push|pull|merge|rebase|reset|checkout|branch\s+-[dD]|stash|cherry-pick|revert|tag|init|clone)/i,
-  /\bsudo\b/i,
-  /\bsu\b/i,
-  /\bkill\b/i,
-  /\bpkill\b/i,
-  /\bkillall\b/i,
-  /\breboot\b/i,
-  /\bshutdown\b/i,
-  /\bsystemctl\s+(start|stop|restart|enable|disable)/i,
-  /\bservice\s+\S+\s+(start|stop|restart)/i,
-  /\b(vim?|nano|emacs|code|subl)\b/i,
-]
-
-const SAFE_PATTERNS = [
-  /^\s*cat\b/,
-  /^\s*head\b/,
-  /^\s*tail\b/,
-  /^\s*less\b/,
-  /^\s*more\b/,
-  /^\s*grep\b/,
-  /^\s*find\b/,
-  /^\s*ls\b/,
-  /^\s*pwd\b/,
-  /^\s*echo\b/,
-  /^\s*printf\b/,
-  /^\s*wc\b/,
-  /^\s*sort\b/,
-  /^\s*uniq\b/,
-  /^\s*diff\b/,
-  /^\s*file\b/,
-  /^\s*stat\b/,
-  /^\s*du\b/,
-  /^\s*df\b/,
-  /^\s*tree\b/,
-  /^\s*which\b/,
-  /^\s*whereis\b/,
-  /^\s*type\b/,
-  /^\s*env\b/,
-  /^\s*printenv\b/,
-  /^\s*uname\b/,
-  /^\s*whoami\b/,
-  /^\s*id\b/,
-  /^\s*date\b/,
-  /^\s*cal\b/,
-  /^\s*uptime\b/,
-  /^\s*ps\b/,
-  /^\s*top\b/,
-  /^\s*htop\b/,
-  /^\s*free\b/,
-  /^\s*git\s+(status|log|diff|show|branch|remote|config\s+--get)/i,
-  /^\s*git\s+ls-/i,
-  /^\s*npm\s+(list|ls|view|info|search|outdated|audit)/i,
-  /^\s*yarn\s+(list|info|why|audit)/i,
-  /^\s*pnpm\s+(list|ls|why|outdated|audit)/i,
-  /^\s*node\s+--version/i,
-  /^\s*python\s+--version/i,
-  /^\s*curl\s/i,
-  /^\s*wget\s+-O\s*-/i,
-  /^\s*jq\b/,
-  /^\s*sed\s+-n/i,
-  /^\s*awk\b/,
-  /^\s*rg\b/,
-  /^\s*fd\b/,
-  /^\s*bat\b/,
-  /^\s*eza\b/,
-]
 
 type TodoItem = {
   step: number
@@ -219,11 +130,7 @@ const QuestionnaireParamsSchema = Type.Object({
 })
 
 export function isSafeCommand(command: string) {
-  const isDestructive = DESTRUCTIVE_PATTERNS.some((pattern) =>
-    pattern.test(command)
-  )
-  const isSafe = SAFE_PATTERNS.some((pattern) => pattern.test(command))
-  return !isDestructive && isSafe
+  return evaluatePlanCommand(command).allowed
 }
 
 export function cleanStepText(text: string) {
@@ -318,10 +225,11 @@ export function createPlanModeExtension() {
         typeof event.input.command === "string"
           ? event.input.command
           : ""
-      if (!isSafeCommand(command)) {
+      const commandPolicy = evaluatePlanCommand(command)
+      if (!commandPolicy.allowed) {
         return {
           block: true,
-          reason: `Plan mode: command blocked because it is not read-only.\nCommand: ${command}`,
+          reason: `Plan mode: ${commandPolicy.reason ?? "command blocked because it is not read-only."}\nCommand: ${command}`,
         }
       }
     })
@@ -353,7 +261,7 @@ You are in plan mode: a read-only exploration mode for safe code analysis.
 Restrictions:
 - You can only use: ${PLAN_MODE_TOOLS.join(", ")}
 - You CANNOT use edit or write tools.
-- Bash is restricted to an allowlist of read-only commands.
+- Bash is restricted to read-only local inspection commands. Network access, shell execution, command substitution, redirection, and file/process mutation are blocked.
 - Ask clarifying questions with the questionnaire tool when intent, scope, or tradeoffs are unclear.
 
 Create a concise numbered plan under a "Plan:" header:

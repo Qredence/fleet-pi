@@ -1,0 +1,8 @@
+forced_login_method = "chatgpt"
+cli_auth_credentials_store = "file"
+allow_login_shell = false
+
+[shell_environment_policy]
+inherit = "core"
+include_only = [ "PATH", "HOME" ]
+experimental_use_profile = false

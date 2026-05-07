@@ -20,8 +20,8 @@ Starter template:
 ## Current snapshot
 
 - Fleet Pi is a browser-based coding-agent chat UI built in this repository.
-- The repo contains a web app under `apps/web`, a desktop shell under
-  `apps/desktop`, shared UI under `packages/ui`, and Pi resources under `.pi/`.
+- The repo contains a web app under `apps/web`, shared UI under `packages/ui`,
+  and Pi resources under `.pi/`.
 - To be filled from repository inspection as architecture notes are distilled.
 
 ## Key entry points
@@ -30,7 +30,6 @@ Starter template:
 - `apps/web/src/routes/api/chat.ts`
 - `apps/web/src/lib/pi/server.ts`
 - `apps/web/src/lib/pi/plan-mode.ts`
-- `apps/desktop/src/main.ts`
 
 ## Important boundaries
 

@@ -1,13 +1,10 @@
-import type { DesktopContext } from "@/lib/desktop/types"
 import type { ChatSessionMetadata, ChatStreamEvent } from "./chat-protocol"
-import { withDesktopHeaders } from "@/lib/desktop/client"
 
 export async function fetchJson<T>(
   url: string,
-  desktopContext?: DesktopContext,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(url, withDesktopHeaders(init, desktopContext))
+  const response = await fetch(url, init)
   if (!response.ok) {
     const body = await response.text()
     throw new Error(body || `Request failed (${response.status})`)

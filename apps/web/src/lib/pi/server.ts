@@ -1,5 +1,12 @@
 import { existsSync, mkdirSync, realpathSync } from "node:fs"
-import { isAbsolute, relative, resolve } from "node:path"
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  relative,
+  resolve,
+} from "node:path"
 import {
   SessionManager,
   createAgentSessionFromServices,
@@ -21,6 +28,7 @@ import {
   createBedrockCircuitBreaker,
   createBedrockFallbackError,
 } from "./circuit-breaker"
+import { collectResourceExpectationDiagnostics } from "./resource-expectations"
 import type {
   AgentSessionEvent,
   AgentSessionRuntime,
@@ -50,7 +58,7 @@ import type {
   ChatSessionResponse,
   ChatThinkingLevel,
 } from "./chat-protocol"
-import type { AppRuntimeContext } from "@/lib/desktop/server"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"
 const RUNTIME_TTL_MS = Number(process.env.FLEET_PI_RUNTIME_TTL_MS ?? 600_000)
@@ -395,11 +403,11 @@ export async function loadChatResources(
   const themes = services.resourceLoader.getThemes()
   const agentsFiles = services.resourceLoader.getAgentsFiles()
 
-  return {
+  const response: ChatResourcesResponse = {
     skills: skills.skills.map(skillToResourceInfo),
     prompts: prompts.prompts.map(promptToResourceInfo),
     extensions: extensions.extensions.map((extension) => ({
-      name: extension.path,
+      name: extensionNameFromPath(extension.path),
       path: extension.resolvedPath,
       source: getSource(extension),
     })),
@@ -411,11 +419,33 @@ export async function loadChatResources(
       }
     }),
     agentsFiles: agentsFiles.agentsFiles.map((file) => ({
-      name: file.path,
+      name: basename(file.path),
       path: file.path,
     })),
     diagnostics: collectDiagnostics(services),
   }
+
+  return {
+    ...response,
+    diagnostics: [
+      ...new Set([
+        ...response.diagnostics,
+        ...collectResourceExpectationDiagnostics(response),
+      ]),
+    ],
+  }
+}
+
+function extensionNameFromPath(path: string | undefined) {
+  if (!path) return "Resource"
+
+  const fileName = basename(path)
+  if (fileName.toLowerCase() === "index.ts") {
+    return basename(dirname(path))
+  }
+
+  const extension = extname(fileName)
+  return extension ? fileName.slice(0, -extension.length) : fileName
 }
 
 export function toToolPart(
@@ -589,15 +619,10 @@ async function createSessionServices(
 }
 
 function getSessionDir(
-  context: AppRuntimeContext,
+  _context: AppRuntimeContext,
   repoRoot: string,
   services: AgentSessionServices
 ) {
-  if (context.sessionDir) {
-    mkdirSync(context.sessionDir, { recursive: true })
-    return context.sessionDir
-  }
-
   const configuredSessionDir = services.settingsManager.getSessionDir()
   const sessionDir = configuredSessionDir
     ? resolve(repoRoot, configuredSessionDir)

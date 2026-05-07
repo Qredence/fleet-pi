@@ -1,24 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router"
 import {
-  ExternalLink,
-  FolderOpen,
-  HardDrive,
+  BookOpenText,
+  ChevronDown,
+  CircleUserRound,
   History,
+  LogOut,
   Plus,
   Square,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AgentChat } from "@workspace/ui/components/agent-elements/agent-chat"
 import { InputBar } from "@workspace/ui/components/agent-elements/input-bar"
 import { ModeSelector } from "@workspace/ui/components/agent-elements/input/mode-selector"
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
+import { Popover } from "@workspace/ui/components/agent-elements/input/popover"
 import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loader"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import type { ChatMessage } from "@workspace/ui/components/agent-elements/chat-types"
+import type { SuggestionItem } from "@workspace/ui/components/agent-elements/input/suggestions"
 import type { QuestionAnswer } from "@workspace/ui/components/agent-elements/question/question-prompt"
-import type { DesktopContext, DesktopProjectSummary } from "@/lib/desktop/types"
-import type {
-  ResourceCanvasTab,
-  ThemePreference,
-} from "@/components/pi/resource-library"
+import type { CSSProperties, ReactNode } from "react"
+import type { RightPanel, ThemePreference } from "@/lib/canvas-utils"
 import type {
   ChatMode,
   ChatModelsResponse,
@@ -29,11 +30,7 @@ import type {
   WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
 import type { ChatModelOption } from "@/lib/pi/chat-helpers"
-import { withDesktopHeaders } from "@/lib/desktop/client"
 import {
-  ResourceCanvas,
-  ResourceLauncher,
-  ResourceMobilePanel,
   applyThemePreference,
   clampResourceCanvasWidth,
   getResourceCanvasInitialWidth,
@@ -41,7 +38,8 @@ import {
   readStoredThemePreference,
   storeResourceCanvasWidth,
   storeThemePreference,
-} from "@/components/pi/resource-library"
+} from "@/lib/canvas-utils"
+import { ChatRightPanels } from "@/components/chat-right-panels"
 import {
   readStoredBrowserSession,
   readStoredMode,
@@ -52,7 +50,6 @@ import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { fetchJson } from "@/lib/pi/chat-fetch"
 import {
   CHAT_MODES,
-  displayNameFromPath,
   queueLabel,
   toModelOption,
   toModelSelection,
@@ -60,228 +57,183 @@ import {
 
 export const Route = createFileRoute("/")({ component: Chat })
 
-function SessionControls({
+function HeaderPillButton({
+  active = false,
+  ariaLabel,
+  children,
+  className,
+  onClick,
+}: {
+  active?: boolean
+  ariaLabel: string
+  children: ReactNode
+  className?: string
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium shadow-sm backdrop-blur transition-colors ${
+        active
+          ? "border-border/70 bg-background text-foreground/75"
+          : "border-border/70 bg-background/85 text-foreground/55 hover:bg-background hover:text-foreground/75"
+      } ${className ?? ""}`}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+    >
+      {children}
+    </button>
+  )
+}
+
+function AccountMenu() {
+  const items = [
+    { id: "account", label: "Account", icon: CircleUserRound },
+    { id: "docs", label: "Documentations", icon: BookOpenText },
+    { id: "signout", label: "Sign out", icon: LogOut },
+  ]
+
+  return (
+    <Popover
+      side="bottom"
+      align="start"
+      trigger={
+        <HeaderPillButton ariaLabel="Open account menu">
+          <CircleUserRound className="size-3.5 shrink-0" />
+          <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
+        </HeaderPillButton>
+      }
+    >
+      {items.map((item) => {
+        const Icon = item.icon
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className="flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6"
+          >
+            <Icon className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">{item.label}</span>
+          </button>
+        )
+      })}
+    </Popover>
+  )
+}
+
+function SessionMenu({
   activeSessionId,
+  activeSessionLabel,
+  onResumeSession,
+  sessions,
+}: {
+  activeSessionId?: string
+  activeSessionLabel: string
+  onResumeSession: (metadata: ChatSessionMetadata) => void
+  sessions: Array<ChatSessionInfo>
+}) {
+  return (
+    <Popover
+      side="bottom"
+      align="center"
+      className="w-[min(360px,calc(100vw-2rem))]"
+      trigger={
+        <HeaderPillButton
+          ariaLabel="Open conversations"
+          className="w-[min(360px,calc(100vw-8rem))] justify-between"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <History className="size-3 shrink-0 text-foreground/35" />
+            <span className="min-w-0 truncate text-left">
+              {activeSessionLabel}
+            </span>
+          </div>
+          <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
+        </HeaderPillButton>
+      }
+    >
+      {sessions.length === 0 ? (
+        <div className="px-2 py-2 text-[12px] text-foreground/45">
+          No saved conversations yet.
+        </div>
+      ) : (
+        sessions.map((session) => {
+          const label =
+            session.name || session.firstMessage || session.id.slice(0, 8)
+          const active = session.id === activeSessionId
+          return (
+            <button
+              key={session.id}
+              type="button"
+              onClick={() =>
+                onResumeSession({
+                  sessionFile: session.path,
+                  sessionId: session.id,
+                })
+              }
+              className={`flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 transition-colors hover:bg-foreground/6 ${
+                active
+                  ? "bg-foreground/6 text-an-foreground"
+                  : "text-an-foreground"
+              }`}
+            >
+              <History className="size-3 shrink-0 text-foreground/45" />
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+            </button>
+          )
+        })
+      )}
+    </Popover>
+  )
+}
+
+function ChatHeader({
+  activeSessionId,
+  activeSessionLabel,
   onNewSession,
   onResumeSession,
   sessions,
 }: {
   activeSessionId?: string
+  activeSessionLabel: string
   onNewSession: () => void
   onResumeSession: (metadata: ChatSessionMetadata) => void
   sessions: Array<ChatSessionInfo>
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      <button
-        type="button"
-        onClick={onNewSession}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
-        aria-label="New session"
-        title="New session"
-      >
-        <Plus className="size-3.5" />
-      </button>
-      <div className="relative min-w-0">
-        <History className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-foreground/35" />
-        <select
-          value={activeSessionId ?? ""}
-          onChange={(event) => {
-            const session = sessions.find(
-              (item) => item.id === event.target.value
-            )
-            if (session) {
-              onResumeSession({
-                sessionFile: session.path,
-                sessionId: session.id,
-              })
-            }
-          }}
-          className="h-7 max-w-[190px] rounded-[6px] border-0 bg-transparent pr-2 pl-6 text-[12px] leading-4 text-foreground/45 transition-colors outline-none hover:bg-foreground/6"
-          aria-label="Resume session"
-          title="Resume session"
-        >
-          <option value="">Session</option>
-          {sessions.map((session) => (
-            <option key={session.id} value={session.id}>
-              {session.name || session.firstMessage || session.id.slice(0, 8)}
-            </option>
-          ))}
-        </select>
+    <div className="pointer-events-none absolute top-3 right-40 left-3 z-50 lg:right-44">
+      <div className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-3">
+        <div className="pointer-events-auto justify-self-start">
+          <AccountMenu />
+        </div>
+        <div className="pointer-events-auto min-w-0 justify-self-center">
+          <SessionMenu
+            activeSessionId={activeSessionId}
+            activeSessionLabel={activeSessionLabel}
+            onResumeSession={onResumeSession}
+            sessions={sessions}
+          />
+        </div>
+        <div className="pointer-events-auto justify-self-end">
+          <HeaderPillButton ariaLabel="New session" onClick={onNewSession}>
+            <Plus className="size-3.5 shrink-0" />
+            <span>New session</span>
+          </HeaderPillButton>
+        </div>
       </div>
     </div>
   )
 }
 
-function DesktopProjectControls({
-  activeProjectRoot,
-  activeWorkspaceRoot,
-  onOpenProject,
-  onOpenRecentProject,
-  onRevealProject,
-  onRevealWorkspace,
-  recentProjects,
-}: {
-  activeProjectRoot?: string
-  activeWorkspaceRoot?: string
-  onOpenProject: () => void
-  onOpenRecentProject: (projectRoot: string) => void
-  onRevealProject: () => void
-  onRevealWorkspace: () => void
-  recentProjects: Array<DesktopProjectSummary>
-}) {
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <button
-        type="button"
-        onClick={onOpenProject}
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-foreground/7 text-foreground/70 transition-colors hover:bg-foreground/10"
-        aria-label="Open project"
-        title="Open project"
-      >
-        <FolderOpen className="size-4" />
-      </button>
-      <div className="max-w-[280px] min-w-0">
-        <div className="truncate text-[12px] font-medium text-foreground/78">
-          {displayNameFromPath(activeProjectRoot)}
-        </div>
-        <div className="truncate text-[11px] text-foreground/42">
-          {activeWorkspaceRoot}
-        </div>
-      </div>
-      <div className="relative min-w-0">
-        <History className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-foreground/35" />
-        <select
-          value={activeProjectRoot ?? ""}
-          onChange={(event) => {
-            const nextRoot = event.target.value
-            if (nextRoot) onOpenRecentProject(nextRoot)
-          }}
-          className="h-7 max-w-[220px] rounded-[6px] border-0 bg-transparent pr-2 pl-6 text-[12px] leading-4 text-foreground/45 transition-colors outline-none hover:bg-foreground/6"
-          aria-label="Recent projects"
-          title="Recent projects"
-        >
-          <option value={activeProjectRoot ?? ""}>Recent projects</option>
-          {recentProjects.map((project) => (
-            <option key={project.workspaceId} value={project.projectRoot}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <button
-        type="button"
-        onClick={onRevealProject}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
-        aria-label="Reveal project"
-        title="Reveal project"
-      >
-        <ExternalLink className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={onRevealWorkspace}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
-        aria-label="Reveal workspace"
-        title="Reveal workspace"
-      >
-        <HardDrive className="size-3.5" />
-      </button>
-    </div>
-  )
-}
-
-function DesktopEmptyState({
-  onClearRecentProjects,
-  onOpenProject,
-  onOpenRecentProject,
-  recentProjects,
-}: {
-  onClearRecentProjects: () => void
-  onOpenProject: () => void
-  onOpenRecentProject: (projectRoot: string) => void
-  recentProjects: Array<DesktopProjectSummary>
-}) {
-  return (
-    <div className="relative flex h-svh min-w-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(78,124,245,0.08),_transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,1))] px-6 dark:bg-[radial-gradient(circle_at_top,_rgba(78,124,245,0.16),_transparent_42%),linear-gradient(180deg,rgba(7,10,16,0.98),rgba(7,10,16,1))]">
-      <div className="w-full max-w-3xl">
-        <div className="max-w-2xl">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-foreground/42 uppercase backdrop-blur">
-            <HardDrive className="size-3" />
-            <span>Desktop Workspace</span>
-          </div>
-          <h1 className="max-w-xl text-3xl font-semibold tracking-normal text-foreground/88 sm:text-4xl">
-            Open a local project to start a desktop agent workspace
-          </h1>
-          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-foreground/58">
-            Fleet Pi will use an existing project folder, create or reuse
-            `agent-workspace/` inside it, and keep Electron-only sessions in app
-            storage instead of the repo.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={onOpenProject}
-              className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-foreground px-4 text-[13px] font-medium text-background transition-transform hover:-translate-y-px"
-            >
-              <FolderOpen className="size-4" />
-              <span>Open project folder</span>
-            </button>
-            {recentProjects.length > 0 && (
-              <button
-                type="button"
-                onClick={onClearRecentProjects}
-                className="inline-flex h-11 items-center rounded-[10px] border border-border/70 px-4 text-[13px] font-medium text-foreground/62 transition-colors hover:bg-foreground/5"
-              >
-                Clear recent projects
-              </button>
-            )}
-          </div>
-        </div>
-
-        {recentProjects.length > 0 && (
-          <div className="mt-10 grid gap-2 sm:grid-cols-2">
-            {recentProjects.map((project) => (
-              <button
-                key={project.workspaceId}
-                type="button"
-                onClick={() => onOpenRecentProject(project.projectRoot)}
-                className="flex min-w-0 items-center gap-3 rounded-[10px] border border-border/70 bg-background/72 px-4 py-3 text-left shadow-sm backdrop-blur transition-colors hover:bg-background/92"
-              >
-                <History className="size-4 shrink-0 text-foreground/38" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium text-foreground/78">
-                    {project.name}
-                  </div>
-                  <div className="truncate text-[11px] text-foreground/44">
-                    {project.projectRoot}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ChatWorkspaceShell({
-  desktopContext,
-  newSessionSignal,
-}: {
-  desktopContext?: DesktopContext
-  newSessionSignal: number
-}) {
+function ChatWorkspaceShell() {
   const [models, setModels] = useState<Array<ChatModelOption>>([])
   const [modelKey, setModelKey] = useState<string | undefined>()
   const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
   const [resources, setResources] = useState<ChatResourcesResponse | null>(null)
   const [resourcesError, setResourcesError] = useState<Error | null>(null)
   const [resourcesLoading, setResourcesLoading] = useState(false)
-  const [resourcesOpen, setResourcesOpen] = useState(false)
-  const [resourceCanvasTab, setResourceCanvasTab] =
-    useState<ResourceCanvasTab>("resources")
+  const [rightPanel, setRightPanel] = useState<RightPanel>(null)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
     readStoredThemePreference()
   )
@@ -293,41 +245,16 @@ function ChatWorkspaceShell({
   const [workspaceError, setWorkspaceError] = useState<Error | null>(null)
   const [workspaceLoading, setWorkspaceLoading] = useState(false)
 
-  const persistSession = useCallback(
-    (metadata: ChatSessionMetadata) => {
-      if (desktopContext?.isDesktop) {
-        void window.fleetPiDesktop?.setActiveSession(metadata)
-        return
-      }
-      storeBrowserSession(metadata)
-    },
-    [desktopContext]
-  )
+  const persistSession = useCallback((metadata: ChatSessionMetadata) => {
+    storeBrowserSession(metadata)
+  }, [])
 
-  const initialSessionMetadata = useMemo(
-    () =>
-      desktopContext?.isDesktop
-        ? (desktopContext.activeSession ?? {})
-        : readStoredBrowserSession(),
-    [
-      desktopContext?.activeSession,
-      desktopContext?.isDesktop,
-      desktopContext?.workspaceId,
-    ]
-  )
-
-  const desktopRequestInit = useMemo(
-    () => withDesktopHeaders(undefined, desktopContext),
-    [desktopContext]
-  )
+  const initialSessionMetadata = useMemo(() => readStoredBrowserSession(), [])
 
   useEffect(() => {
     let cancelled = false
     const loadModels = async () => {
-      const result = await fetchJson<ChatModelsResponse>(
-        "/api/chat/models",
-        desktopContext
-      )
+      const result = await fetchJson<ChatModelsResponse>("/api/chat/models")
       if (cancelled) return
       const nextModels = result.models.map(toModelOption)
       setModels(nextModels)
@@ -340,7 +267,7 @@ function ChatWorkspaceShell({
     return () => {
       cancelled = true
     }
-  }, [desktopContext])
+  }, [])
 
   useEffect(() => {
     applyThemePreference(themePreference)
@@ -366,17 +293,14 @@ function ChatWorkspaceShell({
     setResourcesError(null)
     try {
       setResources(
-        await fetchJson<ChatResourcesResponse>(
-          "/api/chat/resources",
-          desktopContext
-        )
+        await fetchJson<ChatResourcesResponse>("/api/chat/resources")
       )
     } catch (err) {
       setResourcesError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setResourcesLoading(false)
     }
-  }, [desktopContext])
+  }, [])
 
   useEffect(() => {
     void refreshResources()
@@ -387,33 +311,34 @@ function ChatWorkspaceShell({
     setWorkspaceError(null)
     try {
       setWorkspaceTree(
-        await fetchJson<WorkspaceTreeResponse>(
-          "/api/workspace/tree",
-          desktopContext
-        )
+        await fetchJson<WorkspaceTreeResponse>("/api/workspace/tree")
       )
     } catch (err) {
       setWorkspaceError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setWorkspaceLoading(false)
     }
-  }, [desktopContext])
+  }, [])
 
   useEffect(() => {
-    if (resourcesOpen && !workspaceTree && !workspaceLoading) {
+    if (
+      (rightPanel === "resources" || rightPanel === "workspace") &&
+      !workspaceTree &&
+      !workspaceLoading
+    ) {
       void refreshWorkspace()
     }
-  }, [refreshWorkspace, resourcesOpen, workspaceLoading, workspaceTree])
+  }, [refreshWorkspace, rightPanel, workspaceLoading, workspaceTree])
 
   useEffect(() => {
-    if (!resourcesOpen) return
+    if (!rightPanel) return
     const initialWidth = getResourceCanvasInitialWidth()
     setResourceCanvasWidth(initialWidth)
     storeResourceCanvasWidth(initialWidth)
-  }, [resourcesOpen])
+  }, [rightPanel])
 
   useEffect(() => {
-    if (!resourcesOpen) return
+    if (!rightPanel) return
 
     const handleViewportResize = () => {
       setResourceCanvasWidth((currentWidth) => {
@@ -427,7 +352,7 @@ function ChatWorkspaceShell({
     return () => {
       window.removeEventListener("resize", handleViewportResize)
     }
-  }, [resourcesOpen])
+  }, [rightPanel])
 
   const handleModeChange = useCallback((nextMode: string) => {
     const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
@@ -476,38 +401,36 @@ function ChatWorkspaceShell({
     sendMessage,
     sessionMetadata,
     sessions,
-    setError,
     startNewSession,
     status,
     stop,
   } = usePiChat(modelSelection, mode, {
-    desktopContext,
     initialSessionMetadata,
     persistSession,
   })
 
-  useEffect(() => {
-    if (!desktopContext?.isDesktop) return
-    if (
-      desktopContext.activeSession?.sessionId ||
-      desktopContext.activeSession?.sessionFile
-    ) {
-      return
-    }
-    void startNewSession().catch((err) => {
-      setError(err instanceof Error ? err : new Error(String(err)))
-    })
-  }, [desktopContext, setError, startNewSession])
-
-  const handledNewSessionSignalRef = useRef(newSessionSignal)
-  useEffect(() => {
-    if (!desktopContext?.isDesktop) return
-    if (newSessionSignal === handledNewSessionSignalRef.current) return
-    handledNewSessionSignalRef.current = newSessionSignal
-    void startNewSession().catch(() => undefined)
-  }, [desktopContext, newSessionSignal, startNewSession])
-
   const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
+  const activeSessionLabel = useMemo(
+    () => getActiveSessionLabel(sessionMetadata.sessionId, sessions, messages),
+    [messages, sessionMetadata.sessionId, sessions]
+  )
+  const suggestions = useMemo(
+    () =>
+      buildContextSuggestions({
+        messages,
+        mode,
+        resources,
+        workspaceTree,
+      }),
+    [messages, mode, resources, workspaceTree]
+  )
+  const agentChatStyle = useMemo(
+    () =>
+      ({
+        "--an-input-focus-outline": "rgba(59, 130, 246, 0.32)",
+      }) as CSSProperties,
+    []
+  )
 
   const answerQuestion = useCallback(
     async ({
@@ -519,7 +442,6 @@ function ChatWorkspaceShell({
     }) => {
       const result = await fetchJson<ChatQuestionAnswerResponse>(
         "/api/chat/question",
-        desktopContext,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -543,24 +465,8 @@ function ChatWorkspaceShell({
         })
       }
     },
-    [desktopContext, handleModeChange, sendMessage, sessionMetadata]
+    [handleModeChange, sendMessage, sessionMetadata]
   )
-
-  const openProject = useCallback(() => {
-    void window.fleetPiDesktop?.pickProjectDirectory()
-  }, [])
-
-  const openRecentProject = useCallback((projectRoot: string) => {
-    void window.fleetPiDesktop?.openRecentProject(projectRoot)
-  }, [])
-
-  const revealProject = useCallback(() => {
-    void window.fleetPiDesktop?.revealPath("project")
-  }, [])
-
-  const revealWorkspace = useCallback(() => {
-    void window.fleetPiDesktop?.revealPath("workspace")
-  }, [])
 
   return (
     <div
@@ -568,48 +474,12 @@ function ChatWorkspaceShell({
       data-testid="chat-shell"
     >
       <div className="relative min-w-0 flex-1" data-testid="chat-column">
-        <div className="fixed top-3 left-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-border/70 bg-background/85 px-1.5 py-1 shadow-sm backdrop-blur">
-          {desktopContext?.isDesktop && (
-            <DesktopProjectControls
-              activeProjectRoot={desktopContext.activeProjectRoot}
-              activeWorkspaceRoot={desktopContext.activeWorkspaceRoot}
-              onOpenProject={openProject}
-              onOpenRecentProject={openRecentProject}
-              onRevealProject={revealProject}
-              onRevealWorkspace={revealWorkspace}
-              recentProjects={desktopContext.recentProjects}
-            />
-          )}
-          <SessionControls
-            activeSessionId={sessionMetadata.sessionId}
-            sessions={sessions}
-            onNewSession={() => void startNewSession()}
-            onResumeSession={(metadata) => void resumeSession(metadata)}
-          />
-        </div>
-        <ResourceLauncher
-          onOpenChange={setResourcesOpen}
-          open={resourcesOpen}
-          resources={resources}
-          workspace={workspaceTree}
-        />
-        <ResourceMobilePanel
-          activeTab={resourceCanvasTab}
-          error={resourcesError}
-          loading={resourcesLoading}
-          models={models}
-          onOpenChange={setResourcesOpen}
-          onRefresh={() => void refreshResources()}
-          onRefreshWorkspace={() => void refreshWorkspace()}
-          onTabChange={setResourceCanvasTab}
-          onThemePreferenceChange={handleThemePreferenceChange}
-          open={resourcesOpen}
-          requestInit={desktopRequestInit}
-          resources={resources}
-          themePreference={themePreference}
-          workspace={workspaceTree}
-          workspaceError={workspaceError}
-          workspaceLoading={workspaceLoading}
+        <ChatHeader
+          activeSessionId={sessionMetadata.sessionId}
+          activeSessionLabel={activeSessionLabel}
+          sessions={sessions}
+          onNewSession={() => void startNewSession()}
+          onResumeSession={(metadata) => void resumeSession(metadata)}
         />
         <AgentChat
           messages={messages}
@@ -624,11 +494,9 @@ function ChatWorkspaceShell({
             },
           }}
           error={error ?? undefined}
-          emptyStatePosition="center"
-          suggestions={[
-            { id: "1", label: "What can you do?" },
-            { id: "2", label: "Tell me about this project" },
-          ]}
+          emptyStatePosition="default"
+          suggestions={suggestions}
+          style={agentChatStyle}
           slots={{
             InputBar: (props) => (
               <InputBar
@@ -677,120 +545,175 @@ function ChatWorkspaceShell({
           }}
         />
       </div>
-      <ResourceCanvas
-        activeTab={resourceCanvasTab}
-        error={resourcesError}
-        loading={resourcesLoading}
+      <ChatRightPanels
+        handleResourceCanvasResizeStart={handleResourceCanvasResizeStart}
+        handleThemePreferenceChange={handleThemePreferenceChange}
         models={models}
-        onClose={() => setResourcesOpen(false)}
-        onRefresh={() => void refreshResources()}
-        onRefreshWorkspace={() => void refreshWorkspace()}
-        onResizeStart={handleResourceCanvasResizeStart}
-        onTabChange={setResourceCanvasTab}
-        onThemePreferenceChange={handleThemePreferenceChange}
-        open={resourcesOpen}
-        requestInit={desktopRequestInit}
+        refreshResources={() => void refreshResources()}
+        refreshWorkspace={() => void refreshWorkspace()}
+        resourceCanvasWidth={resourceCanvasWidth}
         resources={resources}
+        resourcesError={resourcesError}
+        resourcesLoading={resourcesLoading}
+        rightPanel={rightPanel}
+        setRightPanel={setRightPanel}
         themePreference={themePreference}
-        width={resourceCanvasWidth}
-        workspace={workspaceTree}
         workspaceError={workspaceError}
         workspaceLoading={workspaceLoading}
+        workspaceTree={workspaceTree}
       />
     </div>
   )
 }
 
 function Chat() {
-  const [desktopContext, setDesktopContext] = useState<DesktopContext | null>(
-    null
+  return <ChatWorkspaceShell />
+}
+
+function buildContextSuggestions({
+  messages,
+  mode,
+  resources,
+  workspaceTree,
+}: {
+  messages: Array<ChatMessage>
+  mode: ChatMode
+  resources: ChatResourcesResponse | null
+  workspaceTree: WorkspaceTreeResponse | null
+}): Array<SuggestionItem> {
+  const hasAgentsFile = Boolean(
+    resources?.agentsFiles.some((file) => file.name === "AGENTS.md")
   )
-  const [desktopLoading, setDesktopLoading] = useState(true)
-  const [newSessionSignal, setNewSessionSignal] = useState(0)
+  const hasFrontendSkill =
+    Boolean(
+      resources?.skills.some((skill) =>
+        `${skill.name} ${skill.description ?? ""}`
+          .toLowerCase()
+          .includes("frontend")
+      )
+    ) ||
+    Boolean(
+      workspaceTree?.nodes.some((node) =>
+        JSON.stringify(node).toLowerCase().includes("frontend")
+      )
+    )
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user")
+  const lastUserText = extractMessageText(lastUserMessage).toLowerCase()
 
-  useEffect(() => {
-    let cancelled = false
-    let unsubscribe: (() => void) | undefined
+  if (mode === "plan") {
+    return [
+      suggestionItem("plan-codebase", "Plan a codebase walkthrough"),
+      suggestionItem("plan-skill", 'Plan around the "frontend" skill'),
+      suggestionItem("plan-tests", "Plan the next validation steps"),
+    ]
+  }
 
-    async function loadDesktopContext() {
-      if (typeof window === "undefined" || !window.fleetPiDesktop) {
-        if (!cancelled) {
-          setDesktopContext({ isDesktop: false, recentProjects: [] })
-          setDesktopLoading(false)
-        }
-        return
-      }
+  if (!lastUserText) {
+    return [
+      suggestionItem("overview", "Summarize this project"),
+      suggestionItem(
+        "frontend",
+        hasFrontendSkill
+          ? 'Find a skill "frontend"'
+          : "Explore available skills"
+      ),
+      suggestionItem(
+        "docs",
+        hasAgentsFile ? "Read AGENTS.md" : "Tell me about this project"
+      ),
+    ]
+  }
 
-      const context = await window.fleetPiDesktop.getDesktopContext()
-      if (cancelled) return
-      setDesktopContext(context)
-      setDesktopLoading(false)
-      unsubscribe = window.fleetPiDesktop.onEvent((event) => {
-        if (event.type === "context-changed") {
-          setDesktopContext(event.context)
-          return
-        }
-        setNewSessionSignal((current) => current + 1)
-      })
-    }
+  if (
+    lastUserText.includes("what can you do") ||
+    lastUserText.includes("help")
+  ) {
+    return [
+      suggestionItem("frontend", 'Find a skill "frontend"'),
+      suggestionItem(
+        "agents",
+        hasAgentsFile ? "Read AGENTS.md" : "Read the repo docs"
+      ),
+      suggestionItem("workspace", "Show workspace files"),
+    ]
+  }
 
-    void loadDesktopContext().catch(() => {
-      if (!cancelled) {
-        setDesktopContext({ isDesktop: false, recentProjects: [] })
-        setDesktopLoading(false)
-      }
-    })
+  if (lastUserText.includes("frontend")) {
+    return [
+      suggestionItem("frontend-skill", 'Find a skill "frontend"'),
+      suggestionItem("frontend-route", "Read apps/web/src/routes/index.tsx"),
+      suggestionItem("frontend-workspace", "Show workspace files"),
+    ]
+  }
 
-    return () => {
-      cancelled = true
-      unsubscribe?.()
-    }
-  }, [])
+  if (lastUserText.includes("skill")) {
+    return [
+      suggestionItem("frontend-skill", 'Find a skill "frontend"'),
+      suggestionItem("memory-skill", 'Find a skill "memory"'),
+      suggestionItem(
+        "skill-docs",
+        hasAgentsFile ? "Read AGENTS.md" : "Show workspace files"
+      ),
+    ]
+  }
 
-  const openProject = useCallback(() => {
-    void window.fleetPiDesktop?.pickProjectDirectory()
-  }, [])
+  if (lastUserText.includes("read") || lastUserText.includes("doc")) {
+    return [
+      suggestionItem(
+        "read-agents",
+        hasAgentsFile ? "Read AGENTS.md" : "Read README.md"
+      ),
+      suggestionItem("project-summary", "Summarize the repo conventions"),
+      suggestionItem("workspace-files", "Show workspace files"),
+    ]
+  }
 
-  const openRecentProject = useCallback((projectRoot: string) => {
-    void window.fleetPiDesktop?.openRecentProject(projectRoot)
-  }, [])
+  return [
+    suggestionItem("continue", "Continue from the last task"),
+    suggestionItem("workspace", "Show workspace files"),
+    suggestionItem("frontend", 'Find a skill "frontend"'),
+  ]
+}
 
-  const clearRecentProjects = useCallback(() => {
-    void window.fleetPiDesktop?.clearRecentProjects()
-  }, [])
+function suggestionItem(id: string, label: string): SuggestionItem {
+  return { id, label, value: label }
+}
 
-  if (desktopLoading || !desktopContext) {
+function extractMessageText(message: ChatMessage | undefined) {
+  if (!message) return ""
+
+  return message.parts
+    .filter(
+      (
+        part
+      ): part is Extract<(typeof message.parts)[number], { type: "text" }> =>
+        part.type === "text" && typeof part.text === "string"
+    )
+    .map((part) => part.text)
+    .join(" ")
+}
+
+function getActiveSessionLabel(
+  activeSessionId: string | undefined,
+  sessions: Array<ChatSessionInfo>,
+  messages: Array<ChatMessage>
+) {
+  const activeSession = sessions.find(
+    (session) => session.id === activeSessionId
+  )
+  if (activeSession) {
     return (
-      <div className="flex h-svh min-w-0 items-center justify-center bg-background">
-        <div className="text-[13px] text-foreground/45">
-          Loading workspace context...
-        </div>
-      </div>
+      activeSession.name ||
+      activeSession.firstMessage ||
+      activeSession.id.slice(0, 8)
     )
   }
 
-  if (desktopContext.isDesktop && !desktopContext.activeProjectRoot) {
-    return (
-      <DesktopEmptyState
-        onClearRecentProjects={clearRecentProjects}
-        onOpenProject={openProject}
-        onOpenRecentProject={openRecentProject}
-        recentProjects={desktopContext.recentProjects}
-      />
-    )
-  }
-
-  return (
-    <ChatWorkspaceShell
-      key={
-        desktopContext.isDesktop
-          ? (desktopContext.workspaceId ??
-            desktopContext.activeProjectRoot ??
-            "desktop")
-          : "browser"
-      }
-      desktopContext={desktopContext.isDesktop ? desktopContext : undefined}
-      newSessionSignal={newSessionSignal}
-    />
-  )
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user")
+  const label = extractMessageText(lastUserMessage).trim()
+  return label || "Session"
 }

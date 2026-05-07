@@ -196,5 +196,7 @@ export type WorkspaceFileResponse = {
   path: string
   name: string
   content: string
-  mediaType: "text/markdown" | "text/plain"
+  mediaType: "text/markdown" | "text/plain" | "application/octet-stream"
+  size?: number
+  status?: "ok" | "too-large" | "unsupported"
 }

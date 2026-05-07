@@ -19,13 +19,13 @@
     "tech-debt": "./scripts/scan-tech-debt.sh",
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js",
+    "codex-v2:plan": "pnpm --filter codex-v2 run cli -- plan",
+    "codex-v2:execute": "pnpm --filter codex-v2 run cli -- execute",
+    "codex-v2:status": "pnpm --filter codex-v2 run cli -- status",
+    "codex-v2:validate": "pnpm --filter codex-v2 run cli -- validate",
     "symphony:validate": "bash ./scripts/symphony/validate-workflow.sh",
     "symphony:run": "bash ./scripts/symphony/run-service.sh",
-    "symphony:test-plugin": "bash ./scripts/symphony/test-plugin.sh",
-    "desktop:dev": "node scripts/desktop-dev.mjs",
-    "desktop:build": "pnpm --filter web build && pnpm --filter desktop build",
-    "desktop:pack": "pnpm run desktop:build && pnpm --filter desktop run pack",
-    "desktop:dist": "pnpm run desktop:build && pnpm --filter desktop run dist"
+    "symphony:test-plugin": "bash ./scripts/symphony/test-plugin.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [
@@ -54,7 +54,8 @@
     "@mariozechner/pi-coding-agent": "^0.73.0",
     "@mariozechner/pi-tui": "^0.73.0",
     "diff": "^5.2.0",
-    "typebox": "1.1.33"
+    "typebox": "1.1.33",
+    "zod": "^4.3.6"
   },
   "pnpm": {
     "overrides": {
@@ -69,8 +70,6 @@
     "onlyBuiltDependencies": [
       "@google/genai",
       "better-sqlite3",
-      "electron",
-      "electron-winstaller",
       "esbuild",
       "koffi",
       "msw",

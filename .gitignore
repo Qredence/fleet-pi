@@ -35,12 +35,6 @@ dist
 .vinxi
 bundle-report/
 
-# Electron
-release/
-dist-electron/
-
-# Desktop app (ignored for now)
-apps/desktop/
 
 # Debug
 npm-debug.log*

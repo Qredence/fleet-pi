@@ -48,12 +48,6 @@ export function toModelSelection(
   }
 }
 
-export function displayNameFromPath(path: string | undefined) {
-  if (!path) return "Project"
-  const segments = path.split(/[\\/]/).filter(Boolean)
-  return segments.at(-1) ?? path
-}
-
 export function queueLabel(queue: {
   steering: Array<string>
   followUp: Array<string>

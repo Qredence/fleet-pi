@@ -9,8 +9,10 @@ orchestrator.
 - Eligible states: `Todo`, `In Progress`
 - Workspace model: one git worktree per issue under
   `~/code/symphony-workspaces/fleet-pi/<issue-key>`
-- Codex approvals: `on-request`
+- Codex approvals: `never`
 - Thread sandbox: `workspace-write`
+- Worker auth: isolated ChatGPT-backed Codex home under
+  `~/code/symphony-workspaces/fleet-pi/.codex-home`
 
 The repo-owned workflow definition lives at [WORKFLOW.md](../WORKFLOW.md).
 For Linear-backed Symphony dispatch, `tracker.project_slug` must use the
@@ -46,6 +48,13 @@ Fleet Pi keeps the hooks small and deterministic:
   - runs `git worktree prune`
   - recreates an empty directory so Symphony's own workspace deletion can
     finish cleanly
+- `codex.command`
+  - runs `scripts/symphony/codex-app-server.zsh`
+  - seeds an isolated `.codex-home/config.toml` from
+    `.codex/symphony/config.toml`
+  - copies `~/.codex/auth.json` into that isolated home so the worker uses the
+    operator's ChatGPT subscription login without inheriting the rest of
+    `~/.codex`
 
 Hook implementations live under `scripts/symphony/`.
 
@@ -77,9 +86,46 @@ All three wrappers default to the sibling checkout at
 setting `SYMPHONY_PLUGIN_REPO` when needed.
 
 The validation and runtime wrappers load values from the repo-root `.env` by
-default, so
-keep `LINEAR_API_KEY=...` there for local operator runs. To bypass the file and
-use the current shell environment directly, set `SYMPHONY_SKIP_DOTENV=1`.
+default, so keep `LINEAR_API_KEY=...` there for local operator runs. To bypass
+the file and use the current shell environment directly, set
+`SYMPHONY_SKIP_DOTENV=1`. Both wrappers fail fast if `LINEAR_API_KEY` is still
+unresolved after that step, so `pnpm symphony:validate` reflects the real
+operator setup instead of a placeholder token.
+
+`pnpm symphony:run` uses the operator's existing ChatGPT Codex login. Fleet Pi
+copies `~/.codex/auth.json` into the isolated Symphony worker home under
+`~/code/symphony-workspaces/fleet-pi/.codex-home`, so the worker reuses the
+subscription login while still avoiding the rest of the operator's global
+Codex config.
+
+## Codex Multi-Agent V2
+
+Codex multi-agent v2 is an additive operator path for Symphony work; it does
+not replace Fleet Pi's Pi-backed browser chat runtime.
+
+Create a repo-visible worker-mesh plan:
+
+```bash
+# from repo root
+pnpm codex-v2:plan -- --issue-key QRE-123 --issue-title "Short issue title"
+```
+
+Approve the run explicitly:
+
+```bash
+# from repo root
+pnpm codex-v2:execute -- --run-id <run-id>
+```
+
+Live Codex MCP worker dispatch is opt-in:
+
+```bash
+# from repo root
+pnpm codex-v2:execute -- --run-id <run-id> --use-codex
+```
+
+Artifacts live under `agent-workspace/codex-v2/` so plans, run state, reports,
+and trace notes are visible in normal repository diffs.
 
 ## Operator Smoke Checks
 
@@ -91,5 +137,7 @@ Before enabling real execution:
 4. Confirm the workspace path resolves under
    `~/code/symphony-workspaces/fleet-pi/<issue-key>`.
 5. Confirm the created worktree branch is `codex/<workspace_key>`.
-6. After cleanup, confirm `git -C /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi worktree list`
+6. Confirm `~/code/symphony-workspaces/fleet-pi/.codex-home` exists and that
+   `codex login status` succeeds when run with `CODEX_HOME` pointed there.
+7. After cleanup, confirm `git -C /Volumes/SSD-T7/work-location/fleet-pi/fleet-pi worktree list`
    no longer includes the retired workspace path.

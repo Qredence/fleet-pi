@@ -1,21 +1,16 @@
 # Fleet Pi
 
-Fleet Pi is a pnpm/Turborepo workspace for a coding-agent chat UI that now runs
-in two modes:
-
-- a browser-first TanStack Start web app for this repo-local development setup
-- an installable Electron desktop app that can open arbitrary local projects
+Fleet Pi is a pnpm/Turborepo workspace for a browser-based coding-agent chat UI.
 
 The web app is built with TanStack Start, React, Tailwind CSS v4, and a shared
 agent-elements component package. The chat backend uses Pi's coding agent
 runtime with Amazon Bedrock models and streams newline-delimited JSON events to
-the browser or desktop renderer.
+the browser.
 
 ## Workspace
 
 ```text
 apps/
-  desktop/      Electron shell and desktop state bridge
   web/          TanStack Start app and `/api/chat` backend route
 packages/
   ui/           Shared React components, styles, and agent-elements UI
@@ -25,10 +20,6 @@ Key files:
 
 - `apps/web/src/routes/index.tsx` - chat page and client-side stream handling.
 - `apps/web/src/routes/api/chat.ts` - Pi coding-agent session route.
-- `apps/desktop/src/main.ts` - Electron app lifecycle, security hardening, and
-  project picker/menu wiring.
-- `apps/desktop/src/desktop-state.ts` - persisted desktop project/session state
-  under Electron `userData`.
 - `packages/ui/src/components/agent-elements/` - reusable chat and tool UI.
 - `packages/ui/src/components/agent-elements/chat-types.ts` - shared chat
   message and tool-part types.
@@ -84,17 +75,6 @@ To run only the web app:
 pnpm --filter web dev
 ```
 
-To run the Electron desktop app against the local web dev server:
-
-```zsh
-# from repo root
-pnpm desktop:dev
-```
-
-`pnpm desktop:dev` launches the web dev server and Electron together, sharing a
-desktop auth token and a temporary Electron state directory so the renderer can
-talk to the repo-local backend in desktop mode.
-
 ## Validation
 
 ```zsh
@@ -105,14 +85,6 @@ pnpm build
 pnpm syncpack
 ```
 
-Desktop-specific validation:
-
-```zsh
-# from repo root
-pnpm --filter desktop test
-pnpm desktop:build
-```
-
 Symphony-specific operator commands:
 
 ```zsh
@@ -120,6 +92,12 @@ Symphony-specific operator commands:
 pnpm symphony:validate
 pnpm symphony:test-plugin
 ```
+
+`pnpm symphony:validate` and `pnpm symphony:run` both load `LINEAR_API_KEY`
+from the repo-root `.env` by default and fail fast if it is still unresolved.
+`pnpm symphony:run` now reuses the logged-in ChatGPT Codex subscription from
+`~/.codex/auth.json` while still keeping Symphony workers inside an isolated
+`.codex-home` under the shared workspace root.
 
 ## Documentation
 
@@ -203,13 +181,6 @@ Preview the web app build:
 pnpm --filter web preview
 ```
 
-Package the macOS desktop app:
-
-```zsh
-# from repo root
-pnpm desktop:pack
-```
-
 ## Chat Architecture
 
 The browser posts a single user message to `/api/chat`. The route creates or
@@ -232,9 +203,7 @@ Tool execution events are normalized into `tool-Read`, `tool-Write`,
 
 In browser mode, the client stores Pi session metadata in `localStorage` under
 `fleet-pi-chat-session`, allowing later messages to resume the same coding-agent
-session when the server accepts the stored session file. In Electron desktop
-mode, the selected project and active Pi session metadata live in Electron
-`userData`; the renderer keeps only lightweight UI state locally.
+session when the server accepts the stored session file.
 
 The server keeps live Pi `AgentSessionRuntime` instances in memory for a short
 TTL so queued follow-ups and `/api/chat/abort` address the same runtime that is
@@ -257,40 +226,14 @@ Supporting endpoints:
   files inside `agent-workspace`.
 
 The chat UI includes a Pi resources browser backed by `/api/chat/resources`.
-On desktop it opens as a resizable right-side canvas beside the chat; on mobile
-it stays as a compact overlay. The desktop canvas opens at 70% of the viewport
-width and clamps resizing to that same maximum. Use it to inspect which skills,
-prompts, extensions, themes, context files, and loader diagnostics are available
-to the current session. The same canvas includes a `Workspace` tab that renders
-the read-only repo-local `agent-workspace` tree and Markdown file previews, plus
-a `Configurations` tab for UI-first tools, connectors, provider, model
-allowlist, and personalization controls.
-
-## Desktop App
-
-The installable desktop app targets macOS first and treats Fleet Pi as a
-project-linked coding surface rather than a window around this repo. On first
-launch, the app asks for an existing local project directory and creates
-`<project>/agent-workspace/` if it is missing.
-
-Desktop mode uses a dual-root runtime contract:
-
-- Agent mode tools run against the selected project root.
-- Workspace APIs and the Workspace tab read from
-  `<project>/agent-workspace/`.
-- Pi session JSONL files live in Electron `userData`, keyed per project
-  workspace.
-
-The Electron shell provides:
-
-- native project picker and recent-project list
-- reveal-in-Finder actions for the project root and linked workspace root
-- a single-instance app window
-- blocked in-window external navigation, with non-app URLs opened in the system
-  browser
-
-Desktop mode does not clone repositories for you in v1; it starts from an
-existing local directory.
+It opens as a resizable right-side canvas beside the chat; on mobile it stays as
+a compact overlay. The canvas opens at 70% of the viewport width and clamps
+resizing to that same maximum. Use it to inspect which skills, prompts,
+extensions, themes, context files, and loader diagnostics are available to the
+current session. The same canvas includes a `Workspace` tab that renders the
+read-only repo-local `agent-workspace` tree and Markdown file previews, plus a
+`Configurations` tab for UI-first tools, connectors, provider, model allowlist,
+and personalization controls.
 
 ## Symphony Orchestration
 
@@ -302,7 +245,8 @@ The intended Fleet Pi Symphony model is:
 - Linear project: `fleet-pi` (`slugId: 7c8589daab4e`)
 - intake states: `Todo`, `In Progress`
 - git worktrees under `~/code/symphony-workspaces/fleet-pi`
-- on-request approvals with workspace-write thread sandboxing
+- isolated Codex worker state under `~/code/symphony-workspaces/fleet-pi/.codex-home`
+- unattended `never` approvals with workspace-write thread sandboxing
 
 The hooks stay intentionally small:
 
@@ -314,20 +258,68 @@ The hooks stay intentionally small:
 - `after_run` prints `git status --short`
 - `before_remove` unregisters the git worktree, prunes git worktree metadata,
   and leaves Symphony an empty directory to delete
+- `codex.command` runs a repo-owned launcher that seeds an isolated Codex
+  config and performs API-key login inside `.codex-home` before starting
+  `codex app-server`
 
 See [docs/symphony.md](./docs/symphony.md)
 for operator notes, validation commands, and the spec-aligned issue-intake
 contract.
 
+## Codex Multi-Agent V2
+
+Fleet Pi includes an additive Codex multi-agent v2 operator package at
+`packages/codex-v2`. It is CLI/Symphony-first and does not replace the Pi-backed
+browser chat runtime. Use it when an operator wants a repo-visible worker mesh
+plan, explicit execution approval, and optional live Codex MCP worker dispatch.
+
+Create a plan:
+
+```zsh
+# from repo root
+pnpm codex-v2:plan -- --issue-key QRE-123 --issue-title "Short issue title"
+```
+
+Approve the run without invoking live Codex workers:
+
+```zsh
+# from repo root
+pnpm codex-v2:execute -- --run-id <run-id>
+```
+
+Invoke live Codex MCP workers only when intentional:
+
+```zsh
+# from repo root
+pnpm codex-v2:execute -- --run-id <run-id> --use-codex
+```
+
+Artifacts are stored under `agent-workspace/codex-v2/`:
+
+- `plans/` - human-readable plan artifacts
+- `runs/` - machine-readable run state
+- `reports/` - execution summaries
+- `traces/` - trace exports and debugging notes
+
 ## Agent Workspace
 
 `agent-workspace/` is the filesystem workspace for agent identity, memory,
-research notes, skills, artifacts, and scratch files. In browser mode it lives
-in this repo. In desktop mode it lives under the selected project at
-`<project>/agent-workspace/`. The server helper creates the expected directory
-tree and seeded Markdown stubs without overwriting existing files. The
-Workspace tab is read-only in the UI and can preview Markdown file contents;
-edits still happen through normal project-scoped agent tools.
+research notes, skills, artifacts, and scratch files. It lives in this repo.
+The server helper creates the expected directory tree and seeded Markdown stubs
+without overwriting existing files. The Workspace tab is read-only in the UI and
+can preview Markdown file contents; edits still happen through normal
+project-scoped agent tools.
+
+## Codex Local Environment
+
+Fleet Pi includes a shared Codex local environment for worktree threads at
+`.codex/environments/environment.toml`. Its setup step calls
+`.codex/workspace-bootstrap.zsh`, which keeps bootstrap intentionally small and
+currently runs `pnpm install --frozen-lockfile` from the repo root.
+
+Use this environment when opening Fleet Pi in the Codex app so fresh worktrees
+get the same dependency setup automatically. Keep secrets in Codex settings or
+your normal shell environment rather than exporting them from the setup script.
 
 ## Local Configuration Surface
 

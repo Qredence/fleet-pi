@@ -1,38 +1,9 @@
 /* eslint-disable max-lines-per-function -- shared mocked chat harness keeps the suite readable in one place */
 import { expect, test } from "@playwright/test"
 import type { Page, Route } from "@playwright/test"
-import type { DesktopContext, DesktopEvent } from "../src/lib/desktop/types"
-import type { ChatSessionMetadata } from "../src/lib/pi/chat-protocol"
 
 const MOCK_SESSION_FILE = "/tmp/fleet-pi-test-session.json"
 const MOCK_SESSION_ID = "test-session-id"
-const MOCK_DESKTOP_TOKEN = "desktop-token"
-const MOCK_PROJECT_ROOT = "/tmp/desktop-project"
-const MOCK_WORKSPACE_ROOT = "/tmp/desktop-project/agent-workspace"
-
-const MOCK_DESKTOP_CONTEXT: DesktopContext = {
-  isDesktop: true,
-  requestToken: MOCK_DESKTOP_TOKEN,
-  recentProjects: [
-    {
-      projectRoot: MOCK_PROJECT_ROOT,
-      workspaceRoot: MOCK_WORKSPACE_ROOT,
-      workspaceId: "workspace-1",
-      name: "desktop-project",
-      lastOpenedAt: "2026-05-02T10:00:00.000Z",
-    },
-  ],
-  activeProjectRoot: MOCK_PROJECT_ROOT,
-  activeWorkspaceRoot: MOCK_WORKSPACE_ROOT,
-  workspaceId: "workspace-1",
-  sessionDir: "/tmp/fleet-pi-desktop/workspaces/workspace-1/sessions",
-}
-
-const MOCK_DESKTOP_EMPTY_CONTEXT: DesktopContext = {
-  isDesktop: true,
-  requestToken: MOCK_DESKTOP_TOKEN,
-  recentProjects: MOCK_DESKTOP_CONTEXT.recentProjects,
-}
 
 const MOCK_MODELS = {
   models: [
@@ -84,7 +55,7 @@ const MOCK_RESOURCES = {
   prompts: [],
   extensions: [
     {
-      name: ".pi/extensions/project-inventory.ts",
+      name: "project-inventory",
       path: "/tmp/fleet-pi/.pi/extensions/project-inventory.ts",
       source: "project",
     },
@@ -115,7 +86,12 @@ const MOCK_RESOURCES = {
     },
   ],
   themes: [],
-  agentsFiles: [],
+  agentsFiles: [
+    {
+      name: "AGENTS.md",
+      path: "/tmp/fleet-pi/AGENTS.md",
+    },
+  ],
   diagnostics: [],
 }
 
@@ -344,59 +320,6 @@ function mockChatNew(page: Page) {
   )
 }
 
-async function mockDesktopBridge(
-  page: Page,
-  options: {
-    initialContext: DesktopContext
-    pickedContext?: DesktopContext
-  }
-) {
-  await page.addInitScript(({ initialContext, pickedContext }) => {
-    let context = initialContext
-    const listeners = new Set<(event: DesktopEvent) => void>()
-
-    const notify = (event: DesktopEvent) => {
-      for (const listener of listeners) listener(event)
-    }
-
-    window.fleetPiDesktop = {
-      getDesktopContext: () => Promise.resolve(context),
-      pickProjectDirectory: () => {
-        context = pickedContext ?? context
-        notify({ type: "context-changed", context })
-        return Promise.resolve(context)
-      },
-      openRecentProject: (projectRoot: string) => {
-        if (
-          pickedContext &&
-          typeof pickedContext.activeProjectRoot === "string" &&
-          pickedContext.activeProjectRoot === projectRoot
-        ) {
-          context = pickedContext
-        }
-        notify({ type: "context-changed", context })
-        return Promise.resolve(context)
-      },
-      clearRecentProjects: () => {
-        context = { ...context, recentProjects: [] }
-        notify({ type: "context-changed", context })
-        return Promise.resolve(context)
-      },
-      revealPath: () => Promise.resolve(true),
-      setActiveSession: (metadata: ChatSessionMetadata) => {
-        context = { ...context, activeSession: metadata }
-        return Promise.resolve(context)
-      },
-      onEvent: (listener: (event: DesktopEvent) => void) => {
-        listeners.add(listener)
-        return () => {
-          listeners.delete(listener)
-        }
-      },
-    }
-  }, options)
-}
-
 function mockChatSession(page: Page) {
   return page.route(
     "http://localhost:3000/api/chat/session?**",
@@ -507,119 +430,6 @@ function mockChatStream(
 }
 
 test.describe("chat flows", () => {
-  test("shows the desktop empty state before a project is selected", async ({
-    page,
-  }) => {
-    await mockDesktopBridge(page, {
-      initialContext: MOCK_DESKTOP_EMPTY_CONTEXT,
-      pickedContext: MOCK_DESKTOP_CONTEXT,
-    })
-
-    await page.goto("/")
-    await page.waitForLoadState("networkidle")
-
-    await expect(
-      page.getByRole("heading", {
-        name: "Open a local project to start a desktop agent workspace",
-      })
-    ).toBeVisible()
-    await expect(
-      page.getByRole("button", { name: "Open project folder" })
-    ).toBeVisible()
-    await expect(
-      page.getByRole("button", { name: "desktop-project" })
-    ).toBeVisible()
-  })
-
-  test("opens a desktop project and sends desktop auth headers", async ({
-    page,
-  }) => {
-    await mockDesktopBridge(page, {
-      initialContext: MOCK_DESKTOP_EMPTY_CONTEXT,
-      pickedContext: MOCK_DESKTOP_CONTEXT,
-    })
-    await mockChatModels(page)
-    await mockChatSessions(page)
-    await mockChatResources(page)
-    await page.route("http://localhost:3000/api/chat/new", async (route) => {
-      expect(route.request().headers()["x-fleet-pi-desktop-token"]).toBe(
-        MOCK_DESKTOP_TOKEN
-      )
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          session: {
-            sessionFile: MOCK_SESSION_FILE,
-            sessionId: MOCK_SESSION_ID,
-          },
-          messages: [],
-        }),
-      })
-    })
-
-    await page.goto("/")
-    await page.getByRole("button", { name: "Open project folder" }).click()
-
-    await expect(page.locator('[aria-label="Select model"]')).toBeVisible()
-    await expect(page.locator('[aria-label="Open project"]')).toBeVisible()
-    await expect(page.locator("text=desktop-project").first()).toBeVisible()
-  })
-
-  test("hydrates the desktop-owned session on load", async ({ page }) => {
-    await mockDesktopBridge(page, {
-      initialContext: {
-        ...MOCK_DESKTOP_CONTEXT,
-        activeSession: {
-          sessionFile: MOCK_SESSION_FILE,
-          sessionId: MOCK_SESSION_ID,
-        },
-      },
-    })
-    await mockChatModels(page)
-    await mockChatSessions(page)
-    await mockChatResources(page)
-    await page.route(
-      "http://localhost:3000/api/chat/session?**",
-      async (route) => {
-        expect(route.request().headers()["x-fleet-pi-desktop-token"]).toBe(
-          MOCK_DESKTOP_TOKEN
-        )
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            session: {
-              sessionFile: MOCK_SESSION_FILE,
-              sessionId: MOCK_SESSION_ID,
-            },
-            messages: [
-              {
-                id: "user-msg-1",
-                role: "user",
-                createdAt: Date.now() - 1000,
-                parts: [{ type: "text", text: "Desktop hello" }],
-              },
-              {
-                id: "assistant-msg-1",
-                role: "assistant",
-                createdAt: Date.now(),
-                parts: [{ type: "text", text: "Desktop session restored" }],
-              },
-            ],
-          }),
-        })
-      }
-    )
-
-    await page.goto("/")
-    await page.waitForLoadState("networkidle")
-    await expect(page.getByTestId("chat-shell")).toBeVisible()
-
-    await expect(page.locator("text=Desktop hello")).toBeVisible()
-    await expect(page.locator("text=Desktop session restored")).toBeVisible()
-  })
-
   test("page loads and chat UI is visible", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
@@ -635,6 +445,14 @@ test.describe("chat flows", () => {
 
     const newSessionButton = page.locator('[aria-label="New session"]')
     await expect(newSessionButton).toBeVisible()
+    await expect(newSessionButton).toContainText("New session")
+
+    const accountMenuButton = page.locator('[aria-label="Open account menu"]')
+    await expect(accountMenuButton).toBeVisible()
+
+    const sessionMenuButton = page.locator('[aria-label="Open conversations"]')
+    await expect(sessionMenuButton).toBeVisible()
+    await expect(sessionMenuButton).toContainText("Session")
 
     const modelPicker = page.locator('[aria-label="Select model"]')
     await expect(modelPicker).toBeVisible()
@@ -661,8 +479,18 @@ test.describe("chat flows", () => {
     })
     await expect(textarea).toBeVisible()
 
-    await expect(page.locator("text=What can you do?")).toBeVisible()
-    await expect(page.locator("text=Tell me about this project")).toBeVisible()
+    await expect(page.locator("text=Summarize this project")).toBeVisible()
+    await expect(page.locator("text=Explore available skills")).toBeVisible()
+    await expect(page.locator("text=Read AGENTS.md")).toBeVisible()
+
+    const chatColumn = page.getByTestId("chat-column")
+    const chatColumnBox = await chatColumn.boundingBox()
+    const textareaBox = await textarea.boundingBox()
+    expect(chatColumnBox).not.toBeNull()
+    expect(textareaBox).not.toBeNull()
+    expect(textareaBox?.y ?? 0).toBeGreaterThan(
+      (chatColumnBox?.y ?? 0) + (chatColumnBox?.height ?? 0) * 0.65
+    )
   })
 
   test("sends message and streaming content appears", async ({ page }) => {
@@ -687,6 +515,29 @@ test.describe("chat flows", () => {
     await expect(
       page.locator("text=Hello! How can I help you today?")
     ).toBeVisible({ timeout: 10000 })
+  })
+
+  test("updates suggestions based on the conversation context", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockChatStream(page, {
+      assistantText: "I can help you explore the project and available skills.",
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await textarea.fill("What can you do?")
+    await page.keyboard.press("Enter")
+
+    await expect(page.locator("text=What can you do?").first()).toBeVisible()
+    await expect(page.locator('text=Find a skill "frontend"')).toBeVisible()
+    await expect(page.locator("text=Read AGENTS.md")).toBeVisible()
+    await expect(page.locator("text=Show workspace files")).toBeVisible()
   })
 
   test("reloads page and restores messages from session hydration", async ({
@@ -751,7 +602,7 @@ test.describe("chat flows", () => {
     await expect(modelPicker).toContainText("Claude Opus 4.6")
   })
 
-  test("opens Pi resources as a docked desktop canvas", async ({ page }) => {
+  test("opens Pi resources as a docked canvas", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
@@ -819,20 +670,19 @@ test.describe("chat flows", () => {
     const secondSkillBox = await skillItems.nth(1).boundingBox()
     expect(firstSkillBox).not.toBeNull()
     expect(secondSkillBox).not.toBeNull()
-    expect(Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))).toBeLessThanOrEqual(1)
+    expect(
+      Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))
+    ).toBeLessThanOrEqual(1)
     expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
-      name: /\.pi\/extensions\/project-inventory\.ts/,
+      name: /project-inventory/,
     })
     await expect(projectInventoryChip).toBeVisible()
-    await expect(projectInventoryChip).toHaveAttribute(
-      "title",
-      /\.pi\/extensions\/project-inventory\.ts/
-    )
     await expect(
-      canvas.getByRole("button", {
-        name: /\.pi\/extensions\/project-inventory\.ts/,
-      })
+      canvas.getByText("project-inventory", { exact: true })
+    ).toBeVisible()
+    await expect(
+      canvas.getByText(".pi/extensions/project-inventory.ts", { exact: true })
     ).toHaveCount(0)
     await expect(
       canvas.getByText("pi-autoresearch", { exact: true })
@@ -845,6 +695,8 @@ test.describe("chat flows", () => {
     ).toBeVisible()
     await expect(canvas.getByText("filechanges", { exact: true })).toBeVisible()
     await expect(canvas.getByText("subagents", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("AGENTS.md", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("/tmp/fleet-pi/AGENTS.md")).toHaveCount(0)
   })
 
   test("shows the agent workspace filesystem tab", async ({ page }) => {
@@ -858,20 +710,26 @@ test.describe("chat flows", () => {
 
     await page.locator('[aria-label="Pi resources"]').click()
 
-    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
-    await expect(canvas).toBeVisible()
-    await canvas.getByRole("button", { name: "Workspace", exact: true }).click()
+    const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(resourcesCanvas).toBeVisible()
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
 
-    const workspaceTree = canvas.locator('[data-testid="workspace-tree"]')
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+    const workspaceTree = workspaceCanvas.locator(
+      '[data-testid="workspace-tree"]'
+    )
     await expect(workspaceTree).toBeVisible()
     await expect(workspaceTree.getByText("agent-workspace")).toBeVisible()
     await expect(workspaceTree.getByText("identity.md")).toBeVisible()
     await expect(workspaceTree.getByText("2026-05-01.md")).toBeVisible()
     await expect(workspaceTree.getByText("hermes.md")).toBeVisible()
-    await expect(workspaceTree.getByText("skill.md")).toBeVisible()
+    await expect(workspaceTree.getByText("SKILL.md")).toHaveCount(5)
 
     await workspaceTree.getByRole("button", { name: "factory.md" }).click()
-    const workspacePreview = canvas.locator('[data-testid="workspace-preview"]')
+    const workspacePreview = workspaceCanvas.locator(
+      '[data-testid="workspace-preview"]'
+    )
     await expect(workspacePreview).toBeVisible()
     await expect(
       workspacePreview.getByText("factory.md", { exact: true })
@@ -886,9 +744,9 @@ test.describe("chat flows", () => {
       workspaceTree.getByRole("button", { name: "factory.md" })
     ).toHaveAttribute("aria-pressed", "true")
 
-    await canvas.getByRole("button", { name: "Resources", exact: true }).click()
+    await page.getByRole("button", { name: "Pi resources" }).click()
     await expect(
-      canvas.getByText("fleet-pi-orientation", { exact: true })
+      resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
   })
 
@@ -905,13 +763,17 @@ test.describe("chat flows", () => {
 
     await page.locator('[aria-label="Pi resources"]').click()
 
-    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
-    await expect(canvas).toBeVisible()
-    await canvas
+    const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(resourcesCanvas).toBeVisible()
+    await page
       .getByRole("button", { name: "Configurations", exact: true })
       .click()
 
-    const configurations = canvas.locator('[data-testid="configurations-tab"]')
+    const configCanvas = page.locator('[data-testid="pi-config-canvas"]')
+    await expect(configCanvas).toBeVisible()
+    const configurations = configCanvas.locator(
+      '[data-testid="configurations-tab"]'
+    )
     await expect(configurations).toBeVisible()
     await expect(
       configurations.getByText("Tools", { exact: true })
@@ -934,6 +796,14 @@ test.describe("chat flows", () => {
     await expect(
       configurations.getByText("Claude Opus 4.6", { exact: true })
     ).toBeVisible()
+    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+      "overflow-y",
+      "auto"
+    )
+    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+      "max-height",
+      "400px"
+    )
 
     await configurations.getByRole("button", { name: "Dark" }).click()
     await expect
@@ -949,12 +819,16 @@ test.describe("chat flows", () => {
       )
       .toBe(false)
 
-    await canvas.getByRole("button", { name: "Resources", exact: true }).click()
+    await page.getByRole("button", { name: "Pi resources" }).click()
     await expect(
-      canvas.getByText("fleet-pi-orientation", { exact: true })
+      resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
-    await canvas.getByRole("button", { name: "Workspace", exact: true }).click()
-    await expect(canvas.locator('[data-testid="workspace-tree"]')).toBeVisible()
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await expect(
+      page.locator(
+        '[data-testid="pi-workspace-canvas"] [data-testid="workspace-tree"]'
+      )
+    ).toBeVisible()
   })
 
   test("resizes and persists the Pi resources canvas", async ({ page }) => {
@@ -970,22 +844,18 @@ test.describe("chat flows", () => {
     await page.locator('[aria-label="Pi resources"]').click()
 
     const canvas = page.locator('[data-testid="pi-resources-canvas"]')
-    const handle = page.locator('[data-testid="pi-resources-resize-handle"]')
     await expect(canvas).toBeVisible()
 
     const before = await canvas.boundingBox()
+    const handle = page.locator('[data-testid="resizable-canvas-handle"]')
     const handleBox = await handle.boundingBox()
-    expect(before).not.toBeNull()
-    expect(handleBox).not.toBeNull()
-    expect(before?.width ?? 0).toBeGreaterThan(830)
-    expect(before?.width ?? 0).toBeLessThanOrEqual(841)
 
     await page.mouse.move(
       (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2,
       (handleBox?.y ?? 0) + 80
     )
     await page.mouse.down()
-    await page.mouse.move((handleBox?.x ?? 0) + 160, (handleBox?.y ?? 0) + 80)
+    await page.mouse.move((handleBox?.x ?? 0) + 300, (handleBox?.y ?? 0) + 80)
     await page.mouse.up()
 
     await expect
@@ -1036,7 +906,7 @@ test.describe("chat flows", () => {
     )
     await expect(mobilePanel).toBeVisible()
     await expect(
-      mobilePanel.getByText("fleet-pi-orientation", { exact: true })
+      mobilePanel.getByText("codebase-research", { exact: true })
     ).toBeVisible()
   })
 

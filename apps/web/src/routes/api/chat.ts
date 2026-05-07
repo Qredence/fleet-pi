@@ -4,10 +4,7 @@ import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/ch
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
-import {
-  getResponseStatus,
-  resolveAppRuntimeContext,
-} from "@/lib/desktop/server"
+import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   appendTextPart,
   createPiRuntime,
@@ -37,7 +34,7 @@ export const Route = createFileRoute("/api/chat")({
         const log = createRequestLogger(requestId)
 
         try {
-          const runtimeContext = resolveAppRuntimeContext(request)
+          const runtimeContext = resolveAppRuntimeContext()
           const body = (await request.json()) as ChatRequest
           const rawPrompt =
             typeof body.message === "string" ? body.message.trim() : ""

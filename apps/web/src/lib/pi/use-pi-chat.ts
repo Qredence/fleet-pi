@@ -16,7 +16,6 @@ import type {
   ChatMessage,
   ChatStatus,
 } from "@workspace/ui/components/agent-elements/chat-types"
-import type { DesktopContext } from "@/lib/desktop/types"
 import type {
   ChatMode,
   ChatModelSelection,
@@ -26,7 +25,6 @@ import type {
   ChatSessionResponse,
   ChatStreamEvent,
 } from "./chat-protocol"
-import { withDesktopHeaders } from "@/lib/desktop/client"
 
 export type ChatSessionsResponse = {
   sessions: Array<ChatSessionInfo>
@@ -39,7 +37,6 @@ export type SendMessageInput = {
 }
 
 export type UsePiChatOptions = {
-  desktopContext?: DesktopContext
   initialSessionMetadata: ChatSessionMetadata
   persistSession: (metadata: ChatSessionMetadata) => void
 }
@@ -49,7 +46,7 @@ export function usePiChat(
   mode: ChatMode,
   options: UsePiChatOptions
 ) {
-  const { desktopContext, initialSessionMetadata, persistSession } = options
+  const { initialSessionMetadata, persistSession } = options
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
   const [error, setError] = useState<Error | null>(null)
@@ -89,12 +86,9 @@ export function usePiChat(
   )
 
   const refreshSessions = useCallback(async () => {
-    const result = await fetchJson<ChatSessionsResponse>(
-      "/api/chat/sessions",
-      desktopContext
-    )
+    const result = await fetchJson<ChatSessionsResponse>("/api/chat/sessions")
     setSessions(result.sessions)
-  }, [desktopContext])
+  }, [])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -125,8 +119,7 @@ export function usePiChat(
     let cancelled = false
     const loadStoredSession = async () => {
       const result = await fetchJson<ChatSessionResponse>(
-        `/api/chat/session?${metadataUrl(initialSessionMetadata)}`,
-        desktopContext
+        `/api/chat/session?${metadataUrl(initialSessionMetadata)}`
       )
       if (cancelled) return
       setSessionMetadataSynced(result.session)
@@ -143,7 +136,6 @@ export function usePiChat(
       cancelled = true
     }
   }, [
-    desktopContext,
     initialSessionMetadata.sessionFile,
     initialSessionMetadata.sessionId,
     setMessagesSynced,
@@ -257,24 +249,18 @@ export function usePiChat(
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
 
-      const response = await fetch(
-        "/api/chat",
-        withDesktopHeaders(
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: trimmed,
-              model,
-              mode: requestMode,
-              sessionFile: sessionMetadataRef.current.sessionFile,
-              sessionId: sessionMetadataRef.current.sessionId,
-              streamingBehavior: "followUp",
-            }),
-          },
-          desktopContext
-        )
-      )
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmed,
+          model,
+          mode: requestMode,
+          sessionFile: sessionMetadataRef.current.sessionFile,
+          sessionId: sessionMetadataRef.current.sessionId,
+          streamingBehavior: "followUp",
+        }),
+      })
 
       if (!response.ok) {
         const body = await response.text()
@@ -291,7 +277,7 @@ export function usePiChat(
         }
       })
     },
-    [desktopContext, model, setMessagesSynced]
+    [model, setMessagesSynced]
   )
 
   const sendMessage = useCallback(
@@ -321,25 +307,19 @@ export function usePiChat(
       const assistantIdRef = { current: null as string | null }
 
       try {
-        const response = await fetch(
-          "/api/chat",
-          withDesktopHeaders(
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message: trimmed,
-                model,
-                mode: requestMode,
-                planAction,
-                sessionFile: sessionMetadataRef.current.sessionFile,
-                sessionId: sessionMetadataRef.current.sessionId,
-              }),
-              signal: controller.signal,
-            },
-            desktopContext
-          )
-        )
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            model,
+            mode: requestMode,
+            planAction,
+            sessionFile: sessionMetadataRef.current.sessionFile,
+            sessionId: sessionMetadataRef.current.sessionId,
+          }),
+          signal: controller.signal,
+        })
 
         if (!response.ok) {
           const body = await response.text()
@@ -362,65 +342,40 @@ export function usePiChat(
         }
       }
     },
-    [
-      desktopContext,
-      handleStreamEvent,
-      mode,
-      model,
-      queueFollowUp,
-      setMessagesSynced,
-      status,
-    ]
+    [handleStreamEvent, mode, model, queueFollowUp, setMessagesSynced, status]
   )
 
   const stop = useCallback(() => {
-    void fetch(
-      "/api/chat/abort",
-      withDesktopHeaders(
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sessionMetadataRef.current),
-        },
-        desktopContext
-      )
-    ).catch(() => undefined)
+    void fetch("/api/chat/abort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sessionMetadataRef.current),
+    }).catch(() => undefined)
     abortRef.current?.abort()
     abortRef.current = null
     setStatus("ready")
     setActivityLabel(undefined)
-  }, [desktopContext])
+  }, [])
 
   const startNewSession = useCallback(async () => {
-    const result = await fetchJson<ChatSessionResponse>(
-      "/api/chat/new",
-      desktopContext,
-      { method: "POST" }
-    )
+    const result = await fetchJson<ChatSessionResponse>("/api/chat/new", {
+      method: "POST",
+    })
     setSessionMetadataSynced(result.session)
     setMessagesSynced([])
     setQueue({ steering: [], followUp: [] })
     setActivityLabel(undefined)
     setPlanLabel(undefined)
     await refreshSessions()
-  }, [
-    desktopContext,
-    refreshSessions,
-    setMessagesSynced,
-    setSessionMetadataSynced,
-  ])
+  }, [refreshSessions, setMessagesSynced, setSessionMetadataSynced])
 
   const resumeSession = useCallback(
     async (metadata: ChatSessionMetadata) => {
-      const result = await fetchJson<ChatSessionResponse>(
-        "/api/chat/resume",
-        desktopContext,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(metadata),
-        }
-      )
+      const result = await fetchJson<ChatSessionResponse>("/api/chat/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata),
+      })
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
       setQueue({ steering: [], followUp: [] })
@@ -430,12 +385,7 @@ export function usePiChat(
       setPlanLabel(undefined)
       await refreshSessions()
     },
-    [
-      desktopContext,
-      refreshSessions,
-      setMessagesSynced,
-      setSessionMetadataSynced,
-    ]
+    [refreshSessions, setMessagesSynced, setSessionMetadataSynced]
   )
 
   return {

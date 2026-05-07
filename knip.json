@@ -4,10 +4,7 @@
   "workspaces": {
     ".": {
       "entry": ["eslint.config.js", ".pi/extensions/**/*.ts"],
-      "ignoreBinaries": ["bash", "eslint", "zsh"]
-    },
-    "apps/desktop": {
-      "entry": ["src/preload.ts", "src/**/*.test.ts"]
+      "ignoreDependencies": ["zod"]
     },
     "apps/web": {
       "entry": [

@@ -1,8 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import {
-  getResponseStatus,
-  resolveAppRuntimeContext,
-} from "@/lib/desktop/server"
+import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   WorkspaceFileError,
   loadAgentWorkspaceFile,
@@ -18,7 +15,7 @@ export const Route = createFileRoute("/api/workspace/file")({
         try {
           return Response.json(
             await loadAgentWorkspaceFile(
-              resolveAppRuntimeContext(request),
+              resolveAppRuntimeContext(),
               url.searchParams.get("path")
             )
           )

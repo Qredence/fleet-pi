@@ -1,17 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
-import {
-  getResponseStatus,
-  resolveAppRuntimeContext,
-} from "@/lib/desktop/server"
+import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage, loadChatResources } from "@/lib/pi/server"
 
 export const Route = createFileRoute("/api/chat/resources")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: async () => {
         try {
           return Response.json(
-            await loadChatResources(resolveAppRuntimeContext(request))
+            await loadChatResources(resolveAppRuntimeContext())
           )
         } catch (error) {
           return Response.json(

@@ -4,7 +4,7 @@ import type {
   ChatQuestionAnswerResponse,
 } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
-import { resolveAppRuntimeContext } from "@/lib/desktop/server"
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { answerChatQuestion } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/chat/question")({
 
         return wrapApiHandler(
           async () => {
-            resolveAppRuntimeContext(request, { requireProject: false })
+            resolveAppRuntimeContext()
             const body =
               (await request.json()) as Partial<ChatQuestionAnswerRequest>
             if (!body.answer) {
