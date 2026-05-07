@@ -27,10 +27,6 @@
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Validate the Fleet Pi Symphony workflow with `pnpm symphony:validate`.
 - Run the external Symphony plugin test lane with `pnpm symphony:test-plugin`.
-- Create a Codex multi-agent v2 plan with `pnpm codex-v2:plan -- --issue-key <key> --issue-title "<title>"`.
-- Approve a Codex multi-agent v2 run with `pnpm codex-v2:execute -- --run-id <run-id>`; add `--use-codex` only when you intentionally want live Codex MCP worker dispatch.
-- Inspect Codex multi-agent v2 runs with `pnpm codex-v2:status`.
-- Validate the Codex multi-agent v2 artifact surface with `pnpm codex-v2:validate`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 
 ## Devcontainer
@@ -90,8 +86,6 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - `.pi/extensions/project-inventory.ts` registers the read-only `project_inventory` tool, and `.pi/extensions/workspace-index.ts` registers the read-only `workspace_index` tool. Both are included in Agent and Plan mode tool allowlists.
 - `.pi/extensions/vendor/filechanges` provides `/filechanges`, `/filechanges-accept`, and `/filechanges-decline`; `.pi/extensions/vendor/subagents` registers the `subagent` tool. Keep each folder's `UPSTREAM.md` current when refreshing vendored source.
 - Agent mode explicitly allows external tools `init_experiment`, `run_experiment`, `log_experiment`, `autocontext_judge`, `autocontext_improve`, `autocontext_status`, `autocontext_scenarios`, `autocontext_queue`, `autocontext_runtime_snapshot`, and `subagent`. Do not add mutating research, file-change, or subagent tools to Plan mode.
-- `packages/codex-v2` is the additive Codex multi-agent v2 operator package. It is CLI/Symphony-first and stores durable plan/run/report artifacts under `agent-workspace/codex-v2/`; it must not replace or bypass the Pi-backed browser chat runtime.
-- Codex multi-agent v2 uses an explicit execute gate: `plan` creates read-only artifacts, `execute` flips `approvedForExecution`, and live Codex MCP worker dispatch happens only with `--use-codex`.
 - Fleet Pi's Symphony workflow follows the current upstream spec: issue intake is driven by the configured Linear project plus `tracker.active_states`, not repo-local label gating.
 - Bedrock credentials should come from standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1` when unset.
 

@@ -110,35 +110,6 @@ Optional environment variables:
 - `AWS_REGION` - AWS region (e.g., us-east-1, defaults to us-east-1)
 - `ANTHROPIC_MODEL` - Anthropic model identifier (e.g., anthropic.claude-sonnet-4-6)
 
-## Codex Multi-Agent V2
-
-Codex multi-agent v2 is an additive operator path for Symphony work; it does
-not replace Fleet Pi's Pi-backed browser chat runtime.
-
-Create a repo-visible worker-mesh plan:
-
-```bash
-# from repo root
-pnpm codex-v2:plan -- --issue-key QRE-123 --issue-title "Short issue title"
-```
-
-Approve the run explicitly:
-
-```bash
-# from repo root
-pnpm codex-v2:execute -- --run-id <run-id>
-```
-
-Live Codex MCP worker dispatch is opt-in:
-
-```bash
-# from repo root
-pnpm codex-v2:execute -- --run-id <run-id> --use-codex
-```
-
-Artifacts live under `agent-workspace/codex-v2/` so plans, run state, reports,
-and trace notes are visible in normal repository diffs.
-
 ## Operator Smoke Checks
 
 Before enabling real execution:

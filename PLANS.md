@@ -99,30 +99,6 @@ Outcome:
 - Codex worktrees bootstrap through `.codex/workspace-bootstrap.zsh`, which
   checks for `node` and `pnpm` and installs dependencies from the repo root.
 
-## Codex Multi-Agent V2
-
-Purpose:
-Create an additive, CLI/Symphony-first Codex worker mesh that does not replace
-Fleet Pi's Pi-backed browser chat runtime.
-
-Progress:
-
-- [x] Add `packages/codex-v2` as a pnpm workspace package.
-- [x] Add `plan`, `execute`, `status`, and `validate` CLI commands.
-- [x] Store durable artifacts under `agent-workspace/codex-v2/`.
-- [x] Keep execution behind an explicit `execute --run-id` gate and keep live
-      Codex MCP dispatch behind `--use-codex`.
-- [x] Add root scripts for operator use.
-
-Decision Log:
-
-- Codex v2 is additive and operator-scoped; Pi remains the product chat/runtime
-  layer.
-- `agent-workspace/codex-v2/` is the source of truth for v2 plan, run, report,
-  and trace artifacts.
-- The first implementation defaults to deterministic dry execution so local
-  validation does not require OpenAI credentials or live Codex worker sessions.
-
 ## Symphony Wrapper Auth Enforcement
 
 Purpose:

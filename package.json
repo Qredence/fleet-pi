@@ -19,10 +19,6 @@
     "tech-debt": "./scripts/scan-tech-debt.sh",
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js",
-    "codex-v2:plan": "pnpm --filter codex-v2 run cli -- plan",
-    "codex-v2:execute": "pnpm --filter codex-v2 run cli -- execute",
-    "codex-v2:status": "pnpm --filter codex-v2 run cli -- status",
-    "codex-v2:validate": "pnpm --filter codex-v2 run cli -- validate",
     "symphony:validate": "bash ./scripts/symphony/validate-workflow.sh",
     "symphony:run": "bash ./scripts/symphony/run-service.sh",
     "symphony:test-plugin": "bash ./scripts/symphony/test-plugin.sh"

@@ -269,41 +269,6 @@ See [docs/symphony.md](./docs/symphony.md)
 for operator notes, validation commands, and the spec-aligned issue-intake
 contract.
 
-## Codex Multi-Agent V2
-
-Fleet Pi includes an additive Codex multi-agent v2 operator package at
-`packages/codex-v2`. It is CLI/Symphony-first and does not replace the Pi-backed
-browser chat runtime. Use it when an operator wants a repo-visible worker mesh
-plan, explicit execution approval, and optional live Codex MCP worker dispatch.
-
-Create a plan:
-
-```zsh
-# from repo root
-pnpm codex-v2:plan -- --issue-key QRE-123 --issue-title "Short issue title"
-```
-
-Approve the run without invoking live Codex workers:
-
-```zsh
-# from repo root
-pnpm codex-v2:execute -- --run-id <run-id>
-```
-
-Invoke live Codex MCP workers only when intentional:
-
-```zsh
-# from repo root
-pnpm codex-v2:execute -- --run-id <run-id> --use-codex
-```
-
-Artifacts are stored under `agent-workspace/codex-v2/`:
-
-- `plans/` - human-readable plan artifacts
-- `runs/` - machine-readable run state
-- `reports/` - execution summaries
-- `traces/` - trace exports and debugging notes
-
 ## Agent Workspace
 
 `agent-workspace/` is the filesystem workspace for agent identity, memory,

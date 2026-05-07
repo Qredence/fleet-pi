@@ -170,22 +170,6 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(msw@2.13.6(@types/node@25.6.0)(typescript@5.9.3))(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4))
 
-  packages/codex-v2:
-    dependencies:
-      '@openai/agents':
-        specifier: ^0.8.3
-        version: 0.8.5(ws@8.20.0)(zod@4.4.3)
-    devDependencies:
-      '@types/node':
-        specifier: ^25.1.0
-        version: 25.6.0
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   packages/ui:
     dependencies:
       '@base-ui/react':
@@ -1161,29 +1145,6 @@ packages:
 
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
-
-  '@openai/agents-core@0.8.5':
-    resolution: {integrity: sha512-qs9mmN+D+UmqEZo3qrvhhIIXIOgSvJPic0v4a+ruq+eYgcQMk3PY8lLcsdQwJit6zf2Wyfv1q2cX5m3jzWZpKw==}
-    peerDependencies:
-      zod: ^4.0.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@openai/agents-openai@0.8.5':
-    resolution: {integrity: sha512-cGYmyiVy8ecgf2Vch0L/ekeNo3xuZsuWnRsxyv+w9ai9dgxUifdEQ6G3dtsjMLtmXVHRVGoO7mVBr+tKcilntw==}
-    peerDependencies:
-      zod: ^4.0.0
-
-  '@openai/agents-realtime@0.8.5':
-    resolution: {integrity: sha512-JqKVsR33OvKtTxRp5Ylhw8WfNvJ49ZIhlhMZlSVKqwR2Ks6JuxqFJ0zM9p7JIbTQDSlAZnmnZJv1qlItaildiQ==}
-    peerDependencies:
-      zod: ^4.0.0
-
-  '@openai/agents@0.8.5':
-    resolution: {integrity: sha512-OFA7XVV1qXE8lzatvQj080KdSArt8utBExFXRfD5B/R7KT0D+AVaKwg6nLoW3Gxb30vRkIUQf+MaW/Wz+gO3Yg==}
-    peerDependencies:
-      zod: ^4.0.0
 
   '@oxc-parser/binding-android-arm-eabi@0.128.0':
     resolution: {integrity: sha512-aca6ZvzmCBUGOANQRiRQRZuRKYI3ENhcit6GisnknOOmcezfQc7xJ4dxlPU7MV7mOvrC7RNR1u3LAD7xyaiCxA==}
@@ -2426,9 +2387,6 @@ packages:
 
   '@types/validate-npm-package-name@4.0.2':
     resolution: {integrity: sha512-lrpDziQipxCEeK5kWxvljWYhUvOiB2A9izZd9B2AFarYAkqZshb4lPbRs7zKEic6eGtH8V/2qJW+dPp9OtF6bw==}
-
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
@@ -7495,7 +7453,7 @@ snapshots:
       '@google/genai': 1.51.0(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))
       '@mistralai/mistralai': 2.2.1
       chalk: 5.6.2
-      openai: 6.26.0(ws@8.20.0)(zod@4.4.3)
+      openai: 6.26.0(zod@4.4.3)
       partial-json: 0.1.7
       proxy-agent: 6.5.0
       typebox: 1.1.33
@@ -7646,29 +7604,6 @@ snapshots:
       - supports-color
     optional: true
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
-    dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.16)
-      ajv: 8.20.0
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      cors: 2.8.6
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.0.8
-      express: 5.2.1
-      express-rate-limit: 8.4.1(express@5.2.1)
-      hono: 4.12.16
-      jose: 6.2.3
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.4.3
-      zod-to-json-schema: 3.25.2(zod@4.4.3)
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
   '@mswjs/interceptors@0.41.6':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
@@ -7741,57 +7676,6 @@ snapshots:
       outvariant: 1.4.3
 
   '@open-draft/until@2.1.0': {}
-
-  '@openai/agents-core@0.8.5(ws@8.20.0)(zod@4.4.3)':
-    dependencies:
-      debug: 4.4.3
-      openai: 6.26.0(ws@8.20.0)(zod@4.4.3)
-    optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
-      - ws
-
-  '@openai/agents-openai@0.8.5(ws@8.20.0)(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.8.5(ws@8.20.0)(zod@4.4.3)
-      debug: 4.4.3
-      openai: 6.26.0(ws@8.20.0)(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
-      - ws
-
-  '@openai/agents-realtime@0.8.5(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.8.5(ws@8.20.0)(zod@4.4.3)
-      '@types/ws': 8.18.1
-      debug: 4.4.3
-      ws: 8.20.0
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  '@openai/agents@0.8.5(ws@8.20.0)(zod@4.4.3)':
-    dependencies:
-      '@openai/agents-core': 0.8.5(ws@8.20.0)(zod@4.4.3)
-      '@openai/agents-openai': 0.8.5(ws@8.20.0)(zod@4.4.3)
-      '@openai/agents-realtime': 0.8.5(zod@4.4.3)
-      debug: 4.4.3
-      openai: 6.26.0(ws@8.20.0)(zod@4.4.3)
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
 
   '@oxc-parser/binding-android-arm-eabi@0.128.0':
     optional: true
@@ -8999,10 +8883,6 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/validate-npm-package-name@4.0.2': {}
-
-  '@types/ws@8.18.1':
-    dependencies:
-      '@types/node': 25.6.0
 
   '@types/yauzl@2.10.3':
     dependencies:
@@ -11796,9 +11676,8 @@ snapshots:
       ws: 8.20.0
       zod: 4.3.6
 
-  openai@6.26.0(ws@8.20.0)(zod@4.4.3):
+  openai@6.26.0(zod@4.4.3):
     optionalDependencies:
-      ws: 8.20.0
       zod: 4.4.3
 
   openapi-types@12.1.3: {}

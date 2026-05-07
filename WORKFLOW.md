@@ -58,17 +58,12 @@ Project intent:
 - Agent tools must stay scoped to the active project root.
 - `agent-workspace/` remains the read-only workspace surface for identity,
   memory, research, skills, and artifacts.
-- Codex multi-agent v2 is an additive operator workflow under
-  `packages/codex-v2`; it must not replace the Pi-backed browser chat runtime.
 - Plan mode stays inside the same chat flow and must remain read-only until the
   user explicitly chooses execution.
 
 Execution rules:
 
 - Respect the repo's `AGENTS.md` instructions before making changes.
-- For Codex multi-agent v2 work, create a plan with `pnpm codex-v2:plan` and
-  require explicit `pnpm codex-v2:execute -- --run-id <run-id>` approval before
-  mutating worker dispatch.
 - Prefer small, reviewable diffs and keep docs aligned with implementation.
 - Run the smallest relevant validation lane before finishing.
 - Do not change unrelated files or workflows.
