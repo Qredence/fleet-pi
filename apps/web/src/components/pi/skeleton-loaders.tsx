@@ -61,32 +61,3 @@ export function WorkspacePreviewSkeleton() {
     </div>
   )
 }
-
-export function ChatSessionSkeleton() {
-  return (
-    <div className="space-y-4 px-4 py-6">
-      <div className="flex items-start gap-3">
-        <Skeleton className="size-8 shrink-0 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
-      </div>
-      <div className="flex items-start gap-3">
-        <Skeleton className="size-8 shrink-0 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-[85%]" />
-          <Skeleton className="h-4 w-[60%]" />
-        </div>
-      </div>
-      <div className="flex items-start gap-3">
-        <Skeleton className="size-8 shrink-0 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-[70%]" />
-          <Skeleton className="h-4 w-[40%]" />
-        </div>
-      </div>
-    </div>
-  )
-}
