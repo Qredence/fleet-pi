@@ -85,23 +85,6 @@ pnpm build
 pnpm syncpack
 ```
 
-Symphony-specific operator commands:
-
-```zsh
-# from repo root
-pnpm symphony:validate
-pnpm symphony:test-plugin
-```
-
-`pnpm symphony:validate` and `pnpm symphony:run` both load `LINEAR_API_KEY`
-from the repo-root `.env` by default and fail fast if it is still unresolved.
-`pnpm symphony:run` now uses the operator's Anthropic/Bedrock credentials from
-environment variables while still keeping Symphony workers inside an isolated
-`.codex-home` under the shared workspace root. At least one credential
-variable must be set: `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_KEY`, or
-`AWS_BEARER_TOKEN_BEDROCK`. Optional: `CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`,
-`ANTHROPIC_MODEL`.
-
 ## Documentation
 
 Generate API docs and architecture diagrams from source code:
@@ -237,37 +220,6 @@ current session. The same canvas includes a `Workspace` tab that renders the
 read-only repo-local `agent-workspace` tree and Markdown file previews, plus a
 `Configurations` tab for UI-first tools, connectors, provider, model allowlist,
 and personalization controls.
-
-## Symphony Orchestration
-
-Fleet Pi includes a repo-owned Symphony workflow at `WORKFLOW.md` so Linear
-issues can be executed through a Symphony-managed Codex app-server flow.
-
-The intended Fleet Pi Symphony model is:
-
-- Linear project: `fleet-pi` (`slugId: 7c8589daab4e`)
-- intake states: `Todo`, `In Progress`
-- git worktrees under `~/code/symphony-workspaces/fleet-pi`
-- isolated Codex worker state under `~/code/symphony-workspaces/fleet-pi/.codex-home`
-- unattended `never` approvals with workspace-write thread sandboxing
-
-The hooks stay intentionally small:
-
-- `after_create` creates a worktree from this source checkout on branch
-  `codex/<workspace_key>`
-- `before_run` fetches `origin/main --prune` and installs dependencies on
-  first bootstrap or when the tracked dependency manifests and lockfile change
-  in a reused worktree
-- `after_run` prints `git status --short`
-- `before_remove` unregisters the git worktree, prunes git worktree metadata,
-  and leaves Symphony an empty directory to delete
-- `codex.command` runs a repo-owned launcher that seeds an isolated Codex
-  config and passes through Anthropic/Bedrock environment variables inside
-  `.codex-home` before starting `codex app-server`
-
-See [docs/symphony.md](./docs/symphony.md)
-for operator notes, validation commands, and the spec-aligned issue-intake
-contract.
 
 ## Agent Workspace
 

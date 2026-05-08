@@ -21,11 +21,6 @@ icon = "debug"
 command = "pnpm typecheck"
 
 [[actions]]
-name = "Symphony Validate"
-icon = "tool"
-command = "pnpm symphony:validate"
-
-[[actions]]
 name = "Test"
 icon = "test"
 command = "pnpm test"

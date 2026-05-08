@@ -39,7 +39,6 @@ tasks instead of bundling them into one multi-step action:
 - `Dev` -> `pnpm dev`
 - `Typecheck` -> `pnpm typecheck`
 - `Test` -> `pnpm test`
-- `Symphony Validate` -> `pnpm symphony:validate`
 
 `pnpm dev` is long-running, while the others are one-shot validation commands,
 so keeping them split makes the Codex action bar much more usable.
