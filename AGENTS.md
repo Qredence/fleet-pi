@@ -5,11 +5,6 @@
 - Use `pnpm` from the repository root for dependency and task commands.
 - The root `pnpm-lock.yaml` is the canonical lockfile; do not create nested app lockfiles.
 - Run workspace commands with `pnpm --filter <workspace> <script>` when only one package is affected.
-- Use the root Symphony wrapper scripts when operating Fleet Pi through Symphony: `pnpm symphony:validate` for config validation, `pnpm symphony:test-plugin` for the upstream plugin test lane, and the `symphony:run` package script for the long-running service.
-- The shell-based Symphony validation/runtime wrappers load values from the repo-root `.env` by default; keep `LINEAR_API_KEY` there unless you intentionally bypass it with `SYMPHONY_SKIP_DOTENV=1`.
-- `pnpm symphony:validate` and `pnpm symphony:run` fail fast if `LINEAR_API_KEY` is still unresolved after that `.env` load.
-- `pnpm symphony:run` uses the operator's Anthropic/Bedrock credentials from environment variables passed through to the isolated `.codex-home` under the shared Symphony workspace root before starting the worker. Required: at least one of `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_KEY`, or `AWS_BEARER_TOKEN_BEDROCK`. Optional: `CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`, `ANTHROPIC_MODEL`.
-- In `WORKFLOW.md`, `tracker.project_slug` must use Linear's project `slugId` (for Fleet Pi: `7c8589daab4e`), not the human-readable project name.
 
 ## Validation
 
@@ -25,8 +20,6 @@
 - Detect duplicate code with `pnpm jscpd`.
 - Scan for tech debt markers with `pnpm tech-debt`.
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
-- Validate the Fleet Pi Symphony workflow with `pnpm symphony:validate`.
-- Run the external Symphony plugin test lane with `pnpm symphony:test-plugin`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 
 ## Devcontainer
@@ -55,8 +48,6 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## Architecture Notes
 
-- `WORKFLOW.md` is the Fleet Pi Symphony orchestration contract. `scripts/symphony/` contains the worktree/bootstrap wrappers used by Symphony hooks, while `docs/symphony.md` is the operator guide.
-- `scripts/symphony/codex-app-server.zsh` is the repo-owned Symphony worker launcher. It seeds `.codex-home/config.toml` from `.codex/symphony/config.toml`, isolates worker config from `~/.codex`, passes through Anthropic/Bedrock environment variables, and starts `codex app-server` from that isolated home.
 - `apps/web` is a TanStack Start app. File routes are generated into `apps/web/src/routeTree.gen.ts`; do not edit that generated file manually.
 - `packages/ui` contains shared React UI components exported under `@workspace/ui/*`.
 - Chat UI types live in `packages/ui/src/components/agent-elements/chat-types.ts`.
@@ -86,7 +77,6 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - `.pi/extensions/project-inventory.ts` registers the read-only `project_inventory` tool, and `.pi/extensions/workspace-index.ts` registers the read-only `workspace_index` tool. Both are included in Agent and Plan mode tool allowlists.
 - `.pi/extensions/vendor/filechanges` provides `/filechanges`, `/filechanges-accept`, and `/filechanges-decline`; `.pi/extensions/vendor/subagents` registers the `subagent` tool. Keep each folder's `UPSTREAM.md` current when refreshing vendored source.
 - Agent mode explicitly allows external tools `init_experiment`, `run_experiment`, `log_experiment`, `autocontext_judge`, `autocontext_improve`, `autocontext_status`, `autocontext_scenarios`, `autocontext_queue`, `autocontext_runtime_snapshot`, and `subagent`. Do not add mutating research, file-change, or subagent tools to Plan mode.
-- Fleet Pi's Symphony workflow follows the current upstream spec: issue intake is driven by the configured Linear project plus `tracker.active_states`, not repo-local label gating.
 - Bedrock credentials should come from standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1` when unset.
 
 ## Manual Chat Checks
@@ -102,5 +92,3 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - In Plan mode, ask an ambiguous request and verify the InputBar Question bar appears, answer it, and confirm the same Pi turn continues.
 - After a plan, choose Execute and verify the app switches to Agent mode, full tools are available, and `[DONE:n]` progress updates the plan status.
 - Open the Pi resources browser and verify the starter skills, npm package resources, vendored extensions, `project-inventory.ts`, and `workspace-index.ts` appear. Verify the resources canvas docks to the right and resizes; on mobile, verify it opens as an overlay. Switch to the Workspace tab, verify `agent-workspace` plus representative seeded files appear, and click a Markdown file to verify the preview panel renders its content. Switch to Configurations and verify the UI-first rows plus Light/Dark/System theme control. If both project-local and global `agent-elements` skills are installed, the resources diagnostics may include that expected name collision.
-- Run `pnpm symphony:validate` and verify the Fleet Pi workflow config resolves through the Symphony plugin repo checkout.
-- Confirm the Symphony hook scripts create a `codex/<workspace_key>` worktree under `~/code/symphony-workspaces/fleet-pi` and that workspace removal unregisters the worktree cleanly from `git worktree list`.
