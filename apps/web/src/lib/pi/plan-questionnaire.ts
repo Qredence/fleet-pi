@@ -1,0 +1,222 @@
+import { Type } from "typebox"
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent"
+import type { ChatQuestionAnswer } from "./chat-protocol"
+
+type QuestionnaireOption = {
+  value: string
+  label: string
+  description?: string
+}
+
+type QuestionnaireQuestion = {
+  id: string
+  label?: string
+  prompt: string
+  options: Array<QuestionnaireOption>
+  allowOther?: boolean
+}
+
+type QuestionnaireParams = {
+  questions: Array<QuestionnaireQuestion>
+}
+
+type PendingQuestion = {
+  sessionId: string
+  toolCallId: string
+  params: QuestionnaireParams
+  resolve: (answer: ChatQuestionAnswer) => void
+  reject: (error: Error) => void
+}
+
+const pendingQuestions = new Map<string, PendingQuestion>()
+
+const QuestionnaireOptionSchema = Type.Object({
+  value: Type.String({ description: "The value returned when selected" }),
+  label: Type.String({ description: "Display label for the option" }),
+  description: Type.Optional(
+    Type.String({ description: "Optional description" })
+  ),
+})
+
+const QuestionnaireQuestionSchema = Type.Object({
+  id: Type.String({ description: "Unique identifier for this question" }),
+  label: Type.Optional(Type.String({ description: "Short label" })),
+  prompt: Type.String({ description: "The question text to display" }),
+  options: Type.Array(QuestionnaireOptionSchema),
+  allowOther: Type.Optional(
+    Type.Boolean({ description: "Allow custom answer" })
+  ),
+})
+
+const QuestionnaireParamsSchema = Type.Object({
+  questions: Type.Array(QuestionnaireQuestionSchema),
+})
+
+export function registerPlanQuestionnaireTool(pi: ExtensionAPI) {
+  pi.registerTool({
+    name: "questionnaire",
+    label: "Questionnaire",
+    description:
+      "Ask the user one or more questions. Use for clarifying requirements, preferences, or decisions before continuing.",
+    parameters: QuestionnaireParamsSchema,
+    executionMode: "sequential",
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
+      return executeQuestionnaireTool(toolCallId, params, signal, ctx)
+    },
+  })
+}
+
+export function resolveQuestionnaireAnswer(
+  toolCallId: string | undefined,
+  answer: ChatQuestionAnswer
+) {
+  if (!toolCallId) return false
+  const pending = pendingQuestions.get(toolCallId)
+  if (!pending) return false
+
+  pending.resolve(answer)
+  pendingQuestions.delete(toolCallId)
+  return true
+}
+
+async function executeQuestionnaireTool(
+  toolCallId: string,
+  params: QuestionnaireParams,
+  signal: AbortSignal | undefined,
+  ctx: ExtensionContext
+) {
+  if (params.questions.length === 0) {
+    return {
+      content: [{ type: "text" as const, text: "No questions provided." }],
+      details: { questions: [], answers: [], cancelled: true },
+      isError: true,
+    }
+  }
+
+  const answer = await waitForQuestionAnswer(
+    ctx.sessionManager.getSessionId(),
+    toolCallId,
+    params,
+    signal
+  )
+  const answers = questionnaireAnswers(params, answer)
+  const cancelled = answer.kind === "skip"
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: cancelled
+          ? "User skipped the question."
+          : `User answered: ${answers.map((item) => item.label).join(", ")}`,
+      },
+    ],
+    details: {
+      questions: params.questions,
+      answers,
+      cancelled,
+    },
+  }
+}
+
+function waitForQuestionAnswer(
+  sessionId: string,
+  toolCallId: string,
+  params: QuestionnaireParams,
+  signal: AbortSignal | undefined
+) {
+  return new Promise<ChatQuestionAnswer>((resolve, reject) => {
+    const pending: PendingQuestion = {
+      sessionId,
+      toolCallId,
+      params,
+      resolve,
+      reject,
+    }
+    pendingQuestions.set(toolCallId, pending)
+
+    const abort = () => {
+      pendingQuestions.delete(toolCallId)
+      reject(new Error("Question was cancelled."))
+    }
+
+    if (signal?.aborted) {
+      abort()
+      return
+    }
+    signal?.addEventListener("abort", abort, { once: true })
+  })
+}
+
+function questionnaireAnswers(
+  params: QuestionnaireParams,
+  answer: ChatQuestionAnswer
+) {
+  if (answer.kind === "skip") return []
+
+  const optionMap = new Map<
+    string,
+    { id: string; value: string; label: string }
+  >()
+  for (const question of params.questions) {
+    for (const option of question.options) {
+      optionMap.set(option.value, {
+        id: question.id,
+        value: option.value,
+        label: option.label,
+      })
+    }
+  }
+
+  if (answer.kind === "text") {
+    const firstQuestionId =
+      params.questions.length > 0 ? params.questions[0].id : "custom"
+    return [
+      {
+        id: firstQuestionId,
+        value: answer.text ?? "",
+        label: answer.text ?? "",
+        wasCustom: true,
+      },
+    ]
+  }
+
+  const selectedIds = answer.selectedIds ?? []
+  const answers = selectedIds
+    .map((id) => {
+      const option = optionMap.get(id)
+      if (!option) return undefined
+      return {
+        id: option.id,
+        value: option.value,
+        label: option.label,
+        wasCustom: false,
+      }
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        id: string
+        value: string
+        label: string
+        wasCustom: boolean
+      } => Boolean(item)
+    )
+
+  if (answer.text?.trim()) {
+    const firstQuestionId =
+      params.questions.length > 0 ? params.questions[0].id : "custom"
+    answers.push({
+      id: firstQuestionId,
+      value: answer.text.trim(),
+      label: answer.text.trim(),
+      wasCustom: true,
+    })
+  }
+
+  return answers
+}

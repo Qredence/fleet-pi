@@ -14,46 +14,27 @@ import { ModeSelector } from "@workspace/ui/components/agent-elements/input/mode
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
 import { Popover } from "@workspace/ui/components/agent-elements/input/popover"
 import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loader"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import type { ChatMessage } from "@workspace/ui/components/agent-elements/chat-types"
-import type { SuggestionItem } from "@workspace/ui/components/agent-elements/input/suggestions"
-import type { QuestionAnswer } from "@workspace/ui/components/agent-elements/question/question-prompt"
+import { useCallback, useMemo } from "react"
 import type { CSSProperties, ReactNode } from "react"
-import type { RightPanel, ThemePreference } from "@/lib/canvas-utils"
 import type {
-  ChatMode,
-  ChatModelsResponse,
-  ChatQuestionAnswerResponse,
-  ChatResourcesResponse,
   ChatSessionInfo,
   ChatSessionMetadata,
-  WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
-import type { ChatModelOption } from "@/lib/pi/chat-helpers"
-import {
-  applyThemePreference,
-  clampResourceCanvasWidth,
-  getResourceCanvasInitialWidth,
-  readStoredResourceCanvasWidth,
-  readStoredThemePreference,
-  storeResourceCanvasWidth,
-  storeThemePreference,
-} from "@/lib/canvas-utils"
+import { ChatCommandPalette } from "@/components/chat-command-palette"
+import { UiErrorBoundary } from "@/components/ui-error-boundary"
 import { ChatRightPanels } from "@/components/chat-right-panels"
-import {
-  readStoredBrowserSession,
-  readStoredMode,
-  storeBrowserSession,
-  storeMode,
-} from "@/lib/pi/chat-storage"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
-import { fetchJson } from "@/lib/pi/chat-fetch"
+import { CHAT_MODES, queueLabel } from "@/lib/pi/chat-helpers"
 import {
-  CHAT_MODES,
-  queueLabel,
-  toModelOption,
-  toModelSelection,
-} from "@/lib/pi/chat-helpers"
+  useChatModels,
+  useChatResources,
+  useWorkspaceTree,
+} from "@/lib/pi/chat-queries"
+import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
+import {
+  useActiveSessionLabel,
+  useChatSuggestions,
+} from "@/lib/pi/use-chat-view"
 
 export const Route = createFileRoute("/")({ component: Chat })
 
@@ -227,172 +208,53 @@ function ChatHeader({
 }
 
 function ChatWorkspaceShell() {
-  const [models, setModels] = useState<Array<ChatModelOption>>([])
-  const [modelKey, setModelKey] = useState<string | undefined>()
-  const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
-  const [resources, setResources] = useState<ChatResourcesResponse | null>(null)
-  const [resourcesError, setResourcesError] = useState<Error | null>(null)
-  const [resourcesLoading, setResourcesLoading] = useState(false)
-  const [rightPanel, setRightPanel] = useState<RightPanel>(null)
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
-    readStoredThemePreference()
-  )
-  const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
-    readStoredResourceCanvasWidth()
-  )
-  const [workspaceTree, setWorkspaceTree] =
-    useState<WorkspaceTreeResponse | null>(null)
-  const [workspaceError, setWorkspaceError] = useState<Error | null>(null)
-  const [workspaceLoading, setWorkspaceLoading] = useState(false)
+  const { data: modelsData } = useChatModels()
+  const {
+    commandPaletteOpen,
+    handleModeChange,
+    handleResourceCanvasResizeStart,
+    handleThemePreferenceChange,
+    initialSessionMetadata,
+    mode,
+    modelKey,
+    modelSelection,
+    models,
+    persistSession,
+    resourceCanvasWidth,
+    rightPanel,
+    setCommandPaletteOpen,
+    setModelKey,
+    setRightPanel,
+    themePreference,
+  } = useChatShellState(modelsData)
 
-  const persistSession = useCallback((metadata: ChatSessionMetadata) => {
-    storeBrowserSession(metadata)
-  }, [])
+  const {
+    data: resourcesData,
+    isLoading: resourcesLoading,
+    error: resourcesError,
+    refetch: refetchResources,
+  } = useChatResources()
+  const {
+    data: workspaceData,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+    refetch: refetchWorkspace,
+  } = useWorkspaceTree({ enabled: Boolean(rightPanel) })
 
-  const initialSessionMetadata = useMemo(() => readStoredBrowserSession(), [])
+  const resources = resourcesData ?? null
+  const workspaceTree = workspaceData ?? null
 
-  useEffect(() => {
-    let cancelled = false
-    const loadModels = async () => {
-      const result = await fetchJson<ChatModelsResponse>("/api/chat/models")
-      if (cancelled) return
-      const nextModels = result.models.map(toModelOption)
-      setModels(nextModels)
-      setModelKey(
-        (current) => current ?? result.selectedModelKey ?? nextModels[0]?.id
-      )
-    }
+  const refreshResources = useCallback(() => {
+    void refetchResources()
+  }, [refetchResources])
 
-    void loadModels().catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    applyThemePreference(themePreference)
-
-    if (themePreference !== "system") return
-    const media = window.matchMedia("(prefers-color-scheme: dark)")
-    const handleChange = () => applyThemePreference("system")
-    media.addEventListener("change", handleChange)
-    return () => media.removeEventListener("change", handleChange)
-  }, [themePreference])
-
-  const handleThemePreferenceChange = useCallback(
-    (preference: ThemePreference) => {
-      setThemePreference(preference)
-      storeThemePreference(preference)
-      applyThemePreference(preference)
-    },
-    []
-  )
-
-  const refreshResources = useCallback(async () => {
-    setResourcesLoading(true)
-    setResourcesError(null)
-    try {
-      setResources(
-        await fetchJson<ChatResourcesResponse>("/api/chat/resources")
-      )
-    } catch (err) {
-      setResourcesError(err instanceof Error ? err : new Error(String(err)))
-    } finally {
-      setResourcesLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void refreshResources()
-  }, [refreshResources])
-
-  const refreshWorkspace = useCallback(async () => {
-    setWorkspaceLoading(true)
-    setWorkspaceError(null)
-    try {
-      setWorkspaceTree(
-        await fetchJson<WorkspaceTreeResponse>("/api/workspace/tree")
-      )
-    } catch (err) {
-      setWorkspaceError(err instanceof Error ? err : new Error(String(err)))
-    } finally {
-      setWorkspaceLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (
-      (rightPanel === "resources" || rightPanel === "workspace") &&
-      !workspaceTree &&
-      !workspaceLoading
-    ) {
-      void refreshWorkspace()
-    }
-  }, [refreshWorkspace, rightPanel, workspaceLoading, workspaceTree])
-
-  useEffect(() => {
-    if (!rightPanel) return
-    const initialWidth = getResourceCanvasInitialWidth()
-    setResourceCanvasWidth(initialWidth)
-    storeResourceCanvasWidth(initialWidth)
-  }, [rightPanel])
-
-  useEffect(() => {
-    if (!rightPanel) return
-
-    const handleViewportResize = () => {
-      setResourceCanvasWidth((currentWidth) => {
-        const nextWidth = clampResourceCanvasWidth(currentWidth)
-        storeResourceCanvasWidth(nextWidth)
-        return nextWidth
-      })
-    }
-
-    window.addEventListener("resize", handleViewportResize)
-    return () => {
-      window.removeEventListener("resize", handleViewportResize)
-    }
-  }, [rightPanel])
-
-  const handleModeChange = useCallback((nextMode: string) => {
-    const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
-    setMode(normalized)
-    storeMode(normalized)
-  }, [])
-
-  const handleResourceCanvasResizeStart = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      event.preventDefault()
-      const startX = event.clientX
-      const startWidth = resourceCanvasWidth
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        const nextWidth = clampResourceCanvasWidth(
-          startWidth - (moveEvent.clientX - startX)
-        )
-        setResourceCanvasWidth(nextWidth)
-        storeResourceCanvasWidth(nextWidth)
-      }
-
-      const handlePointerUp = () => {
-        window.removeEventListener("pointermove", handlePointerMove)
-        window.removeEventListener("pointerup", handlePointerUp)
-      }
-
-      window.addEventListener("pointermove", handlePointerMove)
-      window.addEventListener("pointerup", handlePointerUp, { once: true })
-    },
-    [resourceCanvasWidth]
-  )
-
-  const selectedModel = models.find((model) => model.id === modelKey)
-  const modelSelection = useMemo(
-    () => toModelSelection(selectedModel),
-    [selectedModel]
-  )
+  const refreshWorkspace = useCallback(() => {
+    void refetchWorkspace()
+  }, [refetchWorkspace])
 
   const {
     activityLabel,
+    answerQuestion,
     error,
     messages,
     planLabel,
@@ -406,24 +268,22 @@ function ChatWorkspaceShell() {
     stop,
   } = usePiChat(modelSelection, mode, {
     initialSessionMetadata,
+    onModeChange: handleModeChange,
     persistSession,
   })
 
   const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
-  const activeSessionLabel = useMemo(
-    () => getActiveSessionLabel(sessionMetadata.sessionId, sessions, messages),
-    [messages, sessionMetadata.sessionId, sessions]
-  )
-  const suggestions = useMemo(
-    () =>
-      buildContextSuggestions({
-        messages,
-        mode,
-        resources,
-        workspaceTree,
-      }),
-    [messages, mode, resources, workspaceTree]
-  )
+  const activeSessionLabel = useActiveSessionLabel({
+    activeSessionId: sessionMetadata.sessionId,
+    messages,
+    sessions,
+  })
+  const suggestions = useChatSuggestions({
+    messages,
+    mode,
+    resources,
+    workspaceTree,
+  })
   const agentChatStyle = useMemo(
     () =>
       ({
@@ -432,288 +292,131 @@ function ChatWorkspaceShell() {
     []
   )
 
-  const answerQuestion = useCallback(
-    async ({
-      toolCallId,
-      answer,
-    }: {
-      toolCallId?: string
-      answer: QuestionAnswer
-    }) => {
-      const result = await fetchJson<ChatQuestionAnswerResponse>(
-        "/api/chat/question",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionFile: sessionMetadata.sessionFile,
-            sessionId: sessionMetadata.sessionId,
-            toolCallId,
-            answer,
-          }),
-        }
-      )
-
-      if (result.mode) {
-        handleModeChange(result.mode)
-      }
-      if (result.message) {
-        await sendMessage({
-          text: result.message,
-          mode: result.mode,
-          planAction: result.planAction,
-        })
-      }
-    },
-    [handleModeChange, sendMessage, sessionMetadata]
-  )
-
   return (
-    <div
-      className="relative flex h-svh min-w-0 overflow-hidden"
-      data-testid="chat-shell"
-    >
-      <div className="relative min-w-0 flex-1" data-testid="chat-column">
-        <ChatHeader
-          activeSessionId={sessionMetadata.sessionId}
-          activeSessionLabel={activeSessionLabel}
-          sessions={sessions}
-          onNewSession={() => void startNewSession()}
-          onResumeSession={(metadata) => void resumeSession(metadata)}
-        />
-        <AgentChat
-          messages={messages}
-          status={status}
-          onSend={(msg) => sendMessage({ text: msg.content })}
-          onStop={stop}
-          questionTool={{
-            submitLabel: "Continue",
-            allowSkip: true,
-            onAnswer: ({ toolCallId, answer }) => {
-              void answerQuestion({ toolCallId, answer }).catch(() => undefined)
-            },
-          }}
-          error={error ?? undefined}
-          emptyStatePosition="default"
-          suggestions={suggestions}
-          style={agentChatStyle}
-          slots={{
-            InputBar: (props) => (
-              <InputBar
-                {...props}
-                status={status === "streaming" ? "ready" : props.status}
-                infoBar={
-                  infoDescription
-                    ? { description: infoDescription, position: "top" }
-                    : undefined
-                }
-                leftActions={
-                  <>
-                    <ModeSelector
-                      modes={CHAT_MODES}
-                      value={mode}
-                      onChange={handleModeChange}
-                    />
-                    <ModelPicker
-                      models={models}
-                      value={modelKey}
-                      onChange={setModelKey}
-                      placeholder="Model"
-                    />
-                  </>
-                }
-                rightActions={
-                  <div className="flex items-center gap-1">
-                    {(status === "streaming" || status === "submitted") && (
-                      <SpiralLoader size={16} />
-                    )}
-                    {status === "streaming" && (
-                      <button
-                        type="button"
-                        onClick={stop}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
-                        aria-label="Stop"
-                        title="Stop"
-                      >
-                        <Square className="size-3" />
-                      </button>
-                    )}
-                  </div>
-                }
-              />
-            ),
-          }}
-        />
-      </div>
-      <ChatRightPanels
-        handleResourceCanvasResizeStart={handleResourceCanvasResizeStart}
-        handleThemePreferenceChange={handleThemePreferenceChange}
-        models={models}
-        refreshResources={() => void refreshResources()}
-        refreshWorkspace={() => void refreshWorkspace()}
-        resourceCanvasWidth={resourceCanvasWidth}
-        resources={resources}
-        resourcesError={resourcesError}
-        resourcesLoading={resourcesLoading}
-        rightPanel={rightPanel}
-        setRightPanel={setRightPanel}
+    <>
+      <ChatCommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        mode={mode}
+        onModeChange={handleModeChange}
+        onNewSession={() => void startNewSession()}
+        onStop={stop}
+        onResumeSession={(session) =>
+          void resumeSession({
+            sessionFile: session.path,
+            sessionId: session.id,
+          })
+        }
+        onSetRightPanel={setRightPanel}
+        onThemeChange={handleThemePreferenceChange}
+        sessions={sessions}
+        isStreaming={status === "streaming"}
         themePreference={themePreference}
-        workspaceError={workspaceError}
-        workspaceLoading={workspaceLoading}
-        workspaceTree={workspaceTree}
       />
-    </div>
+      <div
+        className="relative flex h-svh min-w-0 overflow-hidden"
+        data-testid="chat-shell"
+      >
+        <div className="relative min-w-0 flex-1" data-testid="chat-column">
+          <ChatHeader
+            activeSessionId={sessionMetadata.sessionId}
+            activeSessionLabel={activeSessionLabel}
+            sessions={sessions}
+            onNewSession={() => void startNewSession()}
+            onResumeSession={(metadata) => void resumeSession(metadata)}
+          />
+          <UiErrorBoundary>
+            <AgentChat
+              messages={messages}
+              status={status}
+              onSend={(msg) => sendMessage({ text: msg.content })}
+              onStop={stop}
+              questionTool={{
+                submitLabel: "Continue",
+                allowSkip: true,
+                onAnswer: ({ toolCallId, answer }) => {
+                  void answerQuestion({ toolCallId, answer }).catch(
+                    () => undefined
+                  )
+                },
+              }}
+              error={error ?? undefined}
+              emptyStatePosition="default"
+              suggestions={suggestions}
+              style={agentChatStyle}
+              slots={{
+                InputBar: (props) => (
+                  <InputBar
+                    {...props}
+                    status={status === "streaming" ? "ready" : props.status}
+                    infoBar={
+                      infoDescription
+                        ? { description: infoDescription, position: "top" }
+                        : undefined
+                    }
+                    leftActions={
+                      <>
+                        <ModeSelector
+                          modes={CHAT_MODES}
+                          value={mode}
+                          onChange={handleModeChange}
+                        />
+                        <ModelPicker
+                          models={models}
+                          value={modelKey}
+                          onChange={setModelKey}
+                          placeholder="Model"
+                        />
+                      </>
+                    }
+                    rightActions={
+                      <div className="flex items-center gap-1">
+                        {(status === "streaming" || status === "submitted") && (
+                          <SpiralLoader size={16} />
+                        )}
+                        {status === "streaming" && (
+                          <button
+                            type="button"
+                            onClick={stop}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+                            aria-label="Stop"
+                            title="Stop"
+                          >
+                            <Square className="size-3" />
+                          </button>
+                        )}
+                      </div>
+                    }
+                  />
+                ),
+              }}
+            />
+          </UiErrorBoundary>
+        </div>
+        <UiErrorBoundary>
+          <ChatRightPanels
+            handleResourceCanvasResizeStart={handleResourceCanvasResizeStart}
+            handleThemePreferenceChange={handleThemePreferenceChange}
+            models={models}
+            refreshResources={refreshResources}
+            refreshWorkspace={refreshWorkspace}
+            resourceCanvasWidth={resourceCanvasWidth}
+            resources={resources}
+            resourcesError={resourcesError}
+            resourcesLoading={resourcesLoading}
+            rightPanel={rightPanel}
+            setRightPanel={setRightPanel}
+            themePreference={themePreference}
+            workspaceError={workspaceError}
+            workspaceLoading={workspaceLoading}
+            workspaceTree={workspaceTree}
+          />
+        </UiErrorBoundary>
+      </div>
+    </>
   )
 }
 
 function Chat() {
   return <ChatWorkspaceShell />
-}
-
-function buildContextSuggestions({
-  messages,
-  mode,
-  resources,
-  workspaceTree,
-}: {
-  messages: Array<ChatMessage>
-  mode: ChatMode
-  resources: ChatResourcesResponse | null
-  workspaceTree: WorkspaceTreeResponse | null
-}): Array<SuggestionItem> {
-  const hasAgentsFile = Boolean(
-    resources?.agentsFiles.some((file) => file.name === "AGENTS.md")
-  )
-  const hasFrontendSkill =
-    Boolean(
-      resources?.skills.some((skill) =>
-        `${skill.name} ${skill.description ?? ""}`
-          .toLowerCase()
-          .includes("frontend")
-      )
-    ) ||
-    Boolean(
-      workspaceTree?.nodes.some((node) =>
-        JSON.stringify(node).toLowerCase().includes("frontend")
-      )
-    )
-  const lastUserMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === "user")
-  const lastUserText = extractMessageText(lastUserMessage).toLowerCase()
-
-  if (mode === "plan") {
-    return [
-      suggestionItem("plan-codebase", "Plan a codebase walkthrough"),
-      suggestionItem("plan-skill", 'Plan around the "frontend" skill'),
-      suggestionItem("plan-tests", "Plan the next validation steps"),
-    ]
-  }
-
-  if (!lastUserText) {
-    return [
-      suggestionItem("overview", "Summarize this project"),
-      suggestionItem(
-        "frontend",
-        hasFrontendSkill
-          ? 'Find a skill "frontend"'
-          : "Explore available skills"
-      ),
-      suggestionItem(
-        "docs",
-        hasAgentsFile ? "Read AGENTS.md" : "Tell me about this project"
-      ),
-    ]
-  }
-
-  if (
-    lastUserText.includes("what can you do") ||
-    lastUserText.includes("help")
-  ) {
-    return [
-      suggestionItem("frontend", 'Find a skill "frontend"'),
-      suggestionItem(
-        "agents",
-        hasAgentsFile ? "Read AGENTS.md" : "Read the repo docs"
-      ),
-      suggestionItem("workspace", "Show workspace files"),
-    ]
-  }
-
-  if (lastUserText.includes("frontend")) {
-    return [
-      suggestionItem("frontend-skill", 'Find a skill "frontend"'),
-      suggestionItem("frontend-route", "Read apps/web/src/routes/index.tsx"),
-      suggestionItem("frontend-workspace", "Show workspace files"),
-    ]
-  }
-
-  if (lastUserText.includes("skill")) {
-    return [
-      suggestionItem("frontend-skill", 'Find a skill "frontend"'),
-      suggestionItem("memory-skill", 'Find a skill "memory"'),
-      suggestionItem(
-        "skill-docs",
-        hasAgentsFile ? "Read AGENTS.md" : "Show workspace files"
-      ),
-    ]
-  }
-
-  if (lastUserText.includes("read") || lastUserText.includes("doc")) {
-    return [
-      suggestionItem(
-        "read-agents",
-        hasAgentsFile ? "Read AGENTS.md" : "Read README.md"
-      ),
-      suggestionItem("project-summary", "Summarize the repo conventions"),
-      suggestionItem("workspace-files", "Show workspace files"),
-    ]
-  }
-
-  return [
-    suggestionItem("continue", "Continue from the last task"),
-    suggestionItem("workspace", "Show workspace files"),
-    suggestionItem("frontend", 'Find a skill "frontend"'),
-  ]
-}
-
-function suggestionItem(id: string, label: string): SuggestionItem {
-  return { id, label, value: label }
-}
-
-function extractMessageText(message: ChatMessage | undefined) {
-  if (!message) return ""
-
-  return message.parts
-    .filter(
-      (
-        part
-      ): part is Extract<(typeof message.parts)[number], { type: "text" }> =>
-        part.type === "text" && typeof part.text === "string"
-    )
-    .map((part) => part.text)
-    .join(" ")
-}
-
-function getActiveSessionLabel(
-  activeSessionId: string | undefined,
-  sessions: Array<ChatSessionInfo>,
-  messages: Array<ChatMessage>
-) {
-  const activeSession = sessions.find(
-    (session) => session.id === activeSessionId
-  )
-  if (activeSession) {
-    return (
-      activeSession.name ||
-      activeSession.firstMessage ||
-      activeSession.id.slice(0, 8)
-    )
-  }
-
-  const lastUserMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === "user")
-  const label = extractMessageText(lastUserMessage).trim()
-  return label || "Session"
 }

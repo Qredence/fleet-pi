@@ -1,9 +1,10 @@
-import { CircleAlert, RefreshCw } from "lucide-react"
+import { CircleAlert } from "lucide-react"
 import {
   ResourceChipSection,
   ResourceNotice,
   getResourceGroups,
 } from "./shared"
+import { ResourcesSkeleton } from "./skeleton-loaders"
 import type {
   ChatResourcesResponse,
   WorkspaceTreeResponse,
@@ -32,13 +33,7 @@ export function ResourcesPanelContent({
           description={error.message}
         />
       )}
-      {!error && loading && !resources && (
-        <ResourceNotice
-          icon={RefreshCw}
-          title="Loading resources"
-          description="Scanning project and agent directories."
-        />
-      )}
+      {!error && loading && !resources && <ResourcesSkeleton />}
       {!error &&
         resources &&
         groups.map((group) => (
