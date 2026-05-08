@@ -78,7 +78,6 @@ export function resolveQuestionnaireAnswer(
   if (!pending) return false
 
   pending.resolve(answer)
-  pendingQuestions.delete(toolCallId)
   return true
 }
 
@@ -129,18 +128,34 @@ function waitForQuestionAnswer(
   signal: AbortSignal | undefined
 ) {
   return new Promise<ChatQuestionAnswer>((resolve, reject) => {
+    let settled = false
+    const cleanup = () => {
+      pendingQuestions.delete(toolCallId)
+      signal?.removeEventListener("abort", abort)
+    }
+    const resolveWithCleanup = (answer: ChatQuestionAnswer) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(answer)
+    }
+    const rejectWithCleanup = (error: Error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(error)
+    }
     const pending: PendingQuestion = {
       sessionId,
       toolCallId,
       params,
-      resolve,
-      reject,
+      resolve: resolveWithCleanup,
+      reject: rejectWithCleanup,
     }
     pendingQuestions.set(toolCallId, pending)
 
     const abort = () => {
-      pendingQuestions.delete(toolCallId)
-      reject(new Error("Question was cancelled."))
+      rejectWithCleanup(new Error("Question was cancelled."))
     }
 
     if (signal?.aborted) {

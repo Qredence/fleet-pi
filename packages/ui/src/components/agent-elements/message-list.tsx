@@ -170,18 +170,22 @@ function CopyButton({
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef<number | null>(null)
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    if (copiedTimerRef.current) {
-      window.clearTimeout(copiedTimerRef.current)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      if (copiedTimerRef.current) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+      copiedTimerRef.current = window.setTimeout(() => {
+        setCopied(false)
+        copiedTimerRef.current = null
+      }, 2000)
+      toast.success("Copied to clipboard")
+      onCopied?.()
+    } catch {
+      toast.error("Failed to copy to clipboard")
     }
-    copiedTimerRef.current = window.setTimeout(() => {
-      setCopied(false)
-      copiedTimerRef.current = null
-    }, 2000)
-    toast.success("Copied to clipboard")
-    onCopied?.()
   }
   return (
     <button
