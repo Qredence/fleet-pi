@@ -1,11 +1,4 @@
-import {
-  CircleAlert,
-  File,
-  FileText,
-  Folder,
-  HardDrive,
-  RefreshCw,
-} from "lucide-react"
+import { CircleAlert, File, FileText, Folder, HardDrive } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Markdown } from "@workspace/ui/components/agent-elements/markdown"
 import {
@@ -13,6 +6,7 @@ import {
   ResourceNotice,
   findWorkspaceNode,
 } from "./shared"
+import { WorkspacePreviewSkeleton, WorkspaceSkeleton } from "./skeleton-loaders"
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
@@ -94,13 +88,7 @@ export function WorkspacePanelContent({
   }
 
   if (loading && !workspace) {
-    return (
-      <ResourceNotice
-        icon={RefreshCw}
-        title="Loading workspace"
-        description="Reading agent-workspace."
-      />
-    )
+    return <WorkspaceSkeleton />
   }
 
   if (!workspace) {
@@ -240,13 +228,7 @@ function WorkspacePreview({
             description="Choose a workspace file to preview its Markdown."
           />
         )}
-        {selectedPath && loading && (
-          <ResourceNotice
-            icon={RefreshCw}
-            title="Loading preview"
-            description={selectedPath}
-          />
-        )}
+        {selectedPath && loading && <WorkspacePreviewSkeleton />}
         {selectedPath && error && (
           <ResourceNotice
             icon={CircleAlert}

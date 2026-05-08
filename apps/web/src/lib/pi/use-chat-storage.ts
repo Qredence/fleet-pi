@@ -1,9 +1,32 @@
+import { useEffect, useState } from "react"
 import type { ChatMode, ChatSessionMetadata } from "./chat-protocol"
 
 const CHAT_SESSION_STORAGE_KEY = "fleet-pi-chat-session"
 const CHAT_MODE_STORAGE_KEY = "fleet-pi-chat-mode"
 
-export function readStoredBrowserSession(): ChatSessionMetadata {
+export function useChatStorage() {
+  const [sessionMetadata, setSessionMetadata] = useState<ChatSessionMetadata>(
+    () => readStoredBrowserSession()
+  )
+  const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
+
+  useEffect(() => {
+    storeBrowserSession(sessionMetadata)
+  }, [sessionMetadata])
+
+  useEffect(() => {
+    storeMode(mode)
+  }, [mode])
+
+  return {
+    sessionMetadata,
+    setSessionMetadata,
+    mode,
+    setMode,
+  }
+}
+
+function readStoredBrowserSession(): ChatSessionMetadata {
   if (typeof window === "undefined") return {}
 
   try {
@@ -21,7 +44,7 @@ export function readStoredBrowserSession(): ChatSessionMetadata {
   }
 }
 
-export function storeBrowserSession(metadata: ChatSessionMetadata) {
+function storeBrowserSession(metadata: ChatSessionMetadata) {
   if (typeof window === "undefined") return
 
   if (!metadata.sessionFile && !metadata.sessionId) {
@@ -35,14 +58,20 @@ export function storeBrowserSession(metadata: ChatSessionMetadata) {
   )
 }
 
-export function readStoredMode(): ChatMode {
+function readStoredMode(): ChatMode {
   if (typeof window === "undefined") return "agent"
-  return window.localStorage.getItem(CHAT_MODE_STORAGE_KEY) === "plan"
-    ? "plan"
-    : "agent"
+
+  const raw = window.localStorage.getItem(CHAT_MODE_STORAGE_KEY)
+  if (!raw) return "agent"
+
+  if (raw === "plan" || raw === '"plan"') {
+    return "plan"
+  }
+
+  return "agent"
 }
 
-export function storeMode(mode: ChatMode) {
+function storeMode(mode: ChatMode) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode)
 }

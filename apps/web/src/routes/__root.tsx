@@ -1,6 +1,14 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from "@tanstack/react-router"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { Toaster } from "@workspace/ui/components/sonner"
 
 import appCss from "@workspace/ui/globals.css?url"
+import { getQueryClient } from "@/lib/query-client"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,7 +31,11 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: () => <Outlet />,
+  component: () => (
+    <QueryClientProvider client={getQueryClient()}>
+      <Outlet />
+    </QueryClientProvider>
+  ),
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
       <h1>404</h1>
@@ -41,6 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster />
         <Scripts />
       </body>
     </html>

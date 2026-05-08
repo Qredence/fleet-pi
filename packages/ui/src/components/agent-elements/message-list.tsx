@@ -6,213 +6,225 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from "react";
-import { IconCheck, IconCopy } from "@tabler/icons-react";
-import { cn } from "./utils/cn";
+} from "react"
+import { IconCheck, IconCopy } from "@tabler/icons-react"
+import { toast } from "sonner"
+import { motion } from "motion/react"
+import { cn } from "./utils/cn"
 
-import { UserMessage } from "./user-message";
-import { Markdown } from "./markdown";
-import { ErrorMessage } from "./error-message";
-import { ToolRowBase } from "./tools/tool-row-base";
-import { ToolRenderer as DefaultToolRenderer } from "./tools/tool-renderer";
-import { normalizeAssistantToolParts } from "./utils/tool-part-normalizer";
-import { SpiralLoader } from "./spiral-loader";
-import type { CustomToolRendererProps } from "./types";
-import type { ChatMessage, ChatStatus } from "./chat-types";
+import { UserMessage } from "./user-message"
+import { Markdown } from "./markdown"
+import { ErrorMessage } from "./error-message"
+import { ToolRowBase } from "./tools/tool-row-base"
+import { ToolRenderer as DefaultToolRenderer } from "./tools/tool-renderer"
+import { normalizeAssistantToolParts } from "./utils/tool-part-normalizer"
+import { SpiralLoader } from "./spiral-loader"
+import type { CustomToolRendererProps } from "./types"
+import type { ChatMessage, ChatStatus } from "./chat-types"
 
 export type MessageListProps = {
-  messages: Array<ChatMessage>;
-  status: ChatStatus;
-  className?: string;
-  showCopyToolbar?: boolean;
-  suppressQuestionTool?: boolean;
+  messages: Array<ChatMessage>
+  status: ChatStatus
+  className?: string
+  showCopyToolbar?: boolean
+  suppressQuestionTool?: boolean
   /**
    * Where to position the scroll container on initial mount.
    * - "bottom" (default): classic chat behavior, pinned to the latest message.
    * - "top": start from the top of the conversation — useful for static demos
    *   or read-only transcripts where the user should read top-to-bottom.
    */
-  initialScrollBehavior?: "bottom" | "top";
+  initialScrollBehavior?: "bottom" | "top"
   /**
    * When true (default) clicking an attached image in a user message opens
    * the fullscreen lightbox preview. Set to false to disable previews.
    */
-  enableImagePreview?: boolean;
+  enableImagePreview?: boolean
   slots?: {
     UserMessage?: React.ComponentType<{
-      message: ChatMessage;
-      className?: string;
-      enableImagePreview?: boolean;
-    }>;
-    ToolRenderer?: React.ComponentType<ToolRendererProps>;
-  };
+      message: ChatMessage
+      className?: string
+      enableImagePreview?: boolean
+    }>
+    ToolRenderer?: React.ComponentType<ToolRendererProps>
+  }
   classNames?: {
-    userMessage?: string;
-  };
-  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>;
-};
+    userMessage?: string
+  }
+  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
+}
 
-const SCROLL_THRESHOLD = 80;
+const SCROLL_THRESHOLD = 80
 const timeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
   hour12: true,
-});
+})
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
-});
+})
 type ToolPartBase = {
-  type: string;
-  toolCallId?: string;
-  state?: string;
-  input?: unknown;
-  output?: unknown;
-  result?: unknown;
-};
+  type: string
+  toolCallId?: string
+  state?: string
+  input?: unknown
+  output?: unknown
+  result?: unknown
+}
 
 type ToolRendererProps = {
-  part: ToolPartBase;
-  nestedTools?: Array<ToolPartBase>;
-  chatStatus?: string;
-  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>;
-};
+  part: ToolPartBase
+  nestedTools?: Array<ToolPartBase>
+  chatStatus?: string
+  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
+}
 
 function normalizeMessages(messages: Array<ChatMessage>): Array<ChatMessage> {
-  let changed = false;
+  let changed = false
   const normalized = messages.map((message) => {
-    if (Array.isArray(message.parts) && message.parts.length > 0)
-      return message;
-    const raw = message as { content?: string; text?: string };
-    const content = raw.content ?? raw.text;
-    if (typeof content !== "string" || !content) return message;
-    changed = true;
+    if (Array.isArray(message.parts) && message.parts.length > 0) return message
+    const raw = message as { content?: string; text?: string }
+    const content = raw.content ?? raw.text
+    if (typeof content !== "string" || !content) return message
+    changed = true
     return {
       ...message,
       parts: [{ type: "text", text: content }],
-    };
-  });
-  return changed ? normalized : messages;
+    }
+  })
+  return changed ? normalized : messages
 }
 
 function getLastAssistantHasContent(messages: Array<ChatMessage>) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const msg = messages[i];
-    if (msg?.role !== "assistant") continue;
+    const msg = messages[i]
+    if (msg?.role !== "assistant") continue
     return (msg.parts ?? []).some((part) => {
-      if (isTextPart(part)) return part.text.trim().length > 0;
-      return isV5ToolPart(part);
-    });
+      if (isTextPart(part)) return part.text.trim().length > 0
+      return isV5ToolPart(part)
+    })
   }
-  return false;
+  return false
 }
 
 function getLastUserMessageId(messages: Array<ChatMessage>) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const msg = messages[i];
-    if (msg?.role === "user") return msg.id;
+    const msg = messages[i]
+    if (msg?.role === "user") return msg.id
   }
-  return null;
+  return null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null
 }
 
 function isTextPart(part: unknown): part is { type: "text"; text: string } {
-  return (
-    isRecord(part) && part.type === "text" && typeof part.text === "string"
-  );
+  return isRecord(part) && part.type === "text" && typeof part.text === "string"
 }
 
 function isErrorPart(
-  part: unknown,
+  part: unknown
 ): part is { type: "error"; title?: string; message: string } {
   return (
     isRecord(part) && part.type === "error" && typeof part.message === "string"
-  );
+  )
 }
 
 function isV5ToolPart(part: unknown): part is ToolPartBase {
-  if (!isRecord(part)) return false;
-  const partType = part.type;
+  if (!isRecord(part)) return false
+  const partType = part.type
   return (
     partType === "dynamic-tool" ||
     (typeof partType === "string" && partType.startsWith("tool-"))
-  );
+  )
 }
 
 function getTextFromParts(parts: Array<unknown>, joiner: string): string {
   return parts
     .filter(isTextPart)
     .map((part) => part.text)
-    .join(joiner);
+    .join(joiner)
 }
 
 function formatTimestamp(date: Date): string {
-  const now = new Date();
+  const now = new Date()
   const isSameDay =
     date.getFullYear() === now.getFullYear() &&
     date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate();
+    date.getDate() === now.getDate()
   if (isSameDay) {
-    return timeFormatter.format(date);
+    return timeFormatter.format(date)
   }
-  return dateFormatter.format(date);
+  return dateFormatter.format(date)
 }
 
 function CopyButton({
   text,
   onCopied,
 }: {
-  text: string;
-  onCopied?: () => void;
+  text: string
+  onCopied?: () => void
 }) {
-  const [copied, setCopied] = useState(false);
-  const copiedTimerRef = useRef<number | null>(null);
+  const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<number | null>(null)
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    if (copiedTimerRef.current) {
-      window.clearTimeout(copiedTimerRef.current);
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
     }
-    copiedTimerRef.current = window.setTimeout(() => {
-      setCopied(false);
-      copiedTimerRef.current = null;
-    }, 2000);
-    onCopied?.();
-  };
+  }, [])
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      if (copiedTimerRef.current) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+      copiedTimerRef.current = window.setTimeout(() => {
+        setCopied(false)
+        copiedTimerRef.current = null
+      }, 2000)
+      toast.success("Copied to clipboard")
+      onCopied?.()
+    } catch {
+      toast.error("Failed to copy to clipboard")
+    }
+  }
   return (
     <button
       type="button"
       tabIndex={-1}
       onClick={handleCopy}
       onPointerDown={(event) => {
-        event.stopPropagation();
+        event.stopPropagation()
       }}
       onMouseDown={(event) => event.stopPropagation()}
       className={cn(
-        "size-6 flex items-center justify-center rounded-md active:scale-[0.97] transition-[background-color,opacity,transform] duration-150 ease-out",
-        "opacity-50 bg-transparent hover:opacity-100 hover:bg-an-foreground/10",
+        "flex size-6 items-center justify-center rounded-md transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
+        "bg-transparent opacity-50 hover:bg-an-foreground/10 hover:opacity-100"
       )}
     >
-      <div className="relative w-3.5 h-3.5">
+      <div className="relative h-3.5 w-3.5">
         <IconCopy
           className={cn(
-            "absolute inset-0 w-3.5 h-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
-            copied ? "opacity-0 scale-50" : "opacity-100 scale-100",
+            "absolute inset-0 h-3.5 w-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
+            copied ? "scale-50 opacity-0" : "scale-100 opacity-100"
           )}
         />
         <IconCheck
           className={cn(
-            "absolute inset-0 w-3.5 h-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
-            copied ? "opacity-100 scale-100" : "opacity-0 scale-50",
+            "absolute inset-0 h-3.5 w-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
+            copied ? "scale-100 opacity-100" : "scale-50 opacity-0"
           )}
         />
       </div>
     </button>
-  );
+  )
 }
 
 function MessageToolbar({
@@ -224,22 +236,22 @@ function MessageToolbar({
   alignClass,
   onCopied,
 }: {
-  text?: string;
-  timestamp?: string;
-  heightClass: string;
-  hoverClass: string;
-  isVisible: boolean;
-  alignClass: string;
-  onCopied?: () => void;
+  text?: string
+  timestamp?: string
+  heightClass: string
+  hoverClass: string
+  isVisible: boolean
+  alignClass: string
+  onCopied?: () => void
 }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1 pt-1 text-xs text-an-foreground-muted/70 opacity-0 transition-opacity duration-100 pointer-events-none",
+        "pointer-events-none flex items-center gap-1 pt-1 text-xs text-an-foreground-muted/70 opacity-0 transition-opacity duration-100",
         heightClass,
         alignClass,
         hoverClass,
-        isVisible && "opacity-100 pointer-events-auto",
+        isVisible && "pointer-events-auto opacity-100"
       )}
       onMouseDown={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
@@ -247,26 +259,31 @@ function MessageToolbar({
       {timestamp && <span>{timestamp}</span>}
       {text && <CopyButton text={text} onCopied={onCopied} />}
     </div>
-  );
+  )
 }
 
 /** Group flat messages into turns (user message + following assistant messages) */
 function groupMessagesIntoTurns(messages: Array<ChatMessage>) {
-  const turns: Array<{ userMsg?: ChatMessage; assistantMsgs: Array<ChatMessage> }> = [];
-  let current: { userMsg?: ChatMessage; assistantMsgs: Array<ChatMessage> } | null =
-    null;
+  const turns: Array<{
+    userMsg?: ChatMessage
+    assistantMsgs: Array<ChatMessage>
+  }> = []
+  let current: {
+    userMsg?: ChatMessage
+    assistantMsgs: Array<ChatMessage>
+  } | null = null
 
   for (const msg of messages) {
     if (msg.role === "user") {
-      if (current) turns.push(current);
-      current = { userMsg: msg, assistantMsgs: [] };
+      if (current) turns.push(current)
+      current = { userMsg: msg, assistantMsgs: [] }
     } else if (msg.role === "assistant") {
-      if (!current) current = { assistantMsgs: [] };
-      current.assistantMsgs.push(msg);
+      if (!current) current = { assistantMsgs: [] }
+      current.assistantMsgs.push(msg)
     }
   }
-  if (current) turns.push(current);
-  return turns;
+  if (current) turns.push(current)
+  return turns
 }
 
 export const MessageList = memo(function MessageList({
@@ -281,255 +298,256 @@ export const MessageList = memo(function MessageList({
   classNames,
   toolRenderers,
 }: MessageListProps) {
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const contentWrapperRef = useRef<HTMLDivElement>(null);
-  const chatContainerObserverRef = useRef<ResizeObserver | null>(null);
-  const shouldAutoScrollRef = useRef(true);
-  const prevScrollTopRef = useRef(0);
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const contentWrapperRef = useRef<HTMLDivElement>(null)
+  const chatContainerObserverRef = useRef<ResizeObserver | null>(null)
+  const shouldAutoScrollRef = useRef(true)
+  const prevScrollTopRef = useRef(0)
   const lastMessageIdRef = useRef<string | null>(
-    messages[messages.length - 1]?.id ?? null,
-  );
-  const assistantSpaceActiveRef = useRef(false);
-  const [activeCopyId, setActiveCopyId] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+    messages[messages.length - 1]?.id ?? null
+  )
+  const assistantSpaceActiveRef = useRef(false)
+  const [activeCopyId, setActiveCopyId] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
 
-  const CustomUserMessage = slots?.UserMessage || UserMessage;
-  const CustomToolRenderer = slots?.ToolRenderer || DefaultToolRenderer;
+  const CustomUserMessage = slots?.UserMessage || UserMessage
+  const CustomToolRenderer = slots?.ToolRenderer || DefaultToolRenderer
 
   const markCopied = useCallback((id: string) => {
-    setActiveCopyId(id);
-  }, []);
+    setActiveCopyId(id)
+  }, [])
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     const handlePointerDown = () => {
-      setActiveCopyId(null);
-    };
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
+      setActiveCopyId(null)
+    }
+    window.addEventListener("pointerdown", handlePointerDown)
+    return () => window.removeEventListener("pointerdown", handlePointerDown)
+  }, [])
 
-  const isStreaming = status === "streaming" || status === "submitted";
+  const isStreaming = status === "streaming" || status === "submitted"
 
   const containerRefCallback = useCallback((el: HTMLDivElement | null) => {
-    (
-      chatContainerRef
-    ).current = el;
+    chatContainerRef.current = el
 
     if (chatContainerObserverRef.current) {
-      chatContainerObserverRef.current.disconnect();
-      chatContainerObserverRef.current = null;
+      chatContainerObserverRef.current.disconnect()
+      chatContainerObserverRef.current = null
     }
     if (el) {
-      el.style.setProperty("--chat-container-height", `${el.clientHeight}px`);
+      el.style.setProperty("--chat-container-height", `${el.clientHeight}px`)
       const observer = new ResizeObserver((entries) => {
-        const height = entries[0]?.contentRect.height ?? 0;
-        el.style.setProperty("--chat-container-height", `${height}px`);
-      });
-      observer.observe(el);
-      chatContainerObserverRef.current = observer;
+        const height = entries[0]?.contentRect.height ?? 0
+        el.style.setProperty("--chat-container-height", `${height}px`)
+      })
+      observer.observe(el)
+      chatContainerObserverRef.current = observer
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     return () => {
       if (chatContainerObserverRef.current)
-        chatContainerObserverRef.current.disconnect();
-    };
-  }, []);
+        chatContainerObserverRef.current.disconnect()
+    }
+  }, [])
 
   const scrollToBottomInstant = useCallback(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, []);
+    const container = chatContainerRef.current
+    if (!container) return
+    container.scrollTop = container.scrollHeight
+  }, [])
 
   const scrollToBottomSettled = useCallback(() => {
-    let rafOne = 0;
-    let rafTwo = 0;
-    scrollToBottomInstant();
+    let rafOne = 0
+    let rafTwo = 0
+    scrollToBottomInstant()
     rafOne = requestAnimationFrame(() => {
-      scrollToBottomInstant();
+      scrollToBottomInstant()
       rafTwo = requestAnimationFrame(() => {
-        scrollToBottomInstant();
-      });
-    });
+        scrollToBottomInstant()
+      })
+    })
     return () => {
-      cancelAnimationFrame(rafOne);
-      cancelAnimationFrame(rafTwo);
-    };
-  }, [scrollToBottomInstant]);
+      cancelAnimationFrame(rafOne)
+      cancelAnimationFrame(rafTwo)
+    }
+  }, [scrollToBottomInstant])
 
   const isAtBottom = useCallback(() => {
-    const container = chatContainerRef.current;
-    if (!container) return true;
+    const container = chatContainerRef.current
+    if (!container) return true
     return (
       container.scrollHeight - container.scrollTop - container.clientHeight <
       SCROLL_THRESHOLD
-    );
-  }, []);
+    )
+  }, [])
 
   const handleScroll = useCallback(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
+    const container = chatContainerRef.current
+    if (!container) return
 
-    const currentScrollTop = container.scrollTop;
-    const prevScrollTop = prevScrollTopRef.current;
-    prevScrollTopRef.current = currentScrollTop;
+    const currentScrollTop = container.scrollTop
+    const prevScrollTop = prevScrollTopRef.current
+    prevScrollTopRef.current = currentScrollTop
 
     if (currentScrollTop < prevScrollTop) {
-      shouldAutoScrollRef.current = false;
-      return;
+      shouldAutoScrollRef.current = false
+      return
     }
-    shouldAutoScrollRef.current = isAtBottom();
-  }, [isAtBottom]);
+    shouldAutoScrollRef.current = isAtBottom()
+  }, [isAtBottom])
 
   useLayoutEffect(() => {
-    const container = chatContainerRef.current;
-    const contentWrapper = contentWrapperRef.current;
-    if (!container || !contentWrapper) return;
+    const container = chatContainerRef.current
+    const contentWrapper = contentWrapperRef.current
+    if (!container || !contentWrapper) return
 
     if (initialScrollBehavior === "top") {
-      container.scrollTop = 0;
-      shouldAutoScrollRef.current = false;
+      container.scrollTop = 0
+      shouldAutoScrollRef.current = false
     } else {
-      container.scrollTop = container.scrollHeight;
-      shouldAutoScrollRef.current = true;
+      container.scrollTop = container.scrollHeight
+      shouldAutoScrollRef.current = true
     }
 
-    let lastContentHeight = contentWrapper.getBoundingClientRect().height;
-    let prevScrollHeight = container.scrollHeight;
+    let lastContentHeight = contentWrapper.getBoundingClientRect().height
+    let prevScrollHeight = container.scrollHeight
 
     const resizeObserver = new ResizeObserver(() => {
-      const newContentHeight = contentWrapper.getBoundingClientRect().height;
-      if (newContentHeight === lastContentHeight) return;
-      lastContentHeight = newContentHeight;
+      const newContentHeight = contentWrapper.getBoundingClientRect().height
+      if (newContentHeight === lastContentHeight) return
+      lastContentHeight = newContentHeight
 
       if (!shouldAutoScrollRef.current) {
-        const newScrollHeight = container.scrollHeight;
+        const newScrollHeight = container.scrollHeight
         if (newScrollHeight !== prevScrollHeight && prevScrollHeight > 0) {
-          const delta = newScrollHeight - prevScrollHeight;
-          container.scrollTop = container.scrollTop + delta;
+          const delta = newScrollHeight - prevScrollHeight
+          container.scrollTop = container.scrollTop + delta
         }
       }
-      prevScrollHeight = container.scrollHeight;
-    });
+      prevScrollHeight = container.scrollHeight
+    })
 
-    resizeObserver.observe(contentWrapper);
-    return () => resizeObserver.disconnect();
-  }, []);
+    resizeObserver.observe(contentWrapper)
+    return () => resizeObserver.disconnect()
+  }, [])
 
   const normalizedMessages = useMemo(
     () => normalizeMessages(messages),
-    [messages],
-  );
-  const lastMessage = normalizedMessages[normalizedMessages.length - 1];
-  const lastMessageId = lastMessage?.id ?? null;
-  const lastMessageRole = lastMessage?.role ?? null;
+    [messages]
+  )
+  const lastMessage = normalizedMessages[normalizedMessages.length - 1]
+  const lastMessageId = lastMessage?.id ?? null
+  const lastMessageRole = lastMessage?.role ?? null
   const lastUserMessageId = useMemo(
     () => getLastUserMessageId(normalizedMessages),
-    [normalizedMessages],
-  );
+    [normalizedMessages]
+  )
 
-  const lastUserMessageIdRef = useRef(lastUserMessageId);
-  const pendingPlanningScrollUserIdRef = useRef<string | null>(null);
+  const lastUserMessageIdRef = useRef(lastUserMessageId)
+  const pendingPlanningScrollUserIdRef = useRef<string | null>(null)
   useLayoutEffect(() => {
     if (
       lastUserMessageId &&
       lastUserMessageId !== lastUserMessageIdRef.current
     ) {
-      shouldAutoScrollRef.current = true;
-      pendingPlanningScrollUserIdRef.current = lastUserMessageId;
-      const cancel = scrollToBottomSettled();
-      lastUserMessageIdRef.current = lastUserMessageId;
-      return cancel;
+      shouldAutoScrollRef.current = true
+      pendingPlanningScrollUserIdRef.current = lastUserMessageId
+      const cancel = scrollToBottomSettled()
+      lastUserMessageIdRef.current = lastUserMessageId
+      return cancel
     }
-  }, [lastUserMessageId, scrollToBottomSettled]);
+  }, [lastUserMessageId, scrollToBottomSettled])
 
-  const planningLabel = "Processing...";
+  const planningLabel = "Processing..."
   const turns = useMemo(
     () => groupMessagesIntoTurns(normalizedMessages),
-    [normalizedMessages],
-  );
+    [normalizedMessages]
+  )
   const showPlanning = useMemo(() => {
-    const latestMessage = normalizedMessages[normalizedMessages.length - 1];
-    if (!latestMessage) return false;
-    const lastTurn = turns[turns.length - 1];
-    const hasAssistant = Boolean(lastTurn && lastTurn.assistantMsgs.length > 0);
-    if (latestMessage.role === "user" && !hasAssistant) return true;
-    return isStreaming && !getLastAssistantHasContent(normalizedMessages);
-  }, [isStreaming, normalizedMessages, turns]);
+    const latestMessage = normalizedMessages[normalizedMessages.length - 1]
+    if (!latestMessage) return false
+    const lastTurn = turns[turns.length - 1]
+    const hasAssistant = Boolean(lastTurn && lastTurn.assistantMsgs.length > 0)
+    if (latestMessage.role === "user" && !hasAssistant) return true
+    return isStreaming && !getLastAssistantHasContent(normalizedMessages)
+  }, [isStreaming, normalizedMessages, turns])
   const isNewAssistantMessage =
     lastMessageRole === "assistant" &&
     Boolean(lastMessageId) &&
-    lastMessageId !== lastMessageIdRef.current;
+    lastMessageId !== lastMessageIdRef.current
   const showAssistantBreathingSpace =
-    showPlanning || assistantSpaceActiveRef.current || isNewAssistantMessage;
+    showPlanning || assistantSpaceActiveRef.current || isNewAssistantMessage
 
   useEffect(() => {
     if (lastMessageRole === "assistant") {
       if (lastMessageId && lastMessageId !== lastMessageIdRef.current) {
-        assistantSpaceActiveRef.current = true;
+        assistantSpaceActiveRef.current = true
       }
     }
     if (lastMessageRole === "user") {
-      assistantSpaceActiveRef.current = false;
+      assistantSpaceActiveRef.current = false
     }
-    lastMessageIdRef.current = lastMessageId;
-  }, [lastMessageId, lastMessageRole]);
+    lastMessageIdRef.current = lastMessageId
+  }, [lastMessageId, lastMessageRole])
 
   useLayoutEffect(() => {
-    if (!showPlanning || !lastUserMessageId) return;
-    if (pendingPlanningScrollUserIdRef.current !== lastUserMessageId) return;
-    const cancel = scrollToBottomSettled();
-    pendingPlanningScrollUserIdRef.current = null;
-    return cancel;
-  }, [lastUserMessageId, showPlanning, scrollToBottomSettled]);
+    if (!showPlanning || !lastUserMessageId) return
+    if (pendingPlanningScrollUserIdRef.current !== lastUserMessageId) return
+    const cancel = scrollToBottomSettled()
+    pendingPlanningScrollUserIdRef.current = null
+    return cancel
+  }, [lastUserMessageId, showPlanning, scrollToBottomSettled])
 
   return (
     <div
       ref={containerRefCallback}
       onScroll={handleScroll}
       className={cn(
-        "an-message-list flex-1 min-h-0 overflow-y-auto",
-        className,
+        "an-message-list min-h-0 flex-1 overflow-y-auto",
+        className
       )}
     >
-      <div ref={contentWrapperRef} className="mx-auto px-4 py-6 max-w-an">
+      <div ref={contentWrapperRef} className="mx-auto max-w-an px-4 py-6">
         <div className="space-y-2">
           {turns.map((turn, turnIndex) => {
-            const isLastTurn = turnIndex === turns.length - 1;
-            const turnKey = turn.userMsg?.id ?? `turn-${turnIndex}`;
+            const isLastTurn = turnIndex === turns.length - 1
+            const turnKey = turn.userMsg?.id ?? `turn-${turnIndex}`
 
             return (
-              <div key={turnKey} className="relative space-y-2">
+              <motion.div
+                key={turnKey}
+                className="relative space-y-2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              >
                 {turn.userMsg &&
                   (() => {
-                    const text = getTextFromParts(
-                      turn.userMsg.parts ?? [],
-                      "",
-                    );
-                    const hasParts = (turn.userMsg.parts ?? []).length > 0;
-                    if (!text && !hasParts) return null;
+                    const text = getTextFromParts(turn.userMsg.parts ?? [], "")
+                    const hasParts = (turn.userMsg.parts ?? []).length > 0
+                    if (!text && !hasParts) return null
                     const userCreatedAt = (
                       turn.userMsg as { createdAt?: Date | string }
-                    )?.createdAt;
-                    const userCopyKey = `user-${turn.userMsg.id}`;
-                    const userCopyVisible = activeCopyId === userCopyKey;
+                    )?.createdAt
+                    const userCopyKey = `user-${turn.userMsg.id}`
+                    const userCopyVisible = activeCopyId === userCopyKey
                     const userTimestamp =
                       isMounted && userCreatedAt
                         ? formatTimestamp(new Date(userCreatedAt))
-                        : undefined;
+                        : undefined
                     // Only render the toolbar when it has content — copy
                     // button (gated by showCopyToolbar) or a timestamp.
                     // Otherwise a 28px-tall empty row inflates the gap to the
                     // assistant reply.
                     const showUserToolbar =
                       (showCopyToolbar && Boolean(text)) ||
-                      Boolean(userTimestamp);
+                      Boolean(userTimestamp)
                     return (
                       <div className="group/user-message">
                         <CustomUserMessage
@@ -549,7 +567,7 @@ export const MessageList = memo(function MessageList({
                           />
                         )}
                       </div>
-                    );
+                    )
                   })()}
 
                 {turn.assistantMsgs.length > 0 &&
@@ -557,9 +575,9 @@ export const MessageList = memo(function MessageList({
                   (() => {
                     const assistantText = getTextFromParts(
                       turn.assistantMsgs.flatMap((msg) => msg.parts ?? []),
-                      "\n\n",
-                    );
-                    const isTurnStreaming = isStreaming && isLastTurn;
+                      "\n\n"
+                    )
+                    const isTurnStreaming = isStreaming && isLastTurn
                     // Only reserve toolbar height when there's actually
                     // something to show in it. With showCopyToolbar=false the
                     // toolbar would otherwise render as a 48px-tall empty box,
@@ -567,16 +585,16 @@ export const MessageList = memo(function MessageList({
                     const showToolbar =
                       showCopyToolbar &&
                       Boolean(assistantText.trim()) &&
-                      !isTurnStreaming;
-                    const copyKey = `assistant-${turnKey}-all`;
-                    const toolbarText = showCopyToolbar ? assistantText : "";
+                      !isTurnStreaming
+                    const copyKey = `assistant-${turnKey}-all`
+                    const toolbarText = showCopyToolbar ? assistantText : ""
 
                     return (
                       <div className="group/assistant-turn">
                         <div className="flex flex-col gap-3">
                           {turn.assistantMsgs.map((msg, i) => {
                             const isLastMsg =
-                              isLastTurn && i === turn.assistantMsgs.length - 1;
+                              isLastTurn && i === turn.assistantMsgs.length - 1
                             return (
                               <AssistantParts
                                 key={msg.id}
@@ -587,7 +605,7 @@ export const MessageList = memo(function MessageList({
                                 ToolRendererComponent={CustomToolRenderer}
                                 toolRenderers={toolRenderers}
                               />
-                            );
+                            )
                           })}
                         </div>
                         {showToolbar ? (
@@ -610,7 +628,7 @@ export const MessageList = memo(function MessageList({
                           />
                         ) : null}
                       </div>
-                    );
+                    )
                   })()}
 
                 {isLastTurn && showPlanning && (
@@ -621,20 +639,20 @@ export const MessageList = memo(function MessageList({
                     isAnimating={true}
                   />
                 )}
-              </div>
-            );
+              </motion.div>
+            )
           })}
         </div>
         {showAssistantBreathingSpace && (
           <div
             aria-hidden="true"
-            className="min-h-[max(140px,24vh)] mx-auto max-w-an w-full"
+            className="mx-auto min-h-[max(140px,24vh)] w-full max-w-an"
           />
         )}
       </div>
     </div>
-  );
-});
+  )
+})
 
 function AssistantParts({
   msg,
@@ -644,61 +662,61 @@ function AssistantParts({
   ToolRendererComponent,
   toolRenderers,
 }: {
-  msg: ChatMessage;
-  isLast: boolean;
-  isStreaming: boolean;
-  suppressQuestionTool: boolean;
-  ToolRendererComponent: React.ComponentType<ToolRendererProps>;
-  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>;
+  msg: ChatMessage
+  isLast: boolean
+  isStreaming: boolean
+  suppressQuestionTool: boolean
+  ToolRendererComponent: React.ComponentType<ToolRendererProps>
+  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
 }) {
   const parts = useMemo(
     () => normalizeAssistantToolParts(msg.parts ?? []),
-    [msg.parts],
-  );
+    [msg.parts]
+  )
 
   const { elements } = useMemo(() => {
-    const elems: Array<React.ReactNode> = [];
-    const textChunks: Array<string> = [];
+    const elems: Array<React.ReactNode> = []
+    const textChunks: Array<string> = []
     const taskPartIds = new Set(
       parts
         .filter(
           (p): p is ToolPartBase =>
             isV5ToolPart(p) &&
             (p.type === "tool-Task" || p.type === "tool-Agent") &&
-            typeof p.toolCallId === "string",
+            typeof p.toolCallId === "string"
         )
-        .map((p) => p.toolCallId!),
-    );
-    const nestedToolsMap = new Map<string, Array<ToolPartBase>>();
-    const nestedToolIds = new Set<string>();
+        .map((p) => p.toolCallId!)
+    )
+    const nestedToolsMap = new Map<string, Array<ToolPartBase>>()
+    const nestedToolIds = new Set<string>()
 
     for (const part of parts) {
-      if (!isV5ToolPart(part)) continue;
-      if (part.type === "tool-TaskOutput") continue;
-      if (!part.toolCallId || !part.toolCallId.includes(":")) continue;
-      const parentId = part.toolCallId.split(":")[0];
-      if (!taskPartIds.has(parentId)) continue;
+      if (!isV5ToolPart(part)) continue
+      if (part.type === "tool-TaskOutput") continue
+      if (!part.toolCallId || !part.toolCallId.includes(":")) continue
+      const parentId = part.toolCallId.split(":")[0]
+      if (!taskPartIds.has(parentId)) continue
       if (!nestedToolsMap.has(parentId)) {
-        nestedToolsMap.set(parentId, []);
+        nestedToolsMap.set(parentId, [])
       }
-      nestedToolsMap.get(parentId)!.push(part);
-      nestedToolIds.add(part.toolCallId);
+      nestedToolsMap.get(parentId)!.push(part)
+      nestedToolIds.add(part.toolCallId)
     }
 
-    let i = 0;
+    let i = 0
     while (i < parts.length) {
-      const part = parts[i]!;
+      const part = parts[i]!
 
       if (isV5ToolPart(part) && part.type === "tool-TaskOutput") {
-        i++;
-        continue;
+        i++
+        continue
       }
 
       if (isTextPart(part)) {
-        const text = part.text;
-        if (text) textChunks.push(text);
-        i++;
-        continue;
+        const text = part.text
+        if (text) textChunks.push(text)
+        i++
+        continue
       }
 
       if (isErrorPart(part)) {
@@ -707,30 +725,30 @@ function AssistantParts({
             key={`${msg.id}-error-${i}`}
             title={part.title}
             message={part.message}
-          />,
-        );
-        i++;
-        continue;
+          />
+        )
+        i++
+        continue
       }
 
       if (isV5ToolPart(part)) {
         if (suppressQuestionTool && part.type === "tool-Question") {
-          i++;
-          continue;
+          i++
+          continue
         }
         if (part.toolCallId && nestedToolIds.has(part.toolCallId)) {
-          i++;
-          continue;
+          i++
+          continue
         }
 
         const chatStreamingStatus =
-          isLast && isStreaming ? "streaming" : undefined;
-        const toolCallId = part.toolCallId;
+          isLast && isStreaming ? "streaming" : undefined
+        const toolCallId = part.toolCallId
         const nestedTools =
           (part.type === "tool-Task" || part.type === "tool-Agent") &&
           toolCallId
             ? nestedToolsMap.get(toolCallId) || []
-            : undefined;
+            : undefined
         elems.push(
           <ToolRendererComponent
             key={part.toolCallId ?? `${msg.id}-tool-${i}`}
@@ -738,16 +756,16 @@ function AssistantParts({
             nestedTools={nestedTools}
             chatStatus={chatStreamingStatus}
             toolRenderers={toolRenderers}
-          />,
-        );
-        i++;
-        continue;
+          />
+        )
+        i++
+        continue
       }
 
-      i++;
+      i++
     }
 
-    const text = textChunks.join("\n\n");
+    const text = textChunks.join("\n\n")
     if (text) {
       elems.push(
         <div
@@ -758,11 +776,11 @@ function AssistantParts({
             content={text}
             className="leading-relaxed [&_p]:leading-relaxed"
           />
-        </div>,
-      );
+        </div>
+      )
     }
 
-    return { elements: elems };
+    return { elements: elems }
   }, [
     parts,
     msg.id,
@@ -771,13 +789,13 @@ function AssistantParts({
     suppressQuestionTool,
     ToolRendererComponent,
     toolRenderers,
-  ]);
+  ])
 
   if (elements.length > 1) {
     return (
       <div className="group/assistant-turn flex flex-col gap-3">{elements}</div>
-    );
+    )
   }
 
-  return <div className="group/assistant-turn">{elements}</div>;
+  return <div className="group/assistant-turn">{elements}</div>
 }

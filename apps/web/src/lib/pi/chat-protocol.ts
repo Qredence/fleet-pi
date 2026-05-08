@@ -38,6 +38,7 @@ export type ChatRequest = ChatSessionMetadata & {
 
 export type ChatQuestionAnswer = {
   kind: "single" | "multi" | "text" | "skip"
+  questionId?: string
   selectedIds?: Array<string>
   text?: string
 }

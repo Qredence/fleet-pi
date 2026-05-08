@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import {
   appendAssistantDelta,
   createTextMessage,
   upsertAssistantThinkingPart,
   upsertAssistantToolPart,
 } from "./chat-message-helpers"
-import {
-  fetchJson,
-  labelForState,
-  metadataUrl,
-  readChatStream,
-} from "./chat-fetch"
+import { chatClient } from "./chat-client"
+import { labelForState } from "./chat-fetch"
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatMessage,
@@ -20,15 +17,12 @@ import type {
   ChatMode,
   ChatModelSelection,
   ChatPlanAction,
+  ChatQuestionAnswer,
   ChatSessionInfo,
   ChatSessionMetadata,
-  ChatSessionResponse,
   ChatStreamEvent,
 } from "./chat-protocol"
-
-export type ChatSessionsResponse = {
-  sessions: Array<ChatSessionInfo>
-}
+import type { ChatClient } from "./chat-client"
 
 export type SendMessageInput = {
   text: string
@@ -37,7 +31,9 @@ export type SendMessageInput = {
 }
 
 export type UsePiChatOptions = {
+  client?: ChatClient
   initialSessionMetadata: ChatSessionMetadata
+  onModeChange?: (mode: ChatMode) => void
   persistSession: (metadata: ChatSessionMetadata) => void
 }
 
@@ -46,7 +42,12 @@ export function usePiChat(
   mode: ChatMode,
   options: UsePiChatOptions
 ) {
-  const { initialSessionMetadata, persistSession } = options
+  const {
+    client = chatClient,
+    initialSessionMetadata,
+    onModeChange,
+    persistSession,
+  } = options
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
   const [error, setError] = useState<Error | null>(null)
@@ -86,9 +87,9 @@ export function usePiChat(
   )
 
   const refreshSessions = useCallback(async () => {
-    const result = await fetchJson<ChatSessionsResponse>("/api/chat/sessions")
-    setSessions(result.sessions)
-  }, [])
+    const nextSessions = await client.listSessions()
+    setSessions(nextSessions)
+  }, [client])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -104,7 +105,9 @@ export function usePiChat(
 
   useEffect(() => {
     void refreshSessions().catch((err) => {
-      setError(err instanceof Error ? err : new Error(String(err)))
+      const nextError = err instanceof Error ? err : new Error(String(err))
+      setError(nextError)
+      toast.error(nextError.message)
     })
   }, [refreshSessions])
 
@@ -118,9 +121,7 @@ export function usePiChat(
 
     let cancelled = false
     const loadStoredSession = async () => {
-      const result = await fetchJson<ChatSessionResponse>(
-        `/api/chat/session?${metadataUrl(initialSessionMetadata)}`
-      )
+      const result = await client.loadSession(initialSessionMetadata)
       if (cancelled) return
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
@@ -128,7 +129,9 @@ export function usePiChat(
 
     void loadStoredSession().catch((err) => {
       if (!cancelled) {
-        setError(err instanceof Error ? err : new Error(String(err)))
+        const nextError = err instanceof Error ? err : new Error(String(err))
+        setError(nextError)
+        toast.error(nextError.message)
       }
     })
 
@@ -136,6 +139,7 @@ export function usePiChat(
       cancelled = true
     }
   }, [
+    client,
     initialSessionMetadata.sessionFile,
     initialSessionMetadata.sessionId,
     setMessagesSynced,
@@ -249,35 +253,27 @@ export function usePiChat(
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
 
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await client.streamMessage(
+        {
           message: trimmed,
           model,
           mode: requestMode,
           sessionFile: sessionMetadataRef.current.sessionFile,
           sessionId: sessionMetadataRef.current.sessionId,
           streamingBehavior: "followUp",
-        }),
-      })
-
-      if (!response.ok) {
-        const body = await response.text()
-        throw new Error(body || `Chat request failed (${response.status})`)
-      }
-
-      await readChatStream(response, (event) => {
-        if (event.type === "queue") {
-          setQueue({ steering: event.steering, followUp: event.followUp })
-          setActivityLabel("Follow-up queued")
+        },
+        (event) => {
+          if (event.type === "queue") {
+            setQueue({ steering: event.steering, followUp: event.followUp })
+            setActivityLabel("Follow-up queued")
+          }
+          if (event.type === "error") {
+            throw new Error(event.message)
+          }
         }
-        if (event.type === "error") {
-          throw new Error(event.message)
-        }
-      })
+      )
     },
-    [model, setMessagesSynced]
+    [client, model, setMessagesSynced]
   )
 
   const sendMessage = useCallback(
@@ -290,7 +286,9 @@ export function usePiChat(
         try {
           await queueFollowUp(trimmed, requestMode)
         } catch (err) {
-          setError(err instanceof Error ? err : new Error(String(err)))
+          const nextError = err instanceof Error ? err : new Error(String(err))
+          setError(nextError)
+          toast.error(nextError.message)
         }
         return
       }
@@ -307,27 +305,17 @@ export function usePiChat(
       const assistantIdRef = { current: null as string | null }
 
       try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await client.streamMessage(
+          {
             message: trimmed,
             model,
             mode: requestMode,
             planAction,
             sessionFile: sessionMetadataRef.current.sessionFile,
             sessionId: sessionMetadataRef.current.sessionId,
-          }),
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          const body = await response.text()
-          throw new Error(body || `Chat request failed (${response.status})`)
-        }
-
-        await readChatStream(response, (event) =>
-          handleStreamEvent(event, assistantIdRef)
+          },
+          (event) => handleStreamEvent(event, assistantIdRef),
+          controller.signal
         )
 
         setStatus("ready")
@@ -336,46 +324,46 @@ export function usePiChat(
         const nextError = err instanceof Error ? err : new Error(String(err))
         setError(nextError)
         setStatus("error")
+        toast.error(nextError.message)
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null
         }
       }
     },
-    [handleStreamEvent, mode, model, queueFollowUp, setMessagesSynced, status]
+    [
+      client,
+      handleStreamEvent,
+      mode,
+      model,
+      queueFollowUp,
+      setMessagesSynced,
+      status,
+    ]
   )
 
   const stop = useCallback(() => {
-    void fetch("/api/chat/abort", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sessionMetadataRef.current),
-    }).catch(() => undefined)
+    void client.abortSession(sessionMetadataRef.current).catch(() => undefined)
     abortRef.current?.abort()
     abortRef.current = null
     setStatus("ready")
     setActivityLabel(undefined)
-  }, [])
+  }, [client])
 
   const startNewSession = useCallback(async () => {
-    const result = await fetchJson<ChatSessionResponse>("/api/chat/new", {
-      method: "POST",
-    })
+    const result = await client.createSession()
     setSessionMetadataSynced(result.session)
     setMessagesSynced([])
     setQueue({ steering: [], followUp: [] })
     setActivityLabel(undefined)
     setPlanLabel(undefined)
+    toast.success("New session started")
     await refreshSessions()
-  }, [refreshSessions, setMessagesSynced, setSessionMetadataSynced])
+  }, [client, refreshSessions, setMessagesSynced, setSessionMetadataSynced])
 
   const resumeSession = useCallback(
     async (metadata: ChatSessionMetadata) => {
-      const result = await fetchJson<ChatSessionResponse>("/api/chat/resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(metadata),
-      })
+      const result = await client.resumeSession(metadata)
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
       setQueue({ steering: [], followUp: [] })
@@ -383,13 +371,51 @@ export function usePiChat(
         result.sessionReset ? "Started a fresh Pi session" : undefined
       )
       setPlanLabel(undefined)
+      toast.success("Session resumed")
       await refreshSessions()
     },
-    [refreshSessions, setMessagesSynced, setSessionMetadataSynced]
+    [client, refreshSessions, setMessagesSynced, setSessionMetadataSynced]
+  )
+
+  const sendMessageRef = useRef(sendMessage)
+  useEffect(() => {
+    sendMessageRef.current = sendMessage
+  }, [sendMessage])
+
+  const answerQuestion = useCallback(
+    async ({
+      toolCallId,
+      answer,
+    }: {
+      toolCallId?: string
+      answer: ChatQuestionAnswer
+    }) => {
+      const result = await client.answerQuestion({
+        sessionFile: sessionMetadataRef.current.sessionFile,
+        sessionId: sessionMetadataRef.current.sessionId,
+        toolCallId,
+        answer,
+      })
+
+      if (result.mode) {
+        onModeChange?.(result.mode)
+      }
+      if (result.message) {
+        await sendMessageRef.current({
+          text: result.message,
+          mode: result.mode,
+          planAction: result.planAction,
+        })
+      }
+
+      return result
+    },
+    [client, onModeChange]
   )
 
   return {
     activityLabel,
+    answerQuestion,
     error,
     messages,
     planLabel,

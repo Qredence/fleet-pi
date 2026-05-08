@@ -20,11 +20,9 @@ import {
   upsertToolPart,
 } from "@/lib/pi/server-utils"
 import {
-  createPlanDecisionPart,
   createPlanEvent,
+  finalizePlanTurn,
   getPlanState,
-  updateExecutionProgress,
-  updatePlanFromAssistantText,
 } from "@/lib/pi/plan-mode"
 
 export const Route = createFileRoute("/api/chat")({
@@ -137,26 +135,19 @@ export const Route = createFileRoute("/api/chat")({
                 request.signal.removeEventListener("abort", abort)
 
                 const assistantText = textFromParts(parts)
-                if (body.planAction === "execute") {
-                  const { state } = updateExecutionProgress(
-                    result.runtime,
-                    assistantText
-                  )
-                  send(createPlanEvent(state))
-                } else if (body.mode === "plan") {
-                  const state = updatePlanFromAssistantText(
-                    result.runtime,
-                    assistantText
-                  )
-                  const decisionPart = createPlanDecisionPart(
-                    assistantId,
-                    state
-                  )
-                  if (decisionPart) {
-                    parts = upsertToolPart(parts, decisionPart)
-                    send({ type: "tool", part: decisionPart })
+                const planTurn = finalizePlanTurn({
+                  runtime: result.runtime,
+                  assistantId,
+                  assistantText,
+                  mode: body.mode,
+                  planAction: body.planAction,
+                })
+                if (planTurn) {
+                  if (planTurn.decisionPart) {
+                    parts = upsertToolPart(parts, planTurn.decisionPart)
+                    send({ type: "tool", part: planTurn.decisionPart })
                   }
-                  send(createPlanEvent(state))
+                  send(createPlanEvent(planTurn.state))
                 }
 
                 log.info(
