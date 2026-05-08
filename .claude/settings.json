@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": ["Bash(pnpm*)", "Bash(pnpm --filter*)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo \"$CLAUDE_TOOL_INPUT\" | node -e \"try{const i=require('fs').readFileSync(0,'utf8');console.log(JSON.parse(i).file_path||'')}catch(e){}\" 2>/dev/null); if echo \"$file\" | grep -qE '^\\.env$|\\.env\\.'; then echo 'Blocked: .env edits require explicit user confirmation'; exit 2; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo \"$CLAUDE_TOOL_INPUT\" | node -e \"try{const i=require('fs').readFileSync(0,'utf8');console.log(JSON.parse(i).file_path||'')}catch(e){}\" 2>/dev/null); if echo \"$file\" | grep -qE '\\.(ts|tsx|js|jsx|css|json)$'; then pnpm prettier --write \"$file\" 2>/dev/null || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
