@@ -234,12 +234,14 @@ function ChatWorkspaceShell() {
     error: resourcesError,
     refetch: refetchResources,
   } = useChatResources()
+  const shouldLoadWorkspaceTree =
+    rightPanel === "resources" || rightPanel === "workspace"
   const {
     data: workspaceData,
     isLoading: workspaceLoading,
     error: workspaceError,
     refetch: refetchWorkspace,
-  } = useWorkspaceTree({ enabled: Boolean(rightPanel) })
+  } = useWorkspaceTree({ enabled: shouldLoadWorkspaceTree })
 
   const resources = resourcesData ?? null
   const workspaceTree = workspaceData ?? null
