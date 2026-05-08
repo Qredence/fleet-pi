@@ -40,6 +40,9 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
     readStoredResourceCanvasWidth()
   )
+  const [initialSessionMetadata] = useState<ChatSessionMetadata>(
+    () => storedSessionMetadata
+  )
 
   useEffect(() => {
     if (models.length > 0 && !modelKey) {
@@ -142,7 +145,7 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
     handleModeChange,
     handleResourceCanvasResizeStart,
     handleThemePreferenceChange,
-    initialSessionMetadata: storedSessionMetadata,
+    initialSessionMetadata,
     mode,
     modelKey,
     modelSelection,
