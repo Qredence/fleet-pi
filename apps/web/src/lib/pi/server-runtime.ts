@@ -37,7 +37,19 @@ import type {
 } from "./chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
-const RUNTIME_TTL_MS = Number(process.env.FLEET_PI_RUNTIME_TTL_MS ?? 600_000)
+const DEFAULT_RUNTIME_TTL_MS = 600_000
+
+function resolveRuntimeTtlMs(value: string | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed || !/^\d+$/.test(trimmed)) {
+    return DEFAULT_RUNTIME_TTL_MS
+  }
+
+  const parsed = Number.parseInt(trimmed, 10)
+  return Number.isSafeInteger(parsed) ? parsed : DEFAULT_RUNTIME_TTL_MS
+}
+
+const RUNTIME_TTL_MS = resolveRuntimeTtlMs(process.env.FLEET_PI_RUNTIME_TTL_MS)
 
 type ChatRuntimeMetadata = ChatSessionMetadata & {
   mode?: ChatMode
