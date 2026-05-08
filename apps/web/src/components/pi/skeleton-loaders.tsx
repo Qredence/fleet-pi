@@ -15,9 +15,9 @@ export function ResourcesSkeleton() {
       <div className="space-y-2">
         <Skeleton className="h-4 w-28" />
         <div className="flex flex-wrap gap-1.5">
-          <Skeleton className="h-7 w-22 rounded-full" />
-          <Skeleton className="h-7 w-18 rounded-full" />
-          <Skeleton className="h-7 w-26 rounded-full" />
+          <Skeleton className="h-7 w-[5.5rem] rounded-full" />
+          <Skeleton className="h-7 w-[4.5rem] rounded-full" />
+          <Skeleton className="h-7 w-[6.5rem] rounded-full" />
         </div>
       </div>
       <div className="space-y-2">
@@ -25,7 +25,7 @@ export function ResourcesSkeleton() {
         <div className="flex flex-wrap gap-1.5">
           <Skeleton className="h-7 w-24 rounded-full" />
           <Skeleton className="h-7 w-20 rounded-full" />
-          <Skeleton className="h-7 w-30 rounded-full" />
+          <Skeleton className="h-7 w-[7.5rem] rounded-full" />
         </div>
       </div>
     </div>
