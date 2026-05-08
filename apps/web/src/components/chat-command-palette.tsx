@@ -97,7 +97,6 @@ export function ChatCommandPalette({
           >
             <Plus className="mr-2 size-4" />
             <span>New session</span>
-            <kbd className="ml-auto text-[10px] opacity-50"></kbd>
           </CommandItem>
           {isStreaming && (
             <CommandItem

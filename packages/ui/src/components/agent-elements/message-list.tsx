@@ -170,6 +170,14 @@ function CopyButton({
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef<number | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text)
