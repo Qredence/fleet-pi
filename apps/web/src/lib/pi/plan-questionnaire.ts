@@ -77,6 +77,7 @@ export function resolveQuestionnaireAnswer(
   const pending = pendingQuestions.get(toolCallId)
   if (!pending) return false
 
+  pendingQuestions.delete(toolCallId)
   pending.resolve(answer)
   return true
 }
