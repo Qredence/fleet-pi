@@ -156,24 +156,13 @@ function questionnaireAnswers(
   answer: ChatQuestionAnswer
 ) {
   if (answer.kind === "skip") return []
-
-  const optionMap = new Map<
-    string,
-    { id: string; value: string; label: string }
-  >()
-  for (const question of params.questions) {
-    for (const option of question.options) {
-      optionMap.set(option.value, {
-        id: question.id,
-        value: option.value,
-        label: option.label,
-      })
-    }
-  }
+  const selectedQuestion =
+    findQuestionById(params.questions, answer.questionId) ??
+    findQuestionByAnswer(params.questions, answer.selectedIds ?? [])
 
   if (answer.kind === "text") {
     const firstQuestionId =
-      params.questions.length > 0 ? params.questions[0].id : "custom"
+      selectedQuestion?.id ?? firstQuestionIdFrom(params.questions)
     return [
       {
         id: firstQuestionId,
@@ -187,7 +176,7 @@ function questionnaireAnswers(
   const selectedIds = answer.selectedIds ?? []
   const answers = selectedIds
     .map((id) => {
-      const option = optionMap.get(id)
+      const option = findOptionForAnswer(params.questions, selectedQuestion, id)
       if (!option) return undefined
       return {
         id: option.id,
@@ -209,7 +198,7 @@ function questionnaireAnswers(
 
   if (answer.text?.trim()) {
     const firstQuestionId =
-      params.questions.length > 0 ? params.questions[0].id : "custom"
+      selectedQuestion?.id ?? firstQuestionIdFrom(params.questions)
     answers.push({
       id: firstQuestionId,
       value: answer.text.trim(),
@@ -219,4 +208,57 @@ function questionnaireAnswers(
   }
 
   return answers
+}
+
+function firstQuestionIdFrom(questions: Array<QuestionnaireQuestion>) {
+  return questions.length > 0 ? questions[0].id : "custom"
+}
+
+function findQuestionById(
+  questions: Array<QuestionnaireQuestion>,
+  questionId: string | undefined
+) {
+  if (!questionId) return undefined
+  return questions.find((question) => question.id === questionId)
+}
+
+function findQuestionByAnswer(
+  questions: Array<QuestionnaireQuestion>,
+  selectedIds: Array<string>
+) {
+  if (selectedIds.length === 0) return questions[0]
+
+  return questions.find((question) =>
+    selectedIds.every((selectedId) =>
+      question.options.some((option) => option.value === selectedId)
+    )
+  )
+}
+
+function findOptionForAnswer(
+  questions: Array<QuestionnaireQuestion>,
+  selectedQuestion: QuestionnaireQuestion | undefined,
+  selectedId: string
+) {
+  const inferredQuestion = findQuestionByAnswer(questions, [selectedId])
+  const candidateQuestions = selectedQuestion
+    ? [selectedQuestion]
+    : inferredQuestion
+      ? [inferredQuestion]
+      : questions
+
+  for (const currentQuestion of candidateQuestions) {
+    const option = currentQuestion.options.find(
+      (candidate) => candidate.value === selectedId
+    )
+    if (option) {
+      return {
+        id: currentQuestion.id,
+        value: option.value,
+        label: option.label,
+      }
+    }
+  }
+
+  return undefined
 }

@@ -56,6 +56,7 @@ export const ChatRequestSchema = z
 export const ChatQuestionAnswerSchema = z
   .object({
     kind: z.enum(["single", "multi", "text", "skip"]),
+    questionId: z.string().optional(),
     selectedIds: z.array(z.string()).optional(),
     text: z.string().optional(),
   })
