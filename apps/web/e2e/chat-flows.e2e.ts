@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- this end-to-end suite intentionally keeps the mocked chat harness together */
 /* eslint-disable max-lines-per-function -- shared mocked chat harness keeps the suite readable in one place */
 import { expect, test } from "@playwright/test"
 import type { Locator, Page, Route } from "@playwright/test"

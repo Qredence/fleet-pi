@@ -1,1 +1,1 @@
-export { default } from "../../web-fetch.ts"
+export { default } from "../../../../../.pi/extensions/web-fetch.ts"

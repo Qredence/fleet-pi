@@ -1,5 +1,5 @@
 import { CircleAlert, File, FileText, Folder, HardDrive } from "lucide-react"
-import { useEffect, useRef, useState, type RefObject } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Markdown } from "@workspace/ui/components/agent-elements/markdown"
 import {
   ResourceChipSection,
@@ -7,6 +7,7 @@ import {
   findWorkspaceNode,
 } from "./shared"
 import { WorkspacePreviewSkeleton, WorkspaceSkeleton } from "./skeleton-loaders"
+import type { RefObject } from "react"
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
