@@ -2,20 +2,27 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Fleet Pi is still pre-1.0. Security fixes land on the latest `main` branch.
+Older commits, tags, and private forks should be treated as unsupported unless a
+maintainer says otherwise.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version                 | Supported |
+| ----------------------- | --------- |
+| `main`                  | Yes       |
+| Older tags and branches | No        |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please do not open public GitHub issues for security reports.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Use GitHub's private vulnerability reporting for this repository if it is
+enabled. If private reporting is not available, contact the maintainers
+privately through GitHub and include:
+
+- a clear description of the issue
+- affected files, routes, or workflows
+- repro steps or a proof of concept when safe to share
+- any mitigation ideas you already tested
+
+We aim to acknowledge reports within 3 business days and will follow up with
+triage status, fix planning, and coordinated disclosure guidance.

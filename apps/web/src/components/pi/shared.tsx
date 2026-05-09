@@ -1,4 +1,11 @@
-import { BookOpen, ClipboardList, FileText, Palette, Plug } from "lucide-react"
+import {
+  BookOpen,
+  ClipboardList,
+  FileText,
+  Package,
+  Palette,
+  Plug,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type {
   ChatResourceInfo,
@@ -11,6 +18,7 @@ export type ResourceGroupId =
   | "skills"
   | "prompts"
   | "extensions"
+  | "packages"
   | "themes"
   | "agentsFiles"
 
@@ -28,7 +36,10 @@ export function getResourceGroups(
       id: "skills",
       label: "Skills",
       icon: BookOpen,
-      items: getWorkspaceSkillResources(workspace),
+      items: mergeResourceItems(
+        resources?.skills.filter((skill) => skill.installedInWorkspace) ?? [],
+        getWorkspaceSkillResources(workspace)
+      ),
     },
     {
       id: "prompts",
@@ -41,6 +52,12 @@ export function getResourceGroups(
       label: "Extensions",
       icon: Plug,
       items: resources?.extensions ?? [],
+    },
+    {
+      id: "packages",
+      label: "Packages",
+      icon: Package,
+      items: resources?.packages ?? [],
     },
     {
       id: "themes",
@@ -113,7 +130,9 @@ export function getResourceChipTitle(item: ChatResourceInfo) {
   return [
     item.name,
     item.source ? `Source: ${item.source}` : null,
+    item.activationStatus ? `Status: ${item.activationStatus}` : null,
     item.description ?? null,
+    item.workspacePath ? displayResourcePath(item.workspacePath) : null,
     item.path ? displayResourcePath(item.path) : null,
   ]
     .filter(Boolean)
@@ -157,14 +176,13 @@ export function ResourceChipSection({
   items: Array<ChatResourceInfo>
   label: string
 }) {
-  const stacked = id === "skills"
-
   return (
     <section
-      className="grid grid-cols-[82px_minmax(0,1fr)] gap-x-3 gap-y-2 py-2.5"
+      id={`resource-section-${id}`}
+      className="flex min-w-0 flex-col gap-2 py-2.5"
       aria-label={`${label} resources`}
     >
-      <div className="flex min-w-0 items-center self-start pt-1.5 text-[14px] leading-5 text-foreground/45">
+      <div className="flex min-w-0 items-center text-[14px] leading-5 text-foreground/45">
         <span className="truncate underline decoration-foreground/25 underline-offset-2">
           {label}
         </span>
@@ -173,11 +191,7 @@ export function ResourceChipSection({
         </span>
       </div>
       <div
-        className={
-          stacked
-            ? "flex min-w-0 flex-col items-stretch gap-1.5"
-            : "flex min-w-0 flex-wrap items-start gap-2"
-        }
+        className="flex min-w-0 flex-col items-stretch gap-1.5"
         role="list"
         data-testid={`resource-chip-section-${label.toLowerCase()}`}
       >
@@ -191,7 +205,7 @@ export function ResourceChipSection({
               key={resourceKey(item)}
               icon={Icon}
               item={item}
-              stacked={stacked}
+              stacked
             />
           ))
         )}
@@ -232,6 +246,11 @@ export function ResourceChip({
           {item.source}
         </span>
       )}
+      {item.activationStatus && (
+        <span className="max-w-24 shrink-0 truncate rounded-[5px] bg-foreground/5 px-1.5 py-0.5 text-[10px] leading-3 text-foreground/35">
+          {item.activationStatus}
+        </span>
+      )}
     </div>
   )
 }
@@ -242,4 +261,17 @@ export function ResourceChipIcon({ icon: Icon }: { icon: LucideIcon }) {
       <Icon className="size-3.5" />
     </span>
   )
+}
+
+function mergeResourceItems(
+  primary: Array<ChatResourceInfo>,
+  secondary: Array<ChatResourceInfo>
+) {
+  const seen = new Set<string>()
+  return [...primary, ...secondary].filter((item) => {
+    const key = `${item.path ?? item.workspacePath ?? ""}:${item.name}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }

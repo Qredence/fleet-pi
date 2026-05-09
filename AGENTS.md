@@ -22,6 +22,16 @@
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 
+## Public Docs & Community Health
+
+- `README.md` is the public landing page. Keep it concise, user-focused, and centered on the recommended standalone path.
+- `docs/quickstart.md` is the primary onboarding doc for setup and local verification.
+- `docs/agent-workspace.md` explains how `agent-workspace/` acts as Fleet Pi's durable adaptive layer.
+- `docs/codex.md` is the advanced setup path for Codex worktrees, not the default setup guide.
+- `docs/api.md`, `docs/project-structure.md`, and `docs/architecture.md` are secondary reference docs. If they drift, fix the generator or its source inputs rather than hand-waving around stale output.
+- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and the issue templates are part of the public repository surface and should stay aligned with actual maintainer workflow.
+- When doc-generation sources change, run `pnpm generate:docs`. When command examples or AGENTS instructions change, run `pnpm validate-agents-md`.
+
 ## Devcontainer
 
 The repository includes a VS Code devcontainer configuration at `.devcontainer/devcontainer.json` with Node.js, pnpm, Git, and recommended editor extensions. Open the project in a devcontainer to get a fully pre-configured development environment. Port `3000` is forwarded automatically and `pnpm install` runs after container creation.
@@ -70,6 +80,9 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - The Pi resources browser in `apps/web/src/routes/index.tsx` fetches `/api/chat/resources` and surfaces discovered skills, prompts, extensions, themes, context files, and diagnostics. It opens as a resizable right-side canvas that opens at 70% viewport width and clamps resizing to that maximum; mobile open state is a compact overlay. The canvas also has a read-only `Workspace` tab backed by `/api/workspace/tree` and `/api/workspace/file`, plus a UI-first `Configurations` tab.
 - The `Configurations` tab is non-mutating for tools, connectors, provider setup, and model allowlist drafts. Theme personalization is functional and local: use `fleet-pi-theme-preference` plus the root `.dark` class for Light/Dark/System.
 - `apps/web/src/lib/workspace/server.ts` owns the `agent-workspace/` layout, creates seeded Markdown stubs without overwriting existing files, returns a sorted read-only filesystem tree, and safely previews file contents for paths inside the active `workspaceRoot`.
+- Fleet Pi's repo-local agent home is `agent-workspace/`: durable skills, tool context, memory, plans, evals, artifacts, and extension orientation should be discoverable there. Chat-installed Pi runtime resources live under `agent-workspace/pi/{skills,prompts,extensions,packages}`. Root `.pi/settings.json` remains the Pi compatibility bridge and should point at workspace-native resource paths.
+- Use `resource_install` for chat-driven Pi resource installs. Skills/prompts become usable after reload/new session; executable extensions and package bundles are staged unless the user explicitly asks to activate them. In v1, "plugins" means Pi resource packages/bundles, not Codex or Claude plugin bundles.
+- Canonical durable project memory lives in `agent-workspace/memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md`. Normal "remember this" requests should update the narrowest canonical file; ad hoc project-memory files are only for explicit user requests, temporary harness tests, or raw material that will later be synthesized.
 - Pi sessions are persistent JSONL sessions. Browser mode stores only Pi session metadata in localStorage and hydrates visible messages from the Pi session file after refresh.
 - Model choices should come from Pi `ModelRegistry`/`SettingsManager`, not a hard-coded UI list. Project-local Pi resources under `.pi/skills`, `.pi/prompts`, and `.pi/extensions` are loaded through `DefaultResourceLoader` and surfaced through `/api/chat/resources`.
 - Project-local Pi skills currently include `.pi/skills/fleet-pi-orientation`, `.pi/skills/chat-runtime-debugging`, `.pi/skills/agent-ui-workflows`, and the `.pi/skills/agent-elements` symlink to `.agents/skills/agent-elements`.

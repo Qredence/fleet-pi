@@ -37,7 +37,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
     name: "workspace_write",
     label: "Workspace Write",
     description:
-      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use rationale param for memory/project/**, memory/research/**, memory/summaries/**, plans/**, and skills/**. Protected paths (system/**, evals/**) require override:true.",
+      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use resource_install instead of workspace_write for Pi runtime skills/prompts/extensions/packages. For normal 'remember this' requests, prefer canonical memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md rather than creating ad hoc files. Use rationale param for memory/project/**, memory/research/**, memory/summaries/**, plans/**, and skills/**. Protected paths (system/**, evals/**) require override:true.",
     promptSnippet:
       "workspace_write: write files to agent-workspace/ (memory, plans, artifacts, scratch)",
     parameters: Type.Object({

@@ -164,14 +164,18 @@ export type ChatSessionInfo = {
 }
 
 export type ChatResourceInfo = {
+  activationStatus?: "active" | "staged" | "reload-required"
   name: string
   description?: string
+  installedInWorkspace?: boolean
   path?: string
   source?: string
+  workspacePath?: string
   argumentHint?: string
 }
 
 export type ChatResourcesResponse = {
+  packages: Array<ChatResourceInfo>
   skills: Array<ChatResourceInfo>
   prompts: Array<ChatResourceInfo>
   extensions: Array<ChatResourceInfo>

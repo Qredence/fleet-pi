@@ -5,6 +5,10 @@ import {
   collectDiagnostics,
   createSessionServices,
 } from "./server-shared"
+import {
+  loadWorkspaceResourceCatalog,
+  mergeResourceInfo,
+} from "./workspace-resource-catalog"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
@@ -85,15 +89,26 @@ export async function loadChatResources(
   const extensions = services.resourceLoader.getExtensions()
   const themes = services.resourceLoader.getThemes()
   const agentsFiles = services.resourceLoader.getAgentsFiles()
+  const workspaceResources = await loadWorkspaceResourceCatalog(context)
 
   const response: ChatResourcesResponse = {
-    skills: skills.skills.map(skillToResourceInfo),
-    prompts: prompts.prompts.map(promptToResourceInfo),
-    extensions: extensions.extensions.map((extension) => ({
-      name: extensionNameFromPath(extension.path),
-      path: extension.resolvedPath,
-      source: getSource(extension),
-    })),
+    packages: workspaceResources.packages,
+    skills: mergeResourceInfo(
+      skills.skills.map(skillToResourceInfo),
+      workspaceResources.skills
+    ),
+    prompts: mergeResourceInfo(
+      prompts.prompts.map(promptToResourceInfo),
+      workspaceResources.prompts
+    ),
+    extensions: mergeResourceInfo(
+      extensions.extensions.map((extension) => ({
+        name: extensionNameFromPath(extension.path),
+        path: extension.resolvedPath,
+        source: getSource(extension),
+      })),
+      workspaceResources.extensions
+    ),
     themes: themes.themes.map((theme) => {
       const resource = theme as unknown as Record<string, unknown>
       return {

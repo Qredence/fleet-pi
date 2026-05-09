@@ -2,8 +2,6 @@ name: Bug Report
 description: File a bug report to help us improve Fleet Pi
 title: "[Bug]: "
 labels: ["bug", "triage"]
-assignees:
-  - fleet-pi/maintainers
 body:
   - type: markdown
     attributes:
@@ -59,7 +57,7 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](../../SECURITY.md).
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/Qredence/fleet-pi/blob/main/CODE_OF_CONDUCT.md).
       options:
         - label: I agree to follow this project's Code of Conduct
           required: true

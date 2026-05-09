@@ -1,10 +1,13 @@
-import { readdir, readFile, stat } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
+import {
+  formatProjectMemoryForStartupContext,
+  readProjectMemoryIndex,
+} from "./lib/workspace-memory-index"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
-const STUB_MARKER = "Seeded stub."
 
 export default function workspaceContextExtension(pi: ExtensionAPI) {
   pi.on("before_agent_start", async (_event, ctx) => {
@@ -14,20 +17,28 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     const identity = await readIdentity(cwd)
     if (identity) parts.push(`Agent: ${identity}`)
 
+    parts.push(
+      "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
+    )
+
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
 
-    const memoryStatus = await readMemoryStatus(cwd)
-    if (memoryStatus) parts.push(`Memory: ${memoryStatus}`)
+    parts.push(
+      formatProjectMemoryForStartupContext(await readProjectMemoryIndex(cwd))
+    )
 
     parts.push(
       "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
     )
     parts.push(
+      "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed."
+    )
+    parts.push(
       "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
     )
     parts.push(
-      "On skill install: copy source file verbatim with workspace_write to agent-workspace/skills/<name>/SKILL.md — never summarize. Provide rationale (required for skills/**)."
+      "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
     )
 
     return {
@@ -97,35 +108,6 @@ async function readActivePlan(cwd: string): Promise<string | undefined> {
     // directory missing or unreadable
   }
   return undefined
-}
-
-async function readMemoryStatus(cwd: string): Promise<string | undefined> {
-  const files = [
-    "architecture.md",
-    "decisions.md",
-    "preferences.md",
-    "open-questions.md",
-    "known-issues.md",
-  ]
-  const projectDir = resolve(cwd, WORKSPACE_ROOT, "memory/project")
-  const statuses: Array<string> = []
-
-  for (const file of files) {
-    try {
-      const info = await stat(resolve(projectDir, file))
-      if (info.size > 100) {
-        const content = await readFile(resolve(projectDir, file), "utf8")
-        if (!content.includes(STUB_MARKER)) {
-          statuses.push(file.replace(/\.md$/, ""))
-        }
-      }
-    } catch {
-      // file missing
-    }
-  }
-
-  if (statuses.length === 0) return undefined
-  return `${statuses.join(", ")} (has content)`
 }
 
 function extractTitle(content: string): string | undefined {

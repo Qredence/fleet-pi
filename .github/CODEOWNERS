@@ -1,11 +1,11 @@
 # Global fallback owner for the entire repository
-* @fleet-pi/maintainers
+* @Zochory
 
 # Application code
-/apps/ @fleet-pi/maintainers
+/apps/ @Zochory
 
 # Shared packages
-/packages/ @fleet-pi/maintainers
+/packages/ @Zochory
 
 # GitHub configuration and CI/CD workflows
-/.github/ @fleet-pi/maintainers
+/.github/ @Zochory

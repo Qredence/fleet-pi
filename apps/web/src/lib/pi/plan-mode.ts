@@ -69,6 +69,7 @@ const NORMAL_MODE_TOOLS = [
   "edit",
   "write",
   "workspace_write",
+  "resource_install",
   "questionnaire",
   "web_fetch",
   ...PROJECT_RESOURCE_TOOLS,

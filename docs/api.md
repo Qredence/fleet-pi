@@ -14,12 +14,12 @@ Send a chat message and receive a streaming response
 
 ```json
 {
-  "sessionFile": <string>
-  "sessionId": <string>
-  "message": <string> — User message
-  "model": — Selected model
-  "mode": <string> — Chat mode
-  "planAction": <string> — Plan action
+  "sessionFile": <string>,
+  "sessionId": <string>,
+  "message": <string> — User message,
+  "model": — Selected model,
+  "mode": <string> — Chat mode,
+  "planAction": <string> — Plan action,
   "streamingBehavior": <string> — Streaming behavior
 }
 ```
@@ -30,106 +30,106 @@ Send a chat message and receive a streaming response
   One of:
   ```json
   {
-    "type": <string> (required)
-    "id": <string> (required)
-    "sessionFile": <string>
-    "sessionId": <string> (required)
-    "sessionReset": <boolean>
+    "type": <string> (required),
+    "id": <string> (required),
+    "sessionFile": <string>,
+    "sessionId": <string> (required),
+    "sessionReset": <boolean>,
     "diagnostics": <array>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "text": <string> (required)
+    "type": <string> (required),
+    "text": <string> (required),
     "messageId": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "part": <object> (required) — Tool message part
+    "type": <string> (required),
+    "part": <object> (required) — Tool message part,
     "messageId": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "mode": <string> (required) — Chat mode
-    "executing": <boolean> (required)
-    "completed": <number> (required)
-    "total": <number> (required)
+    "type": <string> (required),
+    "mode": <string> (required) — Chat mode,
+    "executing": <boolean> (required),
+    "completed": <number> (required),
+    "total": <number> (required),
     "message": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
+    "type": <string> (required),
     "state": <object> (required) — Chat state event
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "steering": <array> (required)
+    "type": <string> (required),
+    "steering": <array> (required),
     "followUp": <array> (required)
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "text": <string> (required)
+    "type": <string> (required),
+    "text": <string> (required),
     "messageId": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "phase": <string> (required)
+    "type": <string> (required),
+    "phase": <string> (required),
     "reason": <string> (required)
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "phase": <string> (required)
-    "reason": <string> (required)
-    "aborted": <boolean> (required)
-    "willRetry": <boolean> (required)
+    "type": <string> (required),
+    "phase": <string> (required),
+    "reason": <string> (required),
+    "aborted": <boolean> (required),
+    "willRetry": <boolean> (required),
     "errorMessage": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "phase": <string> (required)
-    "attempt": <number> (required)
-    "maxAttempts": <number> (required)
-    "delayMs": <number> (required)
+    "type": <string> (required),
+    "phase": <string> (required),
+    "attempt": <number> (required),
+    "maxAttempts": <number> (required),
+    "delayMs": <number> (required),
     "errorMessage": <string> (required)
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "phase": <string> (required)
-    "success": <boolean> (required)
-    "attempt": <number> (required)
+    "type": <string> (required),
+    "phase": <string> (required),
+    "success": <boolean> (required),
+    "attempt": <number> (required),
     "finalError": <string>
   }
   ```
   ```json
   {
-    "type": <string> (required)
-    "message": <object> (required) — Chat message
-    "sessionFile": <string>
-    "sessionId": <string> (required)
+    "type": <string> (required),
+    "message": <object> (required) — Chat message,
+    "sessionFile": <string>,
+    "sessionId": <string> (required),
     "sessionReset": <boolean>
   }
   ```
   ```json
   {
-    "type": <string> (required)
+    "type": <string> (required),
     "message": <string> (required)
   }
   ```
@@ -147,11 +147,11 @@ List available chat models
 - **200** — List of models
   ```json
   {
-    "models": <array> (required)
-    "selectedModelKey": <string>
-    "defaultProvider": <string>
-    "defaultModel": <string>
-    "defaultThinkingLevel": <string> — Thinking level
+    "models": <array> (required),
+    "selectedModelKey": <string>,
+    "defaultProvider": <string>,
+    "defaultModel": <string>,
+    "defaultThinkingLevel": <string> — Thinking level,
     "diagnostics": <array> (required)
   }
   ```
@@ -173,11 +173,12 @@ List available chat resources (skills, prompts, extensions)
 - **200** — List of resources
   ```json
   {
-    "skills": <array> (required)
-    "prompts": <array> (required)
-    "extensions": <array> (required)
-    "themes": <array> (required)
-    "agentsFiles": <array> (required)
+    "packages": <array> (required),
+    "skills": <array> (required),
+    "prompts": <array> (required),
+    "extensions": <array> (required),
+    "themes": <array> (required),
+    "agentsFiles": <array> (required),
     "diagnostics": <array> (required)
   }
   ```
@@ -206,8 +207,8 @@ Hydrate a chat session by query parameters
 - **200** — Session data
   ```json
   {
-    "session": <object> (required) — Chat session metadata
-    "messages": <array> (required)
+    "session": <object> (required) — Chat session metadata,
+    "messages": <array> (required),
     "sessionReset": <boolean>
   }
   ```
@@ -250,7 +251,7 @@ Create a new chat session
 - **200** — New session metadata
   ```json
   {
-    "sessionFile": <string> — Session file path
+    "sessionFile": <string> — Session file path,
     "sessionId": <string> — Session ID
   }
   ```
@@ -271,7 +272,7 @@ Resume an existing chat session
 
 ```json
 {
-  "sessionFile": <string> — Session file path
+  "sessionFile": <string> — Session file path,
   "sessionId": <string> — Session ID
 }
 ```
@@ -281,8 +282,8 @@ Resume an existing chat session
 - **200** — Session data
   ```json
   {
-    "session": <object> (required) — Chat session metadata
-    "messages": <array> (required)
+    "session": <object> (required) — Chat session metadata,
+    "messages": <array> (required),
     "sessionReset": <boolean>
   }
   ```
@@ -303,7 +304,7 @@ Abort the active chat session
 
 ```json
 {
-  "sessionFile": <string> — Session file path
+  "sessionFile": <string> — Session file path,
   "sessionId": <string> — Session ID
 }
 ```
@@ -333,9 +334,9 @@ Answer a question prompt from the assistant
 
 ```json
 {
-  "sessionFile": <string>
-  "sessionId": <string>
-  "toolCallId": <string>
+  "sessionFile": <string>,
+  "sessionId": <string>,
+  "toolCallId": <string>,
   "answer": <object> (required) — Question answer
 }
 ```
@@ -345,9 +346,9 @@ Answer a question prompt from the assistant
 - **200** — Answer processed
   ```json
   {
-    "ok": <boolean> (required)
-    "message": <string>
-    "mode": <string> — Chat mode
+    "ok": <boolean> (required),
+    "message": <string>,
+    "mode": <string> — Chat mode,
     "planAction": <string> — Plan action
   }
   ```
@@ -356,9 +357,9 @@ Answer a question prompt from the assistant
 - **404** — Not found
   ```json
   {
-    "ok": <boolean> (required)
-    "message": <string>
-    "mode": <string> — Chat mode
+    "ok": <boolean> (required),
+    "message": <string>,
+    "mode": <string> — Chat mode,
     "planAction": <string> — Plan action
   }
   ```

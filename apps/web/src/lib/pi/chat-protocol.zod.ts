@@ -335,16 +335,22 @@ export const ChatSessionsResponseSchema = z
 
 export const ChatResourceInfoSchema = z
   .object({
+    activationStatus: z
+      .enum(["active", "staged", "reload-required"])
+      .optional(),
     name: z.string(),
     description: z.string().optional(),
+    installedInWorkspace: z.boolean().optional(),
     path: z.string().optional(),
     source: z.string().optional(),
+    workspacePath: z.string().optional(),
     argumentHint: z.string().optional(),
   })
   .openapi({ description: "Chat resource info" })
 
 export const ChatResourcesResponseSchema = z
   .object({
+    packages: z.array(ChatResourceInfoSchema),
     skills: z.array(ChatResourceInfoSchema),
     prompts: z.array(ChatResourceInfoSchema),
     extensions: z.array(ChatResourceInfoSchema),

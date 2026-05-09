@@ -5,6 +5,7 @@
  * Produces:
  *   - docs/api.md              — Markdown API reference from openapi.json
  *   - docs/architecture.mmd    — Mermaid architecture diagram
+ *   - docs/architecture.md     — Markdown wrapper for the architecture diagram
  *   - docs/project-structure.md — Project structure overview
  */
 
@@ -95,7 +96,7 @@ for (const [path, methods] of Object.entries(openapi.paths ?? {})) {
   }
 }
 
-writeFileSync(join(docsDir, "api.md"), apiMd)
+writeFileSync(join(docsDir, "api.md"), `${apiMd.trimEnd()}\n`)
 console.log("docs/api.md written")
 
 // ─── 3. Generate architecture Mermaid diagram ───
@@ -106,6 +107,7 @@ graph TD
         AgentChat[AgentChat Component]
         InputBar[InputBar Component]
         MessageList[MessageList Component]
+        RightPanels[Resources and Workspace Panels]
     end
 
     subgraph WebApp["apps/web — TanStack Start"]
@@ -116,11 +118,28 @@ graph TD
         ModelsRoute[/api/chat/models]
         ResourcesRoute[/api/chat/resources]
         SessionRoute[/api/chat/session]
+        WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
         PlanMode[Plan Mode Extension]
+        WorkspaceServer[Workspace Server]
+        ResourceCatalog[Workspace Resource Catalog]
         CircuitBreaker[Circuit Breaker]
         Logger[Pino Logger]
         Sanitizer[PII Sanitizer]
+    end
+
+    subgraph AgentWorkspace["agent-workspace"]
+        Memory[Project Memory]
+        Plans[Plans and Backlog]
+        Skills[Skills and Evals]
+        PiResources[Installed Pi Resources]
+        Artifacts[Artifacts and Scratch]
+    end
+
+    subgraph ProjectPi[".pi"]
+        PiConfig[settings.json]
+        PiExtensions[Built-in Pi Extensions]
+        PiSkills[Committed Pi Skills]
     end
 
     subgraph UI["packages/ui — Shared Components"]
@@ -136,6 +155,7 @@ graph TD
     React --> AgentChat
     AgentChat --> InputBar
     AgentChat --> MessageList
+    AgentChat --> RightPanels
     React --> Vite
     Vite --> API
     API --> ChatRoute
@@ -143,12 +163,23 @@ graph TD
     API --> ModelsRoute
     API --> ResourcesRoute
     API --> SessionRoute
+    API --> WorkspaceRoutes
     ChatRoute --> PiServer
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
     CircuitBreaker --> Bedrock
     PiServer --> PlanMode
+    PiServer --> PiConfig
+    PiServer --> PiExtensions
+    PiServer --> PiSkills
+    ResourcesRoute --> ResourceCatalog
+    WorkspaceRoutes --> WorkspaceServer
+    ResourceCatalog --> PiResources
+    WorkspaceServer --> Memory
+    WorkspaceServer --> Plans
+    WorkspaceServer --> Skills
+    WorkspaceServer --> Artifacts
     AgentChat --> AgentElements
     AgentElements --> Shadcn
     AgentElements --> Styles
@@ -159,18 +190,34 @@ graph TD
 writeFileSync(join(docsDir, "architecture.mmd"), mermaid)
 console.log("docs/architecture.mmd written")
 
+const architectureMd = `# Fleet Pi Architecture
+
+Generated overview of the current runtime boundaries.
+
+\`\`\`mermaid
+${mermaid}
+\`\`\`
+`
+
+writeFileSync(join(docsDir, "architecture.md"), architectureMd)
+console.log("docs/architecture.md written")
+
 // ─── 4. Generate project-structure.md ───
 let structMd = `# Fleet Pi Project Structure\n\n`
 structMd += `Auto-generated overview of the monorepo workspace.\n\n`
 structMd += `## Workspace Layout\n\n`
 structMd += "\`\`\`text\n"
 structMd += `fleet-pi/\n`
+structMd += `├── .codex/                   # Codex local environment and bootstrap scripts\n`
+structMd += `├── .pi/                      # Committed Pi config, skills, and built-in extensions\n`
+structMd += `├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs\n`
 structMd += `├── apps/web/                 # TanStack Start application\n`
 structMd += `│   ├── src/routes/           # File-based API and page routes\n`
-structMd += `│   ├── src/lib/pi/           # Pi AI integration (server.ts, plan-mode.ts, chat-protocol)\n`
+structMd += `│   ├── src/lib/pi/           # Pi runtime integration (server.ts, plan-mode.ts, chat-protocol)\n`
+structMd += `│   ├── src/lib/workspace/    # agent-workspace tree and file helpers\n`
 structMd += `│   ├── src/lib/pii/          # PII sanitization module\n`
 structMd += `│   ├── src/lib/logger.ts     # Pino logger with redaction\n`
-structMd += `│   └── src/lib/api/          # API helpers and health endpoint\n`
+structMd += `│   └── src/components/pi/    # Right-panel resources, workspace, and config UI\n`
 structMd += `├── packages/ui/              # Shared React component library\n`
 structMd += `│   └── src/components/\n`
 structMd += `│       └── agent-elements/   # Reusable chat and tool UI\n`
@@ -185,7 +232,7 @@ structMd += `|---------|---------|\n`
 structMd += `| @tanstack/react-start | Full-stack React framework |\n`
 structMd += `| @mariozechner/pi-coding-agent | Pi coding-agent runtime |\n`
 structMd += `| @mariozechner/pi-ai | Pi AI primitives |\n`
-structMd += `| amazon-bedrock | Primary LLM provider |\n`
+structMd += `| Amazon Bedrock | Primary LLM provider |\n`
 structMd += `| pino + pino-pretty | Structured logging |\n`
 structMd += `| opossum | Circuit breaker pattern |\n`
 structMd += `| zod + @asteasolutions/zod-to-openapi | Schema validation & OpenAPI generation |\n`
@@ -198,8 +245,9 @@ structMd += `1. The **Browser** sends a user message to \`/api/chat\` via NDJSON
 structMd += `2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and creates or resumes a Pi session.\n`
 structMd += `3. The **Pi Server Module** invokes Amazon Bedrock through a circuit breaker.\n`
 structMd += `4. Streaming events (\`start\`, \`delta\`, \`tool\`, \`done\`, \`error\`) flow back to the client.\n`
-structMd += `5. The **Client** hydrates messages from the Pi session file on reload.\n`
-structMd += `6. Supporting endpoints (models, resources, sessions, health) provide metadata and lifecycle control.\n`
+structMd += `5. The **Client** hydrates messages from the Pi session file on reload and opens supporting resources/workspace panels on demand.\n`
+structMd += `6. Supporting endpoints expose models, resources, workspace files, sessions, and health checks.\n`
+structMd += `7. Durable agent context lives in \`agent-workspace/\`, including project memory, plans, artifacts, and workspace-installed Pi resources.\n`
 
 writeFileSync(join(docsDir, "project-structure.md"), structMd)
 console.log("docs/project-structure.md written")
@@ -207,6 +255,7 @@ console.log("docs/project-structure.md written")
 console.log("\nDoc generation complete. Artifacts:")
 console.log(`  - ${relative(repoRoot, join(docsDir, "api.md"))}`)
 console.log(`  - ${relative(repoRoot, join(docsDir, "architecture.mmd"))}`)
+console.log(`  - ${relative(repoRoot, join(docsDir, "architecture.md"))}`)
 console.log(`  - ${relative(repoRoot, join(docsDir, "project-structure.md"))}`)
 
 // ─── helpers ───
@@ -218,11 +267,13 @@ function formatSchema(schema, indentLevel = 0) {
   if (schema.type === "object" && schema.properties) {
     let out = `${indent}\`\`\`json\n`
     out += `${indent}{\n`
-    for (const [key, prop] of Object.entries(schema.properties)) {
+    const entries = Object.entries(schema.properties)
+    for (const [index, [key, prop]] of entries.entries()) {
       const req = (schema.required ?? []).includes(key) ? " (required)" : ""
       const typeStr = prop.type ? ` <${prop.type}>` : ""
       const desc = prop.description ? ` — ${prop.description}` : ""
-      out += `${indent}  "${key}":${typeStr}${req}${desc}\n`
+      const comma = index < entries.length - 1 ? "," : ""
+      out += `${indent}  "${key}":${typeStr}${req}${desc}${comma}\n`
     }
     out += `${indent}}\n`
     out += `${indent}\`\`\`\n`

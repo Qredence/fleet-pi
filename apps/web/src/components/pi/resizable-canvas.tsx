@@ -10,12 +10,14 @@ export function ResizableCanvas({
   onRefresh,
   onResizeStart,
   open,
+  headerActions,
   title,
   titleIcon: TitleIcon,
   width,
 }: {
   children: ReactNode
   dataTestid?: string
+  headerActions?: ReactNode
   loading: boolean
   onClose: () => void
   onRefresh?: () => void
@@ -33,7 +35,7 @@ export function ResizableCanvas({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: width, opacity: 0.8 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="relative hidden h-svh shrink-0 border-l border-border/70 bg-background/95 lg:flex"
+          className="relative hidden h-svh shrink-0 border-l border-border/70 bg-background/95 min-[960px]:flex"
           data-testid={dataTestid}
           style={{ width }}
         >
@@ -50,7 +52,8 @@ export function ResizableCanvas({
                 <TitleIcon className="size-3.5 shrink-0" />
                 <span>{title}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
+                {headerActions}
                 <button
                   type="button"
                   onClick={onRefresh}

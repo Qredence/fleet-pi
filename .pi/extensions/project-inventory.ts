@@ -3,7 +3,16 @@ import { resolve } from "node:path"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
 import { Type } from "typebox"
 
-const RESOURCE_DIRS = [".pi/skills", ".pi/prompts", ".pi/extensions"]
+const RESOURCE_DIRS = [
+  ".pi/skills",
+  ".pi/prompts",
+  ".pi/extensions",
+  "agent-workspace/pi/skills",
+  "agent-workspace/pi/prompts",
+  "agent-workspace/pi/extensions/staged",
+  "agent-workspace/pi/extensions/enabled",
+  "agent-workspace/pi/packages",
+]
 
 export default function projectInventoryExtension(pi: ExtensionAPI) {
   pi.registerTool({
@@ -33,7 +42,8 @@ export default function projectInventoryExtension(pi: ExtensionAPI) {
         "Fleet Pi is a TanStack Start chat app backed by Pi coding-agent sessions.",
         "Core backend files live under apps/web/src/lib/pi and apps/web/src/routes/api/chat*.ts.",
         "The browser chat surface lives in apps/web/src/routes/index.tsx and shared Agent Elements components live in packages/ui.",
-        "Project-local Pi resources are discovered from .pi/skills, .pi/prompts, and .pi/extensions.",
+        "Project-local Pi resources are discovered from root .pi plus workspace-native installs under agent-workspace/pi.",
+        "Chat-installed skills/prompts become available after reload; executable extensions/packages are staged unless explicitly activated.",
         focus ? `Requested focus: ${focus}` : undefined,
       ]
         .filter(Boolean)

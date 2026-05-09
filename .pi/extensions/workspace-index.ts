@@ -2,6 +2,10 @@ import { readdir, stat } from "node:fs/promises"
 import { resolve } from "node:path"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
 import { Type } from "typebox"
+import {
+  formatProjectMemoryForWorkspaceIndex,
+  readProjectMemoryIndex,
+} from "./lib/workspace-memory-index"
 
 type WorkspaceEntryKind = "file" | "directory"
 
@@ -31,12 +35,27 @@ const SYSTEM_ENTRIES = [
   fileEntry("agent-workspace/system/self-improvement-policy.md"),
 ]
 
-const MEMORY_ENTRIES = [
-  fileEntry("agent-workspace/memory/project/architecture.md"),
-  fileEntry("agent-workspace/memory/project/decisions.md"),
-  fileEntry("agent-workspace/memory/project/preferences.md"),
-  fileEntry("agent-workspace/memory/project/open-questions.md"),
-  fileEntry("agent-workspace/memory/project/known-issues.md"),
+const PI_EXTENSION_ENTRIES = [
+  fileEntry(".pi/extensions/project-inventory.ts"),
+  fileEntry(".pi/extensions/resource-install.ts"),
+  fileEntry(".pi/extensions/workspace-index.ts"),
+  fileEntry(".pi/extensions/workspace-write.ts"),
+  fileEntry(".pi/extensions/workspace-context.ts"),
+  fileEntry(".pi/extensions/web-fetch.ts"),
+  fileEntry(".pi/extensions/bedrock-bearer-auth.ts"),
+  fileEntry(".pi/extensions/vendor/filechanges/index.ts"),
+  fileEntry(".pi/extensions/vendor/subagents/index.ts"),
+]
+
+const RUNTIME_TOOLS = [
+  "workspace_index",
+  "workspace_write",
+  "resource_install",
+  "project_inventory",
+  "web_fetch",
+  "questionnaire",
+  "filechanges",
+  "subagent",
 ]
 
 const PLAN_ENTRIES = [
@@ -44,6 +63,14 @@ const PLAN_ENTRIES = [
   directoryEntry("agent-workspace/plans/completed"),
   directoryEntry("agent-workspace/plans/abandoned"),
   fileEntry("agent-workspace/plans/backlog.md"),
+]
+
+const WORKSPACE_PI_RESOURCE_ENTRIES = [
+  directoryEntry("agent-workspace/pi/skills"),
+  directoryEntry("agent-workspace/pi/prompts"),
+  directoryEntry("agent-workspace/pi/extensions/staged"),
+  directoryEntry("agent-workspace/pi/extensions/enabled"),
+  directoryEntry("agent-workspace/pi/packages"),
 ]
 
 const EVAL_ENTRIES = [
@@ -76,7 +103,17 @@ export default function workspaceIndexExtension(pi: ExtensionAPI) {
 
       const startHere = await resolveEntries(cwd, START_HERE_ENTRIES)
       const system = await resolveEntries(cwd, SYSTEM_ENTRIES)
-      const memory = await resolveEntries(cwd, MEMORY_ENTRIES)
+      const projectMemory = await readProjectMemoryIndex(cwd)
+      const memory = projectMemory.canonical.map((file) => ({
+        path: file.path,
+        exists: file.exists,
+        kind: "file" as const,
+      }))
+      const piExtensions = await resolveEntries(cwd, PI_EXTENSION_ENTRIES)
+      const workspacePiResources = await resolveEntries(
+        cwd,
+        WORKSPACE_PI_RESOURCE_ENTRIES
+      )
       const plans = await resolveEntries(cwd, PLAN_ENTRIES)
       const skills = await discoverSkills(cwd)
       const evals = await resolveEntries(cwd, EVAL_ENTRIES)
@@ -86,7 +123,8 @@ export default function workspaceIndexExtension(pi: ExtensionAPI) {
       const sections = [
         { title: "Start here", entries: startHere },
         { title: "System", entries: system },
-        { title: "Memory", entries: memory },
+        { title: "Pi extensions", entries: piExtensions },
+        { title: "Workspace Pi resources", entries: workspacePiResources },
         { title: "Plans", entries: plans },
         { title: "Skills", entries: skills },
         { title: "Evals", entries: evals },
@@ -96,18 +134,24 @@ export default function workspaceIndexExtension(pi: ExtensionAPI) {
 
       const missingPaths = sections
         .flatMap((section) => section.entries)
+        .concat(memory)
         .filter((entry) => !entry.exists)
         .map((entry) => entry.path)
 
       const summary = [
         "Fleet Pi agent workspace",
         WORKSPACE_PURPOSE,
+        "Agent home: use agent-workspace as the primary surface for Fleet Pi skills, tools, memory, plans, evals, artifacts, and runtime resource orientation.",
+        "Workspace-native installs: resource_install writes Pi skills, prompts, staged/enabled extensions, and package bundles under agent-workspace/pi. Start a new session or reload after installing.",
         rootExists
           ? undefined
           : "Workspace root missing: agent-workspace/ (tool returned the expected layout with missing entries marked).",
         ...sections.flatMap((section) =>
           formatSection(section.title, section.entries)
         ),
+        ...formatProjectMemoryForWorkspaceIndex(projectMemory),
+        "Runtime tools:",
+        ...RUNTIME_TOOLS.map((tool) => `- ${tool}`),
         "Mutation boundaries:",
         `- ${MUTATION_BOUNDARIES_NOTE}`,
       ]
@@ -122,6 +166,11 @@ export default function workspaceIndexExtension(pi: ExtensionAPI) {
           startHere,
           system,
           memory,
+          projectMemory,
+          orphanedMemory: projectMemory.orphaned,
+          piExtensions,
+          workspacePiResources,
+          runtimeTools: RUNTIME_TOOLS,
           plans,
           skills,
           evals,

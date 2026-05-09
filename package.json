@@ -1,7 +1,17 @@
 {
   "name": "fleet-pi",
   "version": "0.0.1",
+  "description": "A browser-based coding-agent workspace with Pi-backed chat, plan mode, and a durable agent-workspace.",
   "private": true,
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Qredence/fleet-pi#readme",
+  "bugs": {
+    "url": "https://github.com/Qredence/fleet-pi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Qredence/fleet-pi.git"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev --filter=web",
