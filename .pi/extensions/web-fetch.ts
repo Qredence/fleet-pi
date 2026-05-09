@@ -1,20 +1,12 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
 import { Type } from "typebox"
+import { validatePublicHttpsUrl } from "./lib/url-security"
 
 const DEFAULT_MAX_BYTES = 100_000
 const FETCH_TIMEOUT_MS = 15_000
 
 const GITHUB_BLOB_RE =
   /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/
-
-// Private IPv4 ranges, loopback, link-local, and localhost
-const BLOCKED_HOSTNAME_RE =
-  /^(localhost|.*\.localhost)$|^127\.|^0\.|^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\.|^169\.254\.|^\[?::1\]?$|^\[?fc|^\[?fd/i
-
-function isBlockedHost(hostname: string): boolean {
-  return BLOCKED_HOSTNAME_RE.test(hostname)
-}
-
 export default function webFetchExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
@@ -24,7 +16,8 @@ export default function webFetchExtension(pi: ExtensionAPI) {
     promptSnippet: "web_fetch: fetch a URL and return its text content",
     parameters: Type.Object({
       url: Type.String({
-        description: "HTTPS URL to fetch (http:// is also accepted for GitHub raw URLs)",
+        description:
+          "HTTPS URL to fetch (http:// is also accepted for GitHub raw URLs)",
       }),
       maxBytes: Type.Optional(
         Type.Number({
@@ -36,38 +29,15 @@ export default function webFetchExtension(pi: ExtensionAPI) {
       const limit = params.maxBytes ?? DEFAULT_MAX_BYTES
       const rawUrl = rewriteUrl(params.url)
 
-      let parsed: URL
       try {
-        parsed = new URL(rawUrl)
-      } catch {
+        await validatePublicHttpsUrl(rawUrl, "URL", {
+          allowExplicitLoopback: true,
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : `Invalid URL: ${rawUrl}`
         return {
-          content: [{ type: "text" as const, text: `Invalid URL: ${rawUrl}` }],
-          details: undefined,
-          isError: true,
-        }
-      }
-
-      if (parsed.protocol !== "https:") {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Blocked: only https:// URLs are allowed (got ${parsed.protocol}).`,
-            },
-          ],
-          details: undefined,
-          isError: true,
-        }
-      }
-
-      if (isBlockedHost(parsed.hostname)) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Blocked: private or internal host "${parsed.hostname}" is not allowed.`,
-            },
-          ],
+          content: [{ type: "text" as const, text: `Blocked: ${message}` }],
           details: undefined,
           isError: true,
         }
@@ -82,7 +52,7 @@ export default function webFetchExtension(pi: ExtensionAPI) {
       try {
         response = await fetch(rawUrl, {
           signal: combinedSignal,
-          redirect: "follow",
+          redirect: "error",
           headers: { "User-Agent": "fleet-pi-agent/1.0" },
         })
       } catch (err) {
@@ -183,7 +153,7 @@ export default function webFetchExtension(pi: ExtensionAPI) {
         content: [{ type: "text" as const, text: body }],
         details: {
           url: params.url,
-          finalUrl: rawUrl,
+          finalUrl: response.url || rawUrl,
           contentType,
           bytes: totalBytes,
           truncated,

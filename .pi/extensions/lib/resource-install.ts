@@ -9,13 +9,8 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises"
-import {
-  dirname,
-  isAbsolute,
-  join,
-  relative,
-  resolve,
-} from "node:path"
+import { dirname, isAbsolute, join, relative, resolve } from "node:path"
+import { validatePublicHttpsUrl } from "./url-security"
 
 export type ResourceInstallKind = "skill" | "prompt" | "extension" | "package"
 export type ResourceInstallSourceType = "content" | "path" | "url"
@@ -44,8 +39,6 @@ const MAX_URL_BYTES = 250_000
 const FETCH_TIMEOUT_MS = 15_000
 const GITHUB_BLOB_RE =
   /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/
-const BLOCKED_HOSTNAME_RE =
-  /^(localhost|.*\.localhost)$|^127\.|^0\.|^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\.|^169\.254\.|^\[?::1\]?$|^\[?fc|^\[?fd/i
 
 const WORKSPACE_SETTINGS_PATHS = {
   extensions: "../agent-workspace/pi/extensions/enabled",
@@ -61,7 +54,9 @@ export async function ensureWorkspaceResourceDirectories(cwd: string) {
       "extensions/staged",
       "extensions/enabled",
       "packages",
-    ].map((dir) => mkdir(resolve(cwd, WORKSPACE_PI_ROOT, dir), { recursive: true }))
+    ].map((dir) =>
+      mkdir(resolve(cwd, WORKSPACE_PI_ROOT, dir), { recursive: true })
+    )
   )
 }
 
@@ -105,7 +100,10 @@ export async function installWorkspaceResource(
   )
 
   return {
-    activationStatus: activationStatusFor(params.kind, Boolean(params.activate)),
+    activationStatus: activationStatusFor(
+      params.kind,
+      Boolean(params.activate)
+    ),
     installedPath,
     kind: params.kind,
     name,
@@ -139,7 +137,9 @@ async function installPrompt(
   source: LoadedInstallSource
 ) {
   if (source.kind === "directory") {
-    throw new Error("Prompt installs must provide a text file or pasted content.")
+    throw new Error(
+      "Prompt installs must provide a text file or pasted content."
+    )
   }
 
   const targetPath = `${WORKSPACE_PI_ROOT}/prompts/${name}.md`
@@ -173,7 +173,9 @@ async function installPackage(
   activate: boolean | undefined
 ) {
   if (source.kind !== "directory") {
-    throw new Error("Package installs must use sourceType:path pointing at a directory.")
+    throw new Error(
+      "Package installs must use sourceType:path pointing at a directory."
+    )
   }
 
   await assertPiPackage(source.absolutePath)
@@ -181,7 +183,10 @@ async function installPackage(
   const absoluteTarget = resolve(cwd, targetPath)
   await rm(absoluteTarget, { force: true, recursive: true })
   await mkdir(dirname(absoluteTarget), { recursive: true })
-  await cp(source.absolutePath, absoluteTarget, { force: true, recursive: true })
+  await cp(source.absolutePath, absoluteTarget, {
+    force: true,
+    recursive: true,
+  })
 
   return {
     installedPath: targetPath,
@@ -204,12 +209,17 @@ async function ensureWorkspacePiSettings(
   }
 
   if (activePackagePath) {
-    changed = addUniqueSetting(settings, "packages", activePackagePath) || changed
+    changed =
+      addUniqueSetting(settings, "packages", activePackagePath) || changed
   }
 
   if (changed) {
     await mkdir(dirname(settingsPath), { recursive: true })
-    await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8")
+    await writeFile(
+      settingsPath,
+      `${JSON.stringify(settings, null, 2)}\n`,
+      "utf8"
+    )
   }
 
   return changed
@@ -233,7 +243,9 @@ function addUniqueSetting(
   value: string
 ) {
   const current = Array.isArray(settings[key]) ? settings[key] : []
-  const strings = current.filter((item): item is string => typeof item === "string")
+  const strings = current.filter(
+    (item): item is string => typeof item === "string"
+  )
   if (strings.includes(value)) {
     if (settings[key] !== strings) settings[key] = strings
     return false
@@ -255,13 +267,17 @@ async function loadInstallSource(
     return { content: params.source, kind: "text" }
   }
   if (params.sourceType === "url") {
-    return { content: await fetchTextSource(params.source, signal), kind: "text" }
+    return {
+      content: await fetchTextSource(params.source, signal),
+      kind: "text",
+    }
   }
 
   const absolutePath = await resolveSafeProjectPath(cwd, params.source)
   const info = await stat(absolutePath)
   if (info.isDirectory()) return { absolutePath, kind: "directory" }
-  if (!info.isFile()) throw new Error("Install source path is not a file or directory.")
+  if (!info.isFile())
+    throw new Error("Install source path is not a file or directory.")
   return { content: await readFile(absolutePath, "utf8"), kind: "text" }
 }
 
@@ -285,13 +301,9 @@ async function resolveSafeProjectPath(cwd: string, sourcePath: string) {
 
 async function fetchTextSource(url: string, signal?: AbortSignal) {
   const finalUrl = rewriteGitHubBlobUrl(url)
-  const parsed = new URL(finalUrl)
-  if (parsed.protocol !== "https:") {
-    throw new Error("Install URLs must use https://.")
-  }
-  if (BLOCKED_HOSTNAME_RE.test(parsed.hostname)) {
-    throw new Error("Install URL points to a private or internal host.")
-  }
+  await validatePublicHttpsUrl(finalUrl, "Install URL", {
+    allowExplicitLoopback: true,
+  })
 
   const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const combinedSignal = signal
@@ -299,7 +311,7 @@ async function fetchTextSource(url: string, signal?: AbortSignal) {
     : timeoutSignal
   const response = await fetch(finalUrl, {
     headers: { "User-Agent": "fleet-pi-agent/1.0" },
-    redirect: "follow",
+    redirect: "error",
     signal: combinedSignal,
   })
   if (!response.ok) {
@@ -307,7 +319,9 @@ async function fetchTextSource(url: string, signal?: AbortSignal) {
   }
   const contentType = response.headers.get("content-type") ?? ""
   if (!isTextContentType(contentType)) {
-    throw new Error(`Install URL returned non-text content-type "${contentType}".`)
+    throw new Error(
+      `Install URL returned non-text content-type "${contentType}".`
+    )
   }
   const contentLength = response.headers.get("content-length")
   if (contentLength && Number(contentLength) > MAX_URL_BYTES) {
@@ -387,7 +401,9 @@ function normalizeResourceName(name: string) {
 }
 
 function looksLikeSkill(content: string) {
-  return /^---[\s\S]*?\bname:\s*.+?---/m.test(content) || /^#\s+.+/m.test(content)
+  return (
+    /^---[\s\S]*?\bname:\s*.+?---/m.test(content) || /^#\s+.+/m.test(content)
+  )
 }
 
 function looksLikeExtension(content: string) {

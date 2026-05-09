@@ -2,19 +2,31 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import resourceInstallExtension from "../../../../../.pi/extensions/resource-install"
 import {
   ensureWorkspaceResourceDirectories,
   installWorkspaceResource,
 } from "../../../../../.pi/extensions/lib/resource-install"
 
+const { lookupMock } = vi.hoisted(() => ({
+  lookupMock: vi.fn(),
+}))
+
+vi.mock("node:dns/promises", () => ({
+  lookup: lookupMock,
+}))
+
 describe("resource_install workspace installer", () => {
   const tempRoots: Array<string> = []
 
   afterEach(async () => {
+    lookupMock.mockReset()
     vi.unstubAllGlobals()
     await Promise.all(
-      tempRoots.splice(0).map((root) => rm(root, { force: true, recursive: true }))
+      tempRoots
+        .splice(0)
+        .map((root) => rm(root, { force: true, recursive: true }))
     )
   })
 
@@ -52,21 +64,25 @@ describe("resource_install workspace installer", () => {
         "utf8"
       )
     ).resolves.toContain("Frontend Helper")
-    await expect(readFile(join(root, ".pi/settings.json"), "utf8")).resolves
-      .toContain("../agent-workspace/pi/skills")
+    await expect(
+      readFile(join(root, ".pi/settings.json"), "utf8")
+    ).resolves.toContain("../agent-workspace/pi/skills")
   })
 
   it("fetches URL sources for prompts", async () => {
     const root = await createTempProject()
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => {
-        return new Response("# Prompt\n\nDo the thing.\n", {
+    lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }])
+    const fetchMock = vi.fn<
+      (input: string, init?: RequestInit) => Promise<Response>
+    >(() => {
+      return Promise.resolve(
+        new Response("# Prompt\n\nDo the thing.\n", {
           headers: { "content-type": "text/markdown" },
           status: 200,
         })
-      })
-    )
+      )
+    })
+    vi.stubGlobal("fetch", fetchMock)
 
     const result = await installWorkspaceResource(root, {
       kind: "prompt",
@@ -75,10 +91,62 @@ describe("resource_install workspace installer", () => {
       sourceType: "url",
     })
 
-    expect(result.installedPath).toBe("agent-workspace/pi/prompts/daily-brief.md")
+    expect(result.installedPath).toBe(
+      "agent-workspace/pi/prompts/daily-brief.md"
+    )
+    const requestInit = fetchMock.mock.calls[0]?.[1]
+    expect(requestInit).toMatchObject({ redirect: "error" })
     await expect(
       readFile(join(root, "agent-workspace/pi/prompts/daily-brief.md"), "utf8")
     ).resolves.toContain("Do the thing")
+  })
+
+  it("rejects URL sources that resolve to private IP space", async () => {
+    const root = await createTempProject()
+    lookupMock.mockResolvedValue([{ address: "10.0.0.8", family: 4 }])
+    const fetchMock =
+      vi.fn<(input: string, init?: RequestInit) => Promise<Response>>()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      installWorkspaceResource(root, {
+        kind: "prompt",
+        name: "Bad Prompt",
+        source: "https://example.com/prompt.md",
+        sourceType: "url",
+      })
+    ).rejects.toThrow("resolves to a private or internal IP address")
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("allows explicit localhost URL sources for local development", async () => {
+    const root = await createTempProject()
+    const fetchMock = vi.fn<
+      (input: string, init?: RequestInit) => Promise<Response>
+    >(() => {
+      return Promise.resolve(
+        new Response("# Local Prompt\n", {
+          headers: { "content-type": "text/markdown" },
+          status: 200,
+        })
+      )
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = await installWorkspaceResource(root, {
+      kind: "prompt",
+      name: "Local Prompt",
+      source: "http://localhost:3000/prompt.md",
+      sourceType: "url",
+    })
+
+    expect(result.installedPath).toBe(
+      "agent-workspace/pi/prompts/local-prompt.md"
+    )
+    expect(lookupMock).not.toHaveBeenCalled()
+    const requestInit = fetchMock.mock.calls[0]?.[1]
+    expect(requestInit).toMatchObject({ redirect: "error" })
   })
 
   it("stages extensions unless explicitly activated", async () => {
@@ -130,9 +198,12 @@ describe("resource_install workspace installer", () => {
       sourceType: "path",
     })
 
-    expect(result.installedPath).toBe("agent-workspace/pi/packages/example-package")
-    await expect(readFile(join(root, ".pi/settings.json"), "utf8")).resolves
-      .toContain("../agent-workspace/pi/packages/example-package")
+    expect(result.installedPath).toBe(
+      "agent-workspace/pi/packages/example-package"
+    )
+    await expect(
+      readFile(join(root, ".pi/settings.json"), "utf8")
+    ).resolves.toContain("../agent-workspace/pi/packages/example-package")
   })
 
   it("rejects source paths that escape the project", async () => {

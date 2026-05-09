@@ -45,7 +45,7 @@ export async function loadAgentWorkspaceFile(
   await ensureAgentWorkspace(context)
 
   const previewFile = await resolveWorkspacePreviewFile(context, filePath)
-  const fileHandle = await open(previewFile.realPath, "r")
+  const { fileHandle } = previewFile
 
   try {
     const fileStats = await fileHandle.stat()
@@ -241,7 +241,7 @@ async function resolveWorkspacePreviewFile(
       )
     }
 
-    return { resolvedPath, realPath }
+    return { fileHandle, resolvedPath, realPath }
   } catch (error) {
     try {
       await fileHandle.close()
