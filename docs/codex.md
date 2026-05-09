@@ -3,6 +3,10 @@
 Fleet Pi ships a shared Codex local environment so new Codex worktree threads
 can bootstrap the repo consistently.
 
+If you just want to run Fleet Pi locally as a web app, start with
+[docs/quickstart.md](quickstart.md) instead. This page is the advanced path for
+Codex worktrees.
+
 ## Shared Environment
 
 - Environment definition: `.codex/environments/environment.toml`

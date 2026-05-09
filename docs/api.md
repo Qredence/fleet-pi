@@ -173,6 +173,7 @@ List available chat resources (skills, prompts, extensions)
 - **200** — List of resources
   ```json
   {
+    "packages": <array> (required)
     "skills": <array> (required)
     "prompts": <array> (required)
     "extensions": <array> (required)

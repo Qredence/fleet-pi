@@ -4,6 +4,11 @@
   "workspaces": {
     ".": {
       "entry": ["eslint.config.js", ".pi/extensions/**/*.ts"],
+      "project": [
+        "scripts/**/*.js",
+        ".pi/extensions/**/*.ts",
+        "!agent-workspace/pi/**"
+      ],
       "ignoreDependencies": ["zod"]
     },
     "apps/web": {

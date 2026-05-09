@@ -1,11 +1,11 @@
 # Global fallback owner for the entire repository
-* @fleet-pi/maintainers
+* @Qredence
 
 # Application code
-/apps/ @fleet-pi/maintainers
+/apps/ @Qredence
 
 # Shared packages
-/packages/ @fleet-pi/maintainers
+/packages/ @Qredence
 
 # GitHub configuration and CI/CD workflows
-/.github/ @fleet-pi/maintainers
+/.github/ @Qredence

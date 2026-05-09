@@ -1,8 +1,6 @@
 name: QA
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       target_branch:
@@ -11,12 +9,12 @@ on:
         default: ""
 
 concurrency:
-  group: qa-${{ github.event.pull_request.number || github.ref }}
+  group: qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   qa:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 25
 
     env:
@@ -63,15 +61,11 @@ jobs:
           Run the qa skill. Write the final report to qa-results/report.md.
           "
 
-      - name: Prepare report for PR comment
-        id: prepare-report
-        if: always() && github.event_name == 'pull_request'
+      - name: Ensure QA report exists
+        if: always()
         run: |
           mkdir -p qa-results
-          if [ -f qa-results/report.md ]; then
-            echo "report_found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "report_found=false" >> "$GITHUB_OUTPUT"
+          if [ ! -f qa-results/report.md ]; then
             echo "## QA Report" > qa-results/report.md
             echo "" >> qa-results/report.md
             echo "No report was generated. Check the workflow logs for details." >> qa-results/report.md
@@ -84,30 +78,3 @@ jobs:
           name: qa-results-${{ github.run_number }}
           path: qa-results/
           retention-days: 14
-
-      - name: Post QA report as PR comment
-        if: always() && github.event_name == 'pull_request' && steps.prepare-report.outputs.report_found == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          REPORT_FILE="qa-results/report.md"
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          # Build comment body
-          COMMENT_BODY="<!-- qa-report -->
-          $(cat "$REPORT_FILE")
-
-          ---
-          **Artifact:** [qa-results-${{ github.run_number }}]($ARTIFACT_URL)
-          **Workflow run:** [#$GITHUB_RUN_NUMBER]($RUN_URL)
-          "
-
-          # Check for existing QA comment
-          EXISTING_COMMENT=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | startswith("<!-- qa-report -->")) | .id')
-
-          if [ -n "$EXISTING_COMMENT" ]; then
-            gh api repos/${{ github.repository }}/issues/comments/$EXISTING_COMMENT --method PATCH -f body="$COMMENT_BODY"
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT_BODY"
-          fi

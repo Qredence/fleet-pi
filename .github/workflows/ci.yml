@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   setup:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
@@ -32,7 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
   lint:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -56,7 +56,7 @@ jobs:
         run: pnpm lint
 
   typecheck:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -80,7 +80,7 @@ jobs:
         run: pnpm typecheck
 
   syncpack:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: setup
 
@@ -104,7 +104,7 @@ jobs:
         run: pnpm syncpack
 
   test:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [lint, typecheck]
 
@@ -220,7 +220,7 @@ jobs:
           retention-days: 30
 
   build:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint, typecheck]
 
@@ -343,7 +343,7 @@ jobs:
           retention-days: 30
 
   knip:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -367,7 +367,7 @@ jobs:
         run: pnpm knip
 
   jscpd:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -399,7 +399,7 @@ jobs:
           retention-days: 30
 
   tech-debt:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: setup
 
@@ -436,7 +436,7 @@ jobs:
           retention-days: 30
 
   agents-md-validation:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: setup
 

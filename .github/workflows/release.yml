@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
@@ -19,8 +19,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
   lint:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -42,8 +40,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,7 +54,7 @@ jobs:
         run: pnpm lint
 
   typecheck:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -68,8 +64,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -84,7 +78,7 @@ jobs:
         run: pnpm typecheck
 
   test:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [lint, typecheck]
 
@@ -94,8 +88,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -110,7 +102,7 @@ jobs:
         run: pnpm --filter web test
 
   build:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint, typecheck]
 
@@ -120,8 +112,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -136,7 +126,7 @@ jobs:
         run: pnpm build
 
   syncpack:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: setup
 
@@ -146,8 +136,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -162,7 +150,7 @@ jobs:
         run: pnpm syncpack
 
   knip:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -172,8 +160,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -188,7 +174,7 @@ jobs:
         run: pnpm knip
 
   jscpd:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: setup
 
@@ -198,8 +184,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -214,7 +198,7 @@ jobs:
         run: pnpm jscpd
 
   release:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     needs: [test, build, syncpack, knip, jscpd]
     permissions:
       contents: write
