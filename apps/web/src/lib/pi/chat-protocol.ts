@@ -55,6 +55,22 @@ export type ChatQuestionAnswerResponse = {
   planAction?: ChatPlanAction
 }
 
+export type ChatPlanTodo = {
+  step: number
+  text: string
+  completed: boolean
+}
+
+export type ChatPlanState = {
+  mode: ChatMode
+  executing: boolean
+  pendingDecision: boolean
+  completed: number
+  total: number
+  todos: Array<ChatPlanTodo>
+  message?: string
+}
+
 type ChatStartEvent = {
   type: "start"
   id: string
@@ -75,6 +91,7 @@ export type ChatStreamEvent =
       completed: number
       total: number
       message?: string
+      state: ChatPlanState
     }
   | { type: "state"; state: ChatStateEvent }
   | { type: "queue"; steering: Array<string>; followUp: Array<string> }

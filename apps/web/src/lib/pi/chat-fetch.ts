@@ -1,3 +1,5 @@
+import { ChatStreamEventSchema } from "./chat-protocol.zod"
+import type { ZodType } from "zod"
 import type { ChatSessionMetadata, ChatStreamEvent } from "./chat-protocol"
 
 export async function fetchJson<T>(
@@ -10,6 +12,15 @@ export async function fetchJson<T>(
     throw new Error(body || `Request failed (${response.status})`)
   }
   return (await response.json()) as T
+}
+
+export async function fetchValidatedJson<T>(
+  url: string,
+  schema: ZodType<T>,
+  init?: RequestInit
+): Promise<T> {
+  const data = await fetchJson<unknown>(url, init)
+  return parseWithSchema(schema, data, `Response from ${url}`)
 }
 
 export async function readChatStream(
@@ -25,7 +36,8 @@ export async function readChatStream(
   const handleLine = (line: string) => {
     const trimmed = line.trim()
     if (!trimmed) return
-    onEvent(JSON.parse(trimmed) as ChatStreamEvent)
+    const data = JSON.parse(trimmed) as unknown
+    onEvent(parseWithSchema(ChatStreamEventSchema, data, "Chat stream event"))
   }
 
   for (;;) {
@@ -43,6 +55,17 @@ export async function readChatStream(
 
   buffer += decoder.decode()
   handleLine(buffer)
+}
+
+export function parseWithSchema<T>(
+  schema: ZodType<T>,
+  data: unknown,
+  label: string
+): T {
+  const parsed = schema.safeParse(data)
+  if (parsed.success) return parsed.data
+
+  throw new Error(`${label} did not match the expected contract`)
 }
 
 export function metadataUrl(metadata: ChatSessionMetadata) {

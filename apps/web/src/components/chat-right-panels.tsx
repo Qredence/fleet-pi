@@ -5,17 +5,24 @@ import { ResizableCanvas } from "./pi/resizable-canvas"
 import { ResourcesPanelContent } from "./pi/resources-panel"
 import { WorkspacePanelContent } from "./pi/workspace-panel"
 import type { PointerEvent as ReactPointerEvent } from "react"
+import type { ChatStatus } from "@workspace/ui/components/agent-elements/chat-types"
 import type { RightPanel, ThemePreference } from "@/lib/canvas-utils"
 import type {
+  ChatMode,
   ChatResourcesResponse,
   WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
+import type { QueueState } from "@/lib/pi/chat-fetch"
 import type { ChatModelOption } from "@/lib/pi/chat-helpers"
 
 export function ChatRightPanels({
+  activityLabel,
   handleResourceCanvasResizeStart,
   handleThemePreferenceChange,
+  mode,
   models,
+  planLabel,
+  queue,
   refreshResources,
   refreshWorkspace,
   resourceCanvasWidth,
@@ -23,17 +30,23 @@ export function ChatRightPanels({
   resourcesError,
   resourcesLoading,
   rightPanel,
+  selectedModelKey,
   setRightPanel,
+  status,
   themePreference,
   workspaceError,
   workspaceLoading,
   workspaceTree,
 }: {
+  activityLabel?: string
   handleResourceCanvasResizeStart: (
     event: ReactPointerEvent<HTMLButtonElement>
   ) => void
   handleThemePreferenceChange: (preference: ThemePreference) => void
+  mode: ChatMode
   models: Array<ChatModelOption>
+  planLabel?: string
+  queue: QueueState
   refreshResources: () => void
   refreshWorkspace: () => void
   resourceCanvasWidth: number
@@ -41,7 +54,9 @@ export function ChatRightPanels({
   resourcesError: Error | null
   resourcesLoading: boolean
   rightPanel: RightPanel
+  selectedModelKey?: string
   setRightPanel: (panel: RightPanel) => void
+  status: ChatStatus
   themePreference: ThemePreference
   workspaceError: Error | null
   workspaceLoading: boolean
@@ -91,8 +106,15 @@ export function ChatRightPanels({
         open={rightPanel === "configurations"}
       >
         <ConfigurationsPanelContent
+          activityLabel={activityLabel}
+          mode={mode}
           models={models}
           onThemePreferenceChange={handleThemePreferenceChange}
+          planLabel={planLabel}
+          queue={queue}
+          resources={resources}
+          selectedModelKey={selectedModelKey}
+          status={status}
           themePreference={themePreference}
         />
       </MobilePanel>
@@ -145,8 +167,15 @@ export function ChatRightPanels({
         width={resourceCanvasWidth}
       >
         <ConfigurationsPanelContent
+          activityLabel={activityLabel}
+          mode={mode}
           models={models}
           onThemePreferenceChange={handleThemePreferenceChange}
+          planLabel={planLabel}
+          queue={queue}
+          resources={resources}
+          selectedModelKey={selectedModelKey}
+          status={status}
           themePreference={themePreference}
         />
       </ResizableCanvas>

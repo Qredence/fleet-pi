@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
-import { SessionManager } from "@mariozechner/pi-coding-agent"
+import { SessionManager } from "@earendil-works/pi-coding-agent"
+import { createPlanToolPart, restorePlanState } from "./plan-state"
 import { sessionEntriesToChatMessages } from "./server-utils"
 import {
   createSessionServices,
@@ -74,7 +75,10 @@ export async function hydrateChatSession(
 
   return {
     session: toSessionMetadata(sessionManager),
-    messages: sessionEntriesToChatMessages(sessionManager.getBranch()),
+    messages: attachPersistedPlanPart(
+      sessionEntriesToChatMessages(sessionManager.getBranch()),
+      restorePersistedPlanState(sessionManager)
+    ),
   }
 }
 
@@ -178,4 +182,47 @@ export function toSessionMetadata(
 function isPathInside(parent: string, child: string) {
   const path = relative(parent, child)
   return path === "" || (!path.startsWith("..") && !isAbsolute(path))
+}
+
+function restorePersistedPlanState(sessionManager: SessionManager) {
+  const entry = sessionManager
+    .getEntries()
+    .filter((item) => {
+      return (
+        item.type === "custom" &&
+        "customType" in item &&
+        item.customType === "plan-mode"
+      )
+    })
+    .pop() as { data?: unknown } | undefined
+
+  return restorePlanState(entry?.data)
+}
+
+function attachPersistedPlanPart(
+  messages: ChatSessionResponse["messages"],
+  planState: ReturnType<typeof restorePlanState>
+) {
+  if (messages.length === 0 || planState.todos.length === 0) return messages
+
+  const lastAssistantIndex = [...messages]
+    .map((message, index) => ({ index, role: message.role, id: message.id }))
+    .reverse()
+    .find((message) => message.role === "assistant")?.index
+
+  if (typeof lastAssistantIndex !== "number") return messages
+
+  const target = messages[lastAssistantIndex]
+  const planPart = createPlanToolPart(target.id, planState)
+  if (!planPart) return messages
+
+  const nextMessages = [...messages]
+  nextMessages[lastAssistantIndex] = {
+    ...target,
+    parts: [
+      ...target.parts.filter((part) => part.type !== "tool-PlanWrite"),
+      planPart,
+    ],
+  }
+  return nextMessages
 }

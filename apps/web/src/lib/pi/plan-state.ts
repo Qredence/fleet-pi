@@ -3,6 +3,7 @@ import type { ChatToolPart } from "@workspace/ui/components/agent-elements/chat-
 import type {
   ChatMode,
   ChatPlanAction,
+  ChatPlanState,
   ChatQuestionAnswer,
   ChatQuestionAnswerResponse,
 } from "./chat-protocol"
@@ -104,66 +105,49 @@ export function updatePlanExecutionProgress(
 }
 
 export function createPlanEvent(state: PlanModeState) {
-  const completed = state.todos.filter((todo) => todo.completed).length
-  const total = state.todos.length
-  const mode: ChatMode = state.enabled ? "plan" : "agent"
-  const message = state.executing
-    ? total > 0
-      ? `Plan progress ${completed}/${total}`
-      : "Executing plan"
-    : state.enabled
-      ? "Plan mode"
-      : undefined
+  const snapshot = toChatPlanState(state)
 
   return {
     type: "plan" as const,
-    mode,
-    executing: state.executing,
-    completed,
-    total,
-    message,
+    mode: snapshot.mode,
+    executing: snapshot.executing,
+    completed: snapshot.completed,
+    total: snapshot.total,
+    message: snapshot.message,
+    state: snapshot,
   }
 }
 
-export function createPlanDecisionPart(
+export function createPlanToolPart(
   assistantId: string,
   state: PlanModeState
 ): ChatToolPart | undefined {
-  if (!state.pendingDecision) return undefined
+  if (state.todos.length === 0) return undefined
+
+  const snapshot = toChatPlanState(state)
+  const status = state.pendingDecision
+    ? "awaiting_approval"
+    : snapshot.total > 0 && snapshot.completed === snapshot.total
+      ? "completed"
+      : "approved"
 
   return {
-    type: "tool-Question",
+    type: "tool-PlanWrite",
     toolCallId: `${PLAN_DECISION_TOOL_PREFIX}-${assistantId}`,
-    state: "input-available",
+    state: "output-available",
     input: {
-      questions: [
-        {
-          kind: "single",
-          title: "Plan mode - what next?",
-          options: [
-            {
-              id: "execute",
-              label: "Execute the plan",
-              description: "Switch to agent mode and run the planned steps.",
-            },
-            {
-              id: "stay",
-              label: "Stay in plan mode",
-              description: "Keep the plan without starting implementation.",
-            },
-            {
-              id: "refine",
-              label: "Refine the plan",
-              description: "Send more guidance and update the plan.",
-            },
-          ],
-          allowCustom: true,
-          customLabel: "Refine with instructions",
-          customPlaceholder: "Describe what to change in the plan",
-        },
-      ],
-      submitLabel: "Continue",
-      allowSkip: false,
+      action: state.pendingDecision ? "create" : "update",
+      pendingDecision: state.pendingDecision,
+      executing: state.executing,
+      completed: snapshot.completed,
+      total: snapshot.total,
+      plan: {
+        id: assistantId,
+        title: snapshot.executing ? "Executing plan" : "Execution plan",
+        summary: formatPlanSummary(state),
+        status,
+        todos: snapshot.todos,
+      },
     },
   }
 }
@@ -222,6 +206,31 @@ export function resolvePlanDecision(
   }
 }
 
+export function toChatPlanState(state: PlanModeState): ChatPlanState {
+  const completed = state.todos.filter((todo) => todo.completed).length
+  const total = state.todos.length
+  const mode: ChatMode = state.enabled ? "plan" : "agent"
+  const message = state.executing
+    ? total > 0
+      ? `Plan progress ${completed}/${total}`
+      : "Executing plan"
+    : state.pendingDecision
+      ? "Plan ready for review"
+      : state.enabled
+        ? "Plan mode"
+        : undefined
+
+  return {
+    mode,
+    executing: state.executing,
+    pendingDecision: Boolean(state.pendingDecision),
+    completed,
+    total,
+    todos: state.todos.map((todo) => ({ ...todo })),
+    message,
+  }
+}
+
 function cloneState(state: PlanModeState): PlanModeState {
   return {
     enabled: state.enabled,
@@ -248,4 +257,27 @@ function normalizeTodos(todos: unknown): Array<TodoItem> {
       }
     })
     .filter((todo): todo is TodoItem => Boolean(todo?.text))
+}
+
+function formatPlanSummary(state: PlanModeState) {
+  const snapshot = toChatPlanState(state)
+  const lines = snapshot.todos.map(
+    (todo) => `${todo.completed ? "- [x]" : "- [ ]"} ${todo.step}. ${todo.text}`
+  )
+
+  if (state.pendingDecision) {
+    lines.push(
+      "",
+      "Review the steps, then execute, stay in plan mode, or refine."
+    )
+  } else if (snapshot.executing) {
+    lines.push(
+      "",
+      `Progress: ${snapshot.completed}/${snapshot.total} completed.`
+    )
+  } else if (snapshot.total > 0 && snapshot.completed === snapshot.total) {
+    lines.push("", "All plan steps are complete.")
+  }
+
+  return lines.join("\n")
 }

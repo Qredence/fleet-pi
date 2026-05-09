@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { ChatModeSchema, ChatSessionMetadataSchema } from "./chat-protocol.zod"
 import type { ChatMode, ChatSessionMetadata } from "./chat-protocol"
 
 const CHAT_SESSION_STORAGE_KEY = "fleet-pi-chat-session"
@@ -32,13 +33,9 @@ function readStoredBrowserSession(): ChatSessionMetadata {
   try {
     const raw = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as ChatSessionMetadata
-    return {
-      sessionFile:
-        typeof parsed.sessionFile === "string" ? parsed.sessionFile : undefined,
-      sessionId:
-        typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
-    }
+    const parsed = JSON.parse(raw) as unknown
+    const result = ChatSessionMetadataSchema.safeParse(parsed)
+    return result.success ? result.data : {}
   } catch {
     return {}
   }
@@ -64,11 +61,13 @@ function readStoredMode(): ChatMode {
   const raw = window.localStorage.getItem(CHAT_MODE_STORAGE_KEY)
   if (!raw) return "agent"
 
-  if (raw === "plan" || raw === '"plan"') {
-    return "plan"
-  }
+  const parsed = ChatModeSchema.safeParse(raw)
+  if (parsed.success) return parsed.data
 
-  return "agent"
+  const jsonParsed = ChatModeSchema.safeParse(
+    raw === '"plan"' ? "plan" : raw === '"agent"' ? "agent" : raw
+  )
+  return jsonParsed.success ? jsonParsed.data : "agent"
 }
 
 function storeMode(mode: ChatMode) {

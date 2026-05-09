@@ -200,6 +200,59 @@
                         },
                         "message": {
                           "type": "string"
+                        },
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": ["agent", "plan"],
+                              "description": "Chat mode"
+                            },
+                            "executing": {
+                              "type": "boolean"
+                            },
+                            "pendingDecision": {
+                              "type": "boolean"
+                            },
+                            "completed": {
+                              "type": "number"
+                            },
+                            "total": {
+                              "type": "number"
+                            },
+                            "todos": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "step": {
+                                    "type": "number"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  },
+                                  "completed": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["step", "text", "completed"],
+                                "description": "Structured plan todo"
+                              }
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "mode",
+                            "executing",
+                            "pendingDecision",
+                            "completed",
+                            "total",
+                            "todos"
+                          ],
+                          "description": "Structured plan state"
                         }
                       },
                       "required": [
@@ -207,7 +260,8 @@
                         "mode",
                         "executing",
                         "completed",
-                        "total"
+                        "total",
+                        "state"
                       ],
                       "description": "Stream plan event"
                     },
@@ -687,21 +741,66 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "skills": {
+                    "packages": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
                           "name": {
                             "type": "string"
                           },
                           "description": {
                             "type": "string"
                           },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
                           "path": {
                             "type": "string"
                           },
                           "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name"],
+                        "description": "Chat resource info"
+                      }
+                    },
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
                             "type": "string"
                           },
                           "argumentHint": {
@@ -717,16 +816,26 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
                           "name": {
                             "type": "string"
                           },
                           "description": {
                             "type": "string"
                           },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
                           "path": {
                             "type": "string"
                           },
                           "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
                             "type": "string"
                           },
                           "argumentHint": {
@@ -742,16 +851,26 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
                           "name": {
                             "type": "string"
                           },
                           "description": {
                             "type": "string"
                           },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
                           "path": {
                             "type": "string"
                           },
                           "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
                             "type": "string"
                           },
                           "argumentHint": {
@@ -767,16 +886,26 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
                           "name": {
                             "type": "string"
                           },
                           "description": {
                             "type": "string"
                           },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
                           "path": {
                             "type": "string"
                           },
                           "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
                             "type": "string"
                           },
                           "argumentHint": {
@@ -792,16 +921,26 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "activationStatus": {
+                            "type": "string",
+                            "enum": ["active", "staged", "reload-required"]
+                          },
                           "name": {
                             "type": "string"
                           },
                           "description": {
                             "type": "string"
                           },
+                          "installedInWorkspace": {
+                            "type": "boolean"
+                          },
                           "path": {
                             "type": "string"
                           },
                           "source": {
+                            "type": "string"
+                          },
+                          "workspacePath": {
                             "type": "string"
                           },
                           "argumentHint": {
@@ -820,6 +959,7 @@
                     }
                   },
                   "required": [
+                    "packages",
                     "skills",
                     "prompts",
                     "extensions",
@@ -1423,6 +1563,9 @@
                       "kind": {
                         "type": "string",
                         "enum": ["single", "multi", "text", "skip"]
+                      },
+                      "questionId": {
+                        "type": "string"
                       },
                       "selectedIds": {
                         "type": "array",

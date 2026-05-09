@@ -1,34 +1,34 @@
-import React, { memo } from "react";
-import { getToolStatus } from "../utils/format-tool";
-import { QuestionTool } from "../question/question-tool";
-import { parseMcpToolType, toolRegistry } from "./tool-registry";
-import { GenericTool } from "./generic-tool";
-import { BashTool } from "./bash-tool";
-import { EditTool } from "./edit-tool";
-import { TodoTool } from "./todo-tool";
-import { PlanTool } from "./plan-tool";
-import { ToolGroup } from "./tool-group";
-import { McpTool, unwrapMcpOutput } from "./mcp-tool";
-import { ThinkingTool } from "./thinking-tool";
-import { SearchTool } from "./search-tool";
-import type { CustomToolRendererProps } from "../types";
+import React, { memo } from "react"
+import { getToolStatus } from "../utils/format-tool"
+import { QuestionTool } from "../question/question-tool"
+import { parseMcpToolType, toolRegistry } from "./tool-registry"
+import { GenericTool } from "./generic-tool"
+import { BashTool } from "./bash-tool"
+import { EditTool } from "./edit-tool"
+import { TodoTool } from "./todo-tool"
+import { PlanTool } from "./plan-tool"
+import { ToolGroup } from "./tool-group"
+import { McpTool, unwrapMcpOutput } from "./mcp-tool"
+import { ThinkingTool } from "./thinking-tool"
+import { SearchTool } from "./search-tool"
+import type { CustomToolRendererProps } from "../types"
 
 export type ToolRendererProps = {
-  part: any;
-  nestedTools?: Array<any>;
-  chatStatus?: string;
-  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>;
-};
+  part: any
+  nestedTools?: Array<any>
+  chatStatus?: string
+  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
+}
 
 function deriveToolStatus(
   part: any,
-  chatStatus?: string,
+  chatStatus?: string
 ): CustomToolRendererProps["status"] {
-  if (part.state === "input-streaming") return "streaming";
-  if (part.state === "output-available") return "success";
-  if (part.state === "output-error") return "error";
-  const { isPending } = getToolStatus(part, chatStatus);
-  return isPending ? "pending" : "success";
+  if (part.state === "input-streaming") return "streaming"
+  if (part.state === "output-available") return "success"
+  if (part.state === "output-error") return "error"
+  const { isPending } = getToolStatus(part, chatStatus)
+  return isPending ? "pending" : "success"
 }
 
 export const ToolRenderer = memo(function ToolRenderer({
@@ -37,28 +37,28 @@ export const ToolRenderer = memo(function ToolRenderer({
   chatStatus,
   toolRenderers,
 }: ToolRendererProps) {
-  const partType = part.type as string;
+  const partType = part.type as string
 
   // Specialized tool components with variant dispatch
   switch (partType) {
     case "tool-Bash":
-      return <BashTool part={part} />;
+      return <BashTool part={part} />
     case "tool-Edit":
     case "tool-Write":
-      return <EditTool part={part} />;
+      return <EditTool part={part} />
     case "tool-WebSearch":
     case "tool-Grep":
     case "tool-Glob":
-      return <SearchTool part={part} />;
+      return <SearchTool part={part} />
     case "tool-PlanWrite":
-      return <PlanTool part={part} chatStatus={chatStatus} />;
+      return <PlanTool part={part} chatStatus={chatStatus} />
     case "tool-TodoWrite":
-      return <TodoTool part={part} chatStatus={chatStatus} />;
+      return <TodoTool part={part} chatStatus={chatStatus} />
     case "tool-Question":
-      return <QuestionTool part={part} chatStatus={chatStatus} />;
+      return <QuestionTool part={part} chatStatus={chatStatus} />
     case "tool-Task":
     case "tool-Agent": {
-      const labelBase = part.type === "tool-Agent" ? "Agent" : "Task";
+      const labelBase = part.type === "tool-Agent" ? "Agent" : "Task"
       return (
         <ToolGroup
           part={part}
@@ -69,18 +69,17 @@ export const ToolRenderer = memo(function ToolRenderer({
           interruptedLabel={`${labelBase} interrupted`}
           defaultOpen={false}
         />
-      );
+      )
     }
     case "tool-Thinking":
-      return <ThinkingTool part={part} />;
+      return <ThinkingTool part={part} />
   }
 
   // MCP tools
-  const mcpInfo = parseMcpToolType(partType);
+  const mcpInfo = parseMcpToolType(partType)
   if (mcpInfo) {
-    // Custom renderer for user-defined tools
-    if (toolRenderers && mcpInfo.serverName === "user-tools") {
-      const CustomRenderer = toolRenderers[mcpInfo.toolName];
+    if (toolRenderers) {
+      const CustomRenderer = toolRenderers[mcpInfo.toolName]
       if (CustomRenderer) {
         return (
           <CustomRenderer
@@ -89,16 +88,16 @@ export const ToolRenderer = memo(function ToolRenderer({
             output={part.output ? unwrapMcpOutput(part.output) : undefined}
             status={deriveToolStatus(part, chatStatus)}
           />
-        );
+        )
       }
     }
-    return <McpTool part={part} mcpInfo={mcpInfo} chatStatus={chatStatus} />;
+    return <McpTool part={part} mcpInfo={mcpInfo} chatStatus={chatStatus} />
   }
 
   // Registry-based generic tools (Read, Grep, Glob, WebFetch, etc.)
-  const meta = toolRegistry[partType];
+  const meta = toolRegistry[partType]
   if (meta) {
-    const { isPending, isError } = getToolStatus(part, chatStatus);
+    const { isPending, isError } = getToolStatus(part, chatStatus)
     return (
       <GenericTool
         title={meta.title(part)}
@@ -106,17 +105,17 @@ export const ToolRenderer = memo(function ToolRenderer({
         isPending={isPending}
         isError={isError}
       />
-    );
+    )
   }
 
   // Fallback: show tool name
-  const toolName = partType.startsWith("tool-") ? partType.slice(5) : partType;
-  const { isPending, isError } = getToolStatus(part, chatStatus);
+  const toolName = partType.startsWith("tool-") ? partType.slice(5) : partType
+  const { isPending, isError } = getToolStatus(part, chatStatus)
   return (
     <GenericTool
       title={isPending ? `Running ${toolName}` : toolName}
       isPending={isPending}
       isError={isError}
     />
-  );
-});
+  )
+})

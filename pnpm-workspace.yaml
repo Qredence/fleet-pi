@@ -1,3 +1,10 @@
 packages:
   - "apps/web"
   - "packages/ui"
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  koffi: true
+  msw: true
+  protobufjs: true
+  unrs-resolver: true

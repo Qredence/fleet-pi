@@ -3,8 +3,8 @@ import { resolve } from "node:path"
 import {
   createAgentSessionServices,
   getAgentDir,
-} from "@mariozechner/pi-coding-agent"
-import type { AgentSessionServices } from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"

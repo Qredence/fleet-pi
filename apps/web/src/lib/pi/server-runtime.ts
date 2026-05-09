@@ -2,7 +2,7 @@ import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   getAgentDir,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import {
   CHAT_TOOL_ALLOWLIST,
   answerPlanDecision,
@@ -26,7 +26,7 @@ import { createSessionManager, isUsableSessionFile } from "./server-sessions"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import type {
   ChatMode,
   ChatModelSelection,

@@ -16,6 +16,7 @@ pnpm format           # format all workspaces with prettier
 ```
 
 Run workspace-specific commands from the root with `--filter`:
+
 ```bash
 pnpm --filter web dev
 pnpm --filter @workspace/ui typecheck
@@ -31,6 +32,7 @@ Turborepo monorepo with two workspaces:
 ### Adding shadcn components
 
 Always run from the repo root targeting the `web` app — shadcn places output in `packages/ui`:
+
 ```bash
 pnpm dlx shadcn@latest add <component> -c apps/web
 ```
@@ -41,7 +43,7 @@ Backend routes live in TanStack Start file routes under `apps/web/src/routes/api
 
 ### AI/LLM integration
 
-- `@mariozechner/pi-ai` powers the server-side LLM stream.
+- `@earendil-works/pi-ai` powers the server-side LLM stream.
 - The primary provider is Amazon Bedrock through Pi's `amazon-bedrock` provider.
 - Bedrock credentials use standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1`; `AWS_PROFILE` and `AWS_BEARER_TOKEN_BEDROCK` are passed through when set.
 - The React client in `apps/web/src/routes/index.tsx` uses a small local `fetch` + `AbortController` hook and consumes `/api/chat` NDJSON events (`start`, `delta`, `done`, `error`).

@@ -6,19 +6,19 @@ import {
 import {
   applyPlanModeSelection,
   createEmptyPlanState,
-  createPlanDecisionPart,
   createPlanEvent,
+  createPlanToolPart,
   updatePlanExecutionProgress as derivePlanExecutionProgress,
   updatePlanStateFromAssistantText as derivePlanFromAssistantText,
   isPlanDecisionToolCall,
   resolvePlanDecision,
   restorePlanState as restoreStoredPlanState,
 } from "./plan-state"
-import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai"
+import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai"
 import type {
   AgentSessionRuntime,
   ExtensionAPI,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import type {
   ChatMode,
   ChatPlanAction,
@@ -32,7 +32,7 @@ export {
   extractTodoItems,
   markCompletedSteps,
 } from "./plan-parser"
-export { createPlanDecisionPart, createPlanEvent, isPlanDecisionToolCall }
+export { createPlanEvent, createPlanToolPart, isPlanDecisionToolCall }
 export { resolveQuestionnaireAnswer }
 
 const PROJECT_RESOURCE_TOOLS = ["project_inventory", "workspace_index"]
@@ -260,14 +260,18 @@ export function finalizePlanTurn({
   planAction?: ChatPlanAction
 }) {
   if (planAction === "execute") {
-    return { state: updateExecutionProgress(runtime, assistantText).state }
+    const state = updateExecutionProgress(runtime, assistantText).state
+    return {
+      state,
+      planPart: createPlanToolPart(assistantId, state),
+    }
   }
 
   if (mode === "plan") {
     const state = updatePlanFromAssistantText(runtime, assistantText)
     return {
       state,
-      decisionPart: createPlanDecisionPart(assistantId, state),
+      planPart: createPlanToolPart(assistantId, state),
     }
   }
 

@@ -59,7 +59,8 @@ Send a chat message and receive a streaming response
     "executing": <boolean> (required),
     "completed": <number> (required),
     "total": <number> (required),
-    "message": <string>
+    "message": <string>,
+    "state": <object> (required) — Structured plan state
   }
   ```
   ```json

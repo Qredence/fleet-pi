@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bot,
   Cable,
   Cpu,
@@ -8,11 +9,17 @@ import {
   Sun,
   Wrench,
 } from "lucide-react"
-import { useEffect, useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import type { ChatThinkingLevel } from "@/lib/pi/chat-protocol"
+import type {
+  ChatMode,
+  ChatResourcesResponse,
+  ChatThinkingLevel,
+} from "@/lib/pi/chat-protocol"
 import type { ThemePreference } from "@/lib/canvas-utils"
+import type { QueueState } from "@/lib/pi/chat-fetch"
+import type { ChatStatus } from "@workspace/ui/components/agent-elements/chat-types"
+import { queueLabel } from "@/lib/pi/chat-helpers"
 
 export type ConfigModelInfo = {
   id: string
@@ -26,73 +33,134 @@ export type ConfigModelInfo = {
 }
 
 export function ConfigurationsPanelContent({
+  activityLabel,
+  mode,
   models,
   onThemePreferenceChange,
+  planLabel,
+  queue,
+  resources,
+  selectedModelKey,
+  status,
   themePreference,
 }: {
+  activityLabel?: string
+  mode: ChatMode
   models: Array<ConfigModelInfo>
   onThemePreferenceChange: (preference: ThemePreference) => void
+  planLabel?: string
+  queue: QueueState
+  resources: ChatResourcesResponse | null
+  selectedModelKey?: string
+  status: ChatStatus
   themePreference: ThemePreference
 }) {
-  const [allowedModelIds, setAllowedModelIds] = useState<Set<string>>(
-    () => new Set(models.map((model) => model.id))
-  )
-
-  useEffect(() => {
-    setAllowedModelIds((current) => {
-      const next = new Set(current)
-      for (const model of models) next.add(model.id)
-      return next
-    })
-  }, [models])
-
-  const toggleModel = (modelId: string, checked: boolean) => {
-    setAllowedModelIds((current) => {
-      const next = new Set(current)
-      if (checked) next.add(modelId)
-      else next.delete(modelId)
-      return next
-    })
-  }
+  const selectedModel = models.find((model) => model.id === selectedModelKey)
+  const resourceSummary = summarizeResources(resources)
+  const queueDescription = queueLabel(queue) ?? "No queued prompts"
+  const runtimeStatus =
+    status === "streaming"
+      ? "Streaming"
+      : status === "submitted"
+        ? "Submitting"
+        : status === "error"
+          ? "Error"
+          : "Ready"
 
   return (
     <div className="space-y-3" data-testid="configurations-tab">
-      <ConfigurationSection icon={Wrench} label="Tools">
+      <ConfigurationSection icon={Activity} label="Runtime">
         <ConfigurationRow
-          action="Coming soon"
-          description="Add Pi tools and project extensions to the active workspace."
-          status="UI draft"
-          title="Add tools"
+          description={activityLabel ?? "Idle and waiting for the next prompt."}
+          status={runtimeStatus}
+          title="Request status"
         />
         <ConfigurationRow
-          action="Manage"
-          description="Review enabled coding, planning, research, and context tools."
-          status="Local"
-          title="Tool policy"
+          description={queueDescription}
+          status={
+            queue.followUp.length + queue.steering.length > 0
+              ? "Active"
+              : "Idle"
+          }
+          title="Prompt queue"
+        />
+        <ConfigurationRow
+          description={
+            planLabel ??
+            (mode === "plan"
+              ? "Plan mode is enabled and ready for the next planning turn."
+              : "No active plan decision is pending.")
+          }
+          status={mode === "plan" ? "Plan mode" : "Agent mode"}
+          title="Plan state"
         />
       </ConfigurationSection>
 
-      <ConfigurationSection icon={Cable} label="Connectors">
+      <ConfigurationSection icon={Wrench} label="Tools">
         <ConfigurationRow
-          action="Add"
-          description="Prepare external connectors such as GitHub, Linear, Drive, and Slack."
-          status="UI draft"
-          title="Connector catalog"
+          description={
+            mode === "plan"
+              ? "Plan mode keeps the active session read-only and exposes only planning-safe tools."
+              : "Agent mode enables the active session's coding tools plus approved external Pi integrations."
+          }
+          status={mode === "plan" ? "Plan" : "Agent"}
+          title="Current mode"
+        />
+        <ConfigurationRow
+          description={
+            resourceSummary.total > 0
+              ? `${resourceSummary.active} active, ${resourceSummary.staged} staged, and ${resourceSummary.reloadRequired} reload-required workspace resources are visible to the runtime.`
+              : "No workspace-installed Pi resources are currently visible."
+          }
+          status={resourceSummary.total > 0 ? "Loaded" : "Empty"}
+          title="Workspace installs"
+        />
+      </ConfigurationSection>
+
+      <ConfigurationSection icon={Cable} label="Resources">
+        <ConfigurationRow
+          description={
+            resourceSummary.total > 0
+              ? `${resourceSummary.total} resources across skills, prompts, extensions, packages, themes, and context files are cataloged.`
+              : "No resources are currently cataloged."
+          }
+          status={resourceSummary.total > 0 ? "Cataloged" : "Empty"}
+          title="Resource catalog"
+        />
+        <ConfigurationRow
+          description={
+            resourceSummary.diagnostics.length > 0
+              ? (resourceSummary.diagnostics[0] ??
+                "Runtime diagnostics available.")
+              : "No resource diagnostics were reported by the runtime."
+          }
+          status={
+            resourceSummary.diagnostics.length > 0
+              ? `${resourceSummary.diagnostics.length} notices`
+              : "Clear"
+          }
+          title="Diagnostics"
         />
       </ConfigurationSection>
 
       <ConfigurationSection icon={Cpu} label="LLM Providers">
         <ConfigurationRow
-          action="Manage"
-          description="Amazon Bedrock is the current provider; additional providers can be configured later."
-          status="Active"
-          title="Amazon Bedrock"
+          description={
+            selectedModel
+              ? `${selectedModel.name} is the active model for new requests in this session.`
+              : "Select a model from the chat header to choose the active runtime model."
+          }
+          status={selectedModel ? "Active" : "Unset"}
+          title={selectedModel?.provider ?? "Model selection"}
         />
         <ConfigurationRow
-          action="Add"
-          description="Reserve space for OpenAI-compatible, local, or custom provider entries."
-          status="UI draft"
-          title="Provider setup"
+          description={
+            selectedModel?.thinkingLevel
+              ? `${selectedModel.name} defaults to ${selectedModel.thinkingLevel} thinking for this runtime.`
+              : "The selected model does not advertise a default thinking level."
+          }
+          status={selectedModel?.reasoning ? "Reasoning" : "Standard"}
+          title="Thinking profile"
         />
       </ConfigurationSection>
 
@@ -131,7 +199,7 @@ export function ConfigurationsPanelContent({
         </div>
       </ConfigurationSection>
 
-      <ConfigurationSection icon={Bot} label="Allowed Models">
+      <ConfigurationSection icon={Bot} label="Runtime Models">
         {models.length === 0 ? (
           <div className="rounded-[6px] px-2 py-1.5 text-[12px] text-foreground/35">
             No models loaded.
@@ -139,14 +207,13 @@ export function ConfigurationsPanelContent({
         ) : (
           <div
             className="space-y-1 pr-1 lg:max-h-100 lg:overflow-y-auto"
-            data-testid="allowed-models-list"
+            data-testid="runtime-models-list"
           >
             {models.map((model) => (
-              <ModelAllowRow
+              <ModelRuntimeRow
                 key={model.id}
-                checked={allowedModelIds.has(model.id)}
                 model={model}
-                onCheckedChange={(checked) => toggleModel(model.id, checked)}
+                selected={model.id === selectedModelKey}
               />
             ))}
           </div>
@@ -177,12 +244,10 @@ function ConfigurationSection({
 }
 
 function ConfigurationRow({
-  action,
   description,
   status,
   title,
 }: {
-  action: string
   description: string
   status: string
   title: string
@@ -202,39 +267,33 @@ function ConfigurationRow({
           {description}
         </p>
       </div>
-      <button
-        type="button"
-        disabled
-        className="shrink-0 rounded-[6px] border border-border/60 px-2 py-1 text-[11px] font-medium text-foreground/35"
-      >
-        {action}
-      </button>
     </div>
   )
 }
 
-function ModelAllowRow({
-  checked,
+function ModelRuntimeRow({
   model,
-  onCheckedChange,
+  selected,
 }: {
-  checked: boolean
   model: ConfigModelInfo
-  onCheckedChange: (checked: boolean) => void
+  selected: boolean
 }) {
   return (
-    <label className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onCheckedChange(event.target.checked)}
-        className="size-3.5 shrink-0 accent-foreground"
-      />
+    <div className="flex min-w-0 items-start gap-2 rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
             {model.name}
           </span>
+          {selected ? (
+            <StatusPill className="bg-emerald-500/10 text-emerald-200">
+              Selected
+            </StatusPill>
+          ) : null}
+          {model.reasoning ? <StatusPill>Reasoning</StatusPill> : null}
+          {model.thinkingLevel ? (
+            <StatusPill>Thinking {model.thinkingLevel}</StatusPill>
+          ) : null}
           <span className="shrink-0 rounded-lg bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35">
             {model.available === false ? "Unavailable" : "Available"}
           </span>
@@ -243,7 +302,23 @@ function ModelAllowRow({
           {model.provider} / {model.modelId}
         </p>
       </div>
-    </label>
+    </div>
+  )
+}
+
+function StatusPill({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <span
+      className={`shrink-0 rounded-lg bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35 ${className ?? ""}`}
+    >
+      {children}
+    </span>
   )
 }
 
@@ -273,4 +348,27 @@ function ThemeSegment({
       <span className="truncate">{label}</span>
     </button>
   )
+}
+
+function summarizeResources(resources: ChatResourcesResponse | null) {
+  const catalog = resources
+    ? [
+        ...resources.skills,
+        ...resources.prompts,
+        ...resources.extensions,
+        ...resources.packages,
+        ...resources.themes,
+        ...resources.agentsFiles,
+      ]
+    : []
+
+  return {
+    active: catalog.filter((item) => item.activationStatus === "active").length,
+    staged: catalog.filter((item) => item.activationStatus === "staged").length,
+    reloadRequired: catalog.filter(
+      (item) => item.activationStatus === "reload-required"
+    ).length,
+    diagnostics: resources?.diagnostics ?? [],
+    total: catalog.length,
+  }
 }

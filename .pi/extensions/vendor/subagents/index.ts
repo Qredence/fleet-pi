@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 import type {
   ExtensionAPI,
   ExtensionContext,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import {
   getMarkdownTheme,
   parseFrontmatter,
@@ -20,14 +20,14 @@ import {
   withFileMutationQueue,
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import {
   Container,
   Markdown,
   Spacer,
   Text,
   visibleWidth,
-} from "@mariozechner/pi-tui"
+} from "@earendil-works/pi-tui"
 import { Type } from "typebox"
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -117,12 +117,7 @@ const BUILTIN_TOOLS = new Set([
 ])
 
 // Custom tools that require loading an extension into the subagent process
-const EXT_BASE = path.join(
-  os.homedir(),
-  ".pi",
-  "agent",
-  "extensions"
-)
+const EXT_BASE = path.join(os.homedir(), ".pi", "agent", "extensions")
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
   web_search: path.join(EXT_BASE, "web-search", "index.ts"),
   web_fetch: path.join(EXT_BASE, "web-fetch", "index.ts"),

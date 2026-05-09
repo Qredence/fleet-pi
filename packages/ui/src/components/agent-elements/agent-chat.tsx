@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { MessageList } from "./message-list"
 import { InputBar } from "./input-bar"
 import { Suggestions } from "./input/suggestions"
@@ -37,7 +37,10 @@ export function AgentChat({
   const isEmpty = !error && messages.length === 0
   const isCenteredEmptyState = isEmpty && emptyStatePosition === "center"
 
-  const pendingQuestion = findPendingQuestion(messages, questionTool)
+  const messagesWithQuestionTool = useMemo(
+    () => enhanceQuestionToolMessages(messages, questionTool),
+    [messages, questionTool]
+  )
   const suggestionConfig = resolveSuggestions(suggestions)
   const showInputSuggestions =
     emptySuggestionsPlacement === "input" ||
@@ -86,33 +89,6 @@ export function AgentChat({
       onPaste={attachments?.onPaste}
       isDragOver={attachments?.isDragOver}
       suggestions={showInputSuggestions ? suggestions : []}
-      questionBar={
-        pendingQuestion
-          ? {
-              id: pendingQuestion.id,
-              questions: pendingQuestion.questions,
-              questionIndex: pendingQuestion.questionIndex,
-              totalQuestions: pendingQuestion.totalQuestions,
-              onPreviousQuestion: pendingQuestion.onPreviousQuestion,
-              onNextQuestion: pendingQuestion.onNextQuestion,
-              submitLabel: pendingQuestion.submitLabel,
-              skipLabel: pendingQuestion.skipLabel,
-              allowSkip: pendingQuestion.allowSkip,
-              onSubmit: (answer) => {
-                questionTool?.onAnswer?.({
-                  toolCallId: pendingQuestion.toolCallId,
-                  question:
-                    pendingQuestion.questions[
-                      pendingQuestion.questionIndex
-                        ? pendingQuestion.questionIndex - 1
-                        : 0
-                    ],
-                  answer,
-                })
-              },
-            }
-          : undefined
-      }
     />
   )
 
@@ -141,7 +117,7 @@ export function AgentChat({
           messages={
             error
               ? [
-                  ...messages,
+                  ...messagesWithQuestionTool,
                   {
                     id: "agent-chat-error",
                     role: "assistant",
@@ -154,7 +130,7 @@ export function AgentChat({
                     ],
                   } as unknown as (typeof messages)[number],
                 ]
-              : messages
+              : messagesWithQuestionTool
           }
           status={status}
           classNames={classNames}
@@ -163,7 +139,6 @@ export function AgentChat({
           showCopyToolbar={showCopyToolbar}
           initialScrollBehavior={initialScrollBehavior}
           enableImagePreview={enableImagePreview}
-          suppressQuestionTool={Boolean(pendingQuestion)}
         />
       )}
       {!isCenteredEmptyState ? inputBarNode : null}
@@ -186,16 +161,20 @@ function resolveSuggestions(suggestions: AgentChatProps["suggestions"]) {
   }
 }
 
-function findPendingQuestion(
+function enhanceQuestionToolMessages(
   messages: AgentChatProps["messages"],
   questionTool: AgentChatProps["questionTool"]
 ) {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i]
-    if (message?.role !== "assistant") continue
-    const parts = message.parts ?? []
-    for (let p = parts.length - 1; p >= 0; p -= 1) {
-      const part = parts[p] as {
+  if (!questionTool?.onAnswer) return messages
+
+  let changed = false
+  const nextMessages = messages.map((message) => {
+    if (message?.role !== "assistant" || !Array.isArray(message.parts)) {
+      return message
+    }
+
+    const nextParts = message.parts.map((rawPart) => {
+      const part = rawPart as {
         type?: string
         toolCallId?: string
         input?: {
@@ -208,36 +187,42 @@ function findPendingQuestion(
           submitLabel?: string
           skipLabel?: string
           allowSkip?: boolean
-        }
-        output?: {
-          answer?: QuestionAnswer
-          answers?: Array<QuestionAnswer>
+          onSubmitAnswer?: (answer: QuestionAnswer) => void
         }
       }
-      if (part?.type !== "tool-Question") continue
-      const input = part.input
-      const questions = input?.questions ?? []
-      const firstQuestion = questions[0] ?? input?.question
-      if (!firstQuestion) continue
-      if (part.output?.answer || (part.output?.answers?.length ?? 0) > 0) {
-        return null
-      }
+
+      if (part?.type !== "tool-Question") return rawPart
+
+      const input = part.input ?? {}
+      const questions = input.questions ?? []
+      const activeQuestion =
+        questions[Math.max(0, (input.questionIndex ?? 1) - 1)] ??
+        questions[0] ??
+        input.question
+
+      if (!activeQuestion) return rawPart
+
+      changed = true
       return {
-        id: part.toolCallId ?? `question-${i}-${p}`,
-        toolCallId: part.toolCallId,
-        questions,
-        question: firstQuestion,
-        questionIndex: input?.questionIndex,
-        totalQuestions:
-          input?.totalQuestions ??
-          (questions.length > 0 ? questions.length : undefined),
-        onPreviousQuestion: input?.onPreviousQuestion,
-        onNextQuestion: input?.onNextQuestion,
-        submitLabel: questionTool?.submitLabel ?? input?.submitLabel,
-        skipLabel: questionTool?.skipLabel ?? input?.skipLabel,
-        allowSkip: questionTool?.allowSkip ?? input?.allowSkip,
-      }
-    }
-  }
-  return null
+        ...part,
+        input: {
+          ...input,
+          submitLabel: questionTool.submitLabel ?? input.submitLabel,
+          skipLabel: questionTool.skipLabel ?? input.skipLabel,
+          allowSkip: questionTool.allowSkip ?? input.allowSkip,
+          onSubmitAnswer: (answer: QuestionAnswer) => {
+            questionTool.onAnswer?.({
+              toolCallId: part.toolCallId,
+              question: activeQuestion,
+              answer,
+            })
+          },
+        },
+      } as typeof rawPart
+    })
+
+    return changed ? { ...message, parts: nextParts } : message
+  })
+
+  return changed ? nextMessages : messages
 }

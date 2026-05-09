@@ -74,7 +74,7 @@ The markdown body becomes the agent's system prompt.
 Pi loads extensions via jiti, which creates separate module instances. Direct imports from the subagents extension will reference a different `agents` array than the one the `subagent` tool uses. Use the `globalThis` bridge instead:
 
 ```typescript
-import { parseFrontmatter } from "@mariozechner/pi-coding-agent"
+import { parseFrontmatter } from "@earendil-works/pi-coding-agent"
 import * as fs from "node:fs"
 import * as path from "node:path"
 

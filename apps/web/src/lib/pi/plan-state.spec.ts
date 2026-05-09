@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   applyPlanModeSelection,
   createEmptyPlanState,
+  createPlanEvent,
+  createPlanToolPart,
   resolvePlanDecision,
   updatePlanExecutionProgress,
   updatePlanStateFromAssistantText,
@@ -68,6 +70,48 @@ describe("plan state", () => {
       ok: true,
       mode: "agent",
       planAction: "execute",
+    })
+  })
+
+  it("emits a structured plan event snapshot", () => {
+    const state = updatePlanStateFromAssistantText(
+      applyPlanModeSelection(createEmptyPlanState(), "plan"),
+      `Plan:\n1. Read the route\n2. Update the handler`
+    ).state
+
+    expect(createPlanEvent(state)).toMatchObject({
+      type: "plan",
+      mode: "plan",
+      state: {
+        pendingDecision: true,
+        completed: 0,
+        total: 2,
+        todos: [
+          { step: 1, text: "Route", completed: false },
+          { step: 2, text: "Handler", completed: false },
+        ],
+      },
+    })
+  })
+
+  it("builds a structured plan tool part", () => {
+    const state = updatePlanStateFromAssistantText(
+      applyPlanModeSelection(createEmptyPlanState(), "plan"),
+      `Plan:\n1. Read the route\n2. Update the handler`
+    ).state
+
+    expect(createPlanToolPart("assistant-1", state)).toMatchObject({
+      type: "tool-PlanWrite",
+      toolCallId: "plan-mode-decision-assistant-1",
+      input: {
+        pendingDecision: true,
+        total: 2,
+        plan: {
+          id: "assistant-1",
+          title: "Execution plan",
+          status: "awaiting_approval",
+        },
+      },
     })
   })
 })

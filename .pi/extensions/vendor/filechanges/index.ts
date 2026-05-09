@@ -1,15 +1,15 @@
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 import {
   DynamicBorder,
   getMarkdownTheme,
   isEditToolResult,
   isToolCallEventType,
   isWriteToolResult,
-} from "@mariozechner/pi-coding-agent"
-import type { SelectItem } from "@mariozechner/pi-tui"
+} from "@earendil-works/pi-coding-agent"
+import type { SelectItem } from "@earendil-works/pi-tui"
 import {
   Container,
   Key,
@@ -17,7 +17,7 @@ import {
   SelectList,
   Text,
   matchesKey,
-} from "@mariozechner/pi-tui"
+} from "@earendil-works/pi-tui"
 import { createTwoFilesPatch } from "diff"
 import { readFile, writeFile, rm, mkdir } from "node:fs/promises"
 import { dirname, relative, resolve } from "node:path"

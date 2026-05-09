@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi"
+import type { WorkspaceTreeNode, WorkspaceTreeResponse } from "./chat-protocol"
 
 extendZodWithOpenApi(z)
 
@@ -79,6 +80,26 @@ export const ChatQuestionAnswerResponseSchema = z
     planAction: ChatPlanActionSchema.optional(),
   })
   .openapi({ description: "Question answer response" })
+
+export const ChatPlanTodoSchema = z
+  .object({
+    step: z.number(),
+    text: z.string(),
+    completed: z.boolean(),
+  })
+  .openapi({ description: "Structured plan todo" })
+
+export const ChatPlanStateSchema = z
+  .object({
+    mode: ChatModeSchema,
+    executing: z.boolean(),
+    pendingDecision: z.boolean(),
+    completed: z.number(),
+    total: z.number(),
+    todos: z.array(ChatPlanTodoSchema),
+    message: z.string().optional(),
+  })
+  .openapi({ description: "Structured plan state" })
 
 export const ChatTextPartSchema = z
   .object({
@@ -178,6 +199,7 @@ export const ChatPlanEventSchema = z
     completed: z.number(),
     total: z.number(),
     message: z.string().optional(),
+    state: ChatPlanStateSchema,
   })
   .openapi({ description: "Stream plan event" })
 
@@ -359,6 +381,24 @@ export const ChatResourcesResponseSchema = z
     diagnostics: z.array(z.string()),
   })
   .openapi({ description: "Chat resources response" })
+
+export const WorkspaceTreeNodeSchema: z.ZodType<WorkspaceTreeNode> = z.lazy(
+  () =>
+    z.object({
+      name: z.string(),
+      path: z.string(),
+      type: z.enum(["directory", "file"]),
+      children: z.array(WorkspaceTreeNodeSchema).optional(),
+    })
+)
+
+export const WorkspaceTreeResponseSchema: z.ZodType<WorkspaceTreeResponse> = z
+  .object({
+    root: z.string(),
+    nodes: z.array(WorkspaceTreeNodeSchema),
+    diagnostics: z.array(z.string()),
+  })
+  .openapi({ description: "Workspace tree response" })
 
 export const HealthResponseSchema = z
   .object({

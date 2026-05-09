@@ -29,8 +29,8 @@ fleet-pi/
 | Package                              | Purpose                                |
 | ------------------------------------ | -------------------------------------- |
 | @tanstack/react-start                | Full-stack React framework             |
-| @mariozechner/pi-coding-agent        | Pi coding-agent runtime                |
-| @mariozechner/pi-ai                  | Pi AI primitives                       |
+| @earendil-works/pi-coding-agent      | Pi coding-agent runtime                |
+| @earendil-works/pi-ai                | Pi AI primitives                       |
 | Amazon Bedrock                       | Primary LLM provider                   |
 | pino + pino-pretty                   | Structured logging                     |
 | opossum                              | Circuit breaker pattern                |

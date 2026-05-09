@@ -64,7 +64,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## AI Integration
 
-- The chat backend uses `@mariozechner/pi-coding-agent` on top of `@mariozechner/pi-ai`, not Vercel AI SDK.
+- The chat backend uses `@earendil-works/pi-coding-agent` on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
 - The primary provider is Amazon Bedrock via Pi's `amazon-bedrock` provider.
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.

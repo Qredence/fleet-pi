@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import {
-  appendAssistantDelta,
-  createTextMessage,
-  upsertAssistantThinkingPart,
-  upsertAssistantToolPart,
-} from "./chat-message-helpers"
+import { createTextMessage } from "./chat-message-helpers"
 import { chatClient } from "./chat-client"
-import { labelForState } from "./chat-fetch"
+import { isPlanDecisionToolCall } from "./plan-state"
+import { EMPTY_QUEUE_STATE, applyChatStreamEvent } from "./chat-stream-state"
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatMessage,
@@ -37,6 +33,118 @@ export type UsePiChatOptions = {
   persistSession: (metadata: ChatSessionMetadata) => void
 }
 
+type QuestionAnswerHandler = (input: {
+  toolCallId?: string
+  answer: ChatQuestionAnswer
+}) => Promise<unknown>
+
+function resolvePlanDecisionMessages(
+  currentMessages: Array<ChatMessage>,
+  toolCallId: string | undefined,
+  answer: ChatQuestionAnswer
+) {
+  if (!isPlanDecisionToolCall(toolCallId)) return currentMessages
+
+  const nextMessages = currentMessages.map((message) => {
+    const nextParts = message.parts.map((part) => {
+      if (
+        part.type !== "tool-PlanWrite" ||
+        part.toolCallId !== toolCallId ||
+        !part.input ||
+        typeof part.input !== "object"
+      ) {
+        return part
+      }
+
+      return {
+        ...part,
+        input: {
+          ...(part.input as Record<string, unknown>),
+          approved:
+            answer.selectedIds?.[0] === "execute" ||
+            answer.selectedIds?.[0] === "stay",
+          pendingDecision: false,
+        },
+      }
+    })
+
+    const partsChanged = nextParts.some(
+      (part, index) => part !== message.parts[index]
+    )
+    if (!partsChanged) return message
+    return { ...message, parts: nextParts }
+  })
+
+  return nextMessages.some(
+    (message, index) => message !== currentMessages[index]
+  )
+    ? nextMessages
+    : currentMessages
+}
+
+function enhancePlanDecisionMessages(
+  currentMessages: Array<ChatMessage>,
+  submitQuestionAnswer: QuestionAnswerHandler
+) {
+  const nextMessages = currentMessages.map((message) => {
+    const nextParts = message.parts.map((part) => {
+      if (
+        part.type !== "tool-PlanWrite" ||
+        typeof part.toolCallId !== "string"
+      ) {
+        return part
+      }
+      if (!part.input || typeof part.input !== "object") return part
+
+      const input = part.input as Record<string, unknown>
+      if (input.pendingDecision !== true) return part
+
+      const hasPlanActionHandlers =
+        typeof input.onExecute === "function" &&
+        typeof input.onStay === "function" &&
+        typeof input.onRefine === "function"
+      if (hasPlanActionHandlers) return part
+
+      return {
+        ...part,
+        input: {
+          ...input,
+          onExecute: () =>
+            submitQuestionAnswer({
+              toolCallId: part.toolCallId,
+              answer: { kind: "single", selectedIds: ["execute"] },
+            }),
+          onStay: () =>
+            submitQuestionAnswer({
+              toolCallId: part.toolCallId,
+              answer: { kind: "single", selectedIds: ["stay"] },
+            }),
+          onRefine: (instructions?: string) =>
+            submitQuestionAnswer({
+              toolCallId: part.toolCallId,
+              answer:
+                instructions && instructions.trim().length > 0
+                  ? { kind: "text", text: instructions.trim() }
+                  : { kind: "single", selectedIds: ["refine"] },
+            }),
+        },
+      }
+    })
+
+    const partsChanged = nextParts.some(
+      (part, index) => part !== message.parts[index]
+    )
+    if (!partsChanged) return message
+    return { ...message, parts: nextParts }
+  })
+
+  return nextMessages.some(
+    (message, index) => message !== currentMessages[index]
+  )
+    ? nextMessages
+    : currentMessages
+}
+
 export function usePiChat(
   model: ChatModelSelection | undefined,
   mode: ChatMode,
@@ -57,10 +165,17 @@ export function usePiChat(
   const [sessions, setSessions] = useState<Array<ChatSessionInfo>>([])
   const [activityLabel, setActivityLabel] = useState<string | undefined>()
   const [planLabel, setPlanLabel] = useState<string | undefined>()
-  const [queue, setQueue] = useState<QueueState>({ steering: [], followUp: [] })
+  const [queue, setQueue] = useState<QueueState>(EMPTY_QUEUE_STATE)
   const messagesRef = useRef(messages)
   const sessionMetadataRef = useRef(sessionMetadata)
+  const activityLabelRef = useRef(activityLabel)
+  const planLabelRef = useRef(planLabel)
+  const queueRef = useRef(queue)
   const abortRef = useRef<AbortController | null>(null)
+  const sendMessageRef = useRef<(input: SendMessageInput) => Promise<void>>(
+    () => Promise.resolve()
+  )
+  const enhanceMessagesRef = useRef((current: Array<ChatMessage>) => current)
 
   const setMessagesSynced = useCallback(
     (
@@ -70,8 +185,9 @@ export function usePiChat(
     ) => {
       setMessages((current) => {
         const next = typeof updater === "function" ? updater(current) : updater
-        messagesRef.current = next
-        return next
+        const enhanced = enhanceMessagesRef.current(next)
+        messagesRef.current = enhanced
+        return enhanced
       })
     },
     []
@@ -79,6 +195,13 @@ export function usePiChat(
 
   const setSessionMetadataSynced = useCallback(
     (metadata: ChatSessionMetadata) => {
+      if (
+        sessionMetadataRef.current.sessionFile === metadata.sessionFile &&
+        sessionMetadataRef.current.sessionId === metadata.sessionId
+      ) {
+        return
+      }
+
       sessionMetadataRef.current = metadata
       setSessionMetadata(metadata)
       persistSession(metadata)
@@ -86,10 +209,70 @@ export function usePiChat(
     [persistSession]
   )
 
+  const setActivityLabelSynced = useCallback(
+    (nextLabel: string | undefined) => {
+      activityLabelRef.current = nextLabel
+      setActivityLabel(nextLabel)
+    },
+    []
+  )
+
+  const setPlanLabelSynced = useCallback((nextLabel: string | undefined) => {
+    planLabelRef.current = nextLabel
+    setPlanLabel(nextLabel)
+  }, [])
+
+  const setQueueSynced = useCallback((nextQueue: QueueState) => {
+    queueRef.current = nextQueue
+    setQueue(nextQueue)
+  }, [])
+
   const refreshSessions = useCallback(async () => {
     const nextSessions = await client.listSessions()
     setSessions(nextSessions)
   }, [client])
+
+  const submitQuestionAnswer = useCallback(
+    async ({
+      toolCallId,
+      answer,
+    }: {
+      toolCallId?: string
+      answer: ChatQuestionAnswer
+    }) => {
+      const result = await client.answerQuestion({
+        sessionFile: sessionMetadataRef.current.sessionFile,
+        sessionId: sessionMetadataRef.current.sessionId,
+        toolCallId,
+        answer,
+      })
+
+      if (result.mode) {
+        onModeChange?.(result.mode)
+      }
+      if (result.ok && isPlanDecisionToolCall(toolCallId)) {
+        setMessagesSynced((current) =>
+          resolvePlanDecisionMessages(current, toolCallId, answer)
+        )
+      }
+      if (result.message) {
+        await sendMessageRef.current({
+          text: result.message,
+          mode: result.mode,
+          planAction: result.planAction,
+        })
+      }
+
+      return result
+    },
+    [client, onModeChange]
+  )
+
+  const enhanceMessages = useCallback(
+    (currentMessages: Array<ChatMessage>) =>
+      enhancePlanDecisionMessages(currentMessages, submitQuestionAnswer),
+    [submitQuestionAnswer]
+  )
 
   useEffect(() => {
     messagesRef.current = messages
@@ -102,6 +285,11 @@ export function usePiChat(
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
+
+  useEffect(() => {
+    enhanceMessagesRef.current = enhanceMessages
+    setMessagesSynced((current) => current)
+  }, [enhanceMessages, setMessagesSynced])
 
   useEffect(() => {
     void refreshSessions().catch((err) => {
@@ -148,103 +336,47 @@ export function usePiChat(
 
   const handleStreamEvent = useCallback(
     (event: ChatStreamEvent, assistantIdRef: { current: string | null }) => {
-      if (event.type === "start") {
-        assistantIdRef.current = event.id
-        setSessionMetadataSynced({
-          sessionFile: event.sessionFile,
-          sessionId: event.sessionId,
-        })
-        const assistantMessage = createTextMessage("assistant", "", event.id)
-        setMessagesSynced((current) => [...current, assistantMessage])
-        setStatus("streaming")
-        if (event.sessionReset) {
-          setActivityLabel("Started a fresh Pi session")
-        } else if (event.diagnostics?.length) {
-          setActivityLabel(event.diagnostics[0])
-        }
-        return
-      }
-
-      if (event.type === "delta" && assistantIdRef.current) {
-        const activeAssistantId = assistantIdRef.current
-        setMessagesSynced((current) =>
-          appendAssistantDelta(current, activeAssistantId, event.text)
-        )
-        return
-      }
-
-      if (event.type === "thinking" && assistantIdRef.current) {
-        const activeAssistantId = assistantIdRef.current
-        setMessagesSynced((current) =>
-          upsertAssistantThinkingPart(current, activeAssistantId, event.text)
-        )
-        return
-      }
-
-      if (event.type === "tool" && assistantIdRef.current) {
-        const activeAssistantId = assistantIdRef.current
-        setMessagesSynced((current) =>
-          upsertAssistantToolPart(current, activeAssistantId, event.part)
-        )
-        return
-      }
-
-      if (event.type === "queue") {
-        setQueue({ steering: event.steering, followUp: event.followUp })
-        return
-      }
-
-      if (event.type === "plan") {
-        setPlanLabel(event.message)
-        return
-      }
-
-      if (event.type === "state") {
-        setActivityLabel(labelForState(event.state.name))
-        return
-      }
-
-      if (event.type === "compaction") {
-        setActivityLabel(
-          event.phase === "start" ? "Compacting session" : "Compaction finished"
-        )
-        return
-      }
-
-      if (event.type === "retry") {
-        setActivityLabel(
-          event.phase === "start"
-            ? `Retrying request ${event.attempt}/${event.maxAttempts}`
-            : event.success
-              ? "Retry succeeded"
-              : "Retry failed"
-        )
-        return
-      }
-
-      if (event.type === "done") {
-        setSessionMetadataSynced({
-          sessionFile: event.sessionFile,
-          sessionId: event.sessionId,
-        })
-        setMessagesSynced((current) =>
-          current.some((message) => message.id === event.message.id)
-            ? current.map((message) =>
-                message.id === event.message.id ? event.message : message
-              )
-            : [...current, event.message]
-        )
-        setQueue({ steering: [], followUp: [] })
-        setActivityLabel(undefined)
-        void refreshSessions()
-        return
-      }
-
       if (event.type === "error") {
         throw new Error(event.message)
       }
+
+      const next = applyChatStreamEvent(
+        {
+          assistantId: assistantIdRef.current,
+          snapshot: {
+            activityLabel: activityLabelRef.current,
+            messages: messagesRef.current,
+            planLabel: planLabelRef.current,
+            queue: queueRef.current,
+            sessionMetadata: sessionMetadataRef.current,
+          },
+        },
+        event
+      )
+
+      assistantIdRef.current = next.assistantId
+      setMessagesSynced(next.snapshot.messages)
+      setSessionMetadataSynced(next.snapshot.sessionMetadata)
+      setQueueSynced(next.snapshot.queue)
+      setActivityLabelSynced(next.snapshot.activityLabel)
+      setPlanLabelSynced(next.snapshot.planLabel)
+
+      if (event.type === "start") {
+        setStatus("streaming")
+      }
+
+      if (event.type === "done") {
+        void refreshSessions()
+      }
     },
-    [refreshSessions, setMessagesSynced, setSessionMetadataSynced]
+    [
+      refreshSessions,
+      setActivityLabelSynced,
+      setMessagesSynced,
+      setPlanLabelSynced,
+      setQueueSynced,
+      setSessionMetadataSynced,
+    ]
   )
 
   const queueFollowUp = useCallback(
@@ -264,8 +396,11 @@ export function usePiChat(
         },
         (event) => {
           if (event.type === "queue") {
-            setQueue({ steering: event.steering, followUp: event.followUp })
-            setActivityLabel("Follow-up queued")
+            setQueueSynced({
+              steering: event.steering,
+              followUp: event.followUp,
+            })
+            setActivityLabelSynced("Follow-up queued")
           }
           if (event.type === "error") {
             throw new Error(event.message)
@@ -273,7 +408,7 @@ export function usePiChat(
         }
       )
     },
-    [client, model, setMessagesSynced]
+    [client, model, setActivityLabelSynced, setMessagesSynced, setQueueSynced]
   )
 
   const sendMessage = useCallback(
@@ -297,7 +432,7 @@ export function usePiChat(
       abortRef.current?.abort()
       abortRef.current = controller
       setError(null)
-      setActivityLabel(undefined)
+      setActivityLabelSynced(undefined)
       setStatus("submitted")
 
       const userMessage = createTextMessage("user", trimmed)
@@ -347,71 +482,57 @@ export function usePiChat(
     abortRef.current?.abort()
     abortRef.current = null
     setStatus("ready")
-    setActivityLabel(undefined)
-  }, [client])
+    setActivityLabelSynced(undefined)
+  }, [client, setActivityLabelSynced])
 
   const startNewSession = useCallback(async () => {
     const result = await client.createSession()
     setSessionMetadataSynced(result.session)
     setMessagesSynced([])
-    setQueue({ steering: [], followUp: [] })
-    setActivityLabel(undefined)
-    setPlanLabel(undefined)
+    setQueueSynced(EMPTY_QUEUE_STATE)
+    setActivityLabelSynced(undefined)
+    setPlanLabelSynced(undefined)
     toast.success("New session started")
     await refreshSessions()
-  }, [client, refreshSessions, setMessagesSynced, setSessionMetadataSynced])
+  }, [
+    client,
+    refreshSessions,
+    setActivityLabelSynced,
+    setMessagesSynced,
+    setPlanLabelSynced,
+    setQueueSynced,
+    setSessionMetadataSynced,
+  ])
 
   const resumeSession = useCallback(
     async (metadata: ChatSessionMetadata) => {
       const result = await client.resumeSession(metadata)
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
-      setQueue({ steering: [], followUp: [] })
-      setActivityLabel(
+      setQueueSynced(EMPTY_QUEUE_STATE)
+      setActivityLabelSynced(
         result.sessionReset ? "Started a fresh Pi session" : undefined
       )
-      setPlanLabel(undefined)
+      setPlanLabelSynced(undefined)
       toast.success("Session resumed")
       await refreshSessions()
     },
-    [client, refreshSessions, setMessagesSynced, setSessionMetadataSynced]
+    [
+      client,
+      refreshSessions,
+      setActivityLabelSynced,
+      setMessagesSynced,
+      setPlanLabelSynced,
+      setQueueSynced,
+      setSessionMetadataSynced,
+    ]
   )
 
-  const sendMessageRef = useRef(sendMessage)
   useEffect(() => {
     sendMessageRef.current = sendMessage
   }, [sendMessage])
 
-  const answerQuestion = useCallback(
-    async ({
-      toolCallId,
-      answer,
-    }: {
-      toolCallId?: string
-      answer: ChatQuestionAnswer
-    }) => {
-      const result = await client.answerQuestion({
-        sessionFile: sessionMetadataRef.current.sessionFile,
-        sessionId: sessionMetadataRef.current.sessionId,
-        toolCallId,
-        answer,
-      })
-
-      if (result.mode) {
-        onModeChange?.(result.mode)
-      }
-      if (result.message) {
-        await sendMessageRef.current({
-          text: result.message,
-          mode: result.mode,
-          planAction: result.planAction,
-        })
-      }
-
-      return result
-    },
-    [client, onModeChange]
-  )
+  const answerQuestion = submitQuestionAnswer
 
   return {
     activityLabel,

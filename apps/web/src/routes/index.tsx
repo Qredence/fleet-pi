@@ -23,6 +23,7 @@ import type {
 import { ChatCommandPalette } from "@/components/chat-command-palette"
 import { UiErrorBoundary } from "@/components/ui-error-boundary"
 import { ChatRightPanels } from "@/components/chat-right-panels"
+import { PI_TOOL_RENDERERS } from "@/components/pi/tool-renderers"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { CHAT_MODES, queueLabel } from "@/lib/pi/chat-helpers"
 import {
@@ -299,14 +300,23 @@ function ChatWorkspaceShell() {
     resources,
     workspaceTree,
   })
+  const shouldShowInputSuggestions = useMemo(() => {
+    if (messages.length === 0) return true
+    if (status === "streaming" || status === "submitted") return false
+
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage.role !== "assistant") return false
+
+    return !hasPendingQuestion(lastMessage)
+  }, [messages, status])
   const inputSuggestions = useMemo(
     () => ({
-      items: suggestions,
+      items: shouldShowInputSuggestions ? suggestions : [],
       className: "!px-0 flex-col items-start gap-1.5",
       itemClassName:
         "h-auto justify-start rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-foreground/65 shadow-sm transition-colors hover:border-border hover:bg-foreground/6 hover:text-foreground",
     }),
-    [suggestions]
+    [shouldShowInputSuggestions, suggestions]
   )
   const agentChatStyle = useMemo(
     () =>
@@ -372,6 +382,7 @@ function ChatWorkspaceShell() {
               emptyStatePosition="default"
               suggestions={inputSuggestions}
               style={agentChatStyle}
+              toolRenderers={PI_TOOL_RENDERERS}
               slots={{
                 InputBar: (props) => (
                   <InputBar
@@ -423,9 +434,13 @@ function ChatWorkspaceShell() {
         </div>
         <UiErrorBoundary>
           <ChatRightPanels
+            activityLabel={activityLabel}
             handleResourceCanvasResizeStart={handleResourceCanvasResizeStart}
             handleThemePreferenceChange={handleThemePreferenceChange}
+            mode={mode}
             models={models}
+            planLabel={planLabel}
+            queue={queue}
             refreshResources={refreshResources}
             refreshWorkspace={refreshWorkspace}
             resourceCanvasWidth={resourceCanvasWidth}
@@ -433,7 +448,9 @@ function ChatWorkspaceShell() {
             resourcesError={resourcesError}
             resourcesLoading={resourcesLoading}
             rightPanel={rightPanel}
+            selectedModelKey={modelKey}
             setRightPanel={setRightPanel}
+            status={status}
             themePreference={themePreference}
             workspaceError={workspaceError}
             workspaceLoading={workspaceLoading}
@@ -443,6 +460,26 @@ function ChatWorkspaceShell() {
       </div>
     </>
   )
+}
+
+function hasPendingQuestion(
+  message:
+    | (typeof usePiChat extends (...args: Array<any>) => infer R
+        ? R extends { messages: Array<infer M> }
+          ? M
+          : never
+        : never)
+    | undefined
+) {
+  if (!message || !Array.isArray(message.parts)) return false
+
+  return message.parts.some((part) => {
+    if (part.type !== "tool-Question") return false
+    const output = part.output as
+      | { answer?: unknown; answers?: Array<unknown> }
+      | undefined
+    return !output?.answer && (output?.answers?.length ?? 0) === 0
+  })
 }
 
 function Chat() {

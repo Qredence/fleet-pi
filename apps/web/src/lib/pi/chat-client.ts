@@ -1,4 +1,17 @@
-import { fetchJson, metadataUrl, readChatStream } from "./chat-fetch"
+import {
+  fetchJson,
+  fetchValidatedJson,
+  metadataUrl,
+  readChatStream,
+} from "./chat-fetch"
+import {
+  ChatModelsResponseSchema,
+  ChatQuestionAnswerResponseSchema,
+  ChatResourcesResponseSchema,
+  ChatSessionResponseSchema,
+  ChatSessionsResponseSchema,
+  WorkspaceTreeResponseSchema,
+} from "./chat-protocol.zod"
 import type {
   ChatModelsResponse,
   ChatQuestionAnswerRequest,
@@ -41,46 +54,58 @@ export const chatClient: ChatClient = {
   },
 
   async answerQuestion(request) {
-    return fetchJson<ChatQuestionAnswerResponse>("/api/chat/question", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    })
+    return fetchValidatedJson(
+      "/api/chat/question",
+      ChatQuestionAnswerResponseSchema,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    )
   },
 
   async createSession() {
-    return fetchJson<ChatSessionResponse>("/api/chat/new", {
+    return fetchValidatedJson("/api/chat/new", ChatSessionResponseSchema, {
       method: "POST",
     })
   },
 
   async getModels() {
-    return fetchJson<ChatModelsResponse>("/api/chat/models")
+    return fetchValidatedJson("/api/chat/models", ChatModelsResponseSchema)
   },
 
   async getResources() {
-    return fetchJson<ChatResourcesResponse>("/api/chat/resources")
+    return fetchValidatedJson(
+      "/api/chat/resources",
+      ChatResourcesResponseSchema
+    )
   },
 
   async getWorkspaceTree() {
-    return fetchJson<WorkspaceTreeResponse>("/api/workspace/tree")
+    return fetchValidatedJson(
+      "/api/workspace/tree",
+      WorkspaceTreeResponseSchema
+    )
   },
 
   async listSessions() {
-    const result = await fetchJson<{ sessions: Array<ChatSessionInfo> }>(
-      "/api/chat/sessions"
+    const result = await fetchValidatedJson(
+      "/api/chat/sessions",
+      ChatSessionsResponseSchema
     )
     return result.sessions
   },
 
   async loadSession(metadata) {
-    return fetchJson<ChatSessionResponse>(
-      `/api/chat/session?${metadataUrl(metadata)}`
+    return fetchValidatedJson(
+      `/api/chat/session?${metadataUrl(metadata)}`,
+      ChatSessionResponseSchema
     )
   },
 
   async resumeSession(metadata) {
-    return fetchJson<ChatSessionResponse>("/api/chat/resume", {
+    return fetchValidatedJson("/api/chat/resume", ChatSessionResponseSchema, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(metadata),

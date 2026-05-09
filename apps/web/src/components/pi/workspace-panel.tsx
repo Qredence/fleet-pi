@@ -119,8 +119,11 @@ export function WorkspacePanelContent({
   }
 
   return (
-    <div className="grid min-h-0 gap-2 lg:grid-cols-[minmax(150px,0.9fr)_minmax(180px,1.1fr)]">
-      <div data-testid="workspace-tree" className="min-w-0">
+    <div className="grid h-full min-h-0 gap-2 lg:grid-cols-[minmax(150px,0.9fr)_minmax(180px,1.1fr)]">
+      <div
+        data-testid="workspace-tree"
+        className="min-h-0 min-w-0 overflow-y-auto"
+      >
         <div className="mb-2 flex min-w-0 items-center gap-2 rounded-[6px] bg-foreground/5 px-2 py-1.5">
           <HardDrive className="size-3.5 shrink-0 text-foreground/45" />
           <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
@@ -231,17 +234,17 @@ function WorkspacePreview({
 }) {
   return (
     <div
-      className="min-h-55 min-w-0 rounded-[8px] border border-border/60 bg-background"
+      className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[8px] border border-border/60 bg-background"
       data-testid="workspace-preview"
       ref={previewRef}
     >
-      <div className="flex min-h-9 min-w-0 items-center gap-2 border-b border-border/60 px-2.5">
+      <div className="flex min-h-9 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 px-2.5">
         <FileText className="size-3.5 shrink-0 text-foreground/35" />
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
           {preview?.name ?? selectedPath ?? "Preview"}
         </span>
       </div>
-      <div className="max-h-[min(520px,calc(100svh-12rem))] overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         {!selectedPath && (
           <ResourceNotice
             icon={FileText}

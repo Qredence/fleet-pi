@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { AgentSessionEvent } from "@mariozechner/pi-coding-agent"
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent"
 import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
@@ -14,11 +14,12 @@ import {
 } from "@/lib/pi/server"
 import {
   appendTextPart,
+  finalizeThinkingToolParts,
   toChatMessage,
-  toToolPart,
   upsertThinkingPart,
   upsertToolPart,
-} from "@/lib/pi/server-utils"
+} from "@/lib/pi/chat-message-helpers"
+import { toToolPart } from "@/lib/pi/server-utils"
 import {
   createPlanEvent,
   finalizePlanTurn,
@@ -122,6 +123,7 @@ export const Route = createFileRoute("/api/chat")({
                 unsubscribe = session.subscribe((event) => {
                   const nextParts = handleSessionEvent(
                     event,
+                    assistantId,
                     parts,
                     thinkingText,
                     toolInputs,
@@ -143,20 +145,22 @@ export const Route = createFileRoute("/api/chat")({
                   planAction: body.planAction,
                 })
                 if (planTurn) {
-                  if (planTurn.decisionPart) {
-                    parts = upsertToolPart(parts, planTurn.decisionPart)
-                    send({ type: "tool", part: planTurn.decisionPart })
+                  if (planTurn.planPart) {
+                    parts = upsertToolPart(parts, planTurn.planPart)
+                    send({ type: "tool", part: planTurn.planPart })
                   }
                   send(createPlanEvent(planTurn.state))
                 }
 
+                const finalParts = finalizeThinkingToolParts(parts)
+
                 log.info(
-                  { assistantId, partCount: parts.length },
+                  { assistantId, partCount: finalParts.length },
                   "chat stream completed"
                 )
                 send({
                   type: "done",
-                  message: toChatMessage(assistantId, "assistant", parts),
+                  message: toChatMessage(assistantId, "assistant", finalParts),
                   sessionFile: session.sessionFile,
                   sessionId: session.sessionId,
                   sessionReset: result.sessionReset,
@@ -192,6 +196,7 @@ export const Route = createFileRoute("/api/chat")({
 
 function handleSessionEvent(
   event: AgentSessionEvent,
+  assistantId: string,
   parts: Array<ChatMessagePart>,
   thinkingText: string,
   toolInputs: Map<string, Record<string, unknown>>,
@@ -211,7 +216,7 @@ function handleSessionEvent(
     event.assistantMessageEvent.type === "thinking_delta"
   ) {
     const nextThinkingText = `${thinkingText}${event.assistantMessageEvent.delta}`
-    const nextParts = upsertThinkingPart(parts, nextThinkingText)
+    const nextParts = upsertThinkingPart(parts, assistantId, nextThinkingText)
     send({ type: "thinking", text: nextThinkingText })
     return { parts: nextParts, thinkingText: nextThinkingText }
   }

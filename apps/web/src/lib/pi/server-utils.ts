@@ -1,3 +1,8 @@
+import {
+  createThinkingToolPart,
+  toChatMessage,
+  upsertToolPart,
+} from "./chat-message-helpers"
 import type {
   ChatMessage,
   ChatToolPart,
@@ -5,7 +10,7 @@ import type {
 import type {
   AgentSessionEvent,
   SessionEntry,
-} from "@mariozechner/pi-coding-agent"
+} from "@earendil-works/pi-coding-agent"
 
 export function toToolPart(
   event: Extract<
@@ -48,65 +53,6 @@ export function toToolPart(
       ? {}
       : { output: normalizeToolOutput(toolName, input, rawOutput, isError) }),
   }
-}
-
-export function toChatMessage(
-  id: string,
-  role: ChatMessage["role"],
-  parts: Array<ChatToolPart>,
-  createdAt: number = Date.now()
-): ChatMessage {
-  return {
-    id,
-    role,
-    createdAt,
-    parts: parts.length > 0 ? parts : [{ type: "text", text: "" }],
-  }
-}
-
-export function upsertToolPart(parts: Array<ChatToolPart>, part: ChatToolPart) {
-  const index = parts.findIndex(
-    (current) =>
-      current.type === part.type &&
-      "toolCallId" in current &&
-      current.toolCallId === part.toolCallId
-  )
-
-  if (index === -1) {
-    const textIndex = parts.findIndex((current) => current.type === "text")
-    if (textIndex === -1) return [...parts, part]
-
-    return [...parts.slice(0, textIndex), part, ...parts.slice(textIndex)]
-  }
-
-  const next = [...parts]
-  next[index] = { ...next[index], ...part }
-  return next
-}
-
-export function appendTextPart(parts: Array<ChatToolPart>, delta: string) {
-  const index = parts.findIndex((part) => part.type === "text")
-  if (index === -1) return [...parts, { type: "text", text: delta }]
-
-  const next = [...parts]
-  const part = next[index]
-  next[index] =
-    part.type === "text" ? { ...part, text: `${part.text}${delta}` } : part
-  return next
-}
-
-export function upsertThinkingPart(
-  parts: Array<ChatToolPart>,
-  text: string,
-  toolCallId = "thinking"
-) {
-  return upsertToolPart(parts, {
-    type: "tool-Thinking",
-    toolCallId,
-    state: "input-streaming",
-    input: { thought: text },
-    output: text,
-  })
 }
 
 export function normalizeToolName(toolName: string) {
@@ -259,13 +205,14 @@ export function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
         }
 
         if (content.type === "thinking") {
-          parts.push({
-            type: "tool-Thinking",
-            toolCallId: `${entry.id}-thinking-${index}`,
-            state: "output-available",
-            input: { thought: content.thinking },
-            output: content.thinking,
-          })
+          parts.push(
+            createThinkingToolPart({
+              messageId: entry.id,
+              index,
+              thought: content.thinking,
+              state: "output-available",
+            })
+          )
           return
         }
 

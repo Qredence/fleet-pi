@@ -13,7 +13,7 @@ Confidence: **medium-high** for static architecture and dependency findings; **m
 
 ## Top strengths
 
-- **Clear runtime direction**: The chat backend consistently uses `@mariozechner/pi-coding-agent` and Pi sessions rather than mixing agent SDKs.
+- **Clear runtime direction**: The chat backend consistently uses `@earendil-works/pi-coding-agent` and Pi sessions rather than mixing agent SDKs.
 - **Good workspace discipline**: `pnpm-workspace.yaml`, root `pnpm-lock.yaml`, `syncpack`, `knip`, `jscpd`, `tech-debt`, Husky, and CI jobs create a credible governance surface.
 - **Model/provider abstraction respected**: `/api/chat/models` is backed by Pi `ModelRegistry` and `SettingsManager`; the hard-coded Bedrock model is a fallback, not the primary UI list.
 - **Session boundary awareness**: Session files are resolved under `.fleet/sessions` with realpath checks before reuse, reducing localStorage session-file escape risk.
