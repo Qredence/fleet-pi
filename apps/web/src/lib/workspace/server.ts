@@ -195,9 +195,12 @@ async function resolveWorkspacePreviewFile(
   const resolvedPath = resolveWorkspacePath(context, filePath)
   const realWorkspaceRoot = await realpath(context.workspaceRoot)
 
-  // Check if file exists first to provide proper error handling
+  // Open the file atomically — this is the only access check we need.
+  // A separate access() call before open() creates a TOCTOU race condition
+  // where a symlink could be swapped between the check and the open.
+  let fileHandle: Awaited<ReturnType<typeof open>>
   try {
-    await access(resolvedPath, constants.R_OK)
+    fileHandle = await open(resolvedPath, "r")
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       throw new WorkspaceFileError("Workspace file was not found.", 404)
@@ -213,9 +216,6 @@ async function resolveWorkspacePreviewFile(
     }
     throw new WorkspaceFileError("Failed to access workspace file.", 500)
   }
-
-  // Atomic validation: open the file first, then validate the resolved path
-  const fileHandle = await open(resolvedPath, "r")
   let realPath: string
 
   try {
