@@ -1,11 +1,11 @@
 # Global fallback owner for the entire repository
-* @Qredence
+* @Zochory
 
 # Application code
-/apps/ @Qredence
+/apps/ @Zochory
 
 # Shared packages
-/packages/ @Qredence
+/packages/ @Zochory
 
 # GitHub configuration and CI/CD workflows
-/.github/ @Qredence
+/.github/ @Zochory
