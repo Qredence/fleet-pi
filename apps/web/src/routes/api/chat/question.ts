@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type {
-  ChatQuestionAnswerRequest,
-  ChatQuestionAnswerResponse,
-} from "@/lib/pi/chat-protocol"
+import type { ChatQuestionAnswerResponse } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { answerChatQuestion } from "@/lib/pi/server"
+import { ChatQuestionAnswerRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/question")({
@@ -19,20 +17,15 @@ export const Route = createFileRoute("/api/chat/question")({
         return wrapApiHandler(
           async () => {
             resolveAppRuntimeContext()
-            const body =
-              (await request.json()) as Partial<ChatQuestionAnswerRequest>
-            if (!body.answer) {
-              log.warn("missing answer in question request")
-              return new Response("Missing answer", { status: 400 })
-            }
+            const body = ChatQuestionAnswerRequestSchema.parse(
+              await request.json()
+            )
 
             log.info(
               { toolCallId: body.toolCallId },
               "question answer received"
             )
-            const result: ChatQuestionAnswerResponse = answerChatQuestion(
-              body as ChatQuestionAnswerRequest
-            )
+            const result: ChatQuestionAnswerResponse = answerChatQuestion(body)
             log.info({ ok: result.ok }, "question answer processed")
             return Response.json(result, { status: result.ok ? 200 : 404 })
           },

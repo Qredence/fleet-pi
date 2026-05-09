@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent"
 import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
+import { ChatRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
@@ -36,7 +37,9 @@ export const Route = createFileRoute("/api/chat")({
 
         try {
           const runtimeContext = resolveAppRuntimeContext()
-          const body = (await request.json()) as ChatRequest
+          const body = ChatRequestSchema.parse(
+            await request.json()
+          ) as ChatRequest
           const rawPrompt =
             typeof body.message === "string" ? body.message.trim() : ""
           const prompt = sanitizePii(rawPrompt)

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { ChatSessionMetadata } from "@/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { abortActiveSession } from "@/lib/pi/server"
+import { ChatSessionMetadataSchema } from "@/lib/pi/chat-protocol.zod"
 import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/abort")({
@@ -16,7 +16,9 @@ export const Route = createFileRoute("/api/chat/abort")({
         return wrapApiHandler(
           async () => {
             resolveAppRuntimeContext()
-            const metadata = (await request.json()) as ChatSessionMetadata
+            const metadata = ChatSessionMetadataSchema.parse(
+              await request.json()
+            )
             log.info(
               { sessionId: metadata.sessionId },
               "abort request received"
