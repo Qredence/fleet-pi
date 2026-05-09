@@ -28,5 +28,8 @@ describe("resource expectations", () => {
       "Missing expected Pi extension: workspace-context"
     )
     expect(diagnostics).toContain("Missing expected Pi extension: web-fetch")
+    expect(diagnostics).toContain(
+      "Missing expected Pi extension: resource-install"
+    )
   })
 })

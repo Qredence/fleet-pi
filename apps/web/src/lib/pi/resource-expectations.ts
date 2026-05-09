@@ -6,6 +6,7 @@ export const EXPECTED_PROJECT_EXTENSION_NAMES = [
   "workspace-write",
   "workspace-context",
   "web-fetch",
+  "resource-install",
 ]
 
 export function collectResourceExpectationDiagnostics(

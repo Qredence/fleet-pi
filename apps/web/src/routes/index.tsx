@@ -55,7 +55,7 @@ function HeaderPillButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium shadow-sm backdrop-blur transition-colors ${
+      className={`relative inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium whitespace-nowrap shadow-sm backdrop-blur transition-colors ${
         active
           ? "border-border/70 bg-background text-foreground/75"
           : "border-border/70 bg-background/85 text-foreground/55 hover:bg-background hover:text-foreground/75"
@@ -122,7 +122,7 @@ function SessionMenu({
       trigger={
         <HeaderPillButton
           ariaLabel="Open conversations"
-          className="w-[min(360px,calc(100vw-8rem))] justify-between"
+          className="w-[6.5rem] justify-between sm:w-32 md:w-36 lg:w-[6.5rem] xl:w-40 2xl:w-64"
         >
           <div className="flex min-w-0 items-center gap-2">
             <History className="size-3 shrink-0 text-foreground/35" />
@@ -174,34 +174,47 @@ function ChatHeader({
   activeSessionLabel,
   onNewSession,
   onResumeSession,
+  rightPanelOpen,
   sessions,
 }: {
   activeSessionId?: string
   activeSessionLabel: string
   onNewSession: () => void
   onResumeSession: (metadata: ChatSessionMetadata) => void
+  rightPanelOpen: boolean
   sessions: Array<ChatSessionInfo>
 }) {
   return (
-    <div className="pointer-events-none absolute top-3 right-40 left-3 z-50 lg:right-44">
-      <div className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-3">
+    <div
+      className={`pointer-events-none absolute top-3 left-3 z-50 ${
+        rightPanelOpen
+          ? "right-40 min-[960px]:right-3"
+          : "right-40 min-[960px]:right-44"
+      }`}
+    >
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="pointer-events-auto justify-self-start">
           <AccountMenu />
         </div>
-        <div className="pointer-events-auto min-w-0 justify-self-center">
+        <div className="pointer-events-auto flex min-w-0 items-center gap-2 justify-self-center">
           <SessionMenu
             activeSessionId={activeSessionId}
             activeSessionLabel={activeSessionLabel}
             onResumeSession={onResumeSession}
             sessions={sessions}
           />
-        </div>
-        <div className="pointer-events-auto justify-self-end">
           <HeaderPillButton ariaLabel="New session" onClick={onNewSession}>
             <Plus className="size-3.5 shrink-0" />
-            <span>New session</span>
+            <span
+              className={`hidden whitespace-nowrap ${
+                rightPanelOpen ? "xl:inline" : "sm:inline"
+              }`}
+            >
+              New session
+            </span>
           </HeaderPillButton>
         </div>
+        <div />
       </div>
     </div>
   )
@@ -286,6 +299,15 @@ function ChatWorkspaceShell() {
     resources,
     workspaceTree,
   })
+  const inputSuggestions = useMemo(
+    () => ({
+      items: suggestions,
+      className: "!px-0 flex-col items-start gap-1.5",
+      itemClassName:
+        "h-auto justify-start rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-foreground/65 shadow-sm transition-colors hover:border-border hover:bg-foreground/6 hover:text-foreground",
+    }),
+    [suggestions]
+  )
   const agentChatStyle = useMemo(
     () =>
       ({
@@ -319,13 +341,17 @@ function ChatWorkspaceShell() {
         className="relative flex h-svh min-w-0 overflow-hidden"
         data-testid="chat-shell"
       >
-        <div className="relative min-w-0 flex-1" data-testid="chat-column">
+        <div
+          className="relative min-w-0 flex-1 overflow-hidden"
+          data-testid="chat-column"
+        >
           <ChatHeader
             activeSessionId={sessionMetadata.sessionId}
             activeSessionLabel={activeSessionLabel}
             sessions={sessions}
             onNewSession={() => void startNewSession()}
             onResumeSession={(metadata) => void resumeSession(metadata)}
+            rightPanelOpen={rightPanel !== null}
           />
           <UiErrorBoundary>
             <AgentChat
@@ -344,7 +370,7 @@ function ChatWorkspaceShell() {
               }}
               error={error ?? undefined}
               emptyStatePosition="default"
-              suggestions={suggestions}
+              suggestions={inputSuggestions}
               style={agentChatStyle}
               slots={{
                 InputBar: (props) => (

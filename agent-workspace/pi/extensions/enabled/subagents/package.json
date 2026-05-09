@@ -1,0 +1,10 @@
+{
+  "name": "pi-subagents-vendored",
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

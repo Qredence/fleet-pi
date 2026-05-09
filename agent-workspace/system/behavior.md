@@ -9,14 +9,35 @@
   gaps honestly.
 - Summarize durable learnings. If a lesson should survive the session, capture
   it in the appropriate memory or plan file.
+- Treat `agent-workspace/` as Fleet Pi's agent home. Skills, tools context,
+  memory, plans, evals, artifacts, and Pi extension orientation should be
+  discoverable there, even when executable extension code lives under `.pi/`.
+- Install runtime resources with `resource_install`. Chat-installed Pi skills,
+  prompts, extensions, and package bundles belong under `agent-workspace/pi`;
+  extensions and packages require explicit activation and a reload/new session.
+- Recall before denying memory. For memory or recall requests, inspect canonical
+  project memory first, then search `agent-workspace/memory/project` before
+  saying the information is unavailable.
 - Use plans for complex work. Multi-step tasks should leave behind a resumable
   execution plan.
 - Avoid hiding state in scratch files. Scratch space is temporary and should not
   become the system of record.
 - Avoid turning one-off notes into permanent memory without synthesis. Daily
   notes and raw traces should be distilled before they become durable guidance.
+- For normal "remember this" requests, update the narrowest canonical project
+  memory file rather than creating ad hoc files. Use separate project-memory
+  files only when explicitly requested, for temporary harness tests, or for raw
+  material that will later be synthesized.
 
-## Installing Skills
+## Installing Runtime Resources
+
+Use `resource_install` for Fleet Pi runtime resources. It preserves the source
+content in `agent-workspace/pi`, updates the root `.pi/settings.json`
+compatibility bridge when needed, and reports whether a reload/new session is
+required. Treat "plugins" as Pi package/resource bundles in v1; do not install
+Codex or Claude plugin bundles unless the user asks for a separate artifact.
+
+## Installing Workspace Skills
 
 When adding a skill to `agent-workspace/skills/`, always preserve the source
 content exactly — do not summarize, paraphrase, or excerpt it. Copy the full

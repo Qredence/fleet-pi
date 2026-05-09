@@ -1,5 +1,5 @@
 import { CircleAlert, File, FileText, Folder, HardDrive } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 import { Markdown } from "@workspace/ui/components/agent-elements/markdown"
 import {
   ResourceChipSection,
@@ -26,6 +26,7 @@ export function WorkspacePanelContent({
   const [preview, setPreview] = useState<WorkspaceFileResponse | null>(null)
   const [previewError, setPreviewError] = useState<Error | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const previewRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!workspace || !selectedPath) return
@@ -76,6 +77,21 @@ export function WorkspacePanelContent({
       cancelled = true
     }
   }, [selectedPath, workspace])
+
+  useEffect(() => {
+    if (!selectedPath || typeof window === "undefined") return
+    if (window.matchMedia("(min-width: 960px)").matches) return
+
+    const frame = window.requestAnimationFrame(() => {
+      previewRef.current?.scrollIntoView({
+        block: "start",
+        inline: "nearest",
+        behavior: "auto",
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [selectedPath])
 
   if (error) {
     return (
@@ -139,6 +155,7 @@ export function WorkspacePanelContent({
         error={previewError}
         loading={previewLoading}
         preview={preview}
+        previewRef={previewRef}
         selectedPath={selectedPath}
       />
     </div>
@@ -202,17 +219,20 @@ function WorkspacePreview({
   error,
   loading,
   preview,
+  previewRef,
   selectedPath,
 }: {
   error: Error | null
   loading: boolean
   preview: WorkspaceFileResponse | null
+  previewRef: RefObject<HTMLDivElement | null>
   selectedPath: string | null
 }) {
   return (
     <div
       className="min-h-55 min-w-0 rounded-[8px] border border-border/60 bg-background"
       data-testid="workspace-preview"
+      ref={previewRef}
     >
       <div className="flex min-h-9 min-w-0 items-center gap-2 border-b border-border/60 px-2.5">
         <FileText className="size-3.5 shrink-0 text-foreground/35" />

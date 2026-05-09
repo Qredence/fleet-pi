@@ -4,9 +4,17 @@
     "npm:pi-skill-palette",
     "npm:pi-autocontext"
   ],
+  "skills": [
+    "../agent-workspace/pi/skills"
+  ],
+  "prompts": [
+    "../agent-workspace/pi/prompts"
+  ],
   "extensions": [
     "extensions/bedrock-bearer-auth",
+    "extensions/resource-install",
     "extensions/vendor/filechanges",
-    "extensions/vendor/subagents"
+    "extensions/vendor/subagents",
+    "../agent-workspace/pi/extensions/enabled"
   ]
 }

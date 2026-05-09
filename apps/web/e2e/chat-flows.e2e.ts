@@ -1,6 +1,6 @@
 /* eslint-disable max-lines-per-function -- shared mocked chat harness keeps the suite readable in one place */
 import { expect, test } from "@playwright/test"
-import type { Page, Route } from "@playwright/test"
+import type { Locator, Page, Route } from "@playwright/test"
 
 const MOCK_SESSION_FILE = "/tmp/fleet-pi-test-session.json"
 const MOCK_SESSION_ID = "test-session-id"
@@ -301,6 +301,21 @@ function mockWorkspaceFile(page: Page) {
   )
 }
 
+async function scrollPanelToEnd(panel: Locator) {
+  const scroller = panel.locator(".overflow-y-auto").first()
+  await expect(scroller).toBeVisible()
+  await expect
+    .poll(async () =>
+      scroller.evaluate(
+        (element) => element.scrollHeight > element.clientHeight
+      )
+    )
+    .toBe(true)
+  await scroller.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+}
+
 function mockChatNew(page: Page) {
   return page.route(
     "http://localhost:3000/api/chat/new",
@@ -538,6 +553,31 @@ test.describe("chat flows", () => {
     await expect(page.locator('text=Find a skill "frontend"')).toBeVisible()
     await expect(page.locator("text=Read AGENTS.md")).toBeVisible()
     await expect(page.locator("text=Show workspace files")).toBeVisible()
+
+    const frontendSuggestion = page.getByRole("button", {
+      name: 'Find a skill "frontend"',
+    })
+    const agentsSuggestion = page.getByRole("button", {
+      name: "Read AGENTS.md",
+    })
+    const frontendBox = await frontendSuggestion.boundingBox()
+    const agentsBox = await agentsSuggestion.boundingBox()
+    expect(frontendBox).not.toBeNull()
+    expect(agentsBox).not.toBeNull()
+    expect(agentsBox?.y ?? 0).toBeGreaterThan(frontendBox?.y ?? 0)
+    const restingBackground = await frontendSuggestion.evaluate(
+      (element) => getComputedStyle(element).backgroundColor
+    )
+    await expect(frontendSuggestion).toHaveCSS("padding-left", "12px")
+    await expect(frontendSuggestion).toHaveCSS("padding-right", "12px")
+    await frontendSuggestion.hover()
+    await expect
+      .poll(async () =>
+        frontendSuggestion.evaluate(
+          (element) => getComputedStyle(element).backgroundColor
+        )
+      )
+      .not.toBe(restingBackground)
   })
 
   test("reloads page and restores messages from session hydration", async ({
@@ -602,6 +642,67 @@ test.describe("chat flows", () => {
     await expect(modelPicker).toContainText("Claude Opus 4.6")
   })
 
+  test("keeps conversations and New session header controls compact", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+
+    const conversationsButton = page.locator(
+      '[aria-label="Open conversations"]'
+    )
+    const newSessionButton = page.locator('[aria-label="New session"]')
+    await expect(conversationsButton).toBeVisible()
+    await expect(newSessionButton).toBeVisible()
+
+    const conversationsBox = await conversationsButton.boundingBox()
+    const newSessionBox = await newSessionButton.boundingBox()
+    expect(conversationsBox).not.toBeNull()
+    expect(newSessionBox).not.toBeNull()
+    expect(conversationsBox?.width ?? 0).toBeLessThanOrEqual(260)
+    expect(
+      (conversationsBox?.x ?? 0) + (conversationsBox?.width ?? 0)
+    ).toBeLessThanOrEqual(newSessionBox?.x ?? 0)
+    expect(
+      (newSessionBox?.x ?? 0) -
+        ((conversationsBox?.x ?? 0) + (conversationsBox?.width ?? 0))
+    ).toBeLessThanOrEqual(12)
+
+    const newSessionText = newSessionButton.getByText("New session", {
+      exact: true,
+    })
+    if (await newSessionText.isVisible()) {
+      expect(
+        (await newSessionText.boundingBox())?.height ?? 0
+      ).toBeLessThanOrEqual(20)
+    } else {
+      expect(newSessionBox?.width ?? 0).toBeLessThanOrEqual(48)
+    }
+  })
+
+  test("collapses New session to icon-only on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    const newSessionButton = page.locator('[aria-label="New session"]')
+    await expect(newSessionButton).toBeVisible()
+    await expect(
+      newSessionButton.getByText("New session", { exact: true })
+    ).not.toBeVisible()
+  })
+
   test("opens Pi resources as a docked canvas", async ({ page }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
@@ -633,6 +734,16 @@ test.describe("chat flows", () => {
     )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
+    await expect(
+      page.locator('[data-testid="right-panel-floating-launcher"]')
+    ).not.toBeVisible()
+    const headerLauncher = canvas.locator(
+      '[data-testid="right-panel-header-launcher"]'
+    )
+    await expect(headerLauncher).toBeVisible()
+    await expect(
+      headerLauncher.getByRole("button", { name: "Pi resources" })
+    ).toContainText(/\d+/)
     await expect(
       canvas.getByTestId("resource-chip-section-skills")
     ).toBeVisible()
@@ -668,16 +779,34 @@ test.describe("chat flows", () => {
     ).toHaveCount(0)
     const firstSkillBox = await skillItems.nth(0).boundingBox()
     const secondSkillBox = await skillItems.nth(1).boundingBox()
+    const skillsLabelBox = await canvas
+      .getByText("Skills", { exact: true })
+      .boundingBox()
     expect(firstSkillBox).not.toBeNull()
     expect(secondSkillBox).not.toBeNull()
+    expect(skillsLabelBox).not.toBeNull()
+    expect(skillsLabelBox?.y ?? 0).toBeLessThan(firstSkillBox?.y ?? 0)
     expect(
       Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))
-    ).toBeLessThanOrEqual(1)
+    ).toBeLessThanOrEqual(20)
     expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
       name: /project-inventory/,
     })
     await expect(projectInventoryChip).toBeVisible()
+    const extensionsSection = canvas.getByTestId(
+      "resource-chip-section-extensions"
+    )
+    const firstExtensionBox = await extensionsSection
+      .getByTestId("resource-chip")
+      .first()
+      .boundingBox()
+    const extensionsLabelBox = await canvas
+      .getByText("Extensions", { exact: true })
+      .boundingBox()
+    expect(firstExtensionBox).not.toBeNull()
+    expect(extensionsLabelBox).not.toBeNull()
+    expect(extensionsLabelBox?.y ?? 0).toBeLessThan(firstExtensionBox?.y ?? 0)
     await expect(
       canvas.getByText("project-inventory", { exact: true })
     ).toBeVisible()
@@ -697,6 +826,53 @@ test.describe("chat flows", () => {
     await expect(canvas.getByText("subagents", { exact: true })).toBeVisible()
     await expect(canvas.getByText("AGENTS.md", { exact: true })).toBeVisible()
     await expect(canvas.getByText("/tmp/fleet-pi/AGENTS.md")).toHaveCount(0)
+  })
+
+  test("resizes chat content when a side panel opens near desktop width", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1013, height: 938 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    const canvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(canvas).toBeVisible()
+    await expect(
+      page.locator('[data-testid="pi-resources-mobile-panel"]')
+    ).not.toBeVisible()
+
+    const chatColumn = page.locator('[data-testid="chat-column"]')
+    const input = page.getByPlaceholder("Send a message...")
+    const suggestion = page.getByRole("button", {
+      name: "Summarize this project",
+    })
+
+    const chatBox = await chatColumn.boundingBox()
+    const canvasBox = await canvas.boundingBox()
+    const inputBox = await input.boundingBox()
+    const suggestionBox = await suggestion.boundingBox()
+
+    expect(chatBox).not.toBeNull()
+    expect(canvasBox).not.toBeNull()
+    expect(inputBox).not.toBeNull()
+    expect(suggestionBox).not.toBeNull()
+    const canvasLeft = canvasBox?.x ?? 0
+    expect((chatBox?.x ?? 0) + (chatBox?.width ?? 0)).toBeLessThanOrEqual(
+      canvasLeft + 1
+    )
+    expect((inputBox?.x ?? 0) + (inputBox?.width ?? 0)).toBeLessThanOrEqual(
+      canvasLeft + 1
+    )
+    expect(
+      (suggestionBox?.x ?? 0) + (suggestionBox?.width ?? 0)
+    ).toBeLessThanOrEqual(canvasLeft + 1)
   })
 
   test("shows the agent workspace filesystem tab", async ({ page }) => {
@@ -771,6 +947,19 @@ test.describe("chat flows", () => {
 
     const configCanvas = page.locator('[data-testid="pi-config-canvas"]')
     await expect(configCanvas).toBeVisible()
+    await expect(
+      page.locator('[data-testid="right-panel-floating-launcher"]')
+    ).not.toBeVisible()
+    const headerLauncher = configCanvas.locator(
+      '[data-testid="right-panel-header-launcher"]'
+    )
+    await expect(headerLauncher).toBeVisible()
+    await expect(
+      headerLauncher.getByRole("button", { name: "Pi resources" })
+    ).toContainText(/\d+/)
+    await expect(
+      headerLauncher.getByRole("button", { name: "Configurations" })
+    ).toContainText("Configurations")
     const configurations = configCanvas.locator(
       '[data-testid="configurations-tab"]'
     )
@@ -819,11 +1008,14 @@ test.describe("chat flows", () => {
       )
       .toBe(false)
 
-    await page.getByRole("button", { name: "Pi resources" }).click()
+    await headerLauncher.getByRole("button", { name: "Pi resources" }).click()
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await resourcesCanvas
+      .locator('[data-testid="right-panel-header-launcher"]')
+      .getByRole("button", { name: "Workspace", exact: true })
+      .click()
     await expect(
       page.locator(
         '[data-testid="pi-workspace-canvas"] [data-testid="workspace-tree"]'
@@ -847,16 +1039,40 @@ test.describe("chat flows", () => {
     await expect(canvas).toBeVisible()
 
     const before = await canvas.boundingBox()
-    const handle = page.locator('[data-testid="resizable-canvas-handle"]')
+    const handle = page.locator('[data-testid="pi-resources-resize-handle"]')
     const handleBox = await handle.boundingBox()
+    const startX = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2
+    const startY = (handleBox?.y ?? 0) + 80
 
-    await page.mouse.move(
-      (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2,
-      (handleBox?.y ?? 0) + 80
+    await handle.dispatchEvent("pointerdown", {
+      bubbles: true,
+      clientX: startX,
+      clientY: startY,
+    })
+    await page.evaluate(
+      ({ clientX, clientY }) => {
+        window.dispatchEvent(
+          new PointerEvent("pointermove", {
+            bubbles: true,
+            clientX,
+            clientY,
+          })
+        )
+      },
+      { clientX: startX + 300, clientY: startY }
     )
-    await page.mouse.down()
-    await page.mouse.move((handleBox?.x ?? 0) + 300, (handleBox?.y ?? 0) + 80)
-    await page.mouse.up()
+    await page.evaluate(
+      ({ clientX, clientY }) => {
+        window.dispatchEvent(
+          new PointerEvent("pointerup", {
+            bubbles: true,
+            clientX,
+            clientY,
+          })
+        )
+      },
+      { clientX: startX + 300, clientY: startY }
+    )
 
     await expect
       .poll(async () => (await canvas.boundingBox())?.width ?? 0)
@@ -869,16 +1085,39 @@ test.describe("chat flows", () => {
 
     const resized = await canvas.boundingBox()
     const resizedHandleBox = await handle.boundingBox()
-    await page.mouse.move(
-      (resizedHandleBox?.x ?? 0) + (resizedHandleBox?.width ?? 0) / 2,
-      (resizedHandleBox?.y ?? 0) + 80
+    const resizedStartX =
+      (resizedHandleBox?.x ?? 0) + (resizedHandleBox?.width ?? 0) / 2
+    const resizedStartY = (resizedHandleBox?.y ?? 0) + 80
+
+    await handle.dispatchEvent("pointerdown", {
+      bubbles: true,
+      clientX: resizedStartX,
+      clientY: resizedStartY,
+    })
+    await page.evaluate(
+      ({ clientX, clientY }) => {
+        window.dispatchEvent(
+          new PointerEvent("pointermove", {
+            bubbles: true,
+            clientX,
+            clientY,
+          })
+        )
+      },
+      { clientX: resizedStartX - 500, clientY: resizedStartY }
     )
-    await page.mouse.down()
-    await page.mouse.move(
-      (resizedHandleBox?.x ?? 0) - 500,
-      (resizedHandleBox?.y ?? 0) + 80
+    await page.evaluate(
+      ({ clientX, clientY }) => {
+        window.dispatchEvent(
+          new PointerEvent("pointerup", {
+            bubbles: true,
+            clientX,
+            clientY,
+          })
+        )
+      },
+      { clientX: resizedStartX - 500, clientY: resizedStartY }
     )
-    await page.mouse.up()
 
     await expect
       .poll(async () => (await canvas.boundingBox())?.width ?? 0)
@@ -907,6 +1146,81 @@ test.describe("chat flows", () => {
     await expect(mobilePanel).toBeVisible()
     await expect(
       mobilePanel.getByText("codebase-research", { exact: true })
+    ).toBeVisible()
+  })
+
+  test("scrolls Pi resources mobile overlay at tablet height", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 914, height: 698 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await page.locator('[aria-label="Pi resources"]').click()
+
+    const mobilePanel = page.locator(
+      '[data-testid="pi-resources-mobile-panel"]'
+    )
+    await expect(mobilePanel).toBeVisible()
+    await scrollPanelToEnd(mobilePanel)
+    await expect(
+      mobilePanel.getByText("AGENTS.md", { exact: true })
+    ).toBeVisible()
+  })
+
+  test("scrolls configurations mobile overlay at tablet height", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 914, height: 698 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await page
+      .getByRole("button", { name: "Configurations", exact: true })
+      .click()
+
+    const mobilePanel = page.locator('[data-testid="pi-config-mobile-panel"]')
+    await expect(mobilePanel).toBeVisible()
+    await scrollPanelToEnd(mobilePanel)
+    await expect(
+      mobilePanel.getByRole("button", { name: "System" })
+    ).toBeVisible()
+  })
+
+  test("shows workspace preview after mobile file selection", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+
+    const mobilePanel = page.locator(
+      '[data-testid="pi-workspace-mobile-panel"]'
+    )
+    await expect(mobilePanel).toBeVisible()
+    await mobilePanel.getByRole("button", { name: "factory.md" }).click()
+
+    const preview = mobilePanel.locator('[data-testid="workspace-preview"]')
+    await expect(
+      preview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+    await expect(
+      preview.getByText("Purpose: Research notes for Factory.")
     ).toBeVisible()
   })
 

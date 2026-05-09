@@ -47,6 +47,16 @@ export function ChatRightPanels({
   workspaceLoading: boolean
   workspaceTree: WorkspaceTreeResponse | null
 }) {
+  const headerLauncher = (
+    <RightPanelLauncher
+      activePanel={rightPanel}
+      onPanelChange={setRightPanel}
+      placement="header"
+      resources={resources}
+      workspace={workspaceTree}
+    />
+  )
+
   return (
     <>
       <RightPanelLauncher
@@ -93,6 +103,7 @@ export function ChatRightPanels({
         onRefresh={refreshResources}
         onResizeStart={handleResourceCanvasResizeStart}
         open={rightPanel === "resources"}
+        headerActions={headerLauncher}
         title="Pi Resources"
         titleIcon={Library}
         width={resourceCanvasWidth}
@@ -111,6 +122,7 @@ export function ChatRightPanels({
         onRefresh={refreshWorkspace}
         onResizeStart={handleResourceCanvasResizeStart}
         open={rightPanel === "workspace"}
+        headerActions={headerLauncher}
         title="Workspace"
         titleIcon={Folder}
         width={resourceCanvasWidth}
@@ -127,6 +139,7 @@ export function ChatRightPanels({
         onClose={() => setRightPanel(null)}
         onResizeStart={handleResourceCanvasResizeStart}
         open={rightPanel === "configurations"}
+        headerActions={headerLauncher}
         title="Configurations"
         titleIcon={Settings}
         width={resourceCanvasWidth}

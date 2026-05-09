@@ -16,7 +16,10 @@ Use this skill before broad codebase analysis or feature planning.
 - Plan mode extension: `apps/web/src/lib/pi/plan-mode.ts`
 - Browser-safe chat protocol: `apps/web/src/lib/pi/chat-protocol.ts`
 - Shared Agent Elements UI: `packages/ui/src/components/agent-elements/`
-- Project-local Pi resources: `.pi/skills`, `.pi/prompts`, `.pi/extensions`
+- Built-in/project Pi resources: `.pi/skills`, `.pi/prompts`, `.pi/extensions`
+- Chat-installed Pi resources: `agent-workspace/pi/skills`,
+  `agent-workspace/pi/prompts`, `agent-workspace/pi/extensions`, and
+  `agent-workspace/pi/packages`
 - Persistent Pi sessions: `.fleet/sessions`
 
 ## Workflow
