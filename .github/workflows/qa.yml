@@ -2,11 +2,6 @@ name: QA
 
 on:
   workflow_dispatch:
-    inputs:
-      target_branch:
-        description: "Branch to test"
-        required: false
-        default: ""
 
 concurrency:
   group: qa-${{ github.ref }}

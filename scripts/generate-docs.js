@@ -96,7 +96,7 @@ for (const [path, methods] of Object.entries(openapi.paths ?? {})) {
   }
 }
 
-writeFileSync(join(docsDir, "api.md"), apiMd)
+writeFileSync(join(docsDir, "api.md"), `${apiMd.trimEnd()}\n`)
 console.log("docs/api.md written")
 
 // ─── 3. Generate architecture Mermaid diagram ───
@@ -267,11 +267,13 @@ function formatSchema(schema, indentLevel = 0) {
   if (schema.type === "object" && schema.properties) {
     let out = `${indent}\`\`\`json\n`
     out += `${indent}{\n`
-    for (const [key, prop] of Object.entries(schema.properties)) {
+    const entries = Object.entries(schema.properties)
+    for (const [index, [key, prop]] of entries.entries()) {
       const req = (schema.required ?? []).includes(key) ? " (required)" : ""
       const typeStr = prop.type ? ` <${prop.type}>` : ""
       const desc = prop.description ? ` — ${prop.description}` : ""
-      out += `${indent}  "${key}":${typeStr}${req}${desc}\n`
+      const comma = index < entries.length - 1 ? "," : ""
+      out += `${indent}  "${key}":${typeStr}${req}${desc}${comma}\n`
     }
     out += `${indent}}\n`
     out += `${indent}\`\`\`\n`

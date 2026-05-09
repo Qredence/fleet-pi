@@ -12,8 +12,15 @@ This is the recommended path for most users.
 ### Prerequisites
 
 - Node.js 22 or newer
-- `pnpm` 10.33.3 or newer
+- `pnpm` 10.33.3, matching the pinned `packageManager` field in `package.json`
 - AWS credentials with access to the Bedrock models you plan to use
+
+If you already have Corepack available, enable it once so the pinned pnpm
+version is used automatically:
+
+```zsh
+corepack enable
+```
 
 Fleet Pi uses the normal AWS credential chain. `AWS_REGION` defaults to
 `us-east-1` when unset.
