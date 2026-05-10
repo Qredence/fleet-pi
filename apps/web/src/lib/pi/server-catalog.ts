@@ -6,8 +6,10 @@ import {
   createSessionServices,
 } from "./server-shared"
 import {
+  applyWorkspaceResourceMetadata,
   loadWorkspaceResourceCatalog,
   mergeResourceInfo,
+  readWorkspacePiSettings,
 } from "./workspace-resource-catalog"
 import type {
   AgentSessionRuntime,
@@ -84,6 +86,7 @@ export async function loadChatResources(
   context: AppRuntimeContext
 ): Promise<ChatResourcesResponse> {
   const services = await createSessionServices(context)
+  const workspaceSettings = await readWorkspacePiSettings(context.projectRoot)
   const skills = services.resourceLoader.getSkills()
   const prompts = services.resourceLoader.getPrompts()
   const extensions = services.resourceLoader.getExtensions()
@@ -94,19 +97,36 @@ export async function loadChatResources(
   const response: ChatResourcesResponse = {
     packages: workspaceResources.packages,
     skills: mergeResourceInfo(
-      skills.skills.map(skillToResourceInfo),
+      context.projectRoot,
+      skills.skills.map((skill) =>
+        applyWorkspaceResourceMetadata(
+          context.projectRoot,
+          workspaceSettings,
+          skillToResourceInfo(skill)
+        )
+      ),
       workspaceResources.skills
     ),
     prompts: mergeResourceInfo(
-      prompts.prompts.map(promptToResourceInfo),
+      context.projectRoot,
+      prompts.prompts.map((prompt) =>
+        applyWorkspaceResourceMetadata(
+          context.projectRoot,
+          workspaceSettings,
+          promptToResourceInfo(prompt)
+        )
+      ),
       workspaceResources.prompts
     ),
     extensions: mergeResourceInfo(
-      extensions.extensions.map((extension) => ({
-        name: extensionNameFromPath(extension.path),
-        path: extension.resolvedPath,
-        source: getSource(extension),
-      })),
+      context.projectRoot,
+      extensions.extensions.map((extension) =>
+        applyWorkspaceResourceMetadata(context.projectRoot, workspaceSettings, {
+          name: extensionNameFromPath(extension.path),
+          path: extension.resolvedPath,
+          source: getSource(extension),
+        })
+      ),
       workspaceResources.extensions
     ),
     themes: themes.themes.map((theme) => {

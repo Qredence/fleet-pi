@@ -14,7 +14,7 @@ import { ModeSelector } from "@workspace/ui/components/agent-elements/input/mode
 import { ModelPicker } from "@workspace/ui/components/agent-elements/input/model-picker"
 import { Popover } from "@workspace/ui/components/agent-elements/input/popover"
 import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loader"
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import type {
   ChatSessionInfo,
@@ -31,6 +31,7 @@ import {
   useChatResources,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
+import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
 import {
   useActiveSessionLabel,
@@ -259,6 +260,7 @@ function ChatWorkspaceShell() {
 
   const resources = resourcesData ?? null
   const workspaceTree = workspaceData ?? null
+  const handledResourceInstallToolCalls = useRef(new Set<string>())
 
   const refreshResources = useCallback(() => {
     void refetchResources()
@@ -287,6 +289,31 @@ function ChatWorkspaceShell() {
     onModeChange: handleModeChange,
     persistSession,
   })
+
+  useEffect(() => {
+    const completedToolCallIds = collectCompletedResourceInstallToolCallIds(
+      messages
+    ).filter(
+      (toolCallId) => !handledResourceInstallToolCalls.current.has(toolCallId)
+    )
+
+    if (completedToolCallIds.length === 0) return
+
+    completedToolCallIds.forEach((toolCallId) => {
+      handledResourceInstallToolCalls.current.add(toolCallId)
+    })
+
+    refreshResources()
+    if (workspaceTree || shouldLoadWorkspaceTree) {
+      refreshWorkspace()
+    }
+  }, [
+    messages,
+    refreshResources,
+    refreshWorkspace,
+    shouldLoadWorkspaceTree,
+    workspaceTree,
+  ])
 
   const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
   const activeSessionLabel = useActiveSessionLabel({
