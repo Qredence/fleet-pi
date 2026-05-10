@@ -110,6 +110,32 @@ export type WorkspaceProjectionSemanticRecordRow = {
   sortOrder: number
 }
 
+export type WorkspaceProjectionItemDetailRow = {
+  item: WorkspaceProjectionItemRow
+  version: WorkspaceProjectionItemVersionRow
+  semanticRecords: Array<WorkspaceProjectionSemanticRecordRow>
+}
+
+export type WorkspaceProjectionSearchRow = {
+  itemId: string
+  canonicalPath: string
+  category: (typeof WORKSPACE_INDEX_CATEGORY_VALUES)[number]
+  sourceOfTruth: (typeof WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES)[number]
+  parserKind: string
+  title: string | null
+  summary: string | null
+  currentVersionNumber: number
+  currentParserVersion: number
+  lastIndexedAt: string
+  lastModifiedMs: number
+  recordType: (typeof WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES)[number] | null
+  recordTitle: string | null
+  recordContent: string | null
+  recordSearchText: string | null
+  recordSortOrder: number | null
+  rank: number
+}
+
 export type WorkspaceProjectionConnection = {
   db: Database.Database
   databasePath: string
@@ -317,8 +343,12 @@ export function seedWorkspaceProjectionConnection(
 
 export function listWorkspaceProjectionItems(
   db: Database.Database,
-  workspaceRootId: string
+  workspaceRootId: string,
+  options?: {
+    includeDeleted?: boolean
+  }
 ): Array<WorkspaceProjectionItemRow> {
+  const deletedFilter = options?.includeDeleted ? "" : "AND deleted_at IS NULL"
   return db
     .prepare<[string], WorkspaceProjectionItemRow>(
       `
@@ -342,10 +372,221 @@ export function listWorkspaceProjectionItems(
         deleted_at AS deletedAt
       FROM workspace_items
       WHERE workspace_root_id = ?
+      ${deletedFilter}
       ORDER BY canonical_path
     `
     )
     .all(workspaceRootId)
+}
+
+export function getWorkspaceProjectionItemDetail(
+  db: Database.Database,
+  workspaceRootId: string,
+  itemId: string
+): WorkspaceProjectionItemDetailRow | null {
+  const row = db
+    .prepare<
+      [string, string],
+      {
+        itemId: string
+        workspaceRootId: string
+        canonicalPath: string
+        category: WorkspaceProjectionItemRow["category"]
+        sourceOfTruth: WorkspaceProjectionItemRow["sourceOfTruth"]
+        itemParserKind: string
+        currentContentHash: string
+        currentVersionId: string | null
+        currentVersionNumber: number
+        currentParserVersion: number
+        itemByteSize: number
+        itemLastModifiedMs: number
+        itemTitle: string | null
+        itemSummary: string | null
+        firstIndexedAt: string
+        lastIndexedAt: string
+        deletedAt: string | null
+      }
+    >(
+      `
+      SELECT
+        workspace_items.id AS itemId,
+        workspace_items.workspace_root_id AS workspaceRootId,
+        workspace_items.canonical_path AS canonicalPath,
+        workspace_items.category,
+        workspace_items.source_of_truth AS sourceOfTruth,
+        workspace_items.parser_kind AS itemParserKind,
+        workspace_items.current_content_hash AS currentContentHash,
+        workspace_items.current_version_id AS currentVersionId,
+        workspace_items.current_version_number AS currentVersionNumber,
+        workspace_items.current_parser_version AS currentParserVersion,
+        workspace_items.byte_size AS itemByteSize,
+        workspace_items.last_modified_ms AS itemLastModifiedMs,
+        workspace_items.title AS itemTitle,
+        workspace_items.summary AS itemSummary,
+        workspace_items.first_indexed_at AS firstIndexedAt,
+        workspace_items.last_indexed_at AS lastIndexedAt,
+        workspace_items.deleted_at AS deletedAt
+      FROM workspace_items
+      WHERE workspace_items.workspace_root_id = ?
+        AND workspace_items.id = ?
+        AND workspace_items.deleted_at IS NULL
+    `
+    )
+    .get(workspaceRootId, itemId)
+
+  if (!row) {
+    return null
+  }
+
+  const item: WorkspaceProjectionItemRow = {
+    id: row.itemId,
+    workspaceRootId: row.workspaceRootId,
+    canonicalPath: row.canonicalPath,
+    category: row.category,
+    sourceOfTruth: row.sourceOfTruth,
+    parserKind: row.itemParserKind,
+    currentContentHash: row.currentContentHash,
+    currentVersionId: row.currentVersionId,
+    currentVersionNumber: row.currentVersionNumber,
+    currentParserVersion: row.currentParserVersion,
+    byteSize: row.itemByteSize,
+    lastModifiedMs: row.itemLastModifiedMs,
+    title: row.itemTitle,
+    summary: row.itemSummary,
+    firstIndexedAt: row.firstIndexedAt,
+    lastIndexedAt: row.lastIndexedAt,
+    deletedAt: row.deletedAt,
+  }
+
+  const version = db
+    .prepare<[string], WorkspaceProjectionItemVersionRow>(
+      `
+      SELECT
+        id,
+        item_id AS itemId,
+        version_number AS versionNumber,
+        content_hash AS contentHash,
+        parser_kind AS parserKind,
+        parser_version AS parserVersion,
+        source_of_truth AS sourceOfTruth,
+        category,
+        byte_size AS byteSize,
+        last_modified_ms AS lastModifiedMs,
+        title,
+        summary,
+        content_text AS contentText,
+        metadata_json AS metadataJson,
+        indexed_at AS indexedAt
+      FROM workspace_item_versions
+      WHERE id = ?
+    `
+    )
+    .get(item.currentVersionId ?? "")
+
+  if (!version) {
+    return null
+  }
+
+  const semanticRecords = db
+    .prepare<[string], WorkspaceProjectionSemanticRecordRow>(
+      `
+      SELECT
+        id,
+        item_version_id AS itemVersionId,
+        stable_key AS stableKey,
+        record_type AS recordType,
+        title,
+        content,
+        search_text AS searchText,
+        metadata_json AS metadataJson,
+        sort_order AS sortOrder
+      FROM workspace_semantic_records
+      WHERE item_version_id = ?
+      ORDER BY sort_order
+    `
+    )
+    .all(version.id)
+
+  return {
+    item,
+    version,
+    semanticRecords,
+  }
+}
+
+export function searchWorkspaceProjection(
+  db: Database.Database,
+  workspaceRootId: string,
+  query: string,
+  options?: {
+    limit?: number
+  }
+): Array<WorkspaceProjectionSearchRow> {
+  const normalizedQuery = query.trim().toLowerCase()
+  const needle = `%${normalizedQuery}%`
+  const prefix = `${normalizedQuery}%`
+  const limit = Math.max(1, options?.limit ?? 25)
+
+  return db
+    .prepare<
+      {
+        workspaceRootId: string
+        needle: string
+        prefix: string
+        limit: number
+      },
+      WorkspaceProjectionSearchRow
+    >(
+      `
+      SELECT
+        workspace_items.id AS itemId,
+        workspace_items.canonical_path AS canonicalPath,
+        workspace_items.category,
+        workspace_items.source_of_truth AS sourceOfTruth,
+        workspace_items.parser_kind AS parserKind,
+        workspace_items.title,
+        workspace_items.summary,
+        workspace_items.current_version_number AS currentVersionNumber,
+        workspace_items.current_parser_version AS currentParserVersion,
+        workspace_items.last_indexed_at AS lastIndexedAt,
+        workspace_items.last_modified_ms AS lastModifiedMs,
+        workspace_semantic_records.record_type AS recordType,
+        workspace_semantic_records.title AS recordTitle,
+        workspace_semantic_records.content AS recordContent,
+        workspace_semantic_records.search_text AS recordSearchText,
+        workspace_semantic_records.sort_order AS recordSortOrder,
+        CASE
+          WHEN lower(workspace_items.canonical_path) LIKE @prefix THEN 0
+          WHEN lower(COALESCE(workspace_items.title, '')) LIKE @prefix THEN 1
+          WHEN lower(COALESCE(workspace_semantic_records.title, '')) LIKE @prefix THEN 2
+          WHEN lower(COALESCE(workspace_semantic_records.search_text, '')) LIKE @needle THEN 3
+          WHEN lower(workspace_item_versions.content_text) LIKE @needle THEN 4
+          ELSE 5
+        END AS rank
+      FROM workspace_items
+      JOIN workspace_item_versions
+        ON workspace_item_versions.id = workspace_items.current_version_id
+      LEFT JOIN workspace_semantic_records
+        ON workspace_semantic_records.item_version_id = workspace_item_versions.id
+      WHERE workspace_items.workspace_root_id = @workspaceRootId
+        AND workspace_items.deleted_at IS NULL
+        AND (
+          lower(workspace_items.canonical_path) LIKE @needle OR
+          lower(COALESCE(workspace_items.title, '')) LIKE @needle OR
+          lower(COALESCE(workspace_items.summary, '')) LIKE @needle OR
+          lower(COALESCE(workspace_semantic_records.search_text, '')) LIKE @needle OR
+          lower(workspace_item_versions.content_text) LIKE @needle
+        )
+      ORDER BY rank, workspace_items.canonical_path, workspace_semantic_records.sort_order
+      LIMIT @limit
+    `
+    )
+    .all({
+      workspaceRootId,
+      needle,
+      prefix,
+      limit: limit * 4,
+    })
 }
 
 function configureWorkspaceProjection(db: Database.Database) {

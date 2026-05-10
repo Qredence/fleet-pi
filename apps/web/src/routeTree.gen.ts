@@ -13,6 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiWorkspaceTreeRouteImport } from './routes/api/workspace/tree'
+import { Route as ApiWorkspaceSearchRouteImport } from './routes/api/workspace/search'
+import { Route as ApiWorkspaceReindexRouteImport } from './routes/api/workspace/reindex'
+import { Route as ApiWorkspaceItemsRouteImport } from './routes/api/workspace/items'
+import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/item'
 import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
@@ -42,6 +46,26 @@ const ApiChatRoute = ApiChatRouteImport.update({
 const ApiWorkspaceTreeRoute = ApiWorkspaceTreeRouteImport.update({
   id: '/api/workspace/tree',
   path: '/api/workspace/tree',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceSearchRoute = ApiWorkspaceSearchRouteImport.update({
+  id: '/api/workspace/search',
+  path: '/api/workspace/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceReindexRoute = ApiWorkspaceReindexRouteImport.update({
+  id: '/api/workspace/reindex',
+  path: '/api/workspace/reindex',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceItemsRoute = ApiWorkspaceItemsRouteImport.update({
+  id: '/api/workspace/items',
+  path: '/api/workspace/items',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceItemRoute = ApiWorkspaceItemRouteImport.update({
+  id: '/api/workspace/item',
+  path: '/api/workspace/item',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceHealthRoute = ApiWorkspaceHealthRouteImport.update({
@@ -109,6 +133,10 @@ export interface FileRoutesByFullPath {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +153,10 @@ export interface FileRoutesByTo {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesById {
@@ -142,6 +174,10 @@ export interface FileRoutesById {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +196,10 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/workspace/file'
     | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -176,6 +216,10 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/workspace/file'
     | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   id:
     | '__root__'
@@ -192,6 +236,10 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/workspace/file'
     | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   fileRoutesById: FileRoutesById
 }
@@ -201,6 +249,10 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
   ApiWorkspaceHealthRoute: typeof ApiWorkspaceHealthRoute
+  ApiWorkspaceItemRoute: typeof ApiWorkspaceItemRoute
+  ApiWorkspaceItemsRoute: typeof ApiWorkspaceItemsRoute
+  ApiWorkspaceReindexRoute: typeof ApiWorkspaceReindexRoute
+  ApiWorkspaceSearchRoute: typeof ApiWorkspaceSearchRoute
   ApiWorkspaceTreeRoute: typeof ApiWorkspaceTreeRoute
 }
 
@@ -232,6 +284,34 @@ declare module '@tanstack/react-router' {
       path: '/api/workspace/tree'
       fullPath: '/api/workspace/tree'
       preLoaderRoute: typeof ApiWorkspaceTreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/search': {
+      id: '/api/workspace/search'
+      path: '/api/workspace/search'
+      fullPath: '/api/workspace/search'
+      preLoaderRoute: typeof ApiWorkspaceSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/reindex': {
+      id: '/api/workspace/reindex'
+      path: '/api/workspace/reindex'
+      fullPath: '/api/workspace/reindex'
+      preLoaderRoute: typeof ApiWorkspaceReindexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/items': {
+      id: '/api/workspace/items'
+      path: '/api/workspace/items'
+      fullPath: '/api/workspace/items'
+      preLoaderRoute: typeof ApiWorkspaceItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/item': {
+      id: '/api/workspace/item'
+      path: '/api/workspace/item'
+      fullPath: '/api/workspace/item'
+      preLoaderRoute: typeof ApiWorkspaceItemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspace/health': {
@@ -338,6 +418,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
   ApiWorkspaceHealthRoute: ApiWorkspaceHealthRoute,
+  ApiWorkspaceItemRoute: ApiWorkspaceItemRoute,
+  ApiWorkspaceItemsRoute: ApiWorkspaceItemsRoute,
+  ApiWorkspaceReindexRoute: ApiWorkspaceReindexRoute,
+  ApiWorkspaceSearchRoute: ApiWorkspaceSearchRoute,
   ApiWorkspaceTreeRoute: ApiWorkspaceTreeRoute,
 }
 export const routeTree = rootRouteImport
