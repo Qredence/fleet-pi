@@ -36,4 +36,4 @@ evals, artifacts, and scratch space should be discoverable from
 `agent-workspace/`. Add new durable context in the smallest canonical file that
 matches its purpose.
 
-Human-facing explanation: [../docs/agent-workspace.md](../docs/agent-workspace.md)
+Human-facing explanation: [../docs/adaptive-workspace.md](../docs/adaptive-workspace.md)

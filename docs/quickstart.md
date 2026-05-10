@@ -25,6 +25,12 @@ corepack enable
 Fleet Pi uses the normal AWS credential chain. `AWS_REGION` defaults to
 `us-east-1` when unset.
 
+`agent-workspace/` is the canonical durable adaptive state. Durable memory,
+plans, workspace-installed Pi resources, and other adaptive artifacts belong in
+reviewable workspace files; `agent-workspace/indexes/` is reserved for
+non-canonical projection data, and `.pi/settings.json` remains the
+compatibility bridge.
+
 ### 1. Install dependencies
 
 ```zsh
@@ -103,6 +109,9 @@ a fresh worktree:
 # from repo root
 pnpm install --frozen-lockfile
 ```
+
+For the accepted workspace contract and projection boundary, see
+[docs/adaptive-workspace.md](adaptive-workspace.md).
 
 ## Useful commands
 

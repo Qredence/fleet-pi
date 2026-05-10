@@ -27,6 +27,10 @@ pnpm install --frozen-lockfile
 This matches the repo's normal dependency flow and keeps worktree creation
 predictable.
 
+It also keeps setup separate from canonical workspace state: `agent-workspace/`
+remains the durable adaptive layer, while Codex setup only bootstraps the local
+worktree so later commands can operate on the repo safely.
+
 ## Expectations
 
 - `node` and `pnpm` must already be available on the machine.
@@ -34,6 +38,9 @@ predictable.
 - Do not put long-running processes in the setup script.
 - Do not rely on `export` statements in the setup script for later Codex turns;
   setup runs in a separate shell session.
+
+For the accepted workspace contract, see
+[docs/adaptive-workspace.md](adaptive-workspace.md).
 
 ## Suggested Codex Actions
 

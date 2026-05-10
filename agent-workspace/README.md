@@ -18,4 +18,4 @@ diffs. Durable memory, policy updates, workflow changes, and workspace-installed
 Pi resources should stay visible in version control rather than being hidden in
 transient state.
 
-For the human-facing overview, see [../docs/agent-workspace.md](../docs/agent-workspace.md).
+For the human-facing overview, see [../docs/adaptive-workspace.md](../docs/adaptive-workspace.md).

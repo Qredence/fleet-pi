@@ -2,6 +2,9 @@
 
 `agent-workspace/` is Fleet Pi's living directory.
 
+For the accepted canonical workspace contract, manifest/section boundary, and
+projection rules, see [docs/adaptive-workspace.md](adaptive-workspace.md).
+
 It is the repo-local home for the durable context that lets Fleet Pi behave
 like an adaptive and self-improving coding system instead of a stateless chat
 window.

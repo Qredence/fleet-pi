@@ -17,6 +17,8 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
+# Bootstrap only: install dependencies for the fresh worktree, but do not
+# start long-running processes or rewrite canonical workspace state here.
 pnpm install --frozen-lockfile
 
 print "Codex workspace ready: $REPO_ROOT"
