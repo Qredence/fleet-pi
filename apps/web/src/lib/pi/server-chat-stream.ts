@@ -40,6 +40,7 @@ export type AssistantTurnState = {
   assistantId: string
   hadError: boolean
   parts: Array<ChatMessagePart>
+  runId: string
   thinkingText: string
   toolInputs: Map<string, Record<string, unknown>>
 }
@@ -198,7 +199,11 @@ export function handleSessionEvent(
   }
 
   if (event.type === "message_end" && isAssistantErrorMessage(event.message)) {
-    send({ type: "error", message: event.message.errorMessage })
+    send({
+      type: "error",
+      message: event.message.errorMessage,
+      runId: activeTurn?.runId,
+    })
     if (!activeTurn) return activeTurn
     return {
       ...activeTurn,
@@ -270,6 +275,7 @@ export function finalizeAssistantTurn({
 
   send({
     type: "done",
+    runId: activeTurn.runId,
     message: toChatMessage(
       activeTurn.assistantId,
       "assistant",
@@ -350,10 +356,13 @@ function textFromParts(parts: Array<ChatMessagePart>) {
 }
 
 function createAssistantTurnState(): AssistantTurnState {
+  const assistantId = crypto.randomUUID()
+
   return {
-    assistantId: crypto.randomUUID(),
+    assistantId,
     hadError: false,
     parts: [],
+    runId: assistantId,
     thinkingText: "",
     toolInputs: new Map<string, Record<string, unknown>>(),
   }
@@ -370,6 +379,7 @@ function createStartEvent(
   return {
     type: "start",
     id: assistantId,
+    runId: assistantId,
     sessionFile: session.sessionFile,
     sessionId: session.sessionId,
     sessionReset: options?.sessionReset,

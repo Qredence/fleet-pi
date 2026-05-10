@@ -67,6 +67,7 @@ describe("server chat stream", () => {
     expect(emitted[0]).toMatchObject({
       type: "start",
       id: "00000000-0000-0000-0000-000000000001",
+      runId: "00000000-0000-0000-0000-000000000001",
       sessionFile: ".fleet/sessions/session-1.jsonl",
       sessionId: "session-1",
       diagnostics: ["Using persisted Pi session"],
@@ -138,6 +139,7 @@ describe("server chat stream", () => {
     expect(emitted[0]).toMatchObject({
       type: "start",
       id: "00000000-0000-0000-0000-000000000002",
+      runId: "00000000-0000-0000-0000-000000000002",
       sessionId: "session-2",
       diagnostics: ["Plan mode active"],
     })

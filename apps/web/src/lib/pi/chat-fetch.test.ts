@@ -65,8 +65,8 @@ describe("chat-fetch", () => {
   it("validates NDJSON stream events", async () => {
     const events: Array<unknown> = []
     const response = new Response(
-      '{"type":"start","id":"assistant-1","sessionId":"session-1"}\n' +
-        '{"type":"done","message":{"id":"assistant-1","role":"assistant","parts":[{"type":"text","text":"ok"}]},"sessionId":"session-1"}\n'
+      '{"type":"start","id":"assistant-1","runId":"assistant-1","sessionId":"session-1"}\n' +
+        '{"type":"done","runId":"assistant-1","message":{"id":"assistant-1","role":"assistant","parts":[{"type":"text","text":"ok"}]},"sessionId":"session-1"}\n'
     )
 
     await readChatStream(response, (event) => events.push(event))
@@ -75,10 +75,12 @@ describe("chat-fetch", () => {
       {
         type: "start",
         id: "assistant-1",
+        runId: "assistant-1",
         sessionId: "session-1",
       },
       {
         type: "done",
+        runId: "assistant-1",
         message: {
           id: "assistant-1",
           role: "assistant",

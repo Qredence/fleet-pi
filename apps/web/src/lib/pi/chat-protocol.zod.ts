@@ -168,6 +168,7 @@ export const ChatStartEventSchema = z
   .object({
     type: z.literal("start"),
     id: z.string(),
+    runId: z.string(),
     sessionFile: z.string().optional(),
     sessionId: z.string(),
     sessionReset: z.boolean().optional(),
@@ -269,6 +270,7 @@ export const ChatRetryEndEventSchema = z
 export const ChatDoneEventSchema = z
   .object({
     type: z.literal("done"),
+    runId: z.string(),
     message: ChatMessageSchema,
     sessionFile: z.string().optional(),
     sessionId: z.string(),
@@ -280,6 +282,7 @@ export const ChatErrorEventSchema = z
   .object({
     type: z.literal("error"),
     message: z.string(),
+    runId: z.string().optional(),
   })
   .openapi({ description: "Stream error event" })
 

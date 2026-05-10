@@ -74,6 +74,7 @@ export type ChatPlanState = {
 type ChatStartEvent = {
   type: "start"
   id: string
+  runId: string
   sessionFile?: string
   sessionId: string
   sessionReset?: boolean
@@ -122,12 +123,13 @@ export type ChatStreamEvent =
     }
   | {
       type: "done"
+      runId: string
       message: ChatMessage
       sessionFile?: string
       sessionId: string
       sessionReset?: boolean
     }
-  | { type: "error"; message: string }
+  | { type: "error"; message: string; runId?: string }
 
 type ChatStateEvent = {
   name:

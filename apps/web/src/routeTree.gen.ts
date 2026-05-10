@@ -21,9 +21,12 @@ import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/h
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
+import { Route as ApiChatRunsRouteImport } from './routes/api/chat/runs'
+import { Route as ApiChatRunRouteImport } from './routes/api/chat/run'
 import { Route as ApiChatResumeRouteImport } from './routes/api/chat/resume'
 import { Route as ApiChatResourcesRouteImport } from './routes/api/chat/resources'
 import { Route as ApiChatQuestionRouteImport } from './routes/api/chat/question'
+import { Route as ApiChatProvenanceRouteImport } from './routes/api/chat/provenance'
 import { Route as ApiChatNewRouteImport } from './routes/api/chat/new'
 import { Route as ApiChatModelsRouteImport } from './routes/api/chat/models'
 import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
@@ -88,6 +91,16 @@ const ApiChatSessionRoute = ApiChatSessionRouteImport.update({
   path: '/session',
   getParentRoute: () => ApiChatRoute,
 } as any)
+const ApiChatRunsRoute = ApiChatRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatRunRoute = ApiChatRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiChatRoute,
+} as any)
 const ApiChatResumeRoute = ApiChatResumeRouteImport.update({
   id: '/resume',
   path: '/resume',
@@ -101,6 +114,11 @@ const ApiChatResourcesRoute = ApiChatResourcesRouteImport.update({
 const ApiChatQuestionRoute = ApiChatQuestionRouteImport.update({
   id: '/question',
   path: '/question',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatProvenanceRoute = ApiChatProvenanceRouteImport.update({
+  id: '/provenance',
+  path: '/provenance',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatNewRoute = ApiChatNewRouteImport.update({
@@ -126,9 +144,12 @@ export interface FileRoutesByFullPath {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
@@ -146,9 +167,12 @@ export interface FileRoutesByTo {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
@@ -167,9 +191,12 @@ export interface FileRoutesById {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
@@ -189,9 +216,12 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
@@ -209,9 +239,12 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
@@ -229,9 +262,12 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
@@ -342,6 +378,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatSessionRouteImport
       parentRoute: typeof ApiChatRoute
     }
+    '/api/chat/runs': {
+      id: '/api/chat/runs'
+      path: '/runs'
+      fullPath: '/api/chat/runs'
+      preLoaderRoute: typeof ApiChatRunsRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/run': {
+      id: '/api/chat/run'
+      path: '/run'
+      fullPath: '/api/chat/run'
+      preLoaderRoute: typeof ApiChatRunRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
     '/api/chat/resume': {
       id: '/api/chat/resume'
       path: '/resume'
@@ -361,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/question'
       fullPath: '/api/chat/question'
       preLoaderRoute: typeof ApiChatQuestionRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/provenance': {
+      id: '/api/chat/provenance'
+      path: '/provenance'
+      fullPath: '/api/chat/provenance'
+      preLoaderRoute: typeof ApiChatProvenanceRouteImport
       parentRoute: typeof ApiChatRoute
     }
     '/api/chat/new': {
@@ -391,9 +448,12 @@ interface ApiChatRouteChildren {
   ApiChatAbortRoute: typeof ApiChatAbortRoute
   ApiChatModelsRoute: typeof ApiChatModelsRoute
   ApiChatNewRoute: typeof ApiChatNewRoute
+  ApiChatProvenanceRoute: typeof ApiChatProvenanceRoute
   ApiChatQuestionRoute: typeof ApiChatQuestionRoute
   ApiChatResourcesRoute: typeof ApiChatResourcesRoute
   ApiChatResumeRoute: typeof ApiChatResumeRoute
+  ApiChatRunRoute: typeof ApiChatRunRoute
+  ApiChatRunsRoute: typeof ApiChatRunsRoute
   ApiChatSessionRoute: typeof ApiChatSessionRoute
   ApiChatSessionsRoute: typeof ApiChatSessionsRoute
 }
@@ -402,9 +462,12 @@ const ApiChatRouteChildren: ApiChatRouteChildren = {
   ApiChatAbortRoute: ApiChatAbortRoute,
   ApiChatModelsRoute: ApiChatModelsRoute,
   ApiChatNewRoute: ApiChatNewRoute,
+  ApiChatProvenanceRoute: ApiChatProvenanceRoute,
   ApiChatQuestionRoute: ApiChatQuestionRoute,
   ApiChatResourcesRoute: ApiChatResourcesRoute,
   ApiChatResumeRoute: ApiChatResumeRoute,
+  ApiChatRunRoute: ApiChatRunRoute,
+  ApiChatRunsRoute: ApiChatRunsRoute,
   ApiChatSessionRoute: ApiChatSessionRoute,
   ApiChatSessionsRoute: ApiChatSessionsRoute,
 }

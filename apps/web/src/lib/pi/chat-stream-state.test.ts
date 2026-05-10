@@ -16,6 +16,7 @@ describe("chat stream state", () => {
     transition = applyChatStreamEvent(transition, {
       type: "start",
       id: "assistant-1",
+      runId: "assistant-1",
       sessionId: "session-1",
       sessionFile: ".fleet/sessions/session-1.jsonl",
       diagnostics: ["Using persisted Pi session"],
@@ -88,6 +89,7 @@ describe("chat stream state", () => {
 
     transition = applyChatStreamEvent(transition, {
       type: "done",
+      runId: "assistant-1",
       message: {
         id: "assistant-1",
         role: "assistant",

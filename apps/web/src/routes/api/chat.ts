@@ -22,6 +22,7 @@ import {
   hasTurnContent,
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
+import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 
 export const Route = createFileRoute("/api/chat")({
@@ -74,15 +75,19 @@ export const Route = createFileRoute("/api/chat")({
 
           const readable = new ReadableStream<Uint8Array>({
             async start(controller) {
-              const send = (event: ChatStreamEvent) => {
-                controller.enqueue(encodeEvent(event))
-              }
-
               let unsubscribe: (() => void) | undefined
               let releaseRuntime: (() => void) | undefined
               let activeTurn: AssistantTurnState | undefined
               let turnStartContext: TurnStartContext | undefined
               let queuedPromptCount = 0
+              const recorder = createRunProvenanceRecorder(runtimeContext, {
+                mode: body.mode,
+                planAction: body.planAction,
+              })
+              const send = (event: ChatStreamEvent) => {
+                recorder.record(event)
+                controller.enqueue(encodeEvent(event))
+              }
 
               try {
                 log.info("creating pi runtime")
@@ -180,6 +185,7 @@ export const Route = createFileRoute("/api/chat")({
               } finally {
                 unsubscribe?.()
                 releaseRuntime?.()
+                recorder.close()
                 controller.close()
               }
             },
