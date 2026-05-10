@@ -2,6 +2,10 @@ import { constants } from "node:fs"
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import {
+  WORKSPACE_PROJECTION_DATABASE_FILENAME,
+  initializeWorkspaceProjection,
+} from "../db/workspace-projection"
+import {
   AGENT_WORKSPACE_DIRECTORY,
   WORKSPACE_MANIFEST_RELATIVE_PATH,
   WORKSPACE_POLICY_FILE_DEFINITIONS,
@@ -194,6 +198,33 @@ export async function bootstrapAgentWorkspace(
       ensureFileState(context, path, "", createdPaths, diagnostics, "scratch")
     )
   )
+
+  const projectionDirectory = directoryStates.find(
+    (directory) => directory.path === toWorkspaceProjectPath("indexes")
+  )
+
+  if (projectionDirectory?.exists) {
+    try {
+      initializeWorkspaceProjection(context)
+    } catch (error) {
+      diagnostics.push(
+        createDiagnostic(
+          "projection",
+          "workspace-projection-init-failed",
+          "error",
+          getPathFailureMessage(
+            error,
+            toWorkspaceProjectPath(
+              `indexes/${WORKSPACE_PROJECTION_DATABASE_FILENAME}`
+            )
+          ),
+          toWorkspaceProjectPath(
+            `indexes/${WORKSPACE_PROJECTION_DATABASE_FILENAME}`
+          )
+        )
+      )
+    }
+  }
 
   const missingSections = sectionStates
     .filter((section) => !section.exists)
