@@ -16,6 +16,7 @@ export type PlanModeState = {
   executing: boolean
   todos: Array<TodoItem>
   pendingDecision?: boolean
+  pendingDecisionToolCallId?: string
 }
 
 export function createEmptyPlanState(): PlanModeState {
@@ -24,6 +25,7 @@ export function createEmptyPlanState(): PlanModeState {
     executing: false,
     todos: [],
     pendingDecision: false,
+    pendingDecisionToolCallId: undefined,
   }
 }
 
@@ -36,6 +38,10 @@ export function restorePlanState(data: unknown): PlanModeState {
     executing: Boolean(candidate.executing),
     todos: normalizeTodos(candidate.todos),
     pendingDecision: Boolean(candidate.pendingDecision),
+    pendingDecisionToolCallId:
+      typeof candidate.pendingDecisionToolCallId === "string"
+        ? candidate.pendingDecisionToolCallId
+        : undefined,
   }
 }
 
@@ -50,18 +56,21 @@ export function applyPlanModeSelection(
     nextState.enabled = false
     nextState.executing = nextState.todos.some((todo) => !todo.completed)
     nextState.pendingDecision = false
+    nextState.pendingDecisionToolCallId = undefined
     return nextState
   }
 
   if (planAction === "refine" || mode === "plan") {
     nextState.enabled = true
     nextState.executing = false
+    nextState.pendingDecisionToolCallId = undefined
     return nextState
   }
 
   nextState.enabled = false
   nextState.executing = false
   nextState.pendingDecision = false
+  nextState.pendingDecisionToolCallId = undefined
   return nextState
 }
 
@@ -80,6 +89,7 @@ export function updatePlanStateFromAssistantText(
       todos,
       executing: false,
       pendingDecision: true,
+      pendingDecisionToolCallId: undefined,
     },
     changed: true,
   }
@@ -133,7 +143,9 @@ export function createPlanToolPart(
 
   return {
     type: "tool-PlanWrite",
-    toolCallId: `${PLAN_DECISION_TOOL_PREFIX}-${assistantId}`,
+    toolCallId:
+      state.pendingDecisionToolCallId ??
+      `${PLAN_DECISION_TOOL_PREFIX}-${assistantId}`,
     state: "output-available",
     input: {
       action: state.pendingDecision ? "create" : "update",
@@ -156,6 +168,21 @@ export function isPlanDecisionToolCall(toolCallId?: string) {
   return Boolean(toolCallId?.startsWith(PLAN_DECISION_TOOL_PREFIX))
 }
 
+export function bindPendingPlanDecisionToolCallId(
+  state: PlanModeState,
+  assistantId: string
+) {
+  if (!state.pendingDecision) return state
+
+  const toolCallId = `${PLAN_DECISION_TOOL_PREFIX}-${assistantId}`
+  if (state.pendingDecisionToolCallId === toolCallId) return state
+
+  return {
+    ...cloneState(state),
+    pendingDecisionToolCallId: toolCallId,
+  }
+}
+
 export function resolvePlanDecision(
   state: PlanModeState,
   answer: ChatQuestionAnswer
@@ -166,6 +193,7 @@ export function resolvePlanDecision(
   const nextState = cloneState(state)
   const selected = answer.selectedIds?.[0]
   nextState.pendingDecision = false
+  nextState.pendingDecisionToolCallId = undefined
 
   if (selected === "execute") {
     nextState.enabled = false
@@ -237,6 +265,7 @@ function cloneState(state: PlanModeState): PlanModeState {
     executing: state.executing,
     todos: state.todos.map((todo) => ({ ...todo })),
     pendingDecision: Boolean(state.pendingDecision),
+    pendingDecisionToolCallId: state.pendingDecisionToolCallId,
   }
 }
 

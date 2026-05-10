@@ -8,6 +8,8 @@ import {
   answerPlanDecision,
   applyPlanMode,
   createPlanModeExtension,
+  createPlanToolPart,
+  getPlanState,
   isPlanDecisionToolCall,
   resolveQuestionnaireAnswer,
 } from "./plan-mode"
@@ -236,6 +238,14 @@ export function answerChatQuestion(
           "Plan session is no longer active. Send a new message to continue.",
       }
     }
+    if (
+      !matchesPendingPlanDecisionToolCall(active.runtime, request.toolCallId)
+    ) {
+      return {
+        ok: false,
+        message: "Plan question is no longer active.",
+      }
+    }
     return answerPlanDecision(active.runtime, request.answer)
   }
 
@@ -249,22 +259,30 @@ export function answerChatQuestion(
 }
 
 function findRuntimeRecord(metadata: ChatSessionMetadata) {
-  if (metadata.sessionId) {
-    const active = runtimeRecords.get(metadata.sessionId)
-    if (active) return active
-  }
+  if (metadata.sessionFile) {
+    const requested = safeRealpath(metadata.sessionFile)
+    if (!requested) {
+      if (!metadata.sessionId) return undefined
+      const active = runtimeRecords.get(metadata.sessionId)
+      if (!active?.sessionFile) return undefined
 
-  if (!metadata.sessionFile) return undefined
-  const requested = safeRealpath(metadata.sessionFile)
-  if (!requested) return undefined
-
-  for (const active of runtimeRecords.values()) {
-    if (active.sessionFile && safeRealpath(active.sessionFile) === requested) {
-      return active
+      return active.sessionFile === metadata.sessionFile ? active : undefined
     }
+
+    for (const active of runtimeRecords.values()) {
+      if (
+        active.sessionFile &&
+        safeRealpath(active.sessionFile) === requested
+      ) {
+        return active
+      }
+    }
+
+    return undefined
   }
 
-  return undefined
+  if (!metadata.sessionId) return undefined
+  return runtimeRecords.get(metadata.sessionId)
 }
 
 function trackRuntime(runtime: AgentSessionRuntime) {
@@ -323,5 +341,20 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
       void current.runtime.dispose()
     },
     Math.max(0, RUNTIME_TTL_MS)
+  )
+}
+
+function matchesPendingPlanDecisionToolCall(
+  runtime: AgentSessionRuntime,
+  toolCallId: string | undefined
+) {
+  if (!toolCallId) return false
+
+  const state = getPlanState(runtime)
+  if (!state.pendingDecision || state.todos.length === 0) return false
+
+  return (
+    createPlanToolPart("pending-plan-decision", state)?.toolCallId ===
+    toolCallId
   )
 }

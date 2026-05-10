@@ -5,6 +5,7 @@ import {
 } from "./plan-questionnaire"
 import {
   applyPlanModeSelection,
+  bindPendingPlanDecisionToolCallId,
   createEmptyPlanState,
   createPlanEvent,
   createPlanToolPart,
@@ -268,7 +269,11 @@ export function finalizePlanTurn({
   }
 
   if (mode === "plan") {
-    const state = updatePlanFromAssistantText(runtime, assistantText)
+    const state = bindPlanDecisionToolCall(
+      runtime,
+      updatePlanFromAssistantText(runtime, assistantText),
+      assistantId
+    )
     return {
       state,
       planPart: createPlanToolPart(assistantId, state),
@@ -315,6 +320,18 @@ function persistPlanState(runtime: AgentSessionRuntime, state: PlanModeState) {
     PLAN_STATE_CUSTOM_TYPE,
     state
   )
+}
+
+function bindPlanDecisionToolCall(
+  runtime: AgentSessionRuntime,
+  state: PlanModeState,
+  assistantId: string
+) {
+  const nextState = bindPendingPlanDecisionToolCallId(state, assistantId)
+  if (nextState !== state) {
+    persistPlanState(runtime, nextState)
+  }
+  return nextState
 }
 
 function setActiveToolsForState(
