@@ -1,6 +1,19 @@
-import { CircleAlert, File, FileText, Folder, HardDrive } from "lucide-react"
+import {
+  ChevronRight,
+  CircleAlert,
+  File,
+  FileText,
+  Folder,
+  HardDrive,
+} from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Markdown } from "@workspace/ui/components/agent-elements/markdown"
+import { Button } from "@workspace/ui/components/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@workspace/ui/components/collapsible"
 import {
   ResourceChipSection,
   ResourceNotice,
@@ -134,7 +147,6 @@ export function WorkspacePanelContent({
           {workspace.nodes.map((node) => (
             <WorkspaceNode
               key={node.path}
-              depth={0}
               node={node}
               onSelect={setSelectedPath}
               selectedPath={selectedPath}
@@ -167,55 +179,66 @@ export function WorkspacePanelContent({
 }
 
 function WorkspaceNode({
-  depth,
   node,
   onSelect,
   selectedPath,
 }: {
-  depth: number
   node: WorkspaceTreeNode
   onSelect: (path: string) => void
   selectedPath: string | null
 }) {
-  const Icon = node.type === "directory" ? Folder : File
-  const selected = node.type === "file" && node.path === selectedPath
-  const className = `flex min-w-0 items-center gap-2 rounded-[6px] px-2 py-1 text-[12px] transition-colors ${
-    selected
-      ? "bg-foreground/8 text-foreground/80"
-      : "text-foreground/65 hover:bg-foreground/5"
-  }`
-  const style = { paddingLeft: `${8 + depth * 14}px` }
+  if (node.type === "directory") {
+    return (
+      <Collapsible>
+        <CollapsibleTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="group w-full justify-start gap-1.5 text-left text-[12px] font-normal text-foreground/65 transition-none hover:bg-foreground/5 hover:text-foreground/80"
+            />
+          }
+        >
+          <ChevronRight className="size-3 shrink-0 text-foreground/35 transition-transform group-data-panel-open:rotate-90" />
+          <Folder className="size-3.5 shrink-0 text-foreground/35" />
+          <span className="min-w-0 flex-1 truncate" title={node.path}>
+            {node.name}
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="ml-4">
+          <div className="flex flex-col gap-0.5">
+            {node.children?.map((child) => (
+              <WorkspaceNode
+                key={child.path}
+                node={child}
+                onSelect={onSelect}
+                selectedPath={selectedPath}
+              />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    )
+  }
+
+  const selected = node.path === selectedPath
 
   return (
-    <div>
-      {node.type === "file" ? (
-        <button
-          type="button"
-          aria-pressed={selected}
-          className={`${className} w-full text-left`}
-          style={style}
-          title={node.path}
-          onClick={() => onSelect(node.path)}
-        >
-          <Icon className="size-3.5 shrink-0 text-foreground/35" />
-          <span className="min-w-0 flex-1 truncate">{node.name}</span>
-        </button>
-      ) : (
-        <div className={className} style={style} title={node.path}>
-          <Icon className="size-3.5 shrink-0 text-foreground/35" />
-          <span className="min-w-0 flex-1 truncate">{node.name}</span>
-        </div>
-      )}
-      {node.children?.map((child) => (
-        <WorkspaceNode
-          key={child.path}
-          depth={depth + 1}
-          node={child}
-          onSelect={onSelect}
-          selectedPath={selectedPath}
-        />
-      ))}
-    </div>
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-pressed={selected}
+      className={`w-full justify-start gap-1.5 text-[12px] font-normal transition-none ${
+        selected
+          ? "bg-foreground/8 text-foreground/80"
+          : "text-foreground/65 hover:bg-foreground/5 hover:text-foreground/80"
+      }`}
+      title={node.path}
+      onClick={() => onSelect(node.path)}
+    >
+      <File className="size-3.5 shrink-0 text-foreground/35" />
+      <span className="min-w-0 flex-1 truncate text-left">{node.name}</span>
+    </Button>
   )
 }
 
