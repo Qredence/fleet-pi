@@ -2,11 +2,16 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
 import { basename, join } from "node:path"
 import Database from "better-sqlite3"
+import {
+  WORKSPACE_INDEX_CATEGORY_VALUES,
+  WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES,
+  WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES,
+} from "../workspace/workspace-index-types"
 import type { AppRuntimeContext } from "../app-runtime"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
   "workspace-projection.sqlite"
-export const WORKSPACE_PROJECTION_SCHEMA_VERSION = 1
+export const WORKSPACE_PROJECTION_SCHEMA_VERSION = 2
 
 type ProjectionMigration = {
   version: number
@@ -55,6 +60,56 @@ type ProjectionSourceOfTruth = "canonical-files"
 export type WorkspaceProjectionProjectRow = ProjectionProjectRecord
 export type WorkspaceProjectionWorkspaceRootRow = ProjectionWorkspaceRootRecord
 
+export type WorkspaceProjectionItemRow = {
+  id: string
+  workspaceRootId: string
+  canonicalPath: string
+  category: (typeof WORKSPACE_INDEX_CATEGORY_VALUES)[number]
+  sourceOfTruth: (typeof WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES)[number]
+  parserKind: string
+  currentContentHash: string
+  currentVersionId: string | null
+  currentVersionNumber: number
+  currentParserVersion: number
+  byteSize: number
+  lastModifiedMs: number
+  title: string | null
+  summary: string | null
+  firstIndexedAt: string
+  lastIndexedAt: string
+  deletedAt: string | null
+}
+
+export type WorkspaceProjectionItemVersionRow = {
+  id: string
+  itemId: string
+  versionNumber: number
+  contentHash: string
+  parserKind: string
+  parserVersion: number
+  sourceOfTruth: (typeof WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES)[number]
+  category: (typeof WORKSPACE_INDEX_CATEGORY_VALUES)[number]
+  byteSize: number
+  lastModifiedMs: number
+  title: string | null
+  summary: string | null
+  contentText: string
+  metadataJson: string
+  indexedAt: string
+}
+
+export type WorkspaceProjectionSemanticRecordRow = {
+  id: string
+  itemVersionId: string
+  stableKey: string
+  recordType: (typeof WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES)[number]
+  title: string | null
+  content: string
+  searchText: string
+  metadataJson: string
+  sortOrder: number
+}
+
 export type WorkspaceProjectionConnection = {
   db: Database.Database
   databasePath: string
@@ -71,6 +126,14 @@ export type WorkspaceProjectionSeedResult = {
 }
 
 const PROJECTION_SOURCE_OF_TRUTH: ProjectionSourceOfTruth = "canonical-files"
+const WORKSPACE_ITEM_CATEGORY_SQL = WORKSPACE_INDEX_CATEGORY_VALUES.map(
+  (value) => `'${value}'`
+).join(", ")
+const WORKSPACE_ITEM_SOURCE_SQL = WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES.map(
+  (value) => `'${value}'`
+).join(", ")
+const WORKSPACE_SEMANTIC_RECORD_TYPE_SQL =
+  WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES.map((value) => `'${value}'`).join(", ")
 
 const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
   {
@@ -100,6 +163,86 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
 
       CREATE INDEX IF NOT EXISTS workspace_roots_project_id_idx
       ON workspace_roots(project_id);
+    `,
+  },
+  {
+    version: 2,
+    name: "create_workspace_index_tables",
+    sql: `
+      CREATE TABLE IF NOT EXISTS workspace_items (
+        id TEXT PRIMARY KEY,
+        workspace_root_id TEXT NOT NULL
+          REFERENCES workspace_roots(id) ON DELETE CASCADE,
+        canonical_path TEXT NOT NULL,
+        category TEXT NOT NULL
+          CHECK (category IN (${WORKSPACE_ITEM_CATEGORY_SQL})),
+        source_of_truth TEXT NOT NULL
+          CHECK (source_of_truth IN (${WORKSPACE_ITEM_SOURCE_SQL})),
+        parser_kind TEXT NOT NULL,
+        current_content_hash TEXT NOT NULL,
+        current_version_id TEXT,
+        current_version_number INTEGER NOT NULL,
+        current_parser_version INTEGER NOT NULL,
+        byte_size INTEGER NOT NULL,
+        last_modified_ms INTEGER NOT NULL,
+        title TEXT,
+        summary TEXT,
+        first_indexed_at TEXT NOT NULL,
+        last_indexed_at TEXT NOT NULL,
+        deleted_at TEXT,
+        UNIQUE(workspace_root_id, canonical_path)
+      );
+
+      CREATE INDEX IF NOT EXISTS workspace_items_workspace_root_idx
+      ON workspace_items(workspace_root_id, canonical_path);
+
+      CREATE INDEX IF NOT EXISTS workspace_items_active_idx
+      ON workspace_items(workspace_root_id, deleted_at, category);
+
+      CREATE TABLE IF NOT EXISTS workspace_item_versions (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL REFERENCES workspace_items(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        parser_kind TEXT NOT NULL,
+        parser_version INTEGER NOT NULL,
+        source_of_truth TEXT NOT NULL
+          CHECK (source_of_truth IN (${WORKSPACE_ITEM_SOURCE_SQL})),
+        category TEXT NOT NULL
+          CHECK (category IN (${WORKSPACE_ITEM_CATEGORY_SQL})),
+        byte_size INTEGER NOT NULL,
+        last_modified_ms INTEGER NOT NULL,
+        title TEXT,
+        summary TEXT,
+        content_text TEXT NOT NULL,
+        metadata_json TEXT NOT NULL,
+        indexed_at TEXT NOT NULL,
+        UNIQUE(item_id, version_number)
+      );
+
+      CREATE INDEX IF NOT EXISTS workspace_item_versions_item_idx
+      ON workspace_item_versions(item_id, indexed_at);
+
+      CREATE INDEX IF NOT EXISTS workspace_item_versions_content_idx
+      ON workspace_item_versions(item_id, content_hash, parser_version);
+
+      CREATE TABLE IF NOT EXISTS workspace_semantic_records (
+        id TEXT PRIMARY KEY,
+        item_version_id TEXT NOT NULL
+          REFERENCES workspace_item_versions(id) ON DELETE CASCADE,
+        stable_key TEXT NOT NULL,
+        record_type TEXT NOT NULL
+          CHECK (record_type IN (${WORKSPACE_SEMANTIC_RECORD_TYPE_SQL})),
+        title TEXT,
+        content TEXT NOT NULL,
+        search_text TEXT NOT NULL,
+        metadata_json TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        UNIQUE(item_version_id, stable_key)
+      );
+
+      CREATE INDEX IF NOT EXISTS workspace_semantic_records_version_idx
+      ON workspace_semantic_records(item_version_id, sort_order);
     `,
   },
 ] as const
@@ -145,7 +288,11 @@ export function initializeWorkspaceProjection(
 
   try {
     const appliedMigrations = listAppliedProjectionMigrations(connection.db)
-    const seeded = seedWorkspaceProjection(connection.db, context, options)
+    const seeded = seedWorkspaceProjectionConnection(
+      connection.db,
+      context,
+      options
+    )
 
     return {
       databasePath: connection.databasePath,
@@ -156,6 +303,49 @@ export function initializeWorkspaceProjection(
   } finally {
     connection.close()
   }
+}
+
+export function seedWorkspaceProjectionConnection(
+  db: Database.Database,
+  context: AppRuntimeContext,
+  options?: {
+    recordedAt?: string
+  }
+) {
+  return seedWorkspaceProjection(db, context, options)
+}
+
+export function listWorkspaceProjectionItems(
+  db: Database.Database,
+  workspaceRootId: string
+): Array<WorkspaceProjectionItemRow> {
+  return db
+    .prepare<[string], WorkspaceProjectionItemRow>(
+      `
+      SELECT
+        id,
+        workspace_root_id AS workspaceRootId,
+        canonical_path AS canonicalPath,
+        category,
+        source_of_truth AS sourceOfTruth,
+        parser_kind AS parserKind,
+        current_content_hash AS currentContentHash,
+        current_version_id AS currentVersionId,
+        current_version_number AS currentVersionNumber,
+        current_parser_version AS currentParserVersion,
+        byte_size AS byteSize,
+        last_modified_ms AS lastModifiedMs,
+        title,
+        summary,
+        first_indexed_at AS firstIndexedAt,
+        last_indexed_at AS lastIndexedAt,
+        deleted_at AS deletedAt
+      FROM workspace_items
+      WHERE workspace_root_id = ?
+      ORDER BY canonical_path
+    `
+    )
+    .all(workspaceRootId)
 }
 
 function configureWorkspaceProjection(db: Database.Database) {
