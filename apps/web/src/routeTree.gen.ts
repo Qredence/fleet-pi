@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiWorkspaceTreeRouteImport } from './routes/api/workspace/tree'
+import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
@@ -41,6 +42,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
 const ApiWorkspaceTreeRoute = ApiWorkspaceTreeRouteImport.update({
   id: '/api/workspace/tree',
   path: '/api/workspace/tree',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceHealthRoute = ApiWorkspaceHealthRouteImport.update({
+  id: '/api/workspace/health',
+  path: '/api/workspace/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
     | '/api/workspace/tree'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
     | '/api/workspace/tree'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
     | '/api/workspace/tree'
   fileRoutesById: FileRoutesById
 }
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
+  ApiWorkspaceHealthRoute: typeof ApiWorkspaceHealthRoute
   ApiWorkspaceTreeRoute: typeof ApiWorkspaceTreeRoute
 }
 
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workspace/tree'
       fullPath: '/api/workspace/tree'
       preLoaderRoute: typeof ApiWorkspaceTreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/health': {
+      id: '/api/workspace/health'
+      path: '/api/workspace/health'
+      fullPath: '/api/workspace/health'
+      preLoaderRoute: typeof ApiWorkspaceHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspace/file': {
@@ -317,6 +337,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
+  ApiWorkspaceHealthRoute: ApiWorkspaceHealthRoute,
   ApiWorkspaceTreeRoute: ApiWorkspaceTreeRoute,
 }
 export const routeTree = rootRouteImport

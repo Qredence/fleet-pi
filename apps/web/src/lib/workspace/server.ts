@@ -1,7 +1,8 @@
 import { constants } from "node:fs"
 import { access, open, readdir, realpath, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
-import { AGENT_WORKSPACE_DIRECTORY, seedAgentWorkspace } from "./layout"
+import { bootstrapAgentWorkspace } from "./bootstrap-agent-workspace"
+import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
@@ -13,19 +14,19 @@ const WORKSPACE_PREVIEW_MAX_BYTES = 256 * 1024
 const BINARY_SAMPLE_BYTES = 8 * 1024
 
 export async function ensureAgentWorkspace(context: AppRuntimeContext) {
-  await seedAgentWorkspace(context.workspaceRoot)
+  return bootstrapAgentWorkspace(context)
 }
 
 export async function loadAgentWorkspaceTree(
   context: AppRuntimeContext
 ): Promise<WorkspaceTreeResponse> {
-  const diagnostics: Array<string> = []
+  const health = await ensureAgentWorkspace(context)
+  const diagnostics = collectWorkspaceMessages(health)
 
-  try {
-    await ensureAgentWorkspace(context)
-  } catch (error) {
-    const message = getWorkspaceErrorMessage(error, context.workspaceRoot)
-    diagnostics.push(message)
+  if (!health.workspace.available) {
+    const message =
+      diagnostics[0] ??
+      `Cannot create ${context.workspaceRoot}: workspace is unavailable.`
     throw new Error(message)
   }
 
@@ -42,7 +43,12 @@ export async function loadAgentWorkspaceFile(
   context: AppRuntimeContext,
   filePath: string | null
 ): Promise<WorkspaceFileResponse> {
-  await ensureAgentWorkspace(context)
+  const health = await ensureAgentWorkspace(context)
+  if (!health.workspace.available) {
+    const message =
+      collectWorkspaceMessages(health)[0] ?? "Workspace is unavailable."
+    throw new WorkspaceFileError(message, 503)
+  }
 
   const previewFile = await resolveWorkspacePreviewFile(context, filePath)
   const { fileHandle } = previewFile
@@ -129,18 +135,13 @@ async function readTreeChildren(
   )
 }
 
-function getWorkspaceErrorMessage(error: unknown, workspaceRoot: string) {
-  if (!isNodeError(error)) return String(error)
-  if (error.code === "EROFS") {
-    return `Cannot create ${workspaceRoot}: filesystem is read-only.`
-  }
-  if (error.code === "ENOENT") {
-    return `Cannot create ${workspaceRoot}: parent filesystem path is unavailable or read-only.`
-  }
-  if (error.code === "EACCES" || error.code === "EPERM") {
-    return `Cannot create ${workspaceRoot}: permission denied.`
-  }
-  return error.message
+function collectWorkspaceMessages(
+  health: Awaited<ReturnType<typeof bootstrapAgentWorkspace>>
+) {
+  return [
+    ...health.warnings,
+    ...health.diagnostics.map((diagnostic) => diagnostic.message),
+  ]
 }
 
 function toWorkspacePath(projectRoot: string, path: string) {

@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "generatedBy": "fleet-pi",
+  "workspaceRoot": "agent-workspace",
+  "sections": [
+    {
+      "name": "instructions",
+      "path": "agent-workspace/instructions",
+      "kind": "canonical"
+    },
+    {
+      "name": "memory",
+      "path": "agent-workspace/memory",
+      "kind": "canonical"
+    },
+    {
+      "name": "plans",
+      "path": "agent-workspace/plans",
+      "kind": "canonical"
+    },
+    {
+      "name": "skills",
+      "path": "agent-workspace/skills",
+      "kind": "canonical"
+    },
+    {
+      "name": "evals",
+      "path": "agent-workspace/evals",
+      "kind": "canonical"
+    },
+    {
+      "name": "artifacts",
+      "path": "agent-workspace/artifacts",
+      "kind": "canonical"
+    },
+    {
+      "name": "scratch",
+      "path": "agent-workspace/scratch",
+      "kind": "temporary"
+    },
+    {
+      "name": "pi",
+      "path": "agent-workspace/pi",
+      "kind": "canonical"
+    },
+    {
+      "name": "policies",
+      "path": "agent-workspace/policies",
+      "kind": "canonical"
+    },
+    {
+      "name": "indexes",
+      "path": "agent-workspace/indexes",
+      "kind": "projection"
+    }
+  ],
+  "policies": [
+    {
+      "key": "workspace-policy",
+      "path": "agent-workspace/policies/workspace-policy.md"
+    },
+    {
+      "key": "tool-policy",
+      "path": "agent-workspace/policies/tool-policy.md"
+    },
+    {
+      "key": "self-improvement-policy",
+      "path": "agent-workspace/policies/self-improvement-policy.md"
+    },
+    {
+      "key": "constraints",
+      "path": "agent-workspace/policies/constraints.md"
+    }
+  ],
+  "scratch": {
+    "path": "agent-workspace/scratch",
+    "temporary": true,
+    "protectionPaths": ["agent-workspace/scratch/tmp/.gitkeep"]
+  },
+  "projection": {
+    "path": "agent-workspace/indexes",
+    "canonical": false
+  }
+}

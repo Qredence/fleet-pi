@@ -31,16 +31,16 @@ function createWorkspaceContext(): AppRuntimeContext {
 }
 
 describe("workspace server", () => {
-  it("seeds the agent-workspace tree inside the selected project root", async () => {
+  it("seeds the typed workspace contract inside the selected project root", async () => {
     const context = createWorkspaceContext()
     const tree = await loadAgentWorkspaceTree(context)
 
     expect(tree.root).toBe("agent-workspace")
     expect(
-      tree.nodes.some((node) => node.path === "agent-workspace/system")
+      tree.nodes.some((node) => node.path === "agent-workspace/instructions")
     ).toBe(true)
     expect(
-      tree.nodes.some((node) => node.path === "agent-workspace/memory")
+      tree.nodes.some((node) => node.path === "agent-workspace/policies")
     ).toBe(true)
   })
 
@@ -48,21 +48,24 @@ describe("workspace server", () => {
     const context = createWorkspaceContext()
     const file = await loadAgentWorkspaceFile(
       context,
-      "agent-workspace/system/identity.md"
+      "agent-workspace/policies/tool-policy.md"
     )
 
-    expect(file.path).toBe("agent-workspace/system/identity.md")
-    expect(file.name).toBe("identity.md")
+    expect(file.path).toBe("agent-workspace/policies/tool-policy.md")
+    expect(file.name).toBe("tool-policy.md")
     expect(file.mediaType).toBe("text/markdown")
     expect(file.status).toBe("ok")
-    expect(file.content).toContain("# Identity")
+    expect(file.content).toContain("# Tool Policy")
   })
 
   it("rejects absolute paths", async () => {
     const context = createWorkspaceContext()
 
     await expect(
-      loadAgentWorkspaceFile(context, join(context.workspaceRoot, "system"))
+      loadAgentWorkspaceFile(
+        context,
+        join(context.workspaceRoot, "instructions")
+      )
     ).rejects.toMatchObject({ status: 400 })
   })
 
@@ -78,7 +81,7 @@ describe("workspace server", () => {
     const context = createWorkspaceContext()
 
     await expect(
-      loadAgentWorkspaceFile(context, "agent-workspace/system")
+      loadAgentWorkspaceFile(context, "agent-workspace/instructions")
     ).rejects.toMatchObject({ status: 400 })
   })
 
@@ -86,7 +89,7 @@ describe("workspace server", () => {
     const context = createWorkspaceContext()
 
     await expect(
-      loadAgentWorkspaceFile(context, "agent-workspace/system/missing.md")
+      loadAgentWorkspaceFile(context, "agent-workspace/instructions/missing.md")
     ).rejects.toMatchObject({ status: 404 })
   })
 
