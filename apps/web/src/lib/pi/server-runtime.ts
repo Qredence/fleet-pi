@@ -132,6 +132,7 @@ export async function createPiRuntime(
   modelSelection?: ChatModelSelection
 ) {
   const services = await createSessionServices(context)
+  const requestDiagnostics = collectDiagnostics(services)
   const sessionDir = getSessionDir(context.projectRoot, services)
   const mayReuseRuntime =
     !metadata.sessionFile ||
@@ -154,9 +155,12 @@ export async function createPiRuntime(
     return {
       runtime: reusable.runtime,
       sessionReset: false,
-      diagnostics: collectDiagnostics(
-        reusable.runtime.services,
-        reusable.runtime.modelFallbackMessage
+      diagnostics: mergeDiagnostics(
+        requestDiagnostics,
+        collectDiagnostics(
+          reusable.runtime.services,
+          reusable.runtime.modelFallbackMessage
+        )
       ),
     }
   }
@@ -214,6 +218,10 @@ export async function createPiRuntime(
     ),
     sessionReset,
   }
+}
+
+function mergeDiagnostics(...diagnosticLists: Array<Array<string>>) {
+  return [...new Set(diagnosticLists.flat())]
 }
 
 export function answerChatQuestion(
