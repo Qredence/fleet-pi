@@ -20,7 +20,6 @@ import {
   createTurnStartContext,
   finalizeAssistantTurn,
   handleSessionEvent,
-  hasTurnContent,
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
 import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
