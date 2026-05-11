@@ -1,13 +1,13 @@
 {
   "name": "fleet-pi",
   "version": "0.0.1",
-  "description": "A browser-based coding-agent workspace with Pi-backed chat, plan mode, and a durable agent-workspace.",
   "private": true,
-  "license": "Apache-2.0",
+  "description": "A browser-based coding-agent workspace with Pi-backed chat, plan mode, and a durable agent-workspace.",
   "homepage": "https://github.com/Qredence/fleet-pi#readme",
   "bugs": {
     "url": "https://github.com/Qredence/fleet-pi/issues"
   },
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Qredence/fleet-pi.git"
@@ -30,13 +30,12 @@
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js"
   },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,css,md}": [
-      "prettier --write"
-    ],
-    "{apps,packages}/**/*.{ts,tsx,js,jsx}": [
-      "pnpm --filter web exec eslint --fix"
-    ]
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
+    "diff": "^8.0.2",
+    "typebox": "1.1.33",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "husky": "^9.1.7",
@@ -49,31 +48,19 @@
     "turbo": "^2.9.6",
     "typescript": "^5.9.3"
   },
-  "packageManager": "pnpm@11.0.9",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,css,md}": [
+      "prettier --write"
+    ],
+    "{apps,packages}/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --filter web exec eslint --fix"
+    ]
+  },
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@earendil-works/pi-tui": "^0.74.0",
-    "diff": "^8.0.2",
-    "typebox": "1.1.33",
-    "zod": "^4.3.6"
-  },
+  "packageManager": "pnpm@11.0.9",
   "pnpm": {
-    "overrides": {
-      "@anthropic-ai/sdk": ">=0.91.1",
-      "handlebars": ">=4.7.9",
-      "flatted": ">=3.4.2",
-      "lodash": ">=4.18.0",
-      "undici": ">=7.24.0",
-      "h3": ">=2.0.1-rc.17",
-      "@tanstack/start-server-core>h3": ">=2.0.1-rc.17",
-      "fast-uri": ">=3.1.2",
-      "uuid": ">=11.1.1",
-      "ip-address": ">=10.1.1",
-      "hono": ">=4.12.18"
-    },
     "onlyBuiltDependencies": [
       "@google/genai",
       "better-sqlite3",
