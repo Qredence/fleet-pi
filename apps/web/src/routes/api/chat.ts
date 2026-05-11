@@ -16,6 +16,7 @@ import {
   retainPiRuntime,
 } from "@/lib/pi/server"
 import {
+  completeAssistantTurn,
   createTurnStartContext,
   finalizeAssistantTurn,
   handleSessionEvent,
@@ -155,20 +156,14 @@ export const Route = createFileRoute("/api/chat")({
                 })
                 request.signal.removeEventListener("abort", abort)
 
-                if (activeTurn && hasTurnContent(activeTurn)) {
-                  if (activeTurn.hadError) {
-                    activeTurn = undefined
-                  } else {
-                    activeTurn = finalizeAssistantTurn({
-                      activeTurn,
-                      body,
-                      runtime: result.runtime,
-                      send,
-                      session: currentSession,
-                      sessionReset: result.sessionReset,
-                    })
-                  }
-                }
+                activeTurn = completeAssistantTurn({
+                  activeTurn,
+                  body,
+                  runtime: result.runtime,
+                  send,
+                  session: currentSession,
+                  sessionReset: result.sessionReset,
+                })
 
                 log.info(
                   { sessionId: currentSession.sessionId },

@@ -199,12 +199,14 @@ export function handleSessionEvent(
   }
 
   if (event.type === "message_end" && isAssistantErrorMessage(event.message)) {
+    if (!activeTurn) {
+      activeTurn = beginAssistantTurn(startContext)
+    }
     send({
       type: "error",
       message: event.message.errorMessage,
-      runId: activeTurn?.runId,
+      runId: activeTurn.runId,
     })
-    if (!activeTurn) return activeTurn
     return {
       ...activeTurn,
       hadError: true,
@@ -287,6 +289,35 @@ export function finalizeAssistantTurn({
   })
 
   return undefined
+}
+
+export function completeAssistantTurn({
+  activeTurn,
+  body,
+  runtime,
+  send,
+  session,
+  sessionReset,
+}: {
+  activeTurn: AssistantTurnState | undefined
+  body: ChatRequest
+  runtime: AgentSessionRuntime
+  send: (event: ChatStreamEvent) => void
+  session: ChatRuntimeSession
+  sessionReset: boolean
+}) {
+  if (!activeTurn || !hasTurnContent(activeTurn)) {
+    return undefined
+  }
+
+  return finalizeAssistantTurn({
+    activeTurn,
+    body,
+    runtime,
+    send,
+    session,
+    sessionReset,
+  })
 }
 
 export function hasTurnContent(activeTurn: AssistantTurnState) {
