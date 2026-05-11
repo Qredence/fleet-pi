@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
 import { getErrorMessage } from "@/lib/pi/server"
+import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
 
 export async function workspaceTreeHandler() {
   try {
