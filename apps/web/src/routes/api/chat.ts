@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent"
-import type { ChatMessagePart } from "@workspace/ui/components/agent-elements/chat-types"
 import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
+import type {
+  AssistantTurnState,
+  TurnStartContext,
+} from "@/lib/pi/server-chat-stream"
+import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { ChatRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
-import { sanitizePii } from "@/lib/pii/sanitizer"
-import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
 import {
   createPiRuntime,
   encodeEvent,
@@ -14,18 +16,15 @@ import {
   retainPiRuntime,
 } from "@/lib/pi/server"
 import {
-  appendTextPart,
-  finalizeThinkingToolParts,
-  toChatMessage,
-  upsertThinkingPart,
-  upsertToolPart,
-} from "@/lib/pi/chat-message-helpers"
-import { toToolPart } from "@/lib/pi/server-utils"
-import {
-  createPlanEvent,
-  finalizePlanTurn,
-  getPlanState,
-} from "@/lib/pi/plan-mode"
+  beginAssistantTurn,
+  completeAssistantTurn,
+  createTurnStartContext,
+  finalizeAssistantTurn,
+  handleSessionEvent,
+  shouldEmitInitialPlanEvent,
+} from "@/lib/pi/server-chat-stream"
+import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
+import { sanitizePii } from "@/lib/pii/sanitizer"
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -75,24 +74,21 @@ export const Route = createFileRoute("/api/chat")({
             }
           }
 
-          const assistantId = crypto.randomUUID()
-
           const readable = new ReadableStream<Uint8Array>({
             async start(controller) {
-              const send = (event: ChatStreamEvent) => {
-                controller.enqueue(encodeEvent(event))
-              }
-
               let unsubscribe: (() => void) | undefined
               let releaseRuntime: (() => void) | undefined
-              let session:
-                | Awaited<
-                    ReturnType<typeof createPiRuntime>
-                  >["runtime"]["session"]
-                | undefined
-              let parts: Array<ChatMessagePart> = []
-              let thinkingText = ""
-              const toolInputs = new Map<string, Record<string, unknown>>()
+              let activeTurn: AssistantTurnState | undefined
+              let turnStartContext: TurnStartContext | undefined
+              let queuedPromptCount = 0
+              const recorder = createRunProvenanceRecorder(runtimeContext, {
+                mode: body.mode,
+                planAction: body.planAction,
+              })
+              const send = (event: ChatStreamEvent) => {
+                recorder.record(event)
+                controller.enqueue(encodeEvent(event))
+              }
 
               try {
                 log.info("creating pi runtime")
@@ -101,84 +97,99 @@ export const Route = createFileRoute("/api/chat")({
                   body,
                   body.model
                 )
-                session = result.runtime.session
+                const currentSession = result.runtime.session
                 releaseRuntime = retainPiRuntime(result.runtime)
                 log.info(
                   {
-                    sessionId: session.sessionId,
+                    sessionId: currentSession.sessionId,
                     sessionReset: result.sessionReset,
                   },
                   "pi runtime created"
                 )
-                send(createPlanEvent(getPlanState(result.runtime)))
-                const abort = () => void session?.abort()
+                const abort = () => void currentSession.abort()
 
                 request.signal.addEventListener("abort", abort, { once: true })
-                send({
-                  type: "start",
-                  id: assistantId,
-                  sessionFile: session.sessionFile,
-                  sessionId: session.sessionId,
-                  sessionReset: result.sessionReset,
+                const initialPlanState = getPlanState(result.runtime)
+                if (shouldEmitInitialPlanEvent(initialPlanState)) {
+                  send(createPlanEvent(initialPlanState))
+                }
+                turnStartContext = createTurnStartContext({
                   diagnostics: result.diagnostics,
+                  send,
+                  session: currentSession,
+                  sessionReset: result.sessionReset,
                 })
 
-                unsubscribe = session.subscribe((event) => {
-                  const nextParts = handleSessionEvent(
+                unsubscribe = currentSession.subscribe((event) => {
+                  const nextTurn = handleSessionEvent(
                     event,
-                    assistantId,
-                    parts,
-                    thinkingText,
-                    toolInputs,
-                    send
+                    activeTurn,
+                    turnStartContext!
                   )
-                  parts = nextParts.parts
-                  thinkingText = nextParts.thinkingText
+                  activeTurn = nextTurn
+
+                  if (event.type === "queue_update") {
+                    const nextQueuedPromptCount =
+                      event.steering.length + event.followUp.length
+
+                    if (
+                      nextQueuedPromptCount < queuedPromptCount &&
+                      activeTurn &&
+                      !activeTurn.hadError
+                    ) {
+                      activeTurn = finalizeAssistantTurn({
+                        activeTurn,
+                        body,
+                        runtime: result.runtime,
+                        send,
+                        session: currentSession,
+                        sessionReset: result.sessionReset,
+                      })
+                    }
+
+                    queuedPromptCount = nextQueuedPromptCount
+                  }
                 })
 
-                await session.prompt(prompt, { expandPromptTemplates: true })
+                await currentSession.prompt(prompt, {
+                  expandPromptTemplates: true,
+                })
                 request.signal.removeEventListener("abort", abort)
 
-                const assistantText = textFromParts(parts)
-                const planTurn = finalizePlanTurn({
+                activeTurn = completeAssistantTurn({
+                  activeTurn,
+                  body,
                   runtime: result.runtime,
-                  assistantId,
-                  assistantText,
-                  mode: body.mode,
-                  planAction: body.planAction,
-                })
-                if (planTurn) {
-                  if (planTurn.planPart) {
-                    parts = upsertToolPart(parts, planTurn.planPart)
-                    send({ type: "tool", part: planTurn.planPart })
-                  }
-                  send(createPlanEvent(planTurn.state))
-                }
-
-                const finalParts = finalizeThinkingToolParts(parts)
-
-                log.info(
-                  { assistantId, partCount: finalParts.length },
-                  "chat stream completed"
-                )
-                send({
-                  type: "done",
-                  message: toChatMessage(assistantId, "assistant", finalParts),
-                  sessionFile: session.sessionFile,
-                  sessionId: session.sessionId,
+                  send,
+                  session: currentSession,
                   sessionReset: result.sessionReset,
                 })
+
+                log.info(
+                  { sessionId: currentSession.sessionId },
+                  "chat stream completed"
+                )
               } catch (error) {
                 log.error(
                   { error: getErrorMessage(error) },
                   "chat stream error"
                 )
                 if (!request.signal.aborted) {
-                  send({ type: "error", message: getErrorMessage(error) })
+                  if (turnStartContext?.firstStartPending) {
+                    const errorTurn = beginAssistantTurn(turnStartContext)
+                    send({
+                      type: "error",
+                      message: getErrorMessage(error),
+                      runId: errorTurn.runId,
+                    })
+                  } else {
+                    send({ type: "error", message: getErrorMessage(error) })
+                  }
                 }
               } finally {
                 unsubscribe?.()
                 releaseRuntime?.()
+                recorder.close()
                 controller.close()
               }
             },
@@ -196,151 +207,6 @@ export const Route = createFileRoute("/api/chat")({
     },
   },
 })
-
-function handleSessionEvent(
-  event: AgentSessionEvent,
-  assistantId: string,
-  parts: Array<ChatMessagePart>,
-  thinkingText: string,
-  toolInputs: Map<string, Record<string, unknown>>,
-  send: (event: ChatStreamEvent) => void
-) {
-  if (
-    event.type === "message_update" &&
-    event.assistantMessageEvent.type === "text_delta"
-  ) {
-    const nextParts = appendTextPart(parts, event.assistantMessageEvent.delta)
-    send({ type: "delta", text: event.assistantMessageEvent.delta })
-    return { parts: nextParts, thinkingText }
-  }
-
-  if (
-    event.type === "message_update" &&
-    event.assistantMessageEvent.type === "thinking_delta"
-  ) {
-    const nextThinkingText = `${thinkingText}${event.assistantMessageEvent.delta}`
-    const nextParts = upsertThinkingPart(parts, assistantId, nextThinkingText)
-    send({ type: "thinking", text: nextThinkingText })
-    return { parts: nextParts, thinkingText: nextThinkingText }
-  }
-
-  if (
-    event.type === "tool_execution_start" ||
-    event.type === "tool_execution_update" ||
-    event.type === "tool_execution_end"
-  ) {
-    const part = toToolPart(event, toolInputs.get(event.toolCallId))
-    if (event.type !== "tool_execution_end") {
-      toolInputs.set(event.toolCallId, part.input as Record<string, unknown>)
-    }
-    const nextParts = upsertToolPart(parts, part)
-    send({ type: "tool", part })
-    return { parts: nextParts, thinkingText }
-  }
-
-  if (event.type === "queue_update") {
-    send({
-      type: "queue",
-      steering: [...event.steering],
-      followUp: [...event.followUp],
-    })
-    return { parts, thinkingText }
-  }
-
-  if (event.type === "compaction_start") {
-    send({ type: "compaction", phase: "start", reason: event.reason })
-    return { parts, thinkingText }
-  }
-
-  if (event.type === "compaction_end") {
-    send({
-      type: "compaction",
-      phase: "end",
-      reason: event.reason,
-      aborted: event.aborted,
-      willRetry: event.willRetry,
-      errorMessage: event.errorMessage,
-    })
-    return { parts, thinkingText }
-  }
-
-  if (event.type === "auto_retry_start") {
-    send({
-      type: "retry",
-      phase: "start",
-      attempt: event.attempt,
-      maxAttempts: event.maxAttempts,
-      delayMs: event.delayMs,
-      errorMessage: event.errorMessage,
-    })
-    return { parts, thinkingText }
-  }
-
-  if (event.type === "auto_retry_end") {
-    send({
-      type: "retry",
-      phase: "end",
-      success: event.success,
-      attempt: event.attempt,
-      finalError: event.finalError,
-    })
-    return { parts, thinkingText }
-  }
-
-  if (isStateEvent(event)) {
-    send({ type: "state", state: { name: event.type } })
-  }
-
-  if (event.type === "message_end" && isAssistantErrorMessage(event.message)) {
-    send({ type: "error", message: event.message.errorMessage })
-  }
-
-  return { parts, thinkingText }
-}
-
-function textFromParts(parts: Array<ChatMessagePart>) {
-  return parts
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .filter(Boolean)
-    .join("\n")
-}
-
-function isAssistantErrorMessage(
-  message: unknown
-): message is { role: "assistant"; stopReason: "error"; errorMessage: string } {
-  return (
-    message !== null &&
-    typeof message === "object" &&
-    "role" in message &&
-    message.role === "assistant" &&
-    "stopReason" in message &&
-    message.stopReason === "error" &&
-    "errorMessage" in message &&
-    typeof message.errorMessage === "string"
-  )
-}
-
-function isStateEvent(event: AgentSessionEvent): event is Extract<
-  AgentSessionEvent,
-  {
-    type:
-      | "agent_start"
-      | "agent_end"
-      | "turn_start"
-      | "turn_end"
-      | "message_start"
-      | "message_end"
-  }
-> {
-  return (
-    event.type === "agent_start" ||
-    event.type === "agent_end" ||
-    event.type === "turn_start" ||
-    event.type === "turn_end" ||
-    event.type === "message_start" ||
-    event.type === "message_end"
-  )
-}
 
 function streamEvents(events: Array<ChatStreamEvent>) {
   const readable = new ReadableStream<Uint8Array>({

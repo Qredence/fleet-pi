@@ -10,7 +10,10 @@ import type {
 import type {
   AgentSessionEvent,
   SessionEntry,
+  SessionManager,
 } from "@earendil-works/pi-coding-agent"
+
+const CHAT_MESSAGE_ID_CUSTOM_TYPE = "chat-message-id"
 
 export function toToolPart(
   event: Extract<
@@ -277,6 +280,80 @@ export function sessionEntriesToChatMessages(entries: Array<SessionEntry>) {
   }
 
   return messages
+}
+
+export function persistChatMessageIdMapping(
+  sessionManager: Pick<SessionManager, "appendCustomEntry" | "getEntries">,
+  sessionMessageId: string,
+  chatMessageId: string
+) {
+  const existing = restoreChatMessageIdMap(sessionManager.getEntries()).get(
+    sessionMessageId
+  )
+  if (existing === chatMessageId) return
+
+  sessionManager.appendCustomEntry(CHAT_MESSAGE_ID_CUSTOM_TYPE, {
+    sessionMessageId,
+    chatMessageId,
+  })
+}
+
+export function restoreChatMessageIdMap(entries: Array<SessionEntry>) {
+  const mappings = new Map<string, string>()
+
+  for (const entry of entries) {
+    if (
+      entry.type !== "custom" ||
+      !("customType" in entry) ||
+      entry.customType !== CHAT_MESSAGE_ID_CUSTOM_TYPE
+    ) {
+      continue
+    }
+
+    const data =
+      "data" in entry && entry.data && typeof entry.data === "object"
+        ? (entry.data as Record<string, unknown>)
+        : undefined
+    const sessionMessageId =
+      typeof data?.sessionMessageId === "string"
+        ? data.sessionMessageId
+        : undefined
+    const chatMessageId =
+      typeof data?.chatMessageId === "string" ? data.chatMessageId : undefined
+
+    if (sessionMessageId && chatMessageId) {
+      mappings.set(sessionMessageId, chatMessageId)
+    }
+  }
+
+  return mappings
+}
+
+export function applyChatMessageIdMap(
+  messages: Array<ChatMessage>,
+  mappings: Map<string, string>
+) {
+  if (mappings.size === 0) return messages
+
+  return messages.map((message) => {
+    if (message.role !== "assistant") return message
+
+    const mappedId = mappings.get(message.id)
+    return mappedId ? { ...message, id: mappedId } : message
+  })
+}
+
+export function findLatestUnmappedAssistantMessageId(
+  entries: Array<SessionEntry>
+) {
+  const mappings = restoreChatMessageIdMap(entries)
+
+  for (const entry of [...entries].reverse()) {
+    if (entry.type !== "message" || !isAssistantMessage(entry.message)) continue
+    if (!mappings.has(entry.id)) return entry.id
+  }
+
+  return undefined
 }
 
 function isUserMessage(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   applyPlanModeSelection,
+  bindPendingPlanDecisionToolCallId,
   createEmptyPlanState,
   createPlanEvent,
   createPlanToolPart,
@@ -95,10 +96,13 @@ describe("plan state", () => {
   })
 
   it("builds a structured plan tool part", () => {
-    const state = updatePlanStateFromAssistantText(
-      applyPlanModeSelection(createEmptyPlanState(), "plan"),
-      `Plan:\n1. Read the route\n2. Update the handler`
-    ).state
+    const state = bindPendingPlanDecisionToolCallId(
+      updatePlanStateFromAssistantText(
+        applyPlanModeSelection(createEmptyPlanState(), "plan"),
+        `Plan:\n1. Read the route\n2. Update the handler`
+      ).state,
+      "assistant-1"
+    )
 
     expect(createPlanToolPart("assistant-1", state)).toMatchObject({
       type: "tool-PlanWrite",
@@ -110,6 +114,26 @@ describe("plan state", () => {
           id: "assistant-1",
           title: "Execution plan",
           status: "awaiting_approval",
+        },
+      },
+    })
+  })
+
+  it("reuses the persisted pending decision tool call id", () => {
+    const state = bindPendingPlanDecisionToolCallId(
+      updatePlanStateFromAssistantText(
+        applyPlanModeSelection(createEmptyPlanState(), "plan"),
+        `Plan:\n1. Read the route`
+      ).state,
+      "chat-assistant-7"
+    )
+
+    expect(createPlanToolPart("hydrated-assistant-id", state)).toMatchObject({
+      toolCallId: "plan-mode-decision-chat-assistant-7",
+      input: {
+        pendingDecision: true,
+        plan: {
+          id: "hydrated-assistant-id",
         },
       },
     })

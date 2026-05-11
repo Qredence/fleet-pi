@@ -31,30 +31,81 @@ const MOCK_MODELS = {
   diagnostics: [],
 }
 
+const FACTORY_FILE_PATH = "agent-workspace/memory/research/factory.md"
+const LARGE_REPORT_PATH = "agent-workspace/artifacts/reports/large-report.md"
+const BINARY_REPORT_PATH = "agent-workspace/artifacts/reports/binary-report.bin"
+const BROKEN_REPORT_PATH = "agent-workspace/artifacts/reports/broken.md"
+
 const MOCK_RESOURCES = {
-  skills: [
+  packages: [
     {
-      name: "fleet-pi-orientation",
-      description: "Map the Fleet Pi codebase before planning or editing.",
-      path: "/tmp/fleet-pi/.pi/skills/fleet-pi-orientation/SKILL.md",
-      source: "project",
-    },
-    {
-      name: "agent-elements",
-      description:
-        "Build or inspect chat UI surfaces and interaction patterns.",
-      path: "/tmp/fleet-pi/.pi/skills/agent-elements/SKILL.md",
-      source: "project",
-    },
-    {
-      name: "chat-runtime-debugging",
-      description: "Troubleshoot streaming sessions and runtime state.",
-      path: "/tmp/fleet-pi/.pi/skills/chat-runtime-debugging/SKILL.md",
-      source: "project",
+      name: "example-package",
+      path: "agent-workspace/pi/packages/example-package",
+      workspacePath: "agent-workspace/pi/packages/example-package",
+      source: "workspace",
+      activationStatus: "reload-required",
+      installedInWorkspace: true,
     },
   ],
-  prompts: [],
+  skills: [
+    {
+      name: "frontend-helper",
+      description: "Workspace-installed helper skill.",
+      path: "agent-workspace/pi/skills/frontend-helper/SKILL.md",
+      workspacePath: "agent-workspace/pi/skills/frontend-helper/SKILL.md",
+      source: "workspace",
+      activationStatus: "active",
+      installedInWorkspace: true,
+    },
+  ],
+  prompts: [
+    {
+      name: "daily-brief",
+      description: "Workspace-installed daily brief prompt.",
+      path: "agent-workspace/pi/prompts/daily-brief.md",
+      workspacePath: "agent-workspace/pi/prompts/daily-brief.md",
+      source: "workspace",
+      activationStatus: "active",
+      installedInWorkspace: true,
+    },
+    {
+      name: "autoctx-improve",
+      description:
+        "Iteratively improve recent work through judge-guided feedback loops",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-autocontext/prompts/autoctx-improve.md",
+      source: "npm:pi-autocontext",
+    },
+    {
+      name: "autoctx-judge",
+      description:
+        "Evaluate the quality of recent work using autocontext judging",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-autocontext/prompts/autoctx-judge.md",
+      source: "npm:pi-autocontext",
+    },
+    {
+      name: "autoctx-status",
+      description: "Check autocontext project status and recent runs",
+      path: "/tmp/fleet-pi/.pi/npm/node_modules/pi-autocontext/prompts/autoctx-status.md",
+      source: "npm:pi-autocontext",
+    },
+  ],
   extensions: [
+    {
+      name: "live-tool",
+      path: "agent-workspace/pi/extensions/enabled/live-tool.ts",
+      workspacePath: "agent-workspace/pi/extensions/enabled/live-tool.ts",
+      source: "workspace",
+      activationStatus: "active",
+      installedInWorkspace: true,
+    },
+    {
+      name: "draft-tool",
+      path: "agent-workspace/pi/extensions/staged/draft-tool.ts",
+      workspacePath: "agent-workspace/pi/extensions/staged/draft-tool.ts",
+      source: "workspace",
+      activationStatus: "staged",
+      installedInWorkspace: true,
+    },
     {
       name: "project-inventory",
       path: "/tmp/fleet-pi/.pi/extensions/project-inventory.ts",
@@ -93,20 +144,81 @@ const MOCK_RESOURCES = {
       path: "/tmp/fleet-pi/AGENTS.md",
     },
   ],
-  diagnostics: [],
+  diagnostics: [
+    'Tool "web_fetch" conflicts with the staged workspace extension and needs a reload.',
+  ],
 }
 
-const MOCK_WORKSPACE_TREE = {
+type MockWorkspaceTreeNode = {
+  children?: Array<MockWorkspaceTreeNode>
+  name: string
+  path: string
+  type: "directory" | "file"
+}
+
+type MockWorkspaceTreeResponse = {
+  diagnostics: Array<string>
+  nodes: Array<MockWorkspaceTreeNode>
+  root: string
+}
+
+const MOCK_WORKSPACE_TREE: MockWorkspaceTreeResponse = {
   root: "agent-workspace",
   nodes: [
     {
-      name: "system",
-      path: "agent-workspace/system",
+      name: "artifacts",
+      path: "agent-workspace/artifacts",
       type: "directory",
       children: [
         {
-          name: "identity.md",
-          path: "agent-workspace/system/identity.md",
+          name: "reports",
+          path: "agent-workspace/artifacts/reports",
+          type: "directory",
+          children: [
+            {
+              name: "summary.md",
+              path: "agent-workspace/artifacts/reports/summary.md",
+              type: "file",
+            },
+            {
+              name: "large-report.md",
+              path: LARGE_REPORT_PATH,
+              type: "file",
+            },
+            {
+              name: "binary-report.bin",
+              path: BINARY_REPORT_PATH,
+              type: "file",
+            },
+            {
+              name: "broken.md",
+              path: BROKEN_REPORT_PATH,
+              type: "file",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "evals",
+      path: "agent-workspace/evals",
+      type: "directory",
+      children: [],
+    },
+    {
+      name: "indexes",
+      path: "agent-workspace/indexes",
+      type: "directory",
+      children: [],
+    },
+    {
+      name: "instructions",
+      path: "agent-workspace/instructions",
+      type: "directory",
+      children: [
+        {
+          name: "mission-brief.md",
+          path: "agent-workspace/instructions/mission-brief.md",
           type: "file",
         },
       ],
@@ -129,18 +241,183 @@ const MOCK_WORKSPACE_TREE = {
           ],
         },
         {
+          name: "project",
+          path: "agent-workspace/memory/project",
+          type: "directory",
+          children: [
+            {
+              name: "architecture.md",
+              path: "agent-workspace/memory/project/architecture.md",
+              type: "file",
+            },
+          ],
+        },
+        {
           name: "research",
           path: "agent-workspace/memory/research",
           type: "directory",
           children: [
             {
               name: "factory.md",
-              path: "agent-workspace/memory/research/factory.md",
+              path: FACTORY_FILE_PATH,
               type: "file",
             },
             {
               name: "hermes.md",
               path: "agent-workspace/memory/research/hermes.md",
+              type: "file",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "pi",
+      path: "agent-workspace/pi",
+      type: "directory",
+      children: [
+        {
+          name: "extensions",
+          path: "agent-workspace/pi/extensions",
+          type: "directory",
+          children: [
+            {
+              name: "enabled",
+              path: "agent-workspace/pi/extensions/enabled",
+              type: "directory",
+              children: [
+                {
+                  name: "live-tool.ts",
+                  path: "agent-workspace/pi/extensions/enabled/live-tool.ts",
+                  type: "file",
+                },
+              ],
+            },
+            {
+              name: "staged",
+              path: "agent-workspace/pi/extensions/staged",
+              type: "directory",
+              children: [
+                {
+                  name: "draft-tool.ts",
+                  path: "agent-workspace/pi/extensions/staged/draft-tool.ts",
+                  type: "file",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: "packages",
+          path: "agent-workspace/pi/packages",
+          type: "directory",
+          children: [
+            {
+              name: "example-package",
+              path: "agent-workspace/pi/packages/example-package",
+              type: "directory",
+              children: [
+                {
+                  name: "package.json",
+                  path: "agent-workspace/pi/packages/example-package/package.json",
+                  type: "file",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: "prompts",
+          path: "agent-workspace/pi/prompts",
+          type: "directory",
+          children: [
+            {
+              name: "daily-brief.md",
+              path: "agent-workspace/pi/prompts/daily-brief.md",
+              type: "file",
+            },
+          ],
+        },
+        {
+          name: "skills",
+          path: "agent-workspace/pi/skills",
+          type: "directory",
+          children: [
+            {
+              name: "frontend-helper",
+              path: "agent-workspace/pi/skills/frontend-helper",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/frontend-helper/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "plans",
+      path: "agent-workspace/plans",
+      type: "directory",
+      children: [
+        {
+          name: "active",
+          path: "agent-workspace/plans/active",
+          type: "directory",
+          children: [
+            {
+              name: "workspace-refresh.md",
+              path: "agent-workspace/plans/active/workspace-refresh.md",
+              type: "file",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "policies",
+      path: "agent-workspace/policies",
+      type: "directory",
+      children: [
+        {
+          name: "constraints.md",
+          path: "agent-workspace/policies/constraints.md",
+          type: "file",
+        },
+        {
+          name: "self-improvement-policy.md",
+          path: "agent-workspace/policies/self-improvement-policy.md",
+          type: "file",
+        },
+        {
+          name: "tool-policy.md",
+          path: "agent-workspace/policies/tool-policy.md",
+          type: "file",
+        },
+        {
+          name: "workspace-policy.md",
+          path: "agent-workspace/policies/workspace-policy.md",
+          type: "file",
+        },
+      ],
+    },
+    {
+      name: "scratch",
+      path: "agent-workspace/scratch",
+      type: "directory",
+      children: [
+        {
+          name: "tmp",
+          path: "agent-workspace/scratch/tmp",
+          type: "directory",
+          children: [
+            {
+              name: ".gitkeep",
+              path: "agent-workspace/scratch/tmp/.gitkeep",
               type: "file",
             },
           ],
@@ -214,19 +491,121 @@ const MOCK_WORKSPACE_TREE = {
         },
       ],
     },
+    {
+      name: "system",
+      path: "agent-workspace/system",
+      type: "directory",
+      children: [
+        {
+          name: "identity.md",
+          path: "agent-workspace/system/identity.md",
+          type: "file",
+        },
+      ],
+    },
+    {
+      name: "index.md",
+      path: "agent-workspace/index.md",
+      type: "file",
+    },
+    {
+      name: "manifest.json",
+      path: "agent-workspace/manifest.json",
+      type: "file",
+    },
+    {
+      name: "README.md",
+      path: "agent-workspace/README.md",
+      type: "file",
+    },
   ],
-  diagnostics: [],
+  diagnostics: ["Projection health degraded: pending reindex"],
 }
 
-const MOCK_WORKSPACE_FILES = new Map([
+const MOCK_WORKSPACE_TREE_WITHOUT_FACTORY = (() => {
+  const tree = structuredClone(MOCK_WORKSPACE_TREE)
+  const memoryNode = tree.nodes.find(
+    (node) => node.path === "agent-workspace/memory"
+  )
+  const researchNode = memoryNode?.children?.find(
+    (node) => node.path === "agent-workspace/memory/research"
+  )
+  if (researchNode?.children) {
+    researchNode.children = researchNode.children.filter(
+      (node) => node.path !== FACTORY_FILE_PATH
+    )
+  }
+  return tree
+})()
+
+type MockWorkspaceFileEntry = {
+  body: Record<string, unknown>
+  status: number
+}
+
+const MOCK_WORKSPACE_FILES = new Map<string, MockWorkspaceFileEntry>([
   [
-    "agent-workspace/memory/research/factory.md",
+    FACTORY_FILE_PATH,
     {
-      path: "agent-workspace/memory/research/factory.md",
-      name: "factory.md",
-      content:
-        "# Factory\n\nPurpose: Research notes for Factory.\n\nStatus: Seeded stub.\n",
-      mediaType: "text/markdown",
+      status: 200,
+      body: {
+        path: FACTORY_FILE_PATH,
+        name: "factory.md",
+        content:
+          "# Factory\n\nPurpose: Research notes for Factory.\n\nStatus: Seeded stub.\n",
+        mediaType: "text/markdown",
+        status: "ok",
+      },
+    },
+  ],
+  [
+    "agent-workspace/pi/prompts/daily-brief.md",
+    {
+      status: 200,
+      body: {
+        path: "agent-workspace/pi/prompts/daily-brief.md",
+        name: "daily-brief.md",
+        content: "# Daily Brief\n\n- Review workspace diagnostics.\n",
+        mediaType: "text/markdown",
+        status: "ok",
+      },
+    },
+  ],
+  [
+    LARGE_REPORT_PATH,
+    {
+      status: 200,
+      body: {
+        path: LARGE_REPORT_PATH,
+        name: "large-report.md",
+        content: "",
+        mediaType: "text/plain",
+        size: 300000,
+        status: "too-large",
+      },
+    },
+  ],
+  [
+    BINARY_REPORT_PATH,
+    {
+      status: 200,
+      body: {
+        path: BINARY_REPORT_PATH,
+        name: "binary-report.bin",
+        content: "",
+        mediaType: "application/octet-stream",
+        size: 128,
+        status: "unsupported",
+      },
+    },
+  ],
+  [
+    BROKEN_REPORT_PATH,
+    {
+      status: 503,
+      body: {
+        message: "Workspace preview is temporarily unavailable.",
+      },
     },
   ],
 ])
@@ -257,45 +636,50 @@ function mockChatSessions(page: Page) {
   )
 }
 
-function mockChatResources(page: Page) {
+function mockChatResources(page: Page, resources = MOCK_RESOURCES) {
   return page.route(
     "http://localhost:3000/api/chat/resources",
     async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(MOCK_RESOURCES),
+        body: JSON.stringify(resources),
       })
     }
   )
 }
 
-function mockWorkspaceTree(page: Page) {
+function mockWorkspaceTree(page: Page, responses = [MOCK_WORKSPACE_TREE]) {
+  let requestIndex = 0
   return page.route(
     "http://localhost:3000/api/workspace/tree",
     async (route: Route) => {
+      const response =
+        responses[Math.min(requestIndex, responses.length - 1)] ??
+        MOCK_WORKSPACE_TREE
+      requestIndex += 1
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(MOCK_WORKSPACE_TREE),
+        body: JSON.stringify(response),
       })
     }
   )
 }
 
-function mockWorkspaceFile(page: Page) {
+function mockWorkspaceFile(page: Page, files = MOCK_WORKSPACE_FILES) {
   return page.route(
     "http://localhost:3000/api/workspace/file?**",
     async (route: Route) => {
       const url = new URL(route.request().url())
       const path = url.searchParams.get("path") ?? ""
-      const file = MOCK_WORKSPACE_FILES.get(path)
+      const file = files.get(path)
 
       await route.fulfill({
-        status: file ? 200 : 404,
+        status: file?.status ?? 404,
         contentType: "application/json",
         body: JSON.stringify(
-          file ?? { message: `No mocked workspace file for ${path}` }
+          file?.body ?? { message: `No mocked workspace file for ${path}` }
         ),
       })
     }
@@ -315,6 +699,12 @@ async function scrollPanelToEnd(panel: Locator) {
   await scroller.evaluate((element) => {
     element.scrollTop = element.scrollHeight
   })
+}
+
+async function expandWorkspacePath(tree: Locator, segments: Array<string>) {
+  for (const segment of segments) {
+    await tree.getByRole("button", { name: segment, exact: true }).click()
+  }
 }
 
 function mockChatNew(page: Page) {
@@ -378,8 +768,23 @@ function mockChatStream(
   } = {}
 ) {
   const assistantId = `assistant-${Date.now()}`
+  const runId = `run-${assistantId}`
   const text = options.assistantText ?? "Hello! How can I help you today?"
   const chunks = text.split(" ")
+  const todos = options.planMode
+    ? text
+        .split("\n")
+        .map((line) => {
+          const match = line.match(/^(\d+)\.\s+(.*)$/)
+          if (!match) return null
+          return {
+            step: Number(match[1]),
+            text: match[2],
+            completed: false,
+          }
+        })
+        .filter((todo): todo is NonNullable<typeof todo> => todo !== null)
+    : []
 
   return page.route("http://localhost:3000/api/chat", async (route: Route) => {
     const request = route.request()
@@ -393,6 +798,7 @@ function mockChatStream(
       JSON.stringify({
         type: "start",
         id: assistantId,
+        runId,
         sessionFile: MOCK_SESSION_FILE,
         sessionId: MOCK_SESSION_ID,
       })
@@ -415,8 +821,17 @@ function mockChatStream(
           mode: "plan",
           executing: false,
           completed: 0,
-          total: 3,
-          message: "Planning",
+          total: todos.length,
+          message: `Plan ready: 0/${todos.length} steps done`,
+          state: {
+            mode: "plan",
+            executing: false,
+            pendingDecision: true,
+            completed: 0,
+            total: todos.length,
+            todos,
+            message: `Plan ready: 0/${todos.length} steps done`,
+          },
         })
       )
     }
@@ -424,11 +839,35 @@ function mockChatStream(
     events.push(
       JSON.stringify({
         type: "done",
+        runId,
         message: {
           id: assistantId,
           role: "assistant",
           createdAt: Date.now(),
-          parts: [{ type: "text", text }],
+          parts: options.planMode
+            ? [
+                { type: "text", text },
+                {
+                  type: "tool-PlanWrite",
+                  toolCallId: `plan-mode-decision-${assistantId}`,
+                  state: "output-available",
+                  input: {
+                    action: "create",
+                    pendingDecision: true,
+                    executing: false,
+                    completed: 0,
+                    total: todos.length,
+                    plan: {
+                      id: assistantId,
+                      title: "Execution plan",
+                      summary: todos.map((todo) => todo.text).join("; "),
+                      status: "awaiting_approval",
+                      todos,
+                    },
+                  },
+                },
+              ]
+            : [{ type: "text", text }],
         },
         sessionFile: MOCK_SESSION_FILE,
         sessionId: MOCK_SESSION_ID,
@@ -507,6 +946,90 @@ test.describe("chat flows", () => {
     expect(textareaBox?.y ?? 0).toBeGreaterThan(
       (chatColumnBox?.y ?? 0) + (chatColumnBox?.height ?? 0) * 0.65
     )
+  })
+
+  test("first browser visit boots panels and persists one fresh session", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear()
+    })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockChatStream(page, {
+      assistantText: "First visit ready.",
+    })
+
+    let sessionHydrationRequests = 0
+    let chatPostRequests = 0
+
+    page.on("request", (request) => {
+      if (request.url().startsWith("http://localhost:3000/api/chat/session?")) {
+        sessionHydrationRequests += 1
+      }
+      if (
+        request.url() === "http://localhost:3000/api/chat" &&
+        request.method() === "POST"
+      ) {
+        chatPostRequests += 1
+      }
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.localStorage.getItem("fleet-pi-chat-session")
+        )
+      )
+      .toBe(null)
+    expect(sessionHydrationRequests).toBe(0)
+
+    await page.locator('[aria-label="Pi resources"]').click()
+    await expect(
+      page.locator('[data-testid="pi-resources-canvas"]')
+    ).toBeVisible()
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await expect(
+      page.locator('[data-testid="pi-workspace-canvas"]')
+    ).toBeVisible()
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await expect(textarea).toBeVisible()
+    await textarea.fill("Start the first session")
+    await page.keyboard.press("Enter")
+
+    await expect(
+      page.locator("text=Start the first session").first()
+    ).toBeVisible()
+    await expect(page.locator("text=First visit ready.")).toBeVisible({
+      timeout: 10000,
+    })
+
+    expect(chatPostRequests).toBe(1)
+    expect(sessionHydrationRequests).toBe(0)
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.localStorage.getItem("fleet-pi-chat-session")
+        )
+      )
+      .not.toBe(null)
+
+    const storedSession = await page.evaluate(() => {
+      const raw = window.localStorage.getItem("fleet-pi-chat-session")
+      return raw ? JSON.parse(raw) : null
+    })
+
+    expect(storedSession).toEqual({
+      sessionFile: MOCK_SESSION_FILE,
+      sessionId: MOCK_SESSION_ID,
+    })
   })
 
   test("sends message and streaming content appears", async ({ page }) => {
@@ -709,14 +1232,22 @@ test.describe("chat flows", () => {
     await mockChatSessions(page)
     await mockChatResources(page)
     await mockWorkspaceTree(page)
-    await mockWorkspaceFile(page)
+
+    let workspaceTreeRequests = 0
+    page.on("request", (request) => {
+      if (request.url() === "http://localhost:3000/api/workspace/tree") {
+        workspaceTreeRequests += 1
+      }
+    })
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
+    expect(workspaceTreeRequests).toBe(0)
 
     const resourcesButton = page.locator('[aria-label="Pi resources"]')
     await expect(resourcesButton).toBeVisible()
     await resourcesButton.click()
+    await expect.poll(() => workspaceTreeRequests).toBe(1)
 
     const chatColumn = page.locator('[data-testid="chat-column"]')
     const canvas = page.locator('[data-testid="pi-resources-canvas"]')
@@ -752,14 +1283,28 @@ test.describe("chat flows", () => {
       canvas.getByTestId("resource-chip-section-extensions")
     ).toBeVisible()
     await expect(
+      canvas.getByTestId("resource-chip-section-prompts")
+    ).toBeVisible()
+    await expect(
+      canvas.getByTestId("resource-chip-section-packages")
+    ).toBeVisible()
+    await expect(
       canvas.getByTestId("resource-chip-section-context")
     ).toBeVisible()
+    await expect(
+      canvas.getByTestId("resource-chip-section-diagnostics")
+    ).toBeVisible()
     await expect(canvas.getByText("Skills", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("Prompts", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Extensions", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("Packages", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Context", { exact: true })).toBeVisible()
     const skillsSection = canvas.getByTestId("resource-chip-section-skills")
     const skillItems = skillsSection.getByTestId("resource-chip")
-    await expect(skillItems).toHaveCount(5)
+    await expect(skillItems).toHaveCount(6)
+    await expect(
+      skillsSection.getByText("frontend-helper", { exact: true })
+    ).toBeVisible()
     await expect(
       skillsSection.getByText("codebase-research", { exact: true })
     ).toBeVisible()
@@ -776,7 +1321,10 @@ test.describe("chat flows", () => {
       skillsSection.getByText("memory-synthesis", { exact: true })
     ).toBeVisible()
     await expect(
-      skillsSection.getByText("fleet-pi-orientation", { exact: true })
+      skillsSection.getByText("active", { exact: true })
+    ).toBeVisible()
+    await expect(
+      skillsSection.getByText("chat-runtime-debugging", { exact: true })
     ).toHaveCount(0)
     const firstSkillBox = await skillItems.nth(0).boundingBox()
     const secondSkillBox = await skillItems.nth(1).boundingBox()
@@ -789,7 +1337,7 @@ test.describe("chat flows", () => {
     expect(skillsLabelBox?.y ?? 0).toBeLessThan(firstSkillBox?.y ?? 0)
     expect(
       Math.abs((firstSkillBox?.x ?? 0) - (secondSkillBox?.x ?? 0))
-    ).toBeLessThanOrEqual(20)
+    ).toBeLessThanOrEqual(24)
     expect(secondSkillBox?.y ?? 0).toBeGreaterThan(firstSkillBox?.y ?? 0)
     const projectInventoryChip = canvas.getByRole("listitem", {
       name: /project-inventory/,
@@ -811,6 +1359,9 @@ test.describe("chat flows", () => {
     await expect(
       canvas.getByText("project-inventory", { exact: true })
     ).toBeVisible()
+    await expect(canvas.getByText("live-tool", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("draft-tool", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("staged", { exact: true })).toBeVisible()
     await expect(
       canvas.getByText(".pi/extensions/project-inventory.ts", { exact: true })
     ).toHaveCount(0)
@@ -825,8 +1376,18 @@ test.describe("chat flows", () => {
     ).toBeVisible()
     await expect(canvas.getByText("filechanges", { exact: true })).toBeVisible()
     await expect(canvas.getByText("subagents", { exact: true })).toBeVisible()
+    await expect(canvas.getByText("daily-brief", { exact: true })).toBeVisible()
+    await expect(
+      canvas.getByText("example-package", { exact: true })
+    ).toBeVisible()
+    await expect(
+      canvas.getByText("reload-required", { exact: true })
+    ).toBeVisible()
     await expect(canvas.getByText("AGENTS.md", { exact: true })).toBeVisible()
     await expect(canvas.getByText("/tmp/fleet-pi/AGENTS.md")).toHaveCount(0)
+    await expect(
+      canvas.getByRole("listitem", { name: /needs a reload/i })
+    ).toBeVisible()
   })
 
   test("resizes chat content when a side panel opens near desktop width", async ({
@@ -881,6 +1442,7 @@ test.describe("chat flows", () => {
     await mockChatSessions(page)
     await mockChatResources(page)
     await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
@@ -898,10 +1460,51 @@ test.describe("chat flows", () => {
     )
     await expect(workspaceTree).toBeVisible()
     await expect(workspaceTree.getByText("agent-workspace")).toBeVisible()
-    await expect(workspaceTree.getByText("identity.md")).toBeVisible()
-    await expect(workspaceTree.getByText("2026-05-01.md")).toBeVisible()
-    await expect(workspaceTree.getByText("hermes.md")).toBeVisible()
-    await expect(workspaceTree.getByText("SKILL.md")).toHaveCount(5)
+    await expect(
+      workspaceTree.getByRole("button", { name: "memory", exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "pi", exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "policies", exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "scratch", exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "identity.md", exact: true })
+    ).toHaveCount(0)
+    await expect(
+      workspaceTree.getByRole("button", { name: "factory.md", exact: true })
+    ).toHaveCount(0)
+
+    await expandWorkspacePath(workspaceTree, ["memory", "research"])
+    await expect(
+      workspaceTree.getByRole("button", { name: "factory.md", exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", { name: "hermes.md", exact: true })
+    ).toBeVisible()
+
+    await expandWorkspacePath(workspaceTree, ["policies"])
+    await expect(
+      workspaceTree.getByRole("button", {
+        name: "workspace-policy.md",
+        exact: true,
+      })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", {
+        name: "constraints.md",
+        exact: true,
+      })
+    ).toBeVisible()
+
+    await expandWorkspacePath(workspaceTree, ["scratch", "tmp"])
+    await expect(
+      workspaceTree.getByRole("button", { name: ".gitkeep", exact: true })
+    ).toBeVisible()
 
     await workspaceTree.getByRole("button", { name: "factory.md" }).click()
     const workspacePreview = workspaceCanvas.locator(
@@ -920,11 +1523,148 @@ test.describe("chat flows", () => {
     await expect(
       workspaceTree.getByRole("button", { name: "factory.md" })
     ).toHaveAttribute("aria-pressed", "true")
+    await workspaceTree.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    await expect(
+      workspaceTree.getByText("Diagnostics", { exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("listitem", {
+        name: /pending reindex/i,
+      })
+    ).toBeVisible()
 
     await page.getByRole("button", { name: "Pi resources" }).click()
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
+  })
+
+  test("keeps diagnostics visible while workspace browsing and chat stay usable", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+    await mockChatStream(page, {
+      assistantText: "Diagnostics do not block chat.",
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+    const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(resourcesCanvas).toBeVisible()
+    await expect(
+      resourcesCanvas.getByTestId("resource-chip-section-diagnostics")
+    ).toBeVisible()
+    await expect(
+      resourcesCanvas.getByRole("listitem", { name: /needs a reload/i })
+    ).toBeVisible()
+
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+    const workspaceTree = workspaceCanvas.locator(
+      '[data-testid="workspace-tree"]'
+    )
+    await expandWorkspacePath(workspaceTree, ["memory", "research"])
+    await workspaceTree.getByRole("button", { name: "factory.md" }).click()
+
+    const preview = workspaceCanvas.locator('[data-testid="workspace-preview"]')
+    await expect(
+      preview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+    await expect(
+      workspaceCanvas.getByText("Diagnostics", { exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("listitem", { name: /pending reindex/i })
+    ).toBeVisible()
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await expect(textarea).toBeVisible()
+    await textarea.fill("Can you still help?")
+    await page.keyboard.press("Enter")
+
+    await expect(page.locator("text=Can you still help?").first()).toBeVisible()
+    await expect(
+      page.locator("text=Diagnostics do not block chat.")
+    ).toBeVisible({ timeout: 10000 })
+  })
+
+  test("clears stale workspace previews for degraded responses and refresh removals", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page, [
+      MOCK_WORKSPACE_TREE,
+      MOCK_WORKSPACE_TREE_WITHOUT_FACTORY,
+    ])
+    await mockWorkspaceFile(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+    const workspaceTree = workspaceCanvas.locator(
+      '[data-testid="workspace-tree"]'
+    )
+    const preview = workspaceCanvas.locator('[data-testid="workspace-preview"]')
+
+    await expandWorkspacePath(workspaceTree, ["memory", "research"])
+    await workspaceTree.getByRole("button", { name: "factory.md" }).click()
+    await expect(
+      preview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+
+    await expandWorkspacePath(workspaceTree, ["artifacts", "reports"])
+    await workspaceTree.getByRole("button", { name: "large-report.md" }).click()
+    await expect(preview.getByText("Preview too large")).toBeVisible()
+    await expect(preview.getByRole("heading", { name: "Factory" })).toHaveCount(
+      0
+    )
+
+    await workspaceTree
+      .getByRole("button", { name: "binary-report.bin" })
+      .click()
+    await expect(preview.getByText("Unsupported preview")).toBeVisible()
+    await expect(preview.getByRole("heading", { name: "Factory" })).toHaveCount(
+      0
+    )
+
+    await workspaceTree.getByRole("button", { name: "broken.md" }).click()
+    await expect(preview.getByText("Unable to load preview")).toBeVisible()
+    await expect(
+      preview.getByText("Workspace preview is temporarily unavailable.")
+    ).toBeVisible()
+    await expect(preview.getByRole("heading", { name: "Factory" })).toHaveCount(
+      0
+    )
+
+    await workspaceTree.getByRole("button", { name: "factory.md" }).click()
+    await expect(
+      preview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+    await workspaceCanvas
+      .getByRole("button", { name: "Refresh Workspace" })
+      .click()
+
+    await expect(
+      workspaceTree.getByRole("button", { name: "factory.md", exact: true })
+    ).toHaveCount(0)
+    await expect(preview.getByText("Select a file")).toBeVisible()
+    await expect(preview.getByRole("heading", { name: "Factory" })).toHaveCount(
+      0
+    )
   })
 
   test("shows configurations and applies theme preference", async ({
@@ -969,13 +1709,13 @@ test.describe("chat flows", () => {
       configurations.getByText("Tools", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Connectors", { exact: true })
+      configurations.getByText("Resources", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("LLM Providers", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Allowed Models", { exact: true })
+      configurations.getByText("Runtime Models", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("Personalization", { exact: true })
@@ -986,11 +1726,11 @@ test.describe("chat flows", () => {
     await expect(
       configurations.getByText("Claude Opus 4.6", { exact: true })
     ).toBeVisible()
-    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "overflow-y",
       "auto"
     )
-    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "max-height",
       "400px"
     )
@@ -1214,6 +1954,7 @@ test.describe("chat flows", () => {
       '[data-testid="pi-workspace-mobile-panel"]'
     )
     await expect(mobilePanel).toBeVisible()
+    await expandWorkspacePath(mobilePanel, ["memory", "research"])
     await mobilePanel.getByRole("button", { name: "factory.md" }).click()
 
     const preview = mobilePanel.locator('[data-testid="workspace-preview"]')

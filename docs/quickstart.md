@@ -1,5 +1,7 @@
 # Fleet Pi Quick Start
 
+If you want the overall docs map first, start with [docs/README.md](README.md).
+
 Fleet Pi supports two setup paths:
 
 - `Standalone` for running the local web app with Pi-backed chat
@@ -24,6 +26,12 @@ corepack enable
 
 Fleet Pi uses the normal AWS credential chain. `AWS_REGION` defaults to
 `us-east-1` when unset.
+
+`agent-workspace/` is the canonical durable adaptive state. Durable memory,
+plans, workspace-installed Pi resources, and other adaptive artifacts belong in
+reviewable workspace files; `agent-workspace/indexes/` is reserved for
+non-canonical projection data, and `.pi/settings.json` remains the
+compatibility bridge.
 
 ### 1. Install dependencies
 
@@ -104,6 +112,9 @@ a fresh worktree:
 pnpm install --frozen-lockfile
 ```
 
+For the accepted workspace contract and projection boundary, see
+[docs/adaptive-workspace.md](adaptive-workspace.md).
+
 ## Useful commands
 
 ```zsh
@@ -114,3 +125,10 @@ pnpm lint
 pnpm --filter web test
 pnpm e2e
 ```
+
+## Next reads
+
+- [Agent Workspace](agent-workspace.md) for the durable workspace model
+- [Adaptive Workspace Contract](adaptive-workspace.md) for the canonical
+  storage boundary
+- [Codex Usage](codex.md) for the advanced Codex worktree path

@@ -48,8 +48,12 @@ curl http://localhost:3000/api/health
 
 Full setup instructions:
 
+- [docs/README.md](docs/README.md) for the docs hub and recommended reading
+  order
 - [docs/quickstart.md](docs/quickstart.md) for standalone and Pi/Codex setup
 - [docs/codex.md](docs/codex.md) for the advanced Codex local environment
+- [docs/adaptive-workspace.md](docs/adaptive-workspace.md) for the accepted
+  canonical workspace contract
 
 ## 🚀 Features
 
@@ -98,15 +102,17 @@ Fleet Pi ships `.codex/environments/environment.toml` and
 
 ### `agent-workspace/`
 
-`agent-workspace/` is Fleet Pi's durable adaptive layer.
+`agent-workspace/` is Fleet Pi's durable adaptive layer and the canonical
+durable adaptive state.
 
 - Human-facing docs live under [`docs/`](docs/).
 - Agent-facing memory, plans, skills, evals, artifacts, and scratch space live
   under [`agent-workspace/`](agent-workspace/).
 - Workspace-installed Pi resources live under `agent-workspace/pi/`, while root
   `.pi/settings.json` stays a small compatibility bridge.
+- `agent-workspace/indexes/` is reserved for non-canonical projection storage.
 
-Read more in [docs/agent-workspace.md](docs/agent-workspace.md).
+Read more in [docs/adaptive-workspace.md](docs/adaptive-workspace.md).
 
 ### Project-local Pi resources
 
@@ -136,15 +142,17 @@ pnpm generate:docs
 
 ## 📚 Docs
 
-| Document                                               | Description                                      |
-| ------------------------------------------------------ | ------------------------------------------------ |
-| [docs/quickstart.md](docs/quickstart.md)               | Recommended setup paths                          |
-| [docs/agent-workspace.md](docs/agent-workspace.md)     | How the living workspace makes Fleet Pi adaptive |
-| [docs/codex.md](docs/codex.md)                         | Advanced Codex environment and action setup      |
-| [docs/architecture.md](docs/architecture.md)           | Architecture overview                            |
-| [docs/api.md](docs/api.md)                             | Generated API reference                          |
-| [docs/project-structure.md](docs/project-structure.md) | Generated repo map                               |
-| [docs/runbooks.md](docs/runbooks.md)                   | Operator runbooks for runtime issues             |
+| Document                                                 | Description                                          |
+| -------------------------------------------------------- | ---------------------------------------------------- |
+| [docs/README.md](docs/README.md)                         | Docs hub and recommended reading order               |
+| [docs/quickstart.md](docs/quickstart.md)                 | Recommended setup paths                              |
+| [docs/agent-workspace.md](docs/agent-workspace.md)       | Human guide to the durable workspace model           |
+| [docs/adaptive-workspace.md](docs/adaptive-workspace.md) | Canonical workspace contract and projection boundary |
+| [docs/codex.md](docs/codex.md)                           | Advanced Codex environment and action setup          |
+| [docs/runbooks.md](docs/runbooks.md)                     | Operator runbooks for runtime issues                 |
+| [docs/architecture.md](docs/architecture.md)             | Generated architecture reference                     |
+| [docs/api.md](docs/api.md)                               | Generated API reference                              |
+| [docs/project-structure.md](docs/project-structure.md)   | Generated repo map                                   |
 
 ## 🤝 Contributing
 

@@ -25,6 +25,7 @@
 ## Public Docs & Community Health
 
 - `README.md` is the public landing page. Keep it concise, user-focused, and centered on the recommended standalone path.
+- `docs/README.md` is the docs hub and the recommended entrypoint for the human-facing docs set.
 - `docs/quickstart.md` is the primary onboarding doc for setup and local verification.
 - `docs/agent-workspace.md` explains how `agent-workspace/` acts as Fleet Pi's durable adaptive layer.
 - `docs/codex.md` is the advanced setup path for Codex worktrees, not the default setup guide.

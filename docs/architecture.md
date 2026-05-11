@@ -2,6 +2,9 @@
 
 Generated overview of the current runtime boundaries.
 
+Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md)
+if you are new to Fleet Pi. This file is generated reference material.
+
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e1f5fe', 'primaryTextColor': '#01579b', 'primaryBorderColor': '#0288d1', 'lineColor': '#0288d1', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#e8f5e9'}}}%%
 graph TD

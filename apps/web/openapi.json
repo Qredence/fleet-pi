@@ -107,6 +107,9 @@
                         "id": {
                           "type": "string"
                         },
+                        "runId": {
+                          "type": "string"
+                        },
                         "sessionFile": {
                           "type": "string"
                         },
@@ -123,7 +126,7 @@
                           }
                         }
                       },
-                      "required": ["type", "id", "sessionId"],
+                      "required": ["type", "id", "runId", "sessionId"],
                       "description": "Stream start event"
                     },
                     {
@@ -453,6 +456,9 @@
                           "type": "string",
                           "enum": ["done"]
                         },
+                        "runId": {
+                          "type": "string"
+                        },
                         "message": {
                           "type": "object",
                           "properties": {
@@ -565,7 +571,7 @@
                           "type": "boolean"
                         }
                       },
-                      "required": ["type", "message", "sessionId"],
+                      "required": ["type", "runId", "message", "sessionId"],
                       "description": "Stream done event"
                     },
                     {
@@ -576,6 +582,9 @@
                           "enum": ["error"]
                         },
                         "message": {
+                          "type": "string"
+                        },
+                        "runId": {
                           "type": "string"
                         }
                       },

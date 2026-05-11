@@ -1,5 +1,8 @@
 # Fleet Pi Runbooks
 
+This page is operational reference material. New users should start with
+[docs/README.md](README.md) and [Quick Start](quickstart.md).
+
 Operational runbooks for incident response and troubleshooting the Fleet Pi
 chat application.
 

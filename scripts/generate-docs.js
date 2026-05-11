@@ -49,6 +49,7 @@ const openapi = JSON.parse(readFileSync(openapiPath, "utf-8"))
 
 let apiMd = `# Fleet Pi API Reference\n\n`
 apiMd += `Generated from \`openapi.json\`.\n\n`
+apiMd += `Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) if you are new to the project. This file is generated reference material.\n\n`
 apiMd += `**Base URL:** \`${openapi.servers?.[0]?.url ?? "http://localhost:3000"}\`\n\n`
 apiMd += `---\n\n`
 
@@ -194,6 +195,9 @@ const architectureMd = `# Fleet Pi Architecture
 
 Generated overview of the current runtime boundaries.
 
+Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md)
+if you are new to Fleet Pi. This file is generated reference material.
+
 \`\`\`mermaid
 ${mermaid}
 \`\`\`
@@ -205,6 +209,7 @@ console.log("docs/architecture.md written")
 // ─── 4. Generate project-structure.md ───
 let structMd = `# Fleet Pi Project Structure\n\n`
 structMd += `Auto-generated overview of the monorepo workspace.\n\n`
+structMd += `Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) if you are new to Fleet Pi. This file is generated reference material.\n\n`
 structMd += `## Workspace Layout\n\n`
 structMd += "\`\`\`text\n"
 structMd += `fleet-pi/\n`

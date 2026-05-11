@@ -13,12 +13,20 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiWorkspaceTreeRouteImport } from './routes/api/workspace/tree'
+import { Route as ApiWorkspaceSearchRouteImport } from './routes/api/workspace/search'
+import { Route as ApiWorkspaceReindexRouteImport } from './routes/api/workspace/reindex'
+import { Route as ApiWorkspaceItemsRouteImport } from './routes/api/workspace/items'
+import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/item'
+import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
+import { Route as ApiChatRunsRouteImport } from './routes/api/chat/runs'
+import { Route as ApiChatRunRouteImport } from './routes/api/chat/run'
 import { Route as ApiChatResumeRouteImport } from './routes/api/chat/resume'
 import { Route as ApiChatResourcesRouteImport } from './routes/api/chat/resources'
 import { Route as ApiChatQuestionRouteImport } from './routes/api/chat/question'
+import { Route as ApiChatProvenanceRouteImport } from './routes/api/chat/provenance'
 import { Route as ApiChatNewRouteImport } from './routes/api/chat/new'
 import { Route as ApiChatModelsRouteImport } from './routes/api/chat/models'
 import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
@@ -43,6 +51,31 @@ const ApiWorkspaceTreeRoute = ApiWorkspaceTreeRouteImport.update({
   path: '/api/workspace/tree',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkspaceSearchRoute = ApiWorkspaceSearchRouteImport.update({
+  id: '/api/workspace/search',
+  path: '/api/workspace/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceReindexRoute = ApiWorkspaceReindexRouteImport.update({
+  id: '/api/workspace/reindex',
+  path: '/api/workspace/reindex',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceItemsRoute = ApiWorkspaceItemsRouteImport.update({
+  id: '/api/workspace/items',
+  path: '/api/workspace/items',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceItemRoute = ApiWorkspaceItemRouteImport.update({
+  id: '/api/workspace/item',
+  path: '/api/workspace/item',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceHealthRoute = ApiWorkspaceHealthRouteImport.update({
+  id: '/api/workspace/health',
+  path: '/api/workspace/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
   id: '/api/workspace/file',
   path: '/api/workspace/file',
@@ -58,6 +91,16 @@ const ApiChatSessionRoute = ApiChatSessionRouteImport.update({
   path: '/session',
   getParentRoute: () => ApiChatRoute,
 } as any)
+const ApiChatRunsRoute = ApiChatRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatRunRoute = ApiChatRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiChatRoute,
+} as any)
 const ApiChatResumeRoute = ApiChatResumeRouteImport.update({
   id: '/resume',
   path: '/resume',
@@ -71,6 +114,11 @@ const ApiChatResourcesRoute = ApiChatResourcesRouteImport.update({
 const ApiChatQuestionRoute = ApiChatQuestionRouteImport.update({
   id: '/question',
   path: '/question',
+  getParentRoute: () => ApiChatRoute,
+} as any)
+const ApiChatProvenanceRoute = ApiChatProvenanceRouteImport.update({
+  id: '/provenance',
+  path: '/provenance',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatNewRoute = ApiChatNewRouteImport.update({
@@ -96,12 +144,20 @@ export interface FileRoutesByFullPath {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesByTo {
@@ -111,12 +167,20 @@ export interface FileRoutesByTo {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesById {
@@ -127,12 +191,20 @@ export interface FileRoutesById {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/question': typeof ApiChatQuestionRoute
   '/api/chat/resources': typeof ApiChatResourcesRoute
   '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRouteTypes {
@@ -144,12 +216,20 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -159,12 +239,20 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   id:
     | '__root__'
@@ -174,12 +262,20 @@ export interface FileRouteTypes {
     | '/api/chat/abort'
     | '/api/chat/models'
     | '/api/chat/new'
+    | '/api/chat/provenance'
     | '/api/chat/question'
     | '/api/chat/resources'
     | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
     | '/api/workspace/tree'
   fileRoutesById: FileRoutesById
 }
@@ -188,6 +284,11 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
+  ApiWorkspaceHealthRoute: typeof ApiWorkspaceHealthRoute
+  ApiWorkspaceItemRoute: typeof ApiWorkspaceItemRoute
+  ApiWorkspaceItemsRoute: typeof ApiWorkspaceItemsRoute
+  ApiWorkspaceReindexRoute: typeof ApiWorkspaceReindexRoute
+  ApiWorkspaceSearchRoute: typeof ApiWorkspaceSearchRoute
   ApiWorkspaceTreeRoute: typeof ApiWorkspaceTreeRoute
 }
 
@@ -221,6 +322,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkspaceTreeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workspace/search': {
+      id: '/api/workspace/search'
+      path: '/api/workspace/search'
+      fullPath: '/api/workspace/search'
+      preLoaderRoute: typeof ApiWorkspaceSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/reindex': {
+      id: '/api/workspace/reindex'
+      path: '/api/workspace/reindex'
+      fullPath: '/api/workspace/reindex'
+      preLoaderRoute: typeof ApiWorkspaceReindexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/items': {
+      id: '/api/workspace/items'
+      path: '/api/workspace/items'
+      fullPath: '/api/workspace/items'
+      preLoaderRoute: typeof ApiWorkspaceItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/item': {
+      id: '/api/workspace/item'
+      path: '/api/workspace/item'
+      fullPath: '/api/workspace/item'
+      preLoaderRoute: typeof ApiWorkspaceItemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/health': {
+      id: '/api/workspace/health'
+      path: '/api/workspace/health'
+      fullPath: '/api/workspace/health'
+      preLoaderRoute: typeof ApiWorkspaceHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workspace/file': {
       id: '/api/workspace/file'
       path: '/api/workspace/file'
@@ -242,6 +378,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatSessionRouteImport
       parentRoute: typeof ApiChatRoute
     }
+    '/api/chat/runs': {
+      id: '/api/chat/runs'
+      path: '/runs'
+      fullPath: '/api/chat/runs'
+      preLoaderRoute: typeof ApiChatRunsRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/run': {
+      id: '/api/chat/run'
+      path: '/run'
+      fullPath: '/api/chat/run'
+      preLoaderRoute: typeof ApiChatRunRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
     '/api/chat/resume': {
       id: '/api/chat/resume'
       path: '/resume'
@@ -261,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/question'
       fullPath: '/api/chat/question'
       preLoaderRoute: typeof ApiChatQuestionRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
+    '/api/chat/provenance': {
+      id: '/api/chat/provenance'
+      path: '/provenance'
+      fullPath: '/api/chat/provenance'
+      preLoaderRoute: typeof ApiChatProvenanceRouteImport
       parentRoute: typeof ApiChatRoute
     }
     '/api/chat/new': {
@@ -291,9 +448,12 @@ interface ApiChatRouteChildren {
   ApiChatAbortRoute: typeof ApiChatAbortRoute
   ApiChatModelsRoute: typeof ApiChatModelsRoute
   ApiChatNewRoute: typeof ApiChatNewRoute
+  ApiChatProvenanceRoute: typeof ApiChatProvenanceRoute
   ApiChatQuestionRoute: typeof ApiChatQuestionRoute
   ApiChatResourcesRoute: typeof ApiChatResourcesRoute
   ApiChatResumeRoute: typeof ApiChatResumeRoute
+  ApiChatRunRoute: typeof ApiChatRunRoute
+  ApiChatRunsRoute: typeof ApiChatRunsRoute
   ApiChatSessionRoute: typeof ApiChatSessionRoute
   ApiChatSessionsRoute: typeof ApiChatSessionsRoute
 }
@@ -302,9 +462,12 @@ const ApiChatRouteChildren: ApiChatRouteChildren = {
   ApiChatAbortRoute: ApiChatAbortRoute,
   ApiChatModelsRoute: ApiChatModelsRoute,
   ApiChatNewRoute: ApiChatNewRoute,
+  ApiChatProvenanceRoute: ApiChatProvenanceRoute,
   ApiChatQuestionRoute: ApiChatQuestionRoute,
   ApiChatResourcesRoute: ApiChatResourcesRoute,
   ApiChatResumeRoute: ApiChatResumeRoute,
+  ApiChatRunRoute: ApiChatRunRoute,
+  ApiChatRunsRoute: ApiChatRunsRoute,
   ApiChatSessionRoute: ApiChatSessionRoute,
   ApiChatSessionsRoute: ApiChatSessionsRoute,
 }
@@ -317,6 +480,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
+  ApiWorkspaceHealthRoute: ApiWorkspaceHealthRoute,
+  ApiWorkspaceItemRoute: ApiWorkspaceItemRoute,
+  ApiWorkspaceItemsRoute: ApiWorkspaceItemsRoute,
+  ApiWorkspaceReindexRoute: ApiWorkspaceReindexRoute,
+  ApiWorkspaceSearchRoute: ApiWorkspaceSearchRoute,
   ApiWorkspaceTreeRoute: ApiWorkspaceTreeRoute,
 }
 export const routeTree = rootRouteImport

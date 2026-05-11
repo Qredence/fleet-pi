@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { loadWorkspaceResourceCatalog } from "./workspace-resource-catalog"
+import {
+  applyWorkspaceResourceMetadata,
+  loadWorkspaceResourceCatalog,
+  mergeResourceInfo,
+} from "./workspace-resource-catalog"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 describe("workspace resource catalog", () => {
@@ -10,7 +14,9 @@ describe("workspace resource catalog", () => {
 
   afterEach(async () => {
     await Promise.all(
-      tempRoots.splice(0).map((root) => rm(root, { force: true, recursive: true }))
+      tempRoots
+        .splice(0)
+        .map((root) => rm(root, { force: true, recursive: true }))
     )
   })
 
@@ -38,7 +44,10 @@ describe("workspace resource catalog", () => {
     await writeFile(
       join(root, ".pi/settings.json"),
       JSON.stringify({
+        extensions: ["../agent-workspace/pi/extensions/enabled"],
         packages: ["../agent-workspace/pi/packages/example"],
+        prompts: ["../agent-workspace/pi/prompts"],
+        skills: ["../agent-workspace/pi/skills"],
       })
     )
 
@@ -71,10 +80,97 @@ describe("workspace resource catalog", () => {
     })
   })
 
+  it("annotates runtime-loaded workspace resources with canonical paths", () => {
+    const root = "/tmp/fleet-pi-project"
+    const settings = {
+      extensions: ["../agent-workspace/pi/extensions/enabled"],
+      packages: ["../agent-workspace/pi/packages/runtime-pack"],
+      prompts: ["../agent-workspace/pi/prompts"],
+      skills: ["../agent-workspace/pi/skills"],
+    }
+
+    expect(
+      applyWorkspaceResourceMetadata(root, settings, {
+        name: "web-fetch",
+        path: `${root}/agent-workspace/pi/extensions/enabled/web-fetch/index.ts`,
+        source: "local",
+      })
+    ).toMatchObject({
+      activationStatus: "active",
+      installedInWorkspace: true,
+      path: "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+      source: "workspace",
+      workspacePath: "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+    })
+
+    expect(
+      applyWorkspaceResourceMetadata(root, settings, {
+        name: "packaged-skill",
+        path: `${root}/agent-workspace/pi/packages/runtime-pack/skills/packaged-skill/SKILL.md`,
+      })
+    ).toMatchObject({
+      activationStatus: "active",
+      installedInWorkspace: true,
+      path: "agent-workspace/pi/packages/runtime-pack/skills/packaged-skill/SKILL.md",
+      source: "workspace",
+      workspacePath:
+        "agent-workspace/pi/packages/runtime-pack/skills/packaged-skill/SKILL.md",
+    })
+  })
+
+  it("merges absolute runtime paths with workspace catalog metadata", () => {
+    const root = "/tmp/fleet-pi-project"
+
+    expect(
+      mergeResourceInfo(
+        root,
+        [
+          {
+            description: "Loaded from the runtime bridge",
+            name: "web-fetch",
+            path: `${root}/agent-workspace/pi/extensions/enabled/web-fetch/index.ts`,
+            source: "local",
+          },
+        ],
+        [
+          {
+            activationStatus: "active",
+            installedInWorkspace: true,
+            name: "web-fetch",
+            path: "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+            source: "workspace",
+            workspacePath:
+              "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+          },
+        ]
+      )
+    ).toEqual([
+      expect.objectContaining({
+        activationStatus: "active",
+        description: "Loaded from the runtime bridge",
+        installedInWorkspace: true,
+        name: "web-fetch",
+        path: "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+        source: "workspace",
+        workspacePath:
+          "agent-workspace/pi/extensions/enabled/web-fetch/index.ts",
+      }),
+    ])
+  })
+
   async function createTempProject() {
     const root = await mkdtemp(join(tmpdir(), "fleet-pi-resource-catalog-"))
     tempRoots.push(root)
     await mkdir(join(root, ".pi"), { recursive: true })
+    await writeFile(
+      join(root, ".pi/settings.json"),
+      JSON.stringify({
+        extensions: ["../agent-workspace/pi/extensions/enabled"],
+        packages: ["../agent-workspace/pi/packages/example"],
+        prompts: ["../agent-workspace/pi/prompts"],
+        skills: ["../agent-workspace/pi/skills"],
+      })
+    )
     await mkdir(join(root, "agent-workspace/pi/skills/frontend-helper"), {
       recursive: true,
     })

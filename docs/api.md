@@ -2,6 +2,8 @@
 
 Generated from `openapi.json`.
 
+Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) if you are new to the project. This file is generated reference material.
+
 **Base URL:** `http://localhost:3000`
 
 ---
@@ -32,6 +34,7 @@ Send a chat message and receive a streaming response
   {
     "type": <string> (required),
     "id": <string> (required),
+    "runId": <string> (required),
     "sessionFile": <string>,
     "sessionId": <string> (required),
     "sessionReset": <boolean>,
@@ -122,6 +125,7 @@ Send a chat message and receive a streaming response
   ```json
   {
     "type": <string> (required),
+    "runId": <string> (required),
     "message": <object> (required) — Chat message,
     "sessionFile": <string>,
     "sessionId": <string> (required),
@@ -131,7 +135,8 @@ Send a chat message and receive a streaming response
   ```json
   {
     "type": <string> (required),
-    "message": <string> (required)
+    "message": <string> (required),
+    "runId": <string>
   }
   ```
 - **400** — Bad request

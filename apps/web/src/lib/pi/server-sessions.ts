@@ -2,7 +2,11 @@ import { existsSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
 import { SessionManager } from "@earendil-works/pi-coding-agent"
 import { createPlanToolPart, restorePlanState } from "./plan-state"
-import { sessionEntriesToChatMessages } from "./server-utils"
+import {
+  applyChatMessageIdMap,
+  restoreChatMessageIdMap,
+  sessionEntriesToChatMessages,
+} from "./server-utils"
 import {
   createSessionServices,
   getSessionDir,
@@ -46,6 +50,7 @@ export async function hydrateChatSession(
     context.projectRoot,
     sessionDir
   )
+  const sessionReset = didRequestedSessionReset(metadata, sessionFile)
 
   if (!sessionFile) {
     const sessionManager = SessionManager.create(
@@ -55,7 +60,7 @@ export async function hydrateChatSession(
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
-      sessionReset: Boolean(metadata.sessionFile || metadata.sessionId),
+      sessionReset,
     }
   }
 
@@ -76,7 +81,7 @@ export async function hydrateChatSession(
   return {
     session: toSessionMetadata(sessionManager),
     messages: attachPersistedPlanPart(
-      sessionEntriesToChatMessages(sessionManager.getBranch()),
+      hydrateSessionMessages(sessionManager),
       restorePersistedPlanState(sessionManager)
     ),
   }
@@ -109,15 +114,14 @@ export async function createSessionManager(
   sessionDir: string
 ): Promise<SessionManagerResult> {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
-  const createFreshSession = (sessionReset: boolean) => ({
+  const sessionReset = didRequestedSessionReset(metadata, sessionFile)
+  const createFreshSession = (nextSessionReset: boolean) => ({
     sessionManager: SessionManager.create(repoRoot, sessionDir),
-    sessionReset,
+    sessionReset: nextSessionReset,
   })
 
   if (!sessionFile) {
-    return createFreshSession(
-      Boolean(metadata.sessionFile || metadata.sessionId)
-    )
+    return createFreshSession(sessionReset)
   }
 
   const opened = openSessionManager(sessionFile, sessionDir, repoRoot)
@@ -132,8 +136,10 @@ export async function resolveSessionFile(
   sessionDir: string
 ) {
   const fromFile = metadata.sessionFile
-  if (fromFile && isUsableSessionFile(fromFile, sessionDir)) {
-    return resolve(fromFile)
+  if (fromFile) {
+    return isUsableSessionFile(fromFile, sessionDir)
+      ? resolve(fromFile)
+      : undefined
   }
 
   if (!metadata.sessionId) return undefined
@@ -145,6 +151,21 @@ export async function resolveSessionFile(
   }
 
   return match.path
+}
+
+function didRequestedSessionReset(
+  metadata: ChatSessionMetadata,
+  sessionFile: string | undefined
+) {
+  if (metadata.sessionFile) {
+    return !sessionFile
+  }
+
+  if (metadata.sessionId) {
+    return !sessionFile
+  }
+
+  return false
 }
 
 export function isUsableSessionFile(sessionFile: string, sessionDir: string) {
@@ -182,6 +203,14 @@ export function toSessionMetadata(
 function isPathInside(parent: string, child: string) {
   const path = relative(parent, child)
   return path === "" || (!path.startsWith("..") && !isAbsolute(path))
+}
+
+function hydrateSessionMessages(sessionManager: SessionManager) {
+  const entries = sessionManager.getBranch()
+  return applyChatMessageIdMap(
+    sessionEntriesToChatMessages(entries),
+    restoreChatMessageIdMap(entries)
+  )
 }
 
 function restorePersistedPlanState(sessionManager: SessionManager) {

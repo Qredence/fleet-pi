@@ -2,6 +2,8 @@
 
 Auto-generated overview of the monorepo workspace.
 
+Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) if you are new to Fleet Pi. This file is generated reference material.
+
 ## Workspace Layout
 
 ```text
