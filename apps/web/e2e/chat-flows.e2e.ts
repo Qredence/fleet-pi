@@ -768,8 +768,23 @@ function mockChatStream(
   } = {}
 ) {
   const assistantId = `assistant-${Date.now()}`
+  const runId = `run-${assistantId}`
   const text = options.assistantText ?? "Hello! How can I help you today?"
   const chunks = text.split(" ")
+  const todos = options.planMode
+    ? text
+        .split("\n")
+        .map((line) => {
+          const match = line.match(/^(\d+)\.\s+(.*)$/)
+          if (!match) return null
+          return {
+            step: Number(match[1]),
+            text: match[2],
+            completed: false,
+          }
+        })
+        .filter((todo): todo is NonNullable<typeof todo> => todo !== null)
+    : []
 
   return page.route("http://localhost:3000/api/chat", async (route: Route) => {
     const request = route.request()
@@ -783,6 +798,7 @@ function mockChatStream(
       JSON.stringify({
         type: "start",
         id: assistantId,
+        runId,
         sessionFile: MOCK_SESSION_FILE,
         sessionId: MOCK_SESSION_ID,
       })
@@ -805,8 +821,17 @@ function mockChatStream(
           mode: "plan",
           executing: false,
           completed: 0,
-          total: 3,
-          message: "Planning",
+          total: todos.length,
+          message: `Plan ready: 0/${todos.length} steps done`,
+          state: {
+            mode: "plan",
+            executing: false,
+            pendingDecision: true,
+            completed: 0,
+            total: todos.length,
+            todos,
+            message: `Plan ready: 0/${todos.length} steps done`,
+          },
         })
       )
     }
@@ -814,11 +839,35 @@ function mockChatStream(
     events.push(
       JSON.stringify({
         type: "done",
+        runId,
         message: {
           id: assistantId,
           role: "assistant",
           createdAt: Date.now(),
-          parts: [{ type: "text", text }],
+          parts: options.planMode
+            ? [
+                { type: "text", text },
+                {
+                  type: "tool-PlanWrite",
+                  toolCallId: `plan-mode-decision-${assistantId}`,
+                  state: "output-available",
+                  input: {
+                    action: "create",
+                    pendingDecision: true,
+                    executing: false,
+                    completed: 0,
+                    total: todos.length,
+                    plan: {
+                      id: assistantId,
+                      title: "Execution plan",
+                      summary: todos.map((todo) => todo.text).join("; "),
+                      status: "awaiting_approval",
+                      todos,
+                    },
+                  },
+                },
+              ]
+            : [{ type: "text", text }],
         },
         sessionFile: MOCK_SESSION_FILE,
         sessionId: MOCK_SESSION_ID,
@@ -897,6 +946,90 @@ test.describe("chat flows", () => {
     expect(textareaBox?.y ?? 0).toBeGreaterThan(
       (chatColumnBox?.y ?? 0) + (chatColumnBox?.height ?? 0) * 0.65
     )
+  })
+
+  test("first browser visit boots panels and persists one fresh session", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear()
+    })
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockChatStream(page, {
+      assistantText: "First visit ready.",
+    })
+
+    let sessionHydrationRequests = 0
+    let chatPostRequests = 0
+
+    page.on("request", (request) => {
+      if (request.url().startsWith("http://localhost:3000/api/chat/session?")) {
+        sessionHydrationRequests += 1
+      }
+      if (
+        request.url() === "http://localhost:3000/api/chat" &&
+        request.method() === "POST"
+      ) {
+        chatPostRequests += 1
+      }
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.localStorage.getItem("fleet-pi-chat-session")
+        )
+      )
+      .toBe(null)
+    expect(sessionHydrationRequests).toBe(0)
+
+    await page.locator('[aria-label="Pi resources"]').click()
+    await expect(
+      page.locator('[data-testid="pi-resources-canvas"]')
+    ).toBeVisible()
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await expect(
+      page.locator('[data-testid="pi-workspace-canvas"]')
+    ).toBeVisible()
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await expect(textarea).toBeVisible()
+    await textarea.fill("Start the first session")
+    await page.keyboard.press("Enter")
+
+    await expect(
+      page.locator("text=Start the first session").first()
+    ).toBeVisible()
+    await expect(page.locator("text=First visit ready.")).toBeVisible({
+      timeout: 10000,
+    })
+
+    expect(chatPostRequests).toBe(1)
+    expect(sessionHydrationRequests).toBe(0)
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.localStorage.getItem("fleet-pi-chat-session")
+        )
+      )
+      .not.toBe(null)
+
+    const storedSession = await page.evaluate(() => {
+      const raw = window.localStorage.getItem("fleet-pi-chat-session")
+      return raw ? JSON.parse(raw) : null
+    })
+
+    expect(storedSession).toEqual({
+      sessionFile: MOCK_SESSION_FILE,
+      sessionId: MOCK_SESSION_ID,
+    })
   })
 
   test("sends message and streaming content appears", async ({ page }) => {
@@ -1354,6 +1487,25 @@ test.describe("chat flows", () => {
       workspaceTree.getByRole("button", { name: "hermes.md", exact: true })
     ).toBeVisible()
 
+    await expandWorkspacePath(workspaceTree, ["policies"])
+    await expect(
+      workspaceTree.getByRole("button", {
+        name: "workspace-policy.md",
+        exact: true,
+      })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("button", {
+        name: "constraints.md",
+        exact: true,
+      })
+    ).toBeVisible()
+
+    await expandWorkspacePath(workspaceTree, ["scratch", "tmp"])
+    await expect(
+      workspaceTree.getByRole("button", { name: ".gitkeep", exact: true })
+    ).toBeVisible()
+
     await workspaceTree.getByRole("button", { name: "factory.md" }).click()
     const workspacePreview = workspaceCanvas.locator(
       '[data-testid="workspace-preview"]'
@@ -1387,6 +1539,62 @@ test.describe("chat flows", () => {
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
+  })
+
+  test("keeps diagnostics visible while workspace browsing and chat stay usable", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+    await mockChatStream(page, {
+      assistantText: "Diagnostics do not block chat.",
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.locator('[aria-label="Pi resources"]').click()
+    const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
+    await expect(resourcesCanvas).toBeVisible()
+    await expect(
+      resourcesCanvas.getByTestId("resource-chip-section-diagnostics")
+    ).toBeVisible()
+    await expect(
+      resourcesCanvas.getByRole("listitem", { name: /needs a reload/i })
+    ).toBeVisible()
+
+    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+    const workspaceTree = workspaceCanvas.locator(
+      '[data-testid="workspace-tree"]'
+    )
+    await expandWorkspacePath(workspaceTree, ["memory", "research"])
+    await workspaceTree.getByRole("button", { name: "factory.md" }).click()
+
+    const preview = workspaceCanvas.locator('[data-testid="workspace-preview"]')
+    await expect(
+      preview.getByRole("heading", { name: "Factory" })
+    ).toBeVisible()
+    await expect(
+      workspaceCanvas.getByText("Diagnostics", { exact: true })
+    ).toBeVisible()
+    await expect(
+      workspaceTree.getByRole("listitem", { name: /pending reindex/i })
+    ).toBeVisible()
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await expect(textarea).toBeVisible()
+    await textarea.fill("Can you still help?")
+    await page.keyboard.press("Enter")
+
+    await expect(page.locator("text=Can you still help?").first()).toBeVisible()
+    await expect(
+      page.locator("text=Diagnostics do not block chat.")
+    ).toBeVisible({ timeout: 10000 })
   })
 
   test("clears stale workspace previews for degraded responses and refresh removals", async ({
@@ -1501,13 +1709,13 @@ test.describe("chat flows", () => {
       configurations.getByText("Tools", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Connectors", { exact: true })
+      configurations.getByText("Resources", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("LLM Providers", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Allowed Models", { exact: true })
+      configurations.getByText("Runtime Models", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("Personalization", { exact: true })
@@ -1518,11 +1726,11 @@ test.describe("chat flows", () => {
     await expect(
       configurations.getByText("Claude Opus 4.6", { exact: true })
     ).toBeVisible()
-    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "overflow-y",
       "auto"
     )
-    await expect(configurations.getByTestId("allowed-models-list")).toHaveCSS(
+    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "max-height",
       "400px"
     )
