@@ -1,5 +1,8 @@
 # Agent Workspace
 
+If you are new to Fleet Pi, start with [docs/README.md](README.md) and
+[Quick Start](quickstart.md) first.
+
 `agent-workspace/` is Fleet Pi's living directory.
 
 For the accepted canonical workspace contract, manifest/section boundary, and
@@ -49,5 +52,5 @@ Fleet Pi is intentionally opinionated here:
 - ad hoc notes should stay temporary unless they are later synthesized
 - transient runtime/session state should not be treated as the source of truth
 
-If you are new to the workspace, start with
+If you want the repo-local agent-facing bootstrap material itself, continue to
 [agent-workspace/index.md](../agent-workspace/index.md).

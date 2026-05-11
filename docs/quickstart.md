@@ -1,5 +1,7 @@
 # Fleet Pi Quick Start
 
+If you want the overall docs map first, start with [docs/README.md](README.md).
+
 Fleet Pi supports two setup paths:
 
 - `Standalone` for running the local web app with Pi-backed chat
@@ -123,3 +125,10 @@ pnpm lint
 pnpm --filter web test
 pnpm e2e
 ```
+
+## Next reads
+
+- [Agent Workspace](agent-workspace.md) for the durable workspace model
+- [Adaptive Workspace Contract](adaptive-workspace.md) for the canonical
+  storage boundary
+- [Codex Usage](codex.md) for the advanced Codex worktree path

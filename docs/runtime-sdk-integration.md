@@ -1,5 +1,8 @@
 # Runtime SDK Integration Seams
 
+This page is an implementation reference for deeper platform work. For the
+recommended public docs path, start with [docs/README.md](README.md).
+
 This guide maps the current Fleet Pi runtime seams that later adaptive
 workspace work must extend without breaking Pi session compatibility, queueing
 during streaming, or read-only Plan Mode behavior.

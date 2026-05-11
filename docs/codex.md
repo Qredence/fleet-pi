@@ -1,5 +1,8 @@
 # Codex Usage
 
+This is an advanced guide. For the recommended public setup path, start with
+[docs/README.md](README.md) or [Quick Start](quickstart.md).
+
 Fleet Pi ships a shared Codex local environment so new Codex worktree threads
 can bootstrap the repo consistently.
 

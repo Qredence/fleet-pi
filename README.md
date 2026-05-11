@@ -48,6 +48,8 @@ curl http://localhost:3000/api/health
 
 Full setup instructions:
 
+- [docs/README.md](docs/README.md) for the docs hub and recommended reading
+  order
 - [docs/quickstart.md](docs/quickstart.md) for standalone and Pi/Codex setup
 - [docs/codex.md](docs/codex.md) for the advanced Codex local environment
 - [docs/adaptive-workspace.md](docs/adaptive-workspace.md) for the accepted
@@ -142,13 +144,15 @@ pnpm generate:docs
 
 | Document                                                 | Description                                          |
 | -------------------------------------------------------- | ---------------------------------------------------- |
+| [docs/README.md](docs/README.md)                         | Docs hub and recommended reading order               |
 | [docs/quickstart.md](docs/quickstart.md)                 | Recommended setup paths                              |
+| [docs/agent-workspace.md](docs/agent-workspace.md)       | Human guide to the durable workspace model           |
 | [docs/adaptive-workspace.md](docs/adaptive-workspace.md) | Canonical workspace contract and projection boundary |
 | [docs/codex.md](docs/codex.md)                           | Advanced Codex environment and action setup          |
-| [docs/architecture.md](docs/architecture.md)             | Architecture overview                                |
+| [docs/runbooks.md](docs/runbooks.md)                     | Operator runbooks for runtime issues                 |
+| [docs/architecture.md](docs/architecture.md)             | Generated architecture reference                     |
 | [docs/api.md](docs/api.md)                               | Generated API reference                              |
 | [docs/project-structure.md](docs/project-structure.md)   | Generated repo map                                   |
-| [docs/runbooks.md](docs/runbooks.md)                     | Operator runbooks for runtime issues                 |
 
 ## 🤝 Contributing
 
