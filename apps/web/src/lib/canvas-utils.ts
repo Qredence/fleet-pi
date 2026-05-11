@@ -1,7 +1,7 @@
 const RESOURCE_CANVAS_WIDTH_STORAGE_KEY = "fleet-pi-resource-canvas-width"
 const THEME_PREFERENCE_STORAGE_KEY = "fleet-pi-theme-preference"
 const RESOURCE_CANVAS_MIN_WIDTH = 320
-const RESOURCE_CANVAS_VIEWPORT_RATIO = 0.7
+const RESOURCE_CANVAS_VIEWPORT_RATIO = 0.5
 
 export type ThemePreference = "light" | "dark" | "system"
 
