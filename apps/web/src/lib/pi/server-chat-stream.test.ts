@@ -46,7 +46,7 @@ describe("server chat stream", () => {
 
     expect(emitted).toEqual([])
 
-    activeTurn = handleSessionEvent(
+    handleSessionEvent(
       {
         type: "message_update",
         assistantMessageEvent: {
@@ -117,7 +117,7 @@ describe("server chat stream", () => {
       startContext
     )
 
-    activeTurn = handleSessionEvent(
+    handleSessionEvent(
       {
         type: "tool_execution_start",
         toolCallId: "tool-question-1",

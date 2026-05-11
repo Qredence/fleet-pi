@@ -1,14 +1,15 @@
 import { constants } from "node:fs"
 import { access, open, readdir, realpath, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
+import { RequestContextError } from "../app-runtime"
 import { bootstrapAgentWorkspace } from "./bootstrap-agent-workspace"
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
+import type { AppRuntimeContext } from "../app-runtime"
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
 } from "../pi/chat-protocol"
-import type { AppRuntimeContext } from "../app-runtime"
 
 const WORKSPACE_PREVIEW_MAX_BYTES = 256 * 1024
 const BINARY_SAMPLE_BYTES = 8 * 1024
@@ -27,7 +28,7 @@ export async function loadAgentWorkspaceTree(
     const message =
       diagnostics[0] ??
       `Cannot create ${context.workspaceRoot}: workspace is unavailable.`
-    throw new Error(message)
+    throw new RequestContextError(message, 503)
   }
 
   await access(context.workspaceRoot, constants.R_OK)

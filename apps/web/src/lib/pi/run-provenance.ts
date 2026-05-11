@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto"
-import { lstatSync, readFileSync, readdirSync } from "node:fs"
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readSync,
+  readdirSync,
+} from "node:fs"
 import { join, relative } from "node:path"
 import {
   appendRunEvent,
@@ -463,6 +470,8 @@ function isPotentiallyMutatingTool(toolName: string) {
   )
 }
 
+const MAX_FILE_SIZE_FOR_HASH = 4 * 1024 * 1024 // 4 MiB
+
 function captureProjectSnapshot(projectRoot: string) {
   const snapshot = new Map<string, SnapshotEntry>()
   walkProjectFiles(projectRoot, projectRoot, snapshot)
@@ -474,12 +483,14 @@ function walkProjectFiles(
   directory: string,
   snapshot: Map<string, SnapshotEntry>
 ) {
-  for (const name of readdirSync(directory).sort()) {
-    if (IGNORED_DIRECTORIES.has(name)) {
+  for (const entry of readdirSync(directory, { withFileTypes: true }).sort(
+    (a, b) => a.name.localeCompare(b.name)
+  )) {
+    if (IGNORED_DIRECTORIES.has(entry.name)) {
       continue
     }
 
-    const absolutePath = join(directory, name)
+    const absolutePath = join(directory, entry.name)
     const repoRelativePath = relative(projectRoot, absolutePath).replace(
       /\\/g,
       "/"
@@ -494,25 +505,37 @@ function walkProjectFiles(
       continue
     }
 
-    const stat = lstatSync(absolutePath)
-    if (stat.isSymbolicLink()) {
+    if (entry.isSymbolicLink()) {
       continue
     }
 
-    if (stat.isDirectory()) {
+    if (entry.isDirectory()) {
       walkProjectFiles(projectRoot, absolutePath, snapshot)
       continue
     }
 
-    if (!stat.isFile()) {
+    if (!entry.isFile()) {
       continue
     }
 
-    const content = readFileSync(absolutePath)
-    snapshot.set(repoRelativePath, {
-      digest: createHash("sha256").update(content).digest("hex"),
-      size: content.byteLength,
-    })
+    let fd: number | undefined
+    try {
+      fd = openSync(absolutePath, constants.O_RDONLY)
+      const fileStat = fstatSync(fd)
+      if (fileStat.size > MAX_FILE_SIZE_FOR_HASH) {
+        continue
+      }
+      const content = Buffer.allocUnsafe(fileStat.size)
+      readSync(fd, content, 0, fileStat.size, 0)
+      snapshot.set(repoRelativePath, {
+        digest: createHash("sha256").update(content).digest("hex"),
+        size: fileStat.size,
+      })
+    } catch {
+      // File may have been removed or changed between listing and reading; skip it
+    } finally {
+      if (fd !== undefined) closeSync(fd)
+    }
   }
 }
 

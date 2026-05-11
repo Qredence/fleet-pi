@@ -132,7 +132,7 @@ export function WorkspacePanelContent({
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(150px,0.9fr)_minmax(180px,1.1fr)] gap-2">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(150px,0.9fr)_minmax(180px,1.1fr)]">
       <div
         data-testid="workspace-tree"
         className="min-h-0 min-w-0 overflow-y-auto"

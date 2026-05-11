@@ -497,6 +497,16 @@ async function ensureFileState(
       type: "file",
     }
   } catch (error) {
+    // Treat EEXIST as success: a concurrent bootstrap created the file between
+    // our existence check and this write, so the file now exists as intended.
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      return {
+        path,
+        exists: true,
+        created: false,
+        type: "file",
+      }
+    }
     diagnostics.push(
       createDiagnostic(
         scope,

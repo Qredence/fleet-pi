@@ -16,6 +16,7 @@ import {
   retainPiRuntime,
 } from "@/lib/pi/server"
 import {
+  beginAssistantTurn,
   completeAssistantTurn,
   createTurnStartContext,
   finalizeAssistantTurn,
@@ -174,7 +175,16 @@ export const Route = createFileRoute("/api/chat")({
                   "chat stream error"
                 )
                 if (!request.signal.aborted) {
-                  send({ type: "error", message: getErrorMessage(error) })
+                  if (turnStartContext?.firstStartPending) {
+                    const errorTurn = beginAssistantTurn(turnStartContext)
+                    send({
+                      type: "error",
+                      message: getErrorMessage(error),
+                      runId: errorTurn.runId,
+                    })
+                  } else {
+                    send({ type: "error", message: getErrorMessage(error) })
+                  }
                 }
               } finally {
                 unsubscribe?.()

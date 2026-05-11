@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { resolveAppRuntimeContext } from "../../../lib/app-runtime"
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   WorkspaceQueryApiError,
   createUnexpectedWorkspaceQueryErrorResponse,
   createWorkspaceItemsResponse,
-} from "../../../lib/workspace/workspace-query"
+} from "@/lib/workspace/workspace-query"
 
 export async function workspaceItemsHandler() {
   const context = resolveAppRuntimeContext()

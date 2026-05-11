@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { resolveAppRuntimeContext } from "../../../lib/app-runtime"
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   createWorkspaceHealthFailure,
   loadAgentWorkspaceHealth,
-} from "../../../lib/workspace/bootstrap-agent-workspace"
+} from "@/lib/workspace/bootstrap-agent-workspace"
 
 export async function workspaceHealthHandler() {
   const context = resolveAppRuntimeContext()

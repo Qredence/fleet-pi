@@ -272,7 +272,8 @@ function findRuntimeRecord(metadata: ChatSessionMetadata) {
     for (const active of runtimeRecords.values()) {
       if (
         active.sessionFile &&
-        safeRealpath(active.sessionFile) === requested
+        (active.sessionFile === metadata.sessionFile ||
+          safeRealpath(active.sessionFile) === requested)
       ) {
         return active
       }

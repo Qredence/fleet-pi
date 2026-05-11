@@ -291,6 +291,10 @@ function ChatWorkspaceShell() {
   })
 
   useEffect(() => {
+    handledResourceInstallToolCalls.current.clear()
+  }, [sessionMetadata.sessionId])
+
+  useEffect(() => {
     const completedToolCallIds = collectCompletedResourceInstallToolCallIds(
       messages
     ).filter(
