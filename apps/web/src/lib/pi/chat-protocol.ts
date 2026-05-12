@@ -3,7 +3,7 @@ import type {
   ChatToolPart,
 } from "@workspace/ui/components/agent-elements/chat-types"
 
-export type ChatMode = "agent" | "plan"
+export type ChatMode = "agent" | "plan" | "harness"
 
 export type ChatPlanAction = "execute" | "refine"
 

@@ -176,6 +176,23 @@ describe("answerChatQuestion", () => {
       followUp: [],
     })
   })
+
+  it("limits active tools in harness mode to workspace architecture tools", async () => {
+    const sessionFile = createSessionFile(root, "session-harness.jsonl")
+    const { applyPlanMode, getChatMode } = await import("./plan-mode")
+    const runtime = createMockRuntime("session-harness", sessionFile)
+
+    applyPlanMode(runtime, "harness")
+
+    const activeTools =
+      runtime.session.setActiveToolsByName.mock.calls.at(-1)?.[0]
+    expect(getChatMode(runtime)).toBe("harness")
+    expect(activeTools).toContain("workspace_write")
+    expect(activeTools).toContain("resource_install")
+    expect(activeTools).toContain("project_inventory")
+    expect(activeTools).not.toContain("edit")
+    expect(activeTools).not.toContain("write")
+  })
 })
 
 function createSessionFile(root: string, name: string) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  ChatModeSchema,
   ChatSettingsResponseSchema,
   ChatSettingsUpdateRequestSchema,
 } from "./chat-protocol.zod"
@@ -23,6 +24,15 @@ describe("chat-protocol types", () => {
     }
     expect(req.mode).toBe("plan")
     expect(req.planAction).toBe("execute")
+  })
+
+  it("accepts a valid harness mode request", () => {
+    const req: ChatRequest = {
+      message: "Manage the workspace architecture",
+      mode: "harness",
+    }
+
+    expect(ChatModeSchema.parse(req.mode)).toBe("harness")
   })
 
   it("accepts session metadata", () => {

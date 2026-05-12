@@ -40,7 +40,7 @@ describe("workspace server", () => {
       tree.nodes.some((node) => node.path === "agent-workspace/instructions")
     ).toBe(true)
     expect(
-      tree.nodes.some((node) => node.path === "agent-workspace/policies")
+      tree.nodes.some((node) => node.path === "agent-workspace/system")
     ).toBe(true)
   })
 
@@ -48,10 +48,10 @@ describe("workspace server", () => {
     const context = createWorkspaceContext()
     const file = await loadAgentWorkspaceFile(
       context,
-      "agent-workspace/policies/tool-policy.md"
+      "agent-workspace/system/tool-policy.md"
     )
 
-    expect(file.path).toBe("agent-workspace/policies/tool-policy.md")
+    expect(file.path).toBe("agent-workspace/system/tool-policy.md")
     expect(file.name).toBe("tool-policy.md")
     expect(file.mediaType).toBe("text/markdown")
     expect(file.status).toBe("ok")

@@ -1,8 +1,9 @@
 # Agent Workspace
 
 `agent-workspace/` is the repo-local agent workspace for Fleet Pi. It holds the
-agent-facing memory, policies, plans, skills, runtime resources, artifacts, and
-scratch files that support Fleet Pi as a self-improving coding environment.
+agent-facing memory, system guidance, plans, skills, runtime resources,
+artifacts, and scratch files that support Fleet Pi as a self-improving coding
+environment.
 
 This directory is distinct from the normal human-facing docs:
 

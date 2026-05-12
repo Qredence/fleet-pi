@@ -5,7 +5,7 @@ import type { WorkspaceTreeNode, WorkspaceTreeResponse } from "./chat-protocol"
 extendZodWithOpenApi(z)
 
 export const ChatModeSchema = z
-  .enum(["agent", "plan"])
+  .enum(["agent", "plan", "harness"])
   .openapi({ description: "Chat mode" })
 
 export const ChatPlanActionSchema = z

@@ -1,4 +1,4 @@
-import { Bot, ClipboardList } from "lucide-react"
+import { Bot, ClipboardList, Hammer } from "lucide-react"
 import type { ModelOption } from "@workspace/ui/components/agent-elements/types"
 import type { ChatModelInfo, ChatModelSelection } from "./chat-protocol"
 
@@ -22,6 +22,12 @@ export const CHAT_MODES = [
     label: "Plan",
     icon: ClipboardList,
     description: "Read-only planning",
+  },
+  {
+    id: "harness",
+    label: "Harness",
+    icon: Hammer,
+    description: "Workspace architecture",
   },
 ]
 

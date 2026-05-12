@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import {
   Folder,
+  Hammer,
   History,
   Keyboard,
   Library,
@@ -107,17 +108,33 @@ export function ChatCommandPalette({
               <span>Stop generation</span>
             </CommandItem>
           )}
-          <CommandItem
-            onSelect={() =>
-              handleSelect(() =>
-                onModeChange(mode === "agent" ? "plan" : "agent")
-              )
-            }
-            keywords={["mode", "plan", "agent", "switch"]}
-          >
-            <Sparkles className="mr-2 size-4" />
-            <span>Switch to {mode === "agent" ? "Plan" : "Agent"} mode</span>
-          </CommandItem>
+          {mode !== "agent" && (
+            <CommandItem
+              onSelect={() => handleSelect(() => onModeChange("agent"))}
+              keywords={["mode", "agent", "switch"]}
+            >
+              <Sparkles className="mr-2 size-4" />
+              <span>Switch to Agent mode</span>
+            </CommandItem>
+          )}
+          {mode !== "plan" && (
+            <CommandItem
+              onSelect={() => handleSelect(() => onModeChange("plan"))}
+              keywords={["mode", "plan", "switch"]}
+            >
+              <Sparkles className="mr-2 size-4" />
+              <span>Switch to Plan mode</span>
+            </CommandItem>
+          )}
+          {mode !== "harness" && (
+            <CommandItem
+              onSelect={() => handleSelect(() => onModeChange("harness"))}
+              keywords={["mode", "harness", "workspace", "architecture"]}
+            >
+              <Hammer className="mr-2 size-4" />
+              <span>Switch to Harness mode</span>
+            </CommandItem>
+          )}
         </CommandGroup>
 
         <CommandSeparator />

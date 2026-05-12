@@ -17,7 +17,7 @@ type WorkspaceEntry = {
 
 const WORKSPACE_ROOT = "agent-workspace"
 const WORKSPACE_PURPOSE =
-  "Repo-local agent memory, policies, plans, skills, artifacts, and scratch files."
+  "Repo-local agent memory, system guidance, plans, skills, artifacts, and scratch files."
 const MUTATION_BOUNDARIES_NOTE =
   "See agent-workspace/system/workspace-policy.md for writable, rationale-required, and protected areas."
 

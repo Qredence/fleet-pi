@@ -52,7 +52,7 @@ describe("workspace semantic parsers", () => {
       sourceOfTruth: "canonical-files",
     })
     expect(
-      classifyWorkspacePath("agent-workspace/policies/constraints.md")
+      classifyWorkspacePath("agent-workspace/system/constraints.md")
     ).toMatchObject({
       category: "policy",
       pathType: "policy",
@@ -94,6 +94,9 @@ describe("workspace semantic parsers", () => {
       classifyWorkspacePath(
         "agent-workspace/indexes/workspace-projection.sqlite"
       )
+    ).toBeNull()
+    expect(
+      classifyWorkspacePath("agent-workspace/policies/constraints.md")
     ).toBeNull()
     expect(
       classifyWorkspacePath("agent-workspace/scratch/tmp/.gitkeep")

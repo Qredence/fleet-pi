@@ -50,7 +50,7 @@ describe("bootstrapAgentWorkspace", () => {
     expect(health.bootstrap.createdSections).toEqual(
       expect.arrayContaining([
         "agent-workspace/instructions",
-        "agent-workspace/policies",
+        "agent-workspace/system",
         "agent-workspace/indexes",
       ])
     )
@@ -63,10 +63,10 @@ describe("bootstrapAgentWorkspace", () => {
   it("preserves existing manifest and policy content across repeated probes", async () => {
     const context = createWorkspaceContext()
     const manifestPath = join(context.workspaceRoot, "manifest.json")
-    const policyPath = join(context.workspaceRoot, "policies", "tool-policy.md")
+    const policyPath = join(context.workspaceRoot, "system", "tool-policy.md")
 
     mkdirSync(context.workspaceRoot, { recursive: true })
-    mkdirSync(join(context.workspaceRoot, "policies"), { recursive: true })
+    mkdirSync(join(context.workspaceRoot, "system"), { recursive: true })
     writeFileSync(manifestPath, "not-json")
     writeFileSync(policyPath, "keep me\n")
 
@@ -83,7 +83,7 @@ describe("bootstrapAgentWorkspace", () => {
       "agent-workspace/manifest.json"
     )
     expect(first.bootstrap.createdPaths).not.toContain(
-      "agent-workspace/policies/tool-policy.md"
+      "agent-workspace/system/tool-policy.md"
     )
   })
 
