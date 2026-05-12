@@ -72,6 +72,21 @@ export function AgentChat({
     />
   ) : null
 
+  // When there are messages (non-empty state), suggestions render as trailing
+  // content inside the MessageList scroll area rather than above the InputBar.
+  const conversationSuggestionsNode =
+    !isCenteredEmptyState &&
+    showInputSuggestions &&
+    suggestionConfig.items.length > 0 ? (
+      <Suggestions
+        items={suggestionConfig.items}
+        onSelect={handleEmptySuggestionSelect}
+        disabled={status === "streaming" || status === "submitted"}
+        className={cn("mt-3 px-0", suggestionConfig.className)}
+        itemClassName={suggestionConfig.itemClassName}
+      />
+    ) : null
+
   const inputBarNode = (
     <ResolvedInputBar
       onSend={onSend}
@@ -88,7 +103,9 @@ export function AgentChat({
       onRemoveFile={attachments?.onRemoveFile}
       onPaste={attachments?.onPaste}
       isDragOver={attachments?.isDragOver}
-      suggestions={showInputSuggestions ? suggestions : []}
+      suggestions={
+        isCenteredEmptyState && showInputSuggestions ? suggestions : []
+      }
     />
   )
 
@@ -139,6 +156,7 @@ export function AgentChat({
           showCopyToolbar={showCopyToolbar}
           initialScrollBehavior={initialScrollBehavior}
           enableImagePreview={enableImagePreview}
+          trailing={conversationSuggestionsNode}
         />
       )}
       {!isCenteredEmptyState ? inputBarNode : null}
