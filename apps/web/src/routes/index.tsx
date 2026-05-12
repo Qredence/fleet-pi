@@ -277,7 +277,7 @@ function ChatHeader({
 }
 
 function ChatWorkspaceShell() {
-  const { data: modelsData, refetch: refetchModels } = useChatModels()
+  const { data: modelsData } = useChatModels()
   const {
     commandPaletteOpen,
     handleModeChange,
@@ -307,7 +307,6 @@ function ChatWorkspaceShell() {
     data: settingsData,
     isLoading: settingsLoading,
     error: settingsError,
-    refetch: refetchSettings,
   } = useChatSettings()
   const updateSettings = useUpdateChatSettings()
   const shouldLoadWorkspaceTree =
@@ -340,20 +339,8 @@ function ChatWorkspaceShell() {
           ? `${response.effective.defaultProvider}/${response.effective.defaultModel}`
           : undefined)
       if (nextModelKey) setModelKey(nextModelKey)
-      await Promise.all([
-        refetchSettings(),
-        refetchModels(),
-        refetchResources(),
-      ])
     },
-    [
-      models,
-      refetchModels,
-      refetchResources,
-      refetchSettings,
-      setModelKey,
-      updateSettings,
-    ]
+    [models, setModelKey, updateSettings]
   )
 
   const refreshWorkspace = useCallback(() => {

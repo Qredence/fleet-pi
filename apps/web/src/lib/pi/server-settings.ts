@@ -1,7 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "./chat-protocol.zod"
-import { collectDiagnostics, createSessionServices } from "./server-shared"
+import {
+  collectDiagnostics,
+  createSessionServices,
+  resolveDefaultModelSelection,
+} from "./server-shared"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
@@ -107,6 +111,8 @@ function toEffectiveSettings(
 ): ChatPiSettings {
   const compaction = settingsManager.getCompactionSettings()
   const retry = settingsManager.getRetrySettings()
+  const { defaultModel, defaultProvider } =
+    resolveDefaultModelSelection(settingsManager)
 
   return {
     compaction: {
@@ -114,8 +120,8 @@ function toEffectiveSettings(
       reserveTokens: compaction.reserveTokens,
       keepRecentTokens: compaction.keepRecentTokens,
     },
-    defaultModel: settingsManager.getDefaultModel(),
-    defaultProvider: settingsManager.getDefaultProvider(),
+    defaultModel,
+    defaultProvider,
     defaultThinkingLevel: settingsManager.getDefaultThinkingLevel(),
     enableSkillCommands: settingsManager.getEnableSkillCommands(),
     enabledModels: settingsManager.getEnabledModels(),

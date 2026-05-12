@@ -127,15 +127,6 @@ export function ConfigurationsPanelContent({
           ? "Error"
           : "Ready"
 
-  useEffect(() => {
-    if (!settings) return
-    setDraft(settings.effective)
-    setPackageRows(formatPackageSourceRows(settings.effective.packages))
-    setPackageError(undefined)
-    setCustomProvider(settings.effective.defaultProvider ?? "")
-    setCustomModel(settings.effective.defaultModel ?? "")
-  }, [settings])
-
   const modelOptions = useMemo(() => {
     if (!draft?.defaultProvider || !draft.defaultModel) return models
     if (
@@ -193,6 +184,42 @@ export function ConfigurationsPanelContent({
         packageRows.filter((row) => row.trim()),
         formatPackageSourceRows(settings.effective.packages)
       ))
+  const hasUnsavedChanges = modelDirty || runtimeDirty || resourceDirty
+
+  useEffect(() => {
+    if (!settings) return
+
+    const nextDraft = settings.effective
+    const nextPackageRows = formatPackageSourceRows(nextDraft.packages)
+    const nextCustomProvider = nextDraft.defaultProvider ?? ""
+    const nextCustomModel = nextDraft.defaultModel ?? ""
+
+    if (draft && hasUnsavedChanges) return
+    if (
+      draft &&
+      sameJson(draft, nextDraft) &&
+      sameJson(packageRows, nextPackageRows) &&
+      customProvider === nextCustomProvider &&
+      customModel === nextCustomModel &&
+      packageError === undefined
+    ) {
+      return
+    }
+
+    setDraft(nextDraft)
+    setPackageRows(nextPackageRows)
+    setPackageError(undefined)
+    setCustomProvider(nextCustomProvider)
+    setCustomModel(nextCustomModel)
+  }, [
+    customModel,
+    customProvider,
+    draft,
+    hasUnsavedChanges,
+    packageError,
+    packageRows,
+    settings,
+  ])
 
   const updateDraft = (
     updater: (current: ChatPiSettings) => ChatPiSettings

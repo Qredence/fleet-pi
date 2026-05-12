@@ -14,6 +14,11 @@ import type { WorkspaceHealthResponse } from "../workspace/bootstrap-agent-works
 
 export const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"
 
+type ModelDefaultSettingsLike = {
+  getDefaultModel: () => string | undefined
+  getDefaultProvider: () => string | undefined
+}
+
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
 }
@@ -96,6 +101,15 @@ export function collectDiagnostics(
   }
 
   return [...diagnostics]
+}
+
+export function resolveDefaultModelSelection(
+  settingsManager: ModelDefaultSettingsLike
+) {
+  return {
+    defaultProvider: settingsManager.getDefaultProvider() ?? "amazon-bedrock",
+    defaultModel: settingsManager.getDefaultModel() ?? DEFAULT_BEDROCK_MODEL,
+  }
 }
 
 async function loadBestEffortWorkspaceHealth(context: AppRuntimeContext) {

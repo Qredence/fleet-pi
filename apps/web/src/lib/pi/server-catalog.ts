@@ -1,9 +1,9 @@
 import { basename, dirname, extname } from "node:path"
 import { collectResourceExpectationDiagnostics } from "./resource-expectations"
 import {
-  DEFAULT_BEDROCK_MODEL,
   collectDiagnostics,
   createSessionServices,
+  resolveDefaultModelSelection,
 } from "./server-shared"
 import {
   applyWorkspaceResourceMetadata,
@@ -50,10 +50,9 @@ export async function loadChatModels(
       services.settingsManager.getDefaultThinkingLevel()
     )
   )
-  const defaultProvider =
-    services.settingsManager.getDefaultProvider() ?? "amazon-bedrock"
-  const defaultModel =
-    services.settingsManager.getDefaultModel() ?? DEFAULT_BEDROCK_MODEL
+  const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
+    services.settingsManager
+  )
   const defaultThinkingLevel = normalizeThinkingLevel(
     services.settingsManager.getDefaultThinkingLevel()
   )

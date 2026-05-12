@@ -66,6 +66,20 @@ describe("createSessionServices", () => {
       expect.arrayContaining(["agent-workspace exists but is not a directory."])
     )
   })
+
+  it("applies the shared default model fallback when settings are unset", async () => {
+    const { resolveDefaultModelSelection } = await import("./server-shared")
+
+    expect(
+      resolveDefaultModelSelection({
+        getDefaultModel: () => undefined,
+        getDefaultProvider: () => undefined,
+      })
+    ).toEqual({
+      defaultProvider: "amazon-bedrock",
+      defaultModel: "us.anthropic.claude-sonnet-4-6",
+    })
+  })
 })
 
 function createProjectRoot(roots: Set<string>) {
