@@ -1,9 +1,9 @@
 import { basename, dirname, extname } from "node:path"
 import { collectResourceExpectationDiagnostics } from "./resource-expectations"
 import {
-  DEFAULT_BEDROCK_MODEL,
   collectDiagnostics,
   createSessionServices,
+  resolveDefaultModelSelection,
 } from "./server-shared"
 import {
   applyWorkspaceResourceMetadata,
@@ -50,13 +50,27 @@ export async function loadChatModels(
       services.settingsManager.getDefaultThinkingLevel()
     )
   )
-  const defaultProvider =
-    services.settingsManager.getDefaultProvider() ?? "amazon-bedrock"
-  const defaultModel =
-    services.settingsManager.getDefaultModel() ?? DEFAULT_BEDROCK_MODEL
+  const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
+    services.settingsManager
+  )
   const defaultThinkingLevel = normalizeThinkingLevel(
     services.settingsManager.getDefaultThinkingLevel()
   )
+  const defaultModelExists = models.some(
+    (model) => model.provider === defaultProvider && model.id === defaultModel
+  )
+  if (!defaultModelExists && defaultProvider && defaultModel) {
+    models.unshift({
+      key: modelKeyFromParts(defaultProvider, defaultModel),
+      provider: defaultProvider,
+      id: defaultModel,
+      name: defaultModel,
+      reasoning: false,
+      input: ["text"],
+      available: false,
+      defaultThinkingLevel,
+    })
+  }
   const selected =
     models.length > 0
       ? (models.find(
@@ -276,6 +290,10 @@ function normalizeThinkingLevel(value: unknown): ChatThinkingLevel | undefined {
 
 function modelKey(model: Pick<Model<any>, "provider" | "id">) {
   return `${model.provider}/${model.id}`
+}
+
+function modelKeyFromParts(provider: string, id: string) {
+  return `${provider}/${id}`
 }
 
 function toChatModelInfo(

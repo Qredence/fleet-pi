@@ -19,6 +19,7 @@ import { Route as ApiWorkspaceItemsRouteImport } from './routes/api/workspace/it
 import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/item'
 import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
+import { Route as ApiChatSettingsRouteImport } from './routes/api/chat/settings'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
 import { Route as ApiChatRunsRouteImport } from './routes/api/chat/runs'
@@ -80,6 +81,11 @@ const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
   id: '/api/workspace/file',
   path: '/api/workspace/file',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatSettingsRoute = ApiChatSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatSessionsRoute = ApiChatSessionsRouteImport.update({
   id: '/sessions',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/api/chat/runs': typeof ApiChatRunsRoute
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/chat/settings'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/chat/settings'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/api/chat/runs'
     | '/api/chat/session'
     | '/api/chat/sessions'
+    | '/api/chat/settings'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -364,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkspaceFileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/settings': {
+      id: '/api/chat/settings'
+      path: '/settings'
+      fullPath: '/api/chat/settings'
+      preLoaderRoute: typeof ApiChatSettingsRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
     '/api/chat/sessions': {
       id: '/api/chat/sessions'
       path: '/sessions'
@@ -456,6 +475,7 @@ interface ApiChatRouteChildren {
   ApiChatRunsRoute: typeof ApiChatRunsRoute
   ApiChatSessionRoute: typeof ApiChatSessionRoute
   ApiChatSessionsRoute: typeof ApiChatSessionsRoute
+  ApiChatSettingsRoute: typeof ApiChatSettingsRoute
 }
 
 const ApiChatRouteChildren: ApiChatRouteChildren = {
@@ -470,6 +490,7 @@ const ApiChatRouteChildren: ApiChatRouteChildren = {
   ApiChatRunsRoute: ApiChatRunsRoute,
   ApiChatSessionRoute: ApiChatSessionRoute,
   ApiChatSessionsRoute: ApiChatSessionsRoute,
+  ApiChatSettingsRoute: ApiChatSettingsRoute,
 }
 
 const ApiChatRouteWithChildren =

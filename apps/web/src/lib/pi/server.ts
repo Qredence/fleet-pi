@@ -1,4 +1,5 @@
 export { loadChatModels, loadChatResources } from "./server-catalog"
+export { loadChatSettings, updateChatSettings } from "./server-settings"
 export {
   abortActiveSession,
   answerChatQuestion,

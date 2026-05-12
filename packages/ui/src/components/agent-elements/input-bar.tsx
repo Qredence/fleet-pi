@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   IconChevronDown,
   IconChevronUp,
@@ -18,12 +18,21 @@ import { Suggestions } from "./input/suggestions"
 import type { SuggestionItem } from "./input/suggestions"
 import type { ChatStatus } from "./chat-types"
 import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
+import type { RefObject } from "react"
 
 type InputConfig = {
   inputBarPlaceholder: string
   attachmentButtonPosition: "left" | "right"
   attachmentPreviewStyle: "thumbnail" | "chip" | "hidden"
 }
+
+type SuggestionConfig =
+  | Array<SuggestionItem>
+  | {
+      items: Array<SuggestionItem>
+      className?: string
+      itemClassName?: string
+    }
 
 const DEFAULT_INPUT_CONFIG: InputConfig = {
   inputBarPlaceholder: "Send a message...",
@@ -71,13 +80,8 @@ export type InputBarProps = {
   onChange?: (value: string) => void
   disabled?: boolean
   autoFocus?: boolean
-  suggestions?:
-    | Array<SuggestionItem>
-    | {
-        items: Array<SuggestionItem>
-        className?: string
-        itemClassName?: string
-      }
+  suggestions?: SuggestionConfig
+  slashCommands?: SuggestionConfig
 
   // Typing animation
   typingAnimation?: {
@@ -144,6 +148,7 @@ export const InputBar = memo(function InputBar({
   questionBar,
   leftActions,
   rightActions,
+  slashCommands = [],
 }: InputBarProps) {
   const [internalInput, setInternalInput] = useState("")
   const [isInfoBarOpen, setIsInfoBarOpen] = useState(true)
@@ -391,45 +396,18 @@ export const InputBar = memo(function InputBar({
     }
   }, [])
 
-  const handleSuggestionSelect = useCallback(
-    (item: SuggestionItem) => {
-      if (disabled || isStreaming) return
-      setInput(item.value ?? item.label)
-      requestAnimationFrame(() => {
-        const el = textareaRef.current
-        if (!el) return
-        el.focus()
-        const end = el.value.length
-        el.setSelectionRange(end, end)
-      })
-    },
-    [disabled, isStreaming, setInput]
-  )
-
-  const suggestionItems = Array.isArray(suggestions)
-    ? suggestions
-    : (suggestions?.items ?? [])
-  const suggestionsClassName = Array.isArray(suggestions)
-    ? undefined
-    : suggestions?.className
-  const suggestionItemClassName = Array.isArray(suggestions)
-    ? undefined
-    : suggestions?.itemClassName
-
   return (
     <div className={cn("shrink-0 px-3 pb-3", className)}>
       <div className="relative mx-auto max-w-an">
-        {suggestionItems.length > 0 && (
-          <div className="absolute right-0 bottom-full left-0 pb-2">
-            <Suggestions
-              items={suggestionItems}
-              onSelect={handleSuggestionSelect}
-              disabled={disabled || isStreaming}
-              className={cn("px-0", suggestionsClassName)}
-              itemClassName={suggestionItemClassName}
-            />
-          </div>
-        )}
+        <InputSuggestionsOverlay
+          disabled={disabled}
+          input={input}
+          isStreaming={isStreaming}
+          setInput={setInput}
+          slashCommands={slashCommands}
+          suggestions={suggestions}
+          textareaRef={textareaRef}
+        />
         <div
           className={cn(
             "flex flex-col gap-0",
@@ -575,3 +553,133 @@ export const InputBar = memo(function InputBar({
     </div>
   )
 })
+
+function InputSuggestionsOverlay({
+  disabled,
+  input,
+  isStreaming,
+  setInput,
+  slashCommands,
+  suggestions,
+  textareaRef,
+}: {
+  disabled?: boolean
+  input: string
+  isStreaming: boolean
+  setInput: (value: string) => void
+  slashCommands: SuggestionConfig
+  suggestions: SuggestionConfig
+  textareaRef: RefObject<HTMLTextAreaElement | null>
+}) {
+  const suggestionConfig = resolveSuggestionConfig(suggestions)
+  const slashCommandConfig = resolveSuggestionConfig(slashCommands)
+  const slashQuery = input.match(/^\/([^\s/]*)$/)?.[1]?.toLowerCase()
+  const filteredSlashCommands = useMemo(() => {
+    if (slashQuery === undefined) return []
+    return slashCommandConfig.items
+      .filter((item) =>
+        `${item.id} ${item.label} ${item.value ?? ""}`
+          .toLowerCase()
+          .includes(slashQuery)
+      )
+      .slice(0, 8)
+  }, [slashCommandConfig.items, slashQuery])
+  const interactionsDisabled = disabled || isStreaming
+  const showSlashCommands =
+    filteredSlashCommands.length > 0 && !interactionsDisabled
+
+  const focusEnd = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      const end = el.value.length
+      el.setSelectionRange(end, end)
+    })
+  }, [textareaRef])
+
+  const handleSuggestionSelect = useCallback(
+    (item: SuggestionItem) => {
+      if (interactionsDisabled) return
+      setInput(item.value ?? item.label)
+      focusEnd()
+    },
+    [focusEnd, interactionsDisabled, setInput]
+  )
+
+  const handleSlashCommandSelect = useCallback(
+    (item: SuggestionItem) => {
+      if (interactionsDisabled) return
+      const command = item.value ?? item.label
+      setInput(command.endsWith(" ") ? command : `${command} `)
+      focusEnd()
+    },
+    [focusEnd, interactionsDisabled, setInput]
+  )
+
+  if (showSlashCommands) {
+    return (
+      <SuggestionsPopover
+        className={cn(
+          "flex-col items-stretch gap-1 rounded-an-input-border-radius border border-border/70 bg-an-input-background p-1 shadow-lg",
+          slashCommandConfig.className
+        )}
+        disabled={interactionsDisabled}
+        itemClassName={cn(
+          "h-8 justify-start rounded-[6px] border-transparent px-2 text-left font-mono text-[12px]",
+          slashCommandConfig.itemClassName
+        )}
+        items={filteredSlashCommands}
+        onSelect={handleSlashCommandSelect}
+      />
+    )
+  }
+
+  if (suggestionConfig.items.length === 0) return null
+
+  return (
+    <SuggestionsPopover
+      className={cn("px-0", suggestionConfig.className)}
+      disabled={interactionsDisabled}
+      itemClassName={suggestionConfig.itemClassName}
+      items={suggestionConfig.items}
+      onSelect={handleSuggestionSelect}
+    />
+  )
+}
+
+function SuggestionsPopover({
+  className,
+  disabled,
+  itemClassName,
+  items,
+  onSelect,
+}: {
+  className?: string
+  disabled?: boolean
+  itemClassName?: string
+  items: Array<SuggestionItem>
+  onSelect: (item: SuggestionItem) => void
+}) {
+  return (
+    <div className="absolute right-0 bottom-full left-0 pb-2">
+      <Suggestions
+        className={className}
+        disabled={disabled}
+        itemClassName={itemClassName}
+        items={items}
+        onSelect={onSelect}
+      />
+    </div>
+  )
+}
+
+function resolveSuggestionConfig(config: SuggestionConfig) {
+  return Array.isArray(config)
+    ? { items: config }
+    : {
+        items: config.items,
+        className: config.className,
+        itemClassName: config.itemClassName,
+      }
+}

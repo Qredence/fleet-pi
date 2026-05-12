@@ -16,6 +16,91 @@ export const ChatThinkingLevelSchema = z
   .enum(["off", "minimal", "low", "medium", "high", "xhigh"])
   .openapi({ description: "Thinking level" })
 
+export const ChatTransportSchema = z
+  .enum(["auto", "sse", "websocket"])
+  .openapi({ description: "Preferred provider transport" })
+
+export const ChatDeliveryModeSchema = z
+  .enum(["all", "one-at-a-time"])
+  .openapi({ description: "Prompt delivery mode" })
+
+const nonEmptyStringSchema = z.string().trim().min(1)
+const nonNegativeIntSchema = z.number().int().min(0)
+const positiveIntSchema = z.number().int().min(1)
+
+export const ChatPackageSourceSchema = z.union([
+  nonEmptyStringSchema,
+  z.record(z.string(), z.unknown()),
+])
+
+export const ChatPiSettingsSchema = z
+  .object({
+    compaction: z.object({
+      enabled: z.boolean(),
+      reserveTokens: positiveIntSchema,
+      keepRecentTokens: positiveIntSchema,
+    }),
+    defaultModel: z.string().optional(),
+    defaultProvider: z.string().optional(),
+    defaultThinkingLevel: ChatThinkingLevelSchema.optional(),
+    enableSkillCommands: z.boolean(),
+    enabledModels: z.array(nonEmptyStringSchema).optional(),
+    extensions: z.array(nonEmptyStringSchema),
+    followUpMode: ChatDeliveryModeSchema,
+    packages: z.array(ChatPackageSourceSchema),
+    prompts: z.array(nonEmptyStringSchema),
+    retry: z.object({
+      enabled: z.boolean(),
+      maxRetries: nonNegativeIntSchema,
+      baseDelayMs: nonNegativeIntSchema,
+    }),
+    skills: z.array(nonEmptyStringSchema),
+    steeringMode: ChatDeliveryModeSchema,
+    themes: z.array(nonEmptyStringSchema),
+    transport: ChatTransportSchema,
+  })
+  .openapi({ description: "Editable Pi settings" })
+
+export const ChatPiSettingsUpdateSchema = z
+  .object({
+    compaction: ChatPiSettingsSchema.shape.compaction.partial().optional(),
+    defaultModel: z.string().optional(),
+    defaultProvider: z.string().optional(),
+    defaultThinkingLevel: ChatThinkingLevelSchema.optional(),
+    enableSkillCommands: z.boolean().optional(),
+    enabledModels: z.array(nonEmptyStringSchema).nullable().optional(),
+    extensions: z.array(nonEmptyStringSchema).optional(),
+    followUpMode: ChatDeliveryModeSchema.optional(),
+    packages: z.array(ChatPackageSourceSchema).optional(),
+    prompts: z.array(nonEmptyStringSchema).optional(),
+    retry: ChatPiSettingsSchema.shape.retry.partial().optional(),
+    skills: z.array(nonEmptyStringSchema).optional(),
+    steeringMode: ChatDeliveryModeSchema.optional(),
+    themes: z.array(nonEmptyStringSchema).optional(),
+    transport: ChatTransportSchema.optional(),
+  })
+  .strict()
+  .openapi({ description: "Pi settings update" })
+
+export const ChatSettingsUpdateRequestSchema = z
+  .object({
+    settings: ChatPiSettingsUpdateSchema,
+  })
+  .openapi({ description: "Pi settings update request" })
+
+export const ChatSettingsResponseSchema = z
+  .object({
+    diagnostics: z.array(z.string()),
+    effective: ChatPiSettingsSchema,
+    project: ChatPiSettingsUpdateSchema,
+    projectPath: z.string(),
+    updateImpact: z.object({
+      newSessionRecommended: z.boolean(),
+      resourceReloadRequired: z.boolean(),
+    }),
+  })
+  .openapi({ description: "Pi settings response" })
+
 export const ChatModelSelectionSchema = z
   .union([
     z.string().openapi({ description: "Model key string" }),

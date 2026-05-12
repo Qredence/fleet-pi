@@ -10,6 +10,8 @@ import {
   ChatResourcesResponseSchema,
   ChatSessionResponseSchema,
   ChatSessionsResponseSchema,
+  ChatSettingsResponseSchema,
+  ChatSettingsUpdateRequestSchema,
   WorkspaceTreeResponseSchema,
 } from "./chat-protocol.zod"
 import type {
@@ -21,6 +23,8 @@ import type {
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
+  ChatSettingsResponse,
+  ChatSettingsUpdateRequest,
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "./chat-protocol"
@@ -33,10 +37,14 @@ export type ChatClient = {
   createSession: () => Promise<ChatSessionResponse>
   getModels: () => Promise<ChatModelsResponse>
   getResources: () => Promise<ChatResourcesResponse>
+  getSettings: () => Promise<ChatSettingsResponse>
   getWorkspaceTree: () => Promise<WorkspaceTreeResponse>
   listSessions: () => Promise<Array<ChatSessionInfo>>
   loadSession: (metadata: ChatSessionMetadata) => Promise<ChatSessionResponse>
   resumeSession: (metadata: ChatSessionMetadata) => Promise<ChatSessionResponse>
+  updateSettings: (
+    request: ChatSettingsUpdateRequest
+  ) => Promise<ChatSettingsResponse>
   streamMessage: (
     request: ChatRequest,
     onEvent: (event: ChatStreamEvent) => void,
@@ -82,6 +90,10 @@ export const chatClient: ChatClient = {
     )
   },
 
+  async getSettings() {
+    return fetchValidatedJson("/api/chat/settings", ChatSettingsResponseSchema)
+  },
+
   async getWorkspaceTree() {
     return fetchValidatedJson(
       "/api/workspace/tree",
@@ -110,6 +122,19 @@ export const chatClient: ChatClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(metadata),
     })
+  },
+
+  async updateSettings(request) {
+    const body = ChatSettingsUpdateRequestSchema.parse(request)
+    return fetchValidatedJson(
+      "/api/chat/settings",
+      ChatSettingsResponseSchema,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    )
   },
 
   async streamMessage(request, onEvent, signal) {

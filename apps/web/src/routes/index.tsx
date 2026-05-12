@@ -16,6 +16,8 @@ import { SpiralLoader } from "@workspace/ui/components/agent-elements/spiral-loa
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import type {
+  ChatPiSettingsUpdate,
+  ChatResourcesResponse,
   ChatSessionInfo,
   ChatSessionMetadata,
 } from "@/lib/pi/chat-protocol"
@@ -28,6 +30,8 @@ import { CHAT_MODES, queueLabel } from "@/lib/pi/chat-helpers"
 import {
   useChatModels,
   useChatResources,
+  useChatSettings,
+  useUpdateChatSettings,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
@@ -59,6 +63,36 @@ function QredenceLogo({ className }: { className?: string }) {
 }
 
 export const Route = createFileRoute("/")({ component: Chat })
+
+function buildSlashCommands(
+  resources: ChatResourcesResponse | null,
+  enabled: boolean
+) {
+  if (!enabled || !resources) return []
+
+  const commands = [...resources.skills, ...resources.prompts]
+    .filter(
+      (resource) =>
+        !resource.activationStatus || resource.activationStatus === "active"
+    )
+    .map((resource) => {
+      const commandName = normalizeSlashCommandName(resource.name)
+      if (!commandName) return null
+      return {
+        id: commandName,
+        label: `/${commandName}`,
+        value: `/${commandName} `,
+      }
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+
+  return Array.from(new Map(commands.map((item) => [item.id, item])).values())
+}
+
+function normalizeSlashCommandName(name: string) {
+  const normalized = name.trim().replace(/\s+/g, "-")
+  return /^[\w.-]+$/.test(normalized) ? normalized : ""
+}
 
 function HeaderPillButton({
   active = false,
@@ -269,6 +303,12 @@ function ChatWorkspaceShell() {
     error: resourcesError,
     refetch: refetchResources,
   } = useChatResources()
+  const {
+    data: settingsData,
+    isLoading: settingsLoading,
+    error: settingsError,
+  } = useChatSettings()
+  const updateSettings = useUpdateChatSettings()
   const shouldLoadWorkspaceTree =
     rightPanel === "resources" || rightPanel === "workspace"
   const {
@@ -285,6 +325,23 @@ function ChatWorkspaceShell() {
   const refreshResources = useCallback(() => {
     void refetchResources()
   }, [refetchResources])
+
+  const saveSettings = useCallback(
+    async (settings: ChatPiSettingsUpdate) => {
+      const response = await updateSettings.mutateAsync({ settings })
+      const nextModelKey =
+        models.find(
+          (model) =>
+            model.provider === response.effective.defaultProvider &&
+            model.modelId === response.effective.defaultModel
+        )?.id ??
+        (response.effective.defaultProvider && response.effective.defaultModel
+          ? `${response.effective.defaultProvider}/${response.effective.defaultModel}`
+          : undefined)
+      if (nextModelKey) setModelKey(nextModelKey)
+    },
+    [models, setModelKey, updateSettings]
+  )
 
   const refreshWorkspace = useCallback(() => {
     void refetchWorkspace()
@@ -368,6 +425,14 @@ function ChatWorkspaceShell() {
         "h-auto justify-start rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-foreground/65 shadow-sm transition-colors hover:border-border hover:bg-foreground/6 hover:text-foreground",
     }),
     [shouldShowInputSuggestions, suggestions]
+  )
+  const slashCommands = useMemo(
+    () =>
+      buildSlashCommands(
+        resources,
+        settingsData?.effective.enableSkillCommands ?? false
+      ),
+    [resources, settingsData]
   )
   const agentChatStyle = useMemo(
     () =>
@@ -477,6 +542,7 @@ function ChatWorkspaceShell() {
                         )}
                       </div>
                     }
+                    slashCommands={slashCommands}
                   />
                 ),
               }}
@@ -499,8 +565,12 @@ function ChatWorkspaceShell() {
             resourcesError={resourcesError}
             resourcesLoading={resourcesLoading}
             rightPanel={rightPanel}
+            saveSettings={saveSettings}
             selectedModelKey={modelKey}
             setRightPanel={setRightPanel}
+            settings={settingsData ?? null}
+            settingsError={settingsError}
+            settingsLoading={settingsLoading || updateSettings.isPending}
             status={status}
             themePreference={themePreference}
             workspaceError={workspaceError}
