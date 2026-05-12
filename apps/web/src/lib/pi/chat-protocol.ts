@@ -15,6 +15,71 @@ export type ChatThinkingLevel =
   | "high"
   | "xhigh"
 
+export type ChatTransport = "auto" | "sse" | "websocket"
+
+export type ChatDeliveryMode = "all" | "one-at-a-time"
+
+export type ChatPackageSource = string | Record<string, unknown>
+
+export type ChatPiSettings = {
+  compaction: {
+    enabled: boolean
+    reserveTokens: number
+    keepRecentTokens: number
+  }
+  defaultModel?: string
+  defaultProvider?: string
+  defaultThinkingLevel?: ChatThinkingLevel
+  enableSkillCommands: boolean
+  enabledModels?: Array<string>
+  extensions: Array<string>
+  followUpMode: ChatDeliveryMode
+  packages: Array<ChatPackageSource>
+  prompts: Array<string>
+  retry: {
+    enabled: boolean
+    maxRetries: number
+    baseDelayMs: number
+  }
+  skills: Array<string>
+  steeringMode: ChatDeliveryMode
+  themes: Array<string>
+  transport: ChatTransport
+}
+
+export type ChatPiSettingsUpdate = Partial<{
+  compaction: Partial<ChatPiSettings["compaction"]>
+  defaultModel: string
+  defaultProvider: string
+  defaultThinkingLevel: ChatThinkingLevel
+  enableSkillCommands: boolean
+  enabledModels: Array<string> | null
+  extensions: Array<string>
+  followUpMode: ChatDeliveryMode
+  packages: Array<ChatPackageSource>
+  prompts: Array<string>
+  retry: Partial<ChatPiSettings["retry"]>
+  skills: Array<string>
+  steeringMode: ChatDeliveryMode
+  themes: Array<string>
+  transport: ChatTransport
+}>
+
+export type ChatSettingsUpdateRequest = {
+  settings: ChatPiSettingsUpdate
+}
+
+export type ChatSettingsResponse = {
+  diagnostics: Array<string>
+  effective: ChatPiSettings
+  project: ChatPiSettingsUpdate
+  projectPath: string
+  updateImpact: {
+    newSessionRecommended: boolean
+    resourceReloadRequired: boolean
+  }
+}
+
 export type ChatModelSelection =
   | string
   | {

@@ -4,17 +4,17 @@
     "npm:pi-skill-palette",
     "npm:pi-autocontext"
   ],
-  "skills": [
-    "../agent-workspace/pi/skills"
-  ],
-  "prompts": [
-    "../agent-workspace/pi/prompts"
-  ],
+  "skills": ["../agent-workspace/pi/skills"],
+  "prompts": ["../agent-workspace/pi/prompts"],
   "extensions": [
     "extensions/bedrock-bearer-auth",
     "extensions/resource-install",
     "extensions/vendor/filechanges",
     "extensions/vendor/subagents",
     "../agent-workspace/pi/extensions/enabled"
-  ]
+  ],
+  "defaultProvider": "github-copilot",
+  "defaultModel": "claude-haiku-4.5",
+  "defaultThinkingLevel": "high",
+  "enabledModels": ["github-copilot/claude-haiku-4.5"]
 }

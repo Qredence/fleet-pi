@@ -149,6 +149,43 @@ const MOCK_RESOURCES = {
   ],
 }
 
+const MOCK_SETTINGS = {
+  diagnostics: [],
+  effective: {
+    compaction: {
+      enabled: true,
+      reserveTokens: 16384,
+      keepRecentTokens: 20000,
+    },
+    defaultProvider: "amazon-bedrock",
+    defaultModel: "us.anthropic.claude-sonnet-4-6",
+    defaultThinkingLevel: "high",
+    enableSkillCommands: true,
+    enabledModels: ["claude-*"],
+    extensions: ["extensions/resource-install"],
+    followUpMode: "one-at-a-time",
+    packages: ["npm:pi-autocontext"],
+    prompts: ["../agent-workspace/pi/prompts"],
+    retry: {
+      enabled: true,
+      maxRetries: 3,
+      baseDelayMs: 2000,
+    },
+    skills: ["../agent-workspace/pi/skills"],
+    steeringMode: "one-at-a-time",
+    themes: [],
+    transport: "auto",
+  },
+  project: {
+    packages: ["npm:pi-autocontext"],
+  },
+  projectPath: ".pi/settings.json",
+  updateImpact: {
+    newSessionRecommended: true,
+    resourceReloadRequired: true,
+  },
+}
+
 type MockWorkspaceTreeNode = {
   children?: Array<MockWorkspaceTreeNode>
   name: string
@@ -649,6 +686,36 @@ function mockChatResources(page: Page, resources = MOCK_RESOURCES) {
   )
 }
 
+function mockChatSettings(page: Page, settings = MOCK_SETTINGS) {
+  let current = structuredClone(settings)
+  return page.route(
+    "http://localhost:3000/api/chat/settings",
+    async (route: Route) => {
+      if (route.request().method() === "PATCH") {
+        const body = (await route.request().postDataJSON()) as {
+          settings?: Record<string, unknown>
+        }
+        current = {
+          ...current,
+          effective: {
+            ...current.effective,
+            ...(body.settings ?? {}),
+          },
+          project: {
+            ...current.project,
+            ...(body.settings ?? {}),
+          },
+        }
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(current),
+      })
+    }
+  )
+}
+
 function mockWorkspaceTree(page: Page, responses = [MOCK_WORKSPACE_TREE]) {
   let requestIndex = 0
   return page.route(
@@ -957,6 +1024,7 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockChatSettings(page)
     await mockWorkspaceTree(page)
     await mockChatStream(page, {
       assistantText: "First visit ready.",
@@ -1397,6 +1465,7 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockChatSettings(page)
     await mockWorkspaceTree(page)
 
     await page.goto("/")
@@ -1673,10 +1742,20 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockChatSettings(page)
     await mockWorkspaceTree(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
+
+    const input = page.getByPlaceholder("Send a message...")
+    await input.fill("/")
+    await expect(
+      page.getByRole("button", { name: "/frontend-helper" })
+    ).toBeVisible()
+    await page.getByRole("button", { name: "/frontend-helper" }).click()
+    await expect(input).toHaveValue("/frontend-helper ")
+    await input.clear()
 
     await page.locator('[aria-label="Pi resources"]').click()
 
@@ -1706,13 +1785,10 @@ test.describe("chat flows", () => {
     )
     await expect(configurations).toBeVisible()
     await expect(
-      configurations.getByText("Tools", { exact: true })
-    ).toBeVisible()
-    await expect(
       configurations.getByText("Resources", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("LLM Providers", { exact: true })
+      configurations.getByText("Runtime Policy", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("Runtime Models", { exact: true })
@@ -1721,10 +1797,32 @@ test.describe("chat flows", () => {
       configurations.getByText("Personalization", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Claude Sonnet 4.6", { exact: true })
+      configurations.getByText("Model Defaults", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Claude Opus 4.6", { exact: true })
+      configurations.getByText("Model activation", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Providers", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByText("Runtime Policy", { exact: true })
+    ).toBeVisible()
+    await expect(
+      configurations.getByRole("button", { exact: true, name: "All" })
+    ).toBeVisible()
+    await expect(
+      configurations.getByRole("button", { exact: true, name: "None" })
+    ).toBeVisible()
+    await expect(
+      configurations.getByRole("switch", {
+        name: "Activate Claude Sonnet 4.6",
+      })
+    ).toBeVisible()
+    await expect(
+      configurations.getByRole("switch", {
+        name: "Activate Claude Opus 4.6",
+      })
     ).toBeVisible()
     await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "overflow-y",
@@ -1733,6 +1831,25 @@ test.describe("chat flows", () => {
     await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "max-height",
       "400px"
+    )
+
+    await configurations
+      .getByRole("combobox", { name: "Thinking level" })
+      .click()
+    await page.getByRole("option", { name: "xhigh" }).click()
+    await configurations.getByRole("button", { name: "Save" }).first().click()
+    await expect(
+      configurations.getByText("Project override is current.").first()
+    ).toBeVisible()
+
+    await configurations
+      .getByLabel("Add package", { exact: true })
+      .fill("npm:pi-custom")
+    await configurations
+      .getByLabel("Add package", { exact: true })
+      .press("Enter")
+    await expect(configurations.getByLabel("Add package 2")).toHaveValue(
+      "npm:pi-custom"
     )
 
     await configurations.getByRole("button", { name: "Dark" }).click()
@@ -1897,6 +2014,7 @@ test.describe("chat flows", () => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
+    await mockChatSettings(page)
     await mockWorkspaceTree(page)
 
     await page.goto("/")

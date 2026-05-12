@@ -9,7 +9,9 @@ import type { ChatStatus } from "@workspace/ui/components/agent-elements/chat-ty
 import type { RightPanel, ThemePreference } from "@/lib/canvas-utils"
 import type {
   ChatMode,
+  ChatPiSettingsUpdate,
   ChatResourcesResponse,
+  ChatSettingsResponse,
   WorkspaceTreeResponse,
 } from "@/lib/pi/chat-protocol"
 import type { QueueState } from "@/lib/pi/chat-fetch"
@@ -30,8 +32,12 @@ export function ChatRightPanels({
   resourcesError,
   resourcesLoading,
   rightPanel,
+  saveSettings,
   selectedModelKey,
   setRightPanel,
+  settings,
+  settingsError,
+  settingsLoading,
   status,
   themePreference,
   workspaceError,
@@ -54,8 +60,12 @@ export function ChatRightPanels({
   resourcesError: Error | null
   resourcesLoading: boolean
   rightPanel: RightPanel
+  saveSettings: (settings: ChatPiSettingsUpdate) => Promise<void>
   selectedModelKey?: string
   setRightPanel: (panel: RightPanel) => void
+  settings: ChatSettingsResponse | null
+  settingsError: Error | null
+  settingsLoading: boolean
   status: ChatStatus
   themePreference: ThemePreference
   workspaceError: Error | null
@@ -113,7 +123,11 @@ export function ChatRightPanels({
           planLabel={planLabel}
           queue={queue}
           resources={resources}
+          saveSettings={saveSettings}
           selectedModelKey={selectedModelKey}
+          settings={settings}
+          settingsError={settingsError}
+          settingsLoading={settingsLoading}
           status={status}
           themePreference={themePreference}
         />
@@ -174,7 +188,11 @@ export function ChatRightPanels({
           planLabel={planLabel}
           queue={queue}
           resources={resources}
+          saveSettings={saveSettings}
           selectedModelKey={selectedModelKey}
+          settings={settings}
+          settingsError={settingsError}
+          settingsLoading={settingsLoading}
           status={status}
           themePreference={themePreference}
         />
