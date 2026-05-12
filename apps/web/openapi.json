@@ -71,7 +71,7 @@
                   },
                   "mode": {
                     "type": "string",
-                    "enum": ["agent", "plan"],
+                    "enum": ["agent", "plan", "harness"],
                     "description": "Chat mode"
                   },
                   "planAction": {
@@ -189,7 +189,7 @@
                         },
                         "mode": {
                           "type": "string",
-                          "enum": ["agent", "plan"],
+                          "enum": ["agent", "plan", "harness"],
                           "description": "Chat mode"
                         },
                         "executing": {
@@ -209,7 +209,7 @@
                           "properties": {
                             "mode": {
                               "type": "string",
-                              "enum": ["agent", "plan"],
+                              "enum": ["agent", "plan", "harness"],
                               "description": "Chat mode"
                             },
                             "executing": {
@@ -1612,7 +1612,7 @@
                     },
                     "mode": {
                       "type": "string",
-                      "enum": ["agent", "plan"],
+                      "enum": ["agent", "plan", "harness"],
                       "description": "Chat mode"
                     },
                     "planAction": {
@@ -1652,7 +1652,7 @@
                     },
                     "mode": {
                       "type": "string",
-                      "enum": ["agent", "plan"],
+                      "enum": ["agent", "plan", "harness"],
                       "description": "Chat mode"
                     },
                     "planAction": {
