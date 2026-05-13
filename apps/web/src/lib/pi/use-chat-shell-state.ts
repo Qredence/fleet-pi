@@ -94,6 +94,7 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
           : nextMode === "harness"
             ? "harness"
             : "agent"
+      modeRef.current = normalized
       setMode(normalized)
       setStoredMode(normalized)
     },
@@ -135,8 +136,8 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   )
 
   const persistSession = useCallback(
-    (metadata: ChatSessionMetadata) => {
-      setStoredSessionMetadata(metadata, modeRef.current)
+    (metadata: ChatSessionMetadata, modeOverride?: ChatMode) => {
+      setStoredSessionMetadata(metadata, modeOverride ?? modeRef.current)
     },
     [setStoredSessionMetadata]
   )
