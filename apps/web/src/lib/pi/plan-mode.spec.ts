@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  applyPlanMode,
   cleanStepText,
+  createPlanModeExtension,
   extractDoneSteps,
   extractTodoItems,
   isSafeCommand,
@@ -84,4 +86,98 @@ describe("plan-mode utilities (vitest)", () => {
       expect(extractDoneSteps("no done tags here")).toEqual([])
     })
   })
+
+  describe("createPlanModeExtension context filtering", () => {
+    it("keeps existing context messages when active mode context has not been injected yet", () => {
+      const sessionId = "session-context-missing-active"
+      const contextHandler = createContextHandler()
+      applyPlanMode(createMockRuntime(sessionId), "harness")
+      const messages = [
+        { role: "system", customType: "agent-mode-context" },
+        { role: "system", customType: "plan-mode-context" },
+        { role: "user", content: "hello" },
+      ]
+
+      const result = contextHandler(
+        { messages },
+        {
+          sessionManager: {
+            getSessionId: () => sessionId,
+          },
+        }
+      )
+
+      expect(result).toBeUndefined()
+    })
+
+    it("keeps only the latest active mode context when present", () => {
+      const sessionId = "session-context-latest-active"
+      const contextHandler = createContextHandler()
+      applyPlanMode(createMockRuntime(sessionId), "harness")
+      const messages = [
+        { role: "system", customType: "harness-mode-context", content: "old" },
+        { role: "system", customType: "agent-mode-context", content: "agent" },
+        { role: "system", customType: "harness-mode-context", content: "new" },
+        { role: "user", content: "hello" },
+      ]
+
+      const result = contextHandler(
+        { messages },
+        {
+          sessionManager: {
+            getSessionId: () => sessionId,
+          },
+        }
+      )
+
+      expect(result).toEqual({
+        messages: [
+          {
+            role: "system",
+            customType: "harness-mode-context",
+            content: "new",
+          },
+          { role: "user", content: "hello" },
+        ],
+      })
+    })
+  })
 })
+
+function createContextHandler() {
+  const handlers = new Map<string, (...args: Array<unknown>) => unknown>()
+  createPlanModeExtension()({
+    on(event: string, handler: unknown) {
+      handlers.set(event, handler as (...args: Array<unknown>) => unknown)
+    },
+    appendEntry() {},
+    registerTool() {},
+  } as unknown as Parameters<ReturnType<typeof createPlanModeExtension>>[0])
+
+  return handlers.get("context") as (
+    event: { messages: Array<Record<string, unknown>> },
+    ctx: { sessionManager: { getSessionId: () => string } }
+  ) => unknown
+}
+
+function createMockRuntime(sessionId: string) {
+  const entries: Array<Record<string, unknown>> = []
+  return {
+    session: {
+      sessionId,
+      setActiveToolsByName() {},
+      sessionManager: {
+        appendCustomEntry(customType: string, data: unknown) {
+          entries.push({
+            type: "custom",
+            customType,
+            data,
+          })
+        },
+        getEntries() {
+          return entries
+        },
+      },
+    },
+  } as unknown as Parameters<typeof applyPlanMode>[0]
+}

@@ -290,6 +290,11 @@ export function getChatMode(runtime: AgentSessionRuntime): ChatMode {
   return getChatModeBySessionId(runtime.session.sessionId)
 }
 
+export function clearPlanModeSession(sessionId: string) {
+  planStates.delete(sessionId)
+  chatModes.delete(sessionId)
+}
+
 export function getPlanState(runtime: AgentSessionRuntime): PlanModeState {
   const sessionId = runtime.session.sessionId
   const existing = planStates.get(sessionId)
@@ -453,6 +458,8 @@ function filterModeContextMessages(
       getCustomType(message) === activeContextType ? index : lastIndex,
     -1
   )
+  if (lastActiveIndex === -1) return undefined
+
   const filtered = messages.filter((message, index) => {
     const customType = getCustomType(message)
     if (!customType || !MODE_CONTEXT_CUSTOM_TYPES.has(customType)) return true

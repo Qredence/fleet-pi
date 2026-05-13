@@ -193,6 +193,32 @@ describe("answerChatQuestion", () => {
     expect(activeTools).not.toContain("edit")
     expect(activeTools).not.toContain("write")
   })
+
+  it("clears cached chat mode when a runtime is disposed", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const sessionFile = createSessionFile(root, "session-disposal.jsonl")
+    const runtime = createMockRuntime("session-disposal", sessionFile)
+
+    try {
+      const { retainPiRuntime } = await import("./server-runtime")
+      const { applyPlanMode, getChatMode } = await import("./plan-mode")
+      const releaseRuntime = retainPiRuntime(runtime)
+      applyPlanMode(runtime, "harness")
+
+      expect(getChatMode(runtime)).toBe("harness")
+
+      releaseRuntime()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(runtime.dispose).toHaveBeenCalledTimes(1)
+      expect(getChatMode(runtime)).toBe("agent")
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
 })
 
 function createSessionFile(root: string, name: string) {

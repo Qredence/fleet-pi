@@ -7,6 +7,7 @@ import {
   CHAT_TOOL_ALLOWLIST,
   answerPlanDecision,
   applyPlanMode,
+  clearPlanModeSession,
   createPlanModeExtension,
   createPlanToolPart,
   getPlanState,
@@ -338,6 +339,7 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
         return
       }
 
+      clearPlanModeSession(record.sessionId)
       runtimeRecords.delete(record.sessionId)
       void current.runtime.dispose()
     },
