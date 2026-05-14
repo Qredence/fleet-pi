@@ -113,7 +113,25 @@ const MODE_CONTEXT_CUSTOM_TYPES = new Set([
 ])
 
 const planStates = new Map<string, PlanModeState>()
-const chatModes = new Map<string, ChatMode>()
+
+class BoundedSessionMap<V> extends Map<string, V> {
+  constructor(private readonly maxEntries: number) {
+    super()
+  }
+
+  override set(key: string, value: V) {
+    if (!this.has(key) && this.size >= this.maxEntries) {
+      const oldestKey = this.keys().next().value
+      if (oldestKey !== undefined) {
+        this.delete(oldestKey)
+      }
+    }
+
+    return super.set(key, value)
+  }
+}
+
+const chatModes = new BoundedSessionMap<ChatMode>(1000)
 
 export function isSafeCommand(command: string) {
   return evaluatePlanCommand(command).allowed
