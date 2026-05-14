@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toModelOption, toModelSelection } from "./chat-helpers"
 import { useChatStorage } from "./use-chat-storage"
 import type { PointerEvent as ReactPointerEvent } from "react"
@@ -32,6 +32,7 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   )
   const [modelKey, setModelKey] = useState<string | undefined>()
   const [mode, setMode] = useState<ChatMode>(() => storedMode)
+  const modeRef = useRef(mode)
   const [rightPanel, setRightPanel] = useState<RightPanel>(null)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
@@ -40,9 +41,10 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   const [resourceCanvasWidth, setResourceCanvasWidth] = useState(() =>
     readStoredResourceCanvasWidth()
   )
-  const [initialSessionMetadata] = useState<ChatSessionMetadata>(
-    () => storedSessionMetadata
-  )
+
+  useEffect(() => {
+    modeRef.current = mode
+  }, [mode])
 
   useEffect(() => {
     if (models.length > 0 && !modelKey) {
@@ -86,7 +88,13 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
 
   const handleModeChange = useCallback(
     (nextMode: string) => {
-      const normalized: ChatMode = nextMode === "plan" ? "plan" : "agent"
+      const normalized: ChatMode =
+        nextMode === "plan"
+          ? "plan"
+          : nextMode === "harness"
+            ? "harness"
+            : "agent"
+      modeRef.current = normalized
       setMode(normalized)
       setStoredMode(normalized)
     },
@@ -128,8 +136,8 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   )
 
   const persistSession = useCallback(
-    (metadata: ChatSessionMetadata) => {
-      setStoredSessionMetadata(metadata)
+    (metadata: ChatSessionMetadata, modeOverride?: ChatMode) => {
+      setStoredSessionMetadata(metadata, modeOverride ?? modeRef.current)
     },
     [setStoredSessionMetadata]
   )
@@ -145,7 +153,7 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
     handleModeChange,
     handleResourceCanvasResizeStart,
     handleThemePreferenceChange,
-    initialSessionMetadata,
+    initialSessionMetadata: storedSessionMetadata,
     mode,
     modelKey,
     modelSelection,

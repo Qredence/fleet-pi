@@ -416,28 +416,38 @@ const MOCK_WORKSPACE_TREE: MockWorkspaceTreeResponse = {
       ],
     },
     {
-      name: "policies",
-      path: "agent-workspace/policies",
+      name: "system",
+      path: "agent-workspace/system",
       type: "directory",
       children: [
         {
+          name: "behavior.md",
+          path: "agent-workspace/system/behavior.md",
+          type: "file",
+        },
+        {
           name: "constraints.md",
-          path: "agent-workspace/policies/constraints.md",
+          path: "agent-workspace/system/constraints.md",
+          type: "file",
+        },
+        {
+          name: "identity.md",
+          path: "agent-workspace/system/identity.md",
           type: "file",
         },
         {
           name: "self-improvement-policy.md",
-          path: "agent-workspace/policies/self-improvement-policy.md",
+          path: "agent-workspace/system/self-improvement-policy.md",
           type: "file",
         },
         {
           name: "tool-policy.md",
-          path: "agent-workspace/policies/tool-policy.md",
+          path: "agent-workspace/system/tool-policy.md",
           type: "file",
         },
         {
           name: "workspace-policy.md",
-          path: "agent-workspace/policies/workspace-policy.md",
+          path: "agent-workspace/system/workspace-policy.md",
           type: "file",
         },
       ],
@@ -1536,7 +1546,7 @@ test.describe("chat flows", () => {
       workspaceTree.getByRole("button", { name: "pi", exact: true })
     ).toBeVisible()
     await expect(
-      workspaceTree.getByRole("button", { name: "policies", exact: true })
+      workspaceTree.getByRole("button", { name: "system", exact: true })
     ).toBeVisible()
     await expect(
       workspaceTree.getByRole("button", { name: "scratch", exact: true })
@@ -1556,7 +1566,7 @@ test.describe("chat flows", () => {
       workspaceTree.getByRole("button", { name: "hermes.md", exact: true })
     ).toBeVisible()
 
-    await expandWorkspacePath(workspaceTree, ["policies"])
+    await expandWorkspacePath(workspaceTree, ["system"])
     await expect(
       workspaceTree.getByRole("button", {
         name: "workspace-policy.md",

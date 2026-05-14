@@ -13,8 +13,8 @@
     "extensions/vendor/subagents",
     "../agent-workspace/pi/extensions/enabled"
   ],
-  "defaultProvider": "github-copilot",
-  "defaultModel": "claude-haiku-4.5",
+  "defaultProvider": "amazon-bedrock",
+  "defaultModel": "us.anthropic.claude-sonnet-4-6",
   "defaultThinkingLevel": "high",
-  "enabledModels": ["github-copilot/claude-haiku-4.5"]
+  "enabledModels": ["amazon-bedrock/*"]
 }

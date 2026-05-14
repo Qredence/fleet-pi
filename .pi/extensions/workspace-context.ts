@@ -14,31 +14,35 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     const cwd = ctx.sessionManager.getCwd()
     const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
 
-    const identity = await readIdentity(cwd)
-    if (identity) parts.push(`Agent: ${identity}`)
+    const workspaceAgents = await readWorkspaceAgents(cwd)
+    if (workspaceAgents) {
+      parts.push(workspaceAgents)
+    } else {
+      const identity = await readIdentity(cwd)
+      if (identity) parts.push(`Agent: ${identity}`)
 
-    parts.push(
-      "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
-    )
+      parts.push(
+        "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
+      )
+      parts.push(
+        "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
+      )
+      parts.push(
+        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed."
+      )
+      parts.push(
+        "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
+      )
+      parts.push(
+        "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
+      )
+    }
 
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
 
     parts.push(
       formatProjectMemoryForStartupContext(await readProjectMemoryIndex(cwd))
-    )
-
-    parts.push(
-      "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
-    )
-    parts.push(
-      "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed."
-    )
-    parts.push(
-      "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
-    )
-    parts.push(
-      "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
     )
 
     return {
@@ -108,6 +112,18 @@ async function readActivePlan(cwd: string): Promise<string | undefined> {
     // directory missing or unreadable
   }
   return undefined
+}
+
+async function readWorkspaceAgents(cwd: string): Promise<string | undefined> {
+  try {
+    const content = await readFile(
+      resolve(cwd, WORKSPACE_ROOT, "AGENTS.md"),
+      "utf8"
+    )
+    return content.trim() || undefined
+  } catch {
+    return undefined
+  }
 }
 
 function extractTitle(content: string): string | undefined {

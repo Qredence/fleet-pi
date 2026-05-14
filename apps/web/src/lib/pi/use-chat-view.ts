@@ -86,6 +86,17 @@ function buildContextSuggestions({
     ]
   }
 
+  if (mode === "harness") {
+    return [
+      suggestionItem(
+        "harness-architecture",
+        "Review agent-workspace architecture"
+      ),
+      suggestionItem("harness-memory", "Update project memory architecture"),
+      suggestionItem("harness-pi", "Check Pi resource alignment"),
+    ]
+  }
+
   if (!lastUserText) {
     return [
       suggestionItem("overview", "Summarize this project"),

@@ -17,6 +17,12 @@ const CANONICAL_PROJECT_MEMORY_KEYS = new Set([
   "open-questions",
   "known-issues",
 ])
+const CANONICAL_SYSTEM_POLICY_FILES = new Set([
+  "constraints.md",
+  "self-improvement-policy.md",
+  "tool-policy.md",
+  "workspace-policy.md",
+])
 const MEMORY_STUB_MARKER = "Seeded stub."
 
 export function classifyWorkspacePath(
@@ -112,17 +118,6 @@ export function classifyWorkspacePath(
     )
   }
 
-  if (topLevel === "policies") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "policy",
-      "policy",
-      "canonical-files",
-      parserKind
-    )
-  }
-
   if (topLevel === "pi") {
     return createClassification(
       normalizedPath,
@@ -146,6 +141,17 @@ export function classifyWorkspacePath(
   }
 
   if (topLevel === "system") {
+    if (segments.length === 3 && CANONICAL_SYSTEM_POLICY_FILES.has(fileName)) {
+      return createClassification(
+        normalizedPath,
+        workspaceRelativePath,
+        "policy",
+        "policy",
+        "canonical-files",
+        parserKind
+      )
+    }
+
     return createClassification(
       normalizedPath,
       workspaceRelativePath,
@@ -154,6 +160,10 @@ export function classifyWorkspacePath(
       "canonical-files",
       parserKind
     )
+  }
+
+  if (topLevel === "policies") {
+    return null
   }
 
   if (topLevel === "instructions") {

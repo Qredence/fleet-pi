@@ -4,6 +4,7 @@ import { createTextMessage } from "./chat-message-helpers"
 import { chatClient } from "./chat-client"
 import { isPlanDecisionToolCall } from "./plan-state"
 import { EMPTY_QUEUE_STATE, applyChatStreamEvent } from "./chat-stream-state"
+import { getChatSessionScope } from "./use-chat-storage"
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatMessage,
@@ -166,6 +167,8 @@ export function usePiChat(
   const [activityLabel, setActivityLabel] = useState<string | undefined>()
   const [planLabel, setPlanLabel] = useState<string | undefined>()
   const [queue, setQueue] = useState<QueueState>(EMPTY_QUEUE_STATE)
+  const sessionScope = getChatSessionScope(mode)
+  const initialSessionMetadataRef = useRef(initialSessionMetadata)
   const messagesRef = useRef(messages)
   const sessionMetadataRef = useRef(sessionMetadata)
   const activityLabelRef = useRef(activityLabel)
@@ -231,6 +234,8 @@ export function usePiChat(
     const nextSessions = await client.listSessions()
     setSessions(nextSessions)
   }, [client])
+
+  initialSessionMetadataRef.current = initialSessionMetadata
 
   const submitQuestionAnswer = useCallback(
     async ({
@@ -300,25 +305,39 @@ export function usePiChat(
   }, [refreshSessions])
 
   useEffect(() => {
-    if (
-      !initialSessionMetadata.sessionFile &&
-      !initialSessionMetadata.sessionId
-    ) {
-      return
-    }
-
     let cancelled = false
-    const loadStoredSession = async () => {
-      const result = await client.loadSession(initialSessionMetadata)
+    const loadActiveSession = async () => {
+      abortRef.current?.abort()
+      abortRef.current = null
+      setStatus("ready")
+      setError(null)
+      setQueueSynced(EMPTY_QUEUE_STATE)
+      setActivityLabelSynced(undefined)
+      setPlanLabelSynced(undefined)
+      setMessagesSynced([])
+
+      const storedSession = initialSessionMetadataRef.current
+      const hasStoredSession =
+        storedSession.sessionFile || storedSession.sessionId
+      if (!hasStoredSession) {
+        setSessionMetadataSynced({})
+        return
+      }
+
+      const result = await client.loadSession(storedSession)
       if (cancelled) return
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
+      setActivityLabelSynced(
+        result.sessionReset ? "Started a fresh Pi session" : undefined
+      )
     }
 
-    void loadStoredSession().catch((err) => {
+    void loadActiveSession().catch((err) => {
       if (!cancelled) {
         const nextError = err instanceof Error ? err : new Error(String(err))
         setError(nextError)
+        setStatus("error")
         toast.error(nextError.message)
       }
     })
@@ -328,9 +347,11 @@ export function usePiChat(
     }
   }, [
     client,
-    initialSessionMetadata.sessionFile,
-    initialSessionMetadata.sessionId,
+    sessionScope,
+    setActivityLabelSynced,
     setMessagesSynced,
+    setPlanLabelSynced,
+    setQueueSynced,
     setSessionMetadataSynced,
   ])
 

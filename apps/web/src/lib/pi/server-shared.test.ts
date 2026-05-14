@@ -42,7 +42,7 @@ describe("createSessionServices", () => {
     ).toBe(true)
     expect(
       existsSync(
-        join(projectRoot, "agent-workspace", "policies", "tool-policy.md")
+        join(projectRoot, "agent-workspace", "system", "tool-policy.md")
       )
     ).toBe(true)
     expect(createAgentSessionServices).toHaveBeenCalledWith(

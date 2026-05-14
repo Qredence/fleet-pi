@@ -6,6 +6,7 @@ export const WORKSPACE_MANIFEST_RELATIVE_PATH = "manifest.json"
 
 export const WORKSPACE_TOP_LEVEL_SECTIONS = [
   "instructions",
+  "system",
   "memory",
   "plans",
   "skills",
@@ -13,7 +14,6 @@ export const WORKSPACE_TOP_LEVEL_SECTIONS = [
   "artifacts",
   "scratch",
   "pi",
-  "policies",
   "indexes",
 ] as const
 
@@ -35,6 +35,7 @@ export type WorkspaceSectionDefinition = {
 export const WORKSPACE_SECTION_DEFINITIONS: ReadonlyArray<WorkspaceSectionDefinition> =
   [
     { name: "instructions", path: "instructions", kind: "canonical" },
+    { name: "system", path: "system", kind: "canonical" },
     { name: "memory", path: "memory", kind: "canonical" },
     { name: "plans", path: "plans", kind: "canonical" },
     { name: "skills", path: "skills", kind: "canonical" },
@@ -42,7 +43,6 @@ export const WORKSPACE_SECTION_DEFINITIONS: ReadonlyArray<WorkspaceSectionDefini
     { name: "artifacts", path: "artifacts", kind: "canonical" },
     { name: "scratch", path: "scratch", kind: "temporary" },
     { name: "pi", path: "pi", kind: "canonical" },
-    { name: "policies", path: "policies", kind: "canonical" },
     { name: "indexes", path: "indexes", kind: "projection" },
   ]
 
@@ -70,7 +70,7 @@ export const WORKSPACE_REQUIRED_DIRECTORY_PATHS = [
 export const WORKSPACE_POLICY_FILE_DEFINITIONS = [
   {
     key: "workspace-policy",
-    path: "policies/workspace-policy.md",
+    path: "system/workspace-policy.md",
     contents: [
       "# Workspace Policy",
       "",
@@ -80,7 +80,7 @@ export const WORKSPACE_POLICY_FILE_DEFINITIONS = [
   },
   {
     key: "tool-policy",
-    path: "policies/tool-policy.md",
+    path: "system/tool-policy.md",
     contents: [
       "# Tool Policy",
       "",
@@ -89,7 +89,7 @@ export const WORKSPACE_POLICY_FILE_DEFINITIONS = [
   },
   {
     key: "self-improvement-policy",
-    path: "policies/self-improvement-policy.md",
+    path: "system/self-improvement-policy.md",
     contents: [
       "# Self-Improvement Policy",
       "",
@@ -98,7 +98,7 @@ export const WORKSPACE_POLICY_FILE_DEFINITIONS = [
   },
   {
     key: "constraints",
-    path: "policies/constraints.md",
+    path: "system/constraints.md",
     contents: [
       "# Constraints",
       "",

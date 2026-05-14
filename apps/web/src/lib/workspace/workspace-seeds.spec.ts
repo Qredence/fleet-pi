@@ -121,6 +121,11 @@ const EXPECTED_BACKLOG_TEMPLATE = [
   "",
 ].join("\n")
 
+const EXPECTED_REPORT_SEEDS = [
+  ".gitkeep",
+  "architecture-review-2026-05-12.md",
+].sort((left, right) => left.localeCompare(right))
+
 describe("clean clone workspace seeds", () => {
   it("keeps canonical project memory files as neutral starter templates", async () => {
     const projectMemoryDir = resolve(
@@ -145,7 +150,7 @@ describe("clean clone workspace seeds", () => {
     )
   })
 
-  it("removes maintainer-enriched user workspace seeds from fresh clones", async () => {
+  it("removes maintainer-enriched user seeds while preserving repo-owned report artifacts", async () => {
     const dailyEntries = await readdir(
       resolve(REPO_ROOT, "agent-workspace/memory/daily")
     )
@@ -168,7 +173,7 @@ describe("clean clone workspace seeds", () => {
     ).toEqual(["index.md"])
     expect(
       reportEntries.sort((left, right) => left.localeCompare(right))
-    ).toEqual([".gitkeep"])
+    ).toEqual(EXPECTED_REPORT_SEEDS)
     expect(backlog).toBe(EXPECTED_BACKLOG_TEMPLATE)
   })
 })

@@ -700,9 +700,17 @@ function RuntimeStatusSection({
           planLabel ??
           (mode === "plan"
             ? "Plan mode is enabled and ready for the next planning turn."
-            : "No active plan decision is pending.")
+            : mode === "harness"
+              ? "Harness mode is active for agent-workspace architecture management."
+              : "No active plan decision is pending.")
         }
-        status={mode === "plan" ? "Plan mode" : "Agent mode"}
+        status={
+          mode === "plan"
+            ? "Plan mode"
+            : mode === "harness"
+              ? "Harness mode"
+              : "Agent mode"
+        }
         title="Plan state"
       />
       <ConfigurationRow
