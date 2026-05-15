@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import {
   BookOpenText,
   ChevronDown,
   History,
+  LogIn,
   LogOut,
   Plus,
   Square,
@@ -35,6 +36,7 @@ import {
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
+import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
 import {
   useActiveSessionLabel,
@@ -125,11 +127,11 @@ function HeaderPillButton({
 }
 
 function AccountMenu() {
-  const items = [
-    { id: "account", label: "Account", icon: QredenceLogo },
-    { id: "docs", label: "Documentations", icon: BookOpenText },
-    { id: "signout", label: "Sign out", icon: LogOut },
-  ]
+  const user = useOptionalUser()
+  const navigate = useNavigate()
+
+  const menuItemClass =
+    "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6"
 
   return (
     <Popover
@@ -142,19 +144,47 @@ function AccountMenu() {
         </HeaderPillButton>
       }
     >
-      {items.map((item) => {
-        const Icon = item.icon
-        return (
-          <button
-            key={item.id}
-            type="button"
-            className="flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6"
-          >
-            <Icon className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">{item.label}</span>
+      {user ? (
+        <>
+          <div className="px-2 py-1.5 text-[12px] leading-4 text-foreground/50">
+            {user.name || user.email}
+          </div>
+          <button type="button" className={menuItemClass}>
+            <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">Account</span>
           </button>
-        )
-      })}
+          <button type="button" className={menuItemClass}>
+            <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">Documentations</span>
+          </button>
+          <button
+            type="button"
+            className={menuItemClass}
+            onClick={async () => {
+              await signOut()
+              void navigate({ to: "/" })
+            }}
+          >
+            <LogOut className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">Sign out</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className={menuItemClass}
+            onClick={() => void navigate({ to: "/login" })}
+          >
+            <LogIn className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">Sign in</span>
+          </button>
+          <button type="button" className={menuItemClass}>
+            <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
+            <span className="truncate">Documentations</span>
+          </button>
+        </>
+      )}
     </Popover>
   )
 }
