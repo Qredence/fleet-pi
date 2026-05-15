@@ -13,7 +13,7 @@ node_modules
 # Testing
 coverage
 test-results/
-
+dogfood-output/
 # jscpd reports and cache
 report/
 .jscpd/
@@ -61,3 +61,4 @@ qa-results/
 PLANS.md
 
 untitled.lib.pen
+agent-workspace/memory/research/qredence-fleet-rlm.md
