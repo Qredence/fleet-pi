@@ -17,8 +17,7 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
     // Parse the webhook payload
     const payload = await request.json()
 
-    // Log the webhook event for now
-    // TODO: Process specific event types (sandbox.created, sandbox.deleted, etc.)
+    // Log the raw webhook payload until event-specific handling is added.
     console.log("Daytona webhook received:", {
       signature: signature ? "present" : "absent",
       event: payload,
