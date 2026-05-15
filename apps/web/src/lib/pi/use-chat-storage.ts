@@ -40,9 +40,9 @@ export function useChatStorage() {
 
   useEffect(() => {
     const storedMode = readStoredMode()
-    if (storedMode !== "agent") {
-      setMode(storedMode)
-    }
+    setMode((currentMode) =>
+      storedMode === currentMode ? currentMode : storedMode
+    )
     setHasHydratedMode(true)
   }, [])
 

@@ -168,8 +168,7 @@ export function MobilePanel({
           className="h-full min-h-0 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur"
           role="dialog"
           aria-modal="true"
-          aria-label={title ? undefined : "Panel"}
-          aria-labelledby={title ? panelTitleId : undefined}
+          aria-labelledby={panelTitleId}
           tabIndex={-1}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
@@ -178,11 +177,14 @@ export function MobilePanel({
           }}
         >
           <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+            <span id={panelTitleId} className="sr-only">
+              {title ?? "Panel"}
+            </span>
             {title && (
               <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-3">
                 <div className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground/80">
                   {Icon && <Icon className="size-3.5 shrink-0" />}
-                  <span id={panelTitleId}>{title}</span>
+                  <span>{title}</span>
                 </div>
                 {onClose && (
                   <button
