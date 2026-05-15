@@ -78,7 +78,6 @@ const PLAN_MODE_TOOLS = [
   "questionnaire",
   ...PROJECT_RESOURCE_TOOLS,
   ...AUTOCONTEXT_STATUS_TOOLS,
-  ...DAYTONA_SANDBOX_TOOLS,
 ]
 const HARNESS_MODE_TOOLS = [
   "read",
