@@ -142,11 +142,22 @@ export function MobilePanel({
 
   return (
     <>
-      <button
-        type="button"
+      <div
         className="fixed inset-0 z-40 bg-black/20 min-[960px]:hidden"
         onClick={onClose}
+        role="button"
+        tabIndex={0}
         aria-label="Close panel"
+        onKeyDown={(event) => {
+          if (
+            event.key === "Enter" ||
+            event.key === " " ||
+            event.key === "Escape"
+          ) {
+            event.preventDefault()
+            onClose?.()
+          }
+        }}
       />
       <div
         className="fixed top-14 right-3 bottom-3 z-50 flex min-h-0 max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 min-[960px]:hidden"
