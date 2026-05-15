@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { toast } from "sonner"
@@ -17,17 +17,18 @@ function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (sessionLoading) {
+  useEffect(() => {
+    if (session) {
+      void navigate({ to: "/" })
+    }
+  }, [session, navigate])
+
+  if (sessionLoading || session) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
         <div className="size-5 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/70" />
       </div>
     )
-  }
-
-  if (session) {
-    void navigate({ to: "/" })
-    return null
   }
 
   async function handleEmailSubmit(e: React.FormEvent) {

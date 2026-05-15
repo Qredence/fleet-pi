@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { betterAuth } from "better-auth"
+import { tanstackStartCookies } from "better-auth/tanstack-start"
 import Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 
@@ -77,6 +78,7 @@ export const auth = betterAuth({
   trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
     ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
     : [
+        process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",
@@ -91,13 +93,14 @@ export const auth = betterAuth({
     enabled: true,
   },
   socialProviders: {
-    ...(process.env.GOOGLE_CLIENT_ID
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? {
           google: {
             clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           },
         }
       : {}),
   },
+  plugins: [tanstackStartCookies()],
 })
