@@ -55,6 +55,20 @@ const AUTORESEARCH_AGENT_TOOLS = [
   "log_experiment",
 ]
 const SUBAGENT_AGENT_TOOLS = ["subagent"]
+const DAYTONA_SANDBOX_TOOLS = [
+  "daytona_create_sandbox",
+  "daytona_execute_command",
+  "daytona_run_code",
+  "daytona_upload_file",
+  "daytona_download_file",
+  "daytona_list_files",
+  "daytona_stop_sandbox",
+  "daytona_start_sandbox",
+  "daytona_delete_sandbox",
+  "daytona_get_status",
+  "daytona_create_snapshot",
+  "daytona_delete_snapshot",
+]
 const PLAN_MODE_TOOLS = [
   "read",
   "bash",
@@ -77,6 +91,7 @@ const HARNESS_MODE_TOOLS = [
   "web_fetch",
   ...PROJECT_RESOURCE_TOOLS,
   ...AUTOCONTEXT_STATUS_TOOLS,
+  ...DAYTONA_SANDBOX_TOOLS,
 ]
 const NORMAL_MODE_TOOLS = [
   "read",
@@ -91,6 +106,7 @@ const NORMAL_MODE_TOOLS = [
   ...AUTOCONTEXT_AGENT_TOOLS,
   ...AUTORESEARCH_AGENT_TOOLS,
   ...SUBAGENT_AGENT_TOOLS,
+  ...DAYTONA_SANDBOX_TOOLS,
 ]
 export const CHAT_TOOL_ALLOWLIST = [
   ...NORMAL_MODE_TOOLS,
