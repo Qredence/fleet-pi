@@ -11,6 +11,7 @@ export type ProjectMemoryFile = {
   headings: Array<string>
   key: string
   path: string
+  snippets: Array<string>
   title: string
 }
 
@@ -74,8 +75,7 @@ export function formatProjectMemoryForStartupContext(
   const lines = [
     "Project memory index:",
     ...index.canonical.map(
-      (file) =>
-        `- ${file.key}: ${formatMemoryFileStatus(file)} (${file.path})`
+      (file) => `- ${file.key}: ${formatMemoryFileStatus(file)} (${file.path})`
     ),
   ]
 
@@ -83,8 +83,15 @@ export function formatProjectMemoryForStartupContext(
     lines.push(
       `- orphaned: ${index.orphaned
         .map((file) => basename(file.path))
-        .join(", ")} (searchable fallback; synthesize into canonical memory when useful)`
+        .join(
+          ", "
+        )} (searchable fallback; synthesize into canonical memory when useful)`
     )
+  }
+
+  const snippetLines = formatMemorySnippets(index.canonical)
+  if (snippetLines.length > 0) {
+    lines.push("Project memory recall snippets:", ...snippetLines)
   }
 
   lines.push(
@@ -134,12 +141,14 @@ async function readProjectMemoryFile(
     }
 
     const content = await readFile(absolutePath, "utf8")
+    const snippets = extractMemorySnippets(content)
     return {
       exists: true,
-      hasContent: hasDurableContent(content),
+      hasContent: snippets.length > 0,
       headings: extractSectionHeadings(content),
       key,
       path,
+      snippets,
       title: extractTitle(content) ?? fallbackTitle,
     }
   } catch {
@@ -187,6 +196,7 @@ function emptyProjectMemoryFile(
     headings: [],
     key,
     path,
+    snippets: [],
     title,
   }
 }
@@ -215,13 +225,19 @@ function formatMemoryFileStatus(file: ProjectMemoryFile) {
   return `has content; sections: ${file.headings.join(", ")}`
 }
 
-function hasDurableContent(content: string) {
-  if (content.includes(STUB_MARKER)) return false
+function formatMemorySnippets(files: Array<ProjectMemoryFile>) {
+  return files.flatMap((file) =>
+    file.snippets.slice(0, 3).map((snippet) => `- ${file.key}: ${snippet}`)
+  )
+}
+
+function extractMemorySnippets(content: string) {
+  if (content.includes(STUB_MARKER)) return []
 
   return content
     .split("\n")
     .map((line) => line.trim())
-    .some((line) => {
+    .filter((line) => {
       if (!line.startsWith("- ")) return false
 
       const value = line.slice(2).trim()
@@ -230,6 +246,14 @@ function hasDurableContent(content: string) {
       if (/To be filled/i.test(value)) return false
       return true
     })
+    .map((line) => truncateSnippet(line.slice(2).trim()))
+    .slice(0, 4)
+}
+
+function truncateSnippet(value: string) {
+  const maxLength = 220
+  if (value.length <= maxLength) return value
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`
 }
 
 function titleFromFilename(path: string) {
