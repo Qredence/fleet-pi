@@ -440,7 +440,7 @@ function ChatWorkspaceShell() {
     workspaceTree,
   })
   const shouldShowInputSuggestions = useMemo(() => {
-    if (messages.length === 0) return true
+    if (messages.length === 0) return false
     if (status === "streaming" || status === "submitted") return false
 
     const lastMessage = messages[messages.length - 1]
