@@ -175,10 +175,11 @@ function SessionMenu({
       side="bottom"
       align="center"
       className="w-[min(360px,calc(100vw-2rem))]"
+      overlay
       trigger={
         <HeaderPillButton
           ariaLabel="Open conversations"
-          className="w-[6.5rem] justify-between sm:w-32 md:w-36 lg:w-[6.5rem] xl:w-40 2xl:w-64"
+          className="w-28 justify-between sm:w-36 md:w-44 lg:w-52 xl:w-64"
         >
           <div className="flex min-w-0 items-center gap-2">
             <History className="size-3 shrink-0 text-foreground/35" />

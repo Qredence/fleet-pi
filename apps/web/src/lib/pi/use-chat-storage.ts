@@ -17,7 +17,9 @@ const EMPTY_STORED_SESSIONS: StoredChatSessions = {
 export function useChatStorage() {
   const [sessionMetadataByScope, setSessionMetadataByScope] =
     useState<StoredChatSessions>(() => readStoredBrowserSessions())
-  const [mode, setMode] = useState<ChatMode>(() => readStoredMode())
+  // Default to "agent" for SSR hydration safety. The stored mode is applied
+  // in useEffect after mount to avoid hydration mismatches.
+  const [mode, setMode] = useState<ChatMode>("agent")
   const modeRef = useRef(mode)
   const activeSessionScope = getChatSessionScope(mode)
   const sessionMetadata = useMemo(
@@ -34,6 +36,13 @@ export function useChatStorage() {
     },
     []
   )
+
+  useEffect(() => {
+    const storedMode = readStoredMode()
+    if (storedMode !== mode) {
+      setMode(storedMode)
+    }
+  }, [])
 
   useEffect(() => {
     modeRef.current = mode

@@ -92,7 +92,10 @@ export function ChatRightPanels({
       />
       <MobilePanel
         dataTestid="pi-resources-mobile-panel"
+        icon={Library}
+        onClose={() => setRightPanel(null)}
         open={rightPanel === "resources"}
+        title="Pi Resources"
       >
         <ResourcesPanelContent
           error={resourcesError}
@@ -103,7 +106,10 @@ export function ChatRightPanels({
       </MobilePanel>
       <MobilePanel
         dataTestid="pi-workspace-mobile-panel"
+        icon={Folder}
+        onClose={() => setRightPanel(null)}
         open={rightPanel === "workspace"}
+        title="Workspace"
       >
         <WorkspacePanelContent
           error={workspaceError}
@@ -113,7 +119,10 @@ export function ChatRightPanels({
       </MobilePanel>
       <MobilePanel
         dataTestid="pi-config-mobile-panel"
+        icon={Settings}
+        onClose={() => setRightPanel(null)}
         open={rightPanel === "configurations"}
+        title="Configurations"
       >
         <ConfigurationsPanelContent
           activityLabel={activityLabel}

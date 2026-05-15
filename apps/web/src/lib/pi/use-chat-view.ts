@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { normalizeSessionLabel } from "./chat-helpers"
 import type { SuggestionItem } from "@workspace/ui/components/agent-elements/input/suggestions"
 import type { ChatMessage } from "@workspace/ui/components/agent-elements/chat-types"
 import type {
@@ -191,10 +192,10 @@ function getActiveSessionLabel(
     (session) => session.id === activeSessionId
   )
   if (activeSession) {
-    return (
+    return normalizeSessionLabel(
       activeSession.name ||
-      activeSession.firstMessage ||
-      activeSession.id.slice(0, 8)
+        activeSession.firstMessage ||
+        activeSession.id.slice(0, 8)
     )
   }
 
@@ -202,5 +203,5 @@ function getActiveSessionLabel(
     .reverse()
     .find((message) => message.role === "user")
   const label = extractMessageText(lastUserMessage).trim()
-  return label || "Session"
+  return normalizeSessionLabel(label) || "Session"
 }

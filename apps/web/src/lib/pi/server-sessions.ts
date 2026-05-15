@@ -7,6 +7,7 @@ import {
   restoreChatMessageIdMap,
   sessionEntriesToChatMessages,
 } from "./server-utils"
+import { normalizeSessionLabel } from "./chat-helpers"
 import {
   createSessionServices,
   getSessionDir,
@@ -104,7 +105,7 @@ export async function listChatSessions(
     created: session.created.toISOString(),
     modified: session.modified.toISOString(),
     messageCount: session.messageCount,
-    firstMessage: session.firstMessage,
+    firstMessage: normalizeSessionLabel(session.firstMessage),
   }))
 }
 

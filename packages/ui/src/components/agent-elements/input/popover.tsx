@@ -1,27 +1,28 @@
-"use client";
+"use client"
 
-import { Popover as BasePopover } from "@base-ui/react/popover";
-import { cloneElement, isValidElement } from "react";
-import { cn } from "../utils/cn";
-import type { ReactNode } from "react";
-import type { PopoverPositionerProps } from "@base-ui/react/popover";
+import { Popover as BasePopover } from "@base-ui/react/popover"
+import { cloneElement, isValidElement } from "react"
+import { cn } from "../utils/cn"
+import type { ReactNode } from "react"
+import type { PopoverPositionerProps } from "@base-ui/react/popover"
 
-export type PopoverSide = "top" | "bottom" | "left" | "right";
-export type PopoverAlign = "start" | "center" | "end";
+export type PopoverSide = "top" | "bottom" | "left" | "right"
+export type PopoverAlign = "start" | "center" | "end"
 
 export type PopoverProps = {
-  trigger: ReactNode;
-  children: ReactNode;
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  side?: PopoverSide;
-  align?: PopoverAlign;
-  sideOffset?: number;
-  collisionAvoidance?: PopoverPositionerProps["collisionAvoidance"];
-  collisionPadding?: PopoverPositionerProps["collisionPadding"];
-  className?: string;
-};
+  trigger: ReactNode
+  children: ReactNode
+  open?: boolean
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  side?: PopoverSide
+  align?: PopoverAlign
+  sideOffset?: number
+  collisionAvoidance?: PopoverPositionerProps["collisionAvoidance"]
+  collisionPadding?: PopoverPositionerProps["collisionPadding"]
+  className?: string
+  overlay?: boolean
+}
 
 export function Popover({
   trigger,
@@ -39,6 +40,7 @@ export function Popover({
   },
   collisionPadding = 8,
   className,
+  overlay = false,
 }: PopoverProps) {
   return (
     <BasePopover.Root
@@ -51,8 +53,12 @@ export function Popover({
           if (isValidElement<{ className?: string }>(trigger)) {
             return cloneElement(trigger, {
               ...props,
-              className: cn("inline-flex", trigger.props.className, props.className),
-            });
+              className: cn(
+                "inline-flex",
+                trigger.props.className,
+                props.className
+              ),
+            })
           }
 
           return (
@@ -63,10 +69,17 @@ export function Popover({
             >
               {trigger}
             </button>
-          );
+          )
         }}
       />
       <BasePopover.Portal>
+        {overlay && (
+          <div
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => onOpenChange?.(false)}
+            aria-hidden="true"
+          />
+        )}
         <BasePopover.Positioner
           side={side}
           align={align}
@@ -76,9 +89,9 @@ export function Popover({
         >
           <BasePopover.Popup
             className={cn(
-              "max-h-[min(320px,var(--available-height))] min-w-[180px] max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-[10px] border border-an-border-color bg-an-background p-1 shadow-lg outline-none",
+              "max-h-[min(320px,var(--available-height,320px))] max-w-[calc(100vw-16px)] min-w-[180px] overflow-y-auto overscroll-contain rounded-[10px] border border-an-border-color bg-an-background p-1 shadow-lg outline-none",
               "text-an-foreground",
-              className,
+              className
             )}
           >
             {children}
@@ -86,5 +99,5 @@ export function Popover({
         </BasePopover.Positioner>
       </BasePopover.Portal>
     </BasePopover.Root>
-  );
+  )
 }
