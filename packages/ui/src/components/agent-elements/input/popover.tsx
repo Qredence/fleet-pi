@@ -74,11 +74,7 @@ export function Popover({
       />
       <BasePopover.Portal>
         {overlay && (
-          <div
-            className="fixed inset-0 z-40 bg-black/20"
-            onClick={() => onOpenChange?.(false)}
-            aria-hidden="true"
-          />
+          <div className="fixed inset-0 z-40 bg-black/20" aria-hidden="true" />
         )}
         <BasePopover.Positioner
           side={side}

@@ -20,6 +20,7 @@ export function useChatStorage() {
   // Default to "agent" for SSR hydration safety. The stored mode is applied
   // in useEffect after mount to avoid hydration mismatches.
   const [mode, setMode] = useState<ChatMode>("agent")
+  const [hasHydratedMode, setHasHydratedMode] = useState(false)
   const modeRef = useRef(mode)
   const activeSessionScope = getChatSessionScope(mode)
   const sessionMetadata = useMemo(
@@ -39,9 +40,10 @@ export function useChatStorage() {
 
   useEffect(() => {
     const storedMode = readStoredMode()
-    if (storedMode !== mode) {
+    if (storedMode !== modeRef.current) {
       setMode(storedMode)
     }
+    setHasHydratedMode(true)
   }, [])
 
   useEffect(() => {
@@ -53,8 +55,9 @@ export function useChatStorage() {
   }, [sessionMetadataByScope])
 
   useEffect(() => {
+    if (!hasHydratedMode) return
     storeMode(mode)
-  }, [mode])
+  }, [hasHydratedMode, mode])
 
   return {
     sessionMetadata,

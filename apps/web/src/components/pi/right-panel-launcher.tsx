@@ -1,4 +1,5 @@
 import { Folder, Library, Settings, X } from "lucide-react"
+import { useEffect, useId, useRef } from "react"
 import { getResourceGroups } from "./shared"
 import type { ReactNode } from "react"
 import type { RightPanel } from "@/lib/canvas-utils"
@@ -128,28 +129,49 @@ export function MobilePanel({
   open: boolean
   title?: string
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const panelTitleId = useId()
+
+  useEffect(() => {
+    if (open) {
+      panelRef.current?.focus()
+    }
+  }, [open])
+
   if (!open) return null
 
   return (
     <>
-      {/* Backdrop */}
-      <div
+      <button
+        type="button"
         className="fixed inset-0 z-40 bg-black/20 min-[960px]:hidden"
         onClick={onClose}
-        aria-hidden="true"
+        aria-label="Close panel"
       />
       <div
         className="fixed top-14 right-3 bottom-3 z-50 flex min-h-0 max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 min-[960px]:hidden"
         data-testid={dataTestid}
       >
-        <div className="h-full min-h-0 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur">
+        <div
+          ref={panelRef}
+          className="h-full min-h-0 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title ? undefined : "Panel"}
+          aria-labelledby={title ? panelTitleId : undefined}
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              onClose?.()
+            }
+          }}
+        >
           <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-            {/* Header */}
             {title && (
               <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-3">
                 <div className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground/80">
                   {Icon && <Icon className="size-3.5 shrink-0" />}
-                  <span>{title}</span>
+                  <span id={panelTitleId}>{title}</span>
                 </div>
                 {onClose && (
                   <button
