@@ -10,7 +10,7 @@ export async function resolveWorkspaceContext(
 ): Promise<AppRuntimeContext> {
   const context = resolveAppRuntimeContext()
 
-  if (!process.env.FLEET_PI_AUTH_DATABASE_URL || !process.env.DAYTONA_API_KEY) {
+  if (!process.env.DAYTONA_API_KEY) {
     return context
   }
 
