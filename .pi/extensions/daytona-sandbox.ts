@@ -14,9 +14,11 @@ import {
   getSandboxStatus,
   createSnapshot,
   deleteSnapshot,
+  createVolumeMount,
+  deleteVolume,
+  getOrCreateVolume,
+  listVolumes,
   type SandboxConfig,
-  type ExecuteResult,
-  type FileListEntry,
 } from "../../apps/web/src/lib/daytona/client"
 
 export default function daytonaSandboxExtension(pi: ExtensionAPI) {
@@ -57,13 +59,60 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
           description: "Optional disk in GiB (default: 3)",
         })
       ),
+      language: Type.Optional(
+        Type.String({
+          description:
+            "Optional code runtime language: python, typescript, or javascript",
+        })
+      ),
+      public: Type.Optional(
+        Type.Boolean({
+          description: "Whether sandbox port previews should be public",
+        })
+      ),
+      autoStopInterval: Type.Optional(
+        Type.Number({
+          description: "Optional auto-stop interval in minutes",
+        })
+      ),
+      volumeId: Type.Optional(
+        Type.String({
+          description: "Optional Daytona volume ID to mount",
+        })
+      ),
+      volumeMountPath: Type.Optional(
+        Type.String({
+          description:
+            "Absolute sandbox path where the Daytona volume should be mounted",
+        })
+      ),
+      volumeSubpath: Type.Optional(
+        Type.String({
+          description:
+            "Optional subpath inside the Daytona volume to expose at the mount path",
+        })
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const client = createDaytonaClient()
+      const volumes =
+        params.volumeId && params.volumeMountPath
+          ? [
+              createVolumeMount({
+                volumeId: params.volumeId,
+                mountPath: params.volumeMountPath,
+                subpath: params.volumeSubpath,
+              }),
+            ]
+          : undefined
       const config: SandboxConfig = {
         name: params.name,
         image: params.image,
         snapshot: params.snapshot,
+        language: params.language,
+        public: params.public,
+        autoStopInterval: params.autoStopInterval,
+        volumes,
         cpu: params.cpu,
         memory: params.memory,
         disk: params.disk,
@@ -98,11 +147,27 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
       command: Type.String({
         description: "The shell command to execute",
       }),
+      cwd: Type.Optional(
+        Type.String({
+          description: "Optional working directory inside the sandbox",
+        })
+      ),
+      timeout: Type.Optional(
+        Type.Number({
+          description: "Optional timeout in seconds",
+        })
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const client = createDaytonaClient()
       const sandbox = await client.get(params.sandboxId)
-      const result = await executeCommand(sandbox, params.command)
+      const result = await executeCommand(
+        sandbox,
+        params.command,
+        params.cwd,
+        undefined,
+        params.timeout
+      )
 
       return {
         content: [
@@ -131,11 +196,16 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
       code: Type.String({
         description: "The code to execute",
       }),
+      timeout: Type.Optional(
+        Type.Number({
+          description: "Optional timeout in seconds",
+        })
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
       const client = createDaytonaClient()
       const sandbox = await client.get(params.sandboxId)
-      const result = await runCode(sandbox, params.code)
+      const result = await runCode(sandbox, params.code, params.timeout)
 
       return {
         content: [
@@ -366,6 +436,89 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
     },
   })
 
+  pi.registerTool({
+    name: "daytona_get_or_create_volume",
+    label: "Daytona Get Or Create Volume",
+    description:
+      "Get a Daytona volume by name, creating it if it does not exist.",
+    parameters: Type.Object({
+      name: Type.String({
+        description: "The Daytona volume name",
+      }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const client = createDaytonaClient()
+      const volume = await getOrCreateVolume(client, params.name)
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Daytona volume:\n- ID: ${volume.id}\n- Name: ${volume.name}\n- State: ${volume.state ?? "unknown"}`,
+          },
+        ],
+        details: volume,
+      }
+    },
+  })
+
+  pi.registerTool({
+    name: "daytona_list_volumes",
+    label: "Daytona List Volumes",
+    description:
+      "List Daytona volumes available to the configured organization.",
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
+      const client = createDaytonaClient()
+      const volumes = await listVolumes(client)
+      const summary = volumes
+        .map(
+          (volume) =>
+            `- ${volume.name} (${volume.id}) ${volume.state ?? "unknown"}`
+        )
+        .join("\n")
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: summary
+              ? `Daytona volumes:\n${summary}`
+              : "No Daytona volumes found.",
+          },
+        ],
+        details: { volumes },
+      }
+    },
+  })
+
+  pi.registerTool({
+    name: "daytona_delete_volume",
+    label: "Daytona Delete Volume",
+    description:
+      "Delete a Daytona volume by name. This permanently removes persisted volume data.",
+    parameters: Type.Object({
+      name: Type.String({
+        description: "The Daytona volume name to delete",
+      }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const client = createDaytonaClient()
+      await deleteVolume(client, params.name)
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Deleted Daytona volume: ${params.name}`,
+          },
+        ],
+        details: {
+          name: params.name,
+        },
+      }
+    },
+  })
   pi.registerTool({
     name: "daytona_create_snapshot",
     label: "Daytona Create Snapshot",

@@ -99,6 +99,8 @@ export type ChatRequest = ChatSessionMetadata & {
   mode?: ChatMode
   planAction?: ChatPlanAction
   streamingBehavior?: "steer" | "followUp"
+  userId?: string
+  userEmail?: string
 }
 
 export type ChatQuestionAnswer = {

@@ -177,6 +177,29 @@ describe("answerChatQuestion", () => {
     })
   })
 
+  it("does not queue a follow-up onto another user's active runtime", async () => {
+    const sessionFile = join(root, ".fleet", "sessions", "shared-session.jsonl")
+    const { queuePromptOnActiveSession, retainPiRuntime } =
+      await import("./server-runtime")
+    const runtime = createMockRuntime("session-shared", sessionFile)
+    runtime.session.isStreaming = true
+
+    retainPiRuntime(runtime, "user-a")
+
+    const queued = await queuePromptOnActiveSession(
+      {
+        sessionFile,
+        sessionId: "session-shared",
+        userId: "user-b",
+      },
+      "queued prompt",
+      "followUp"
+    )
+
+    expect(queued).toBeUndefined()
+    expect(runtime.session.prompt).not.toHaveBeenCalled()
+  })
+
   it("limits active tools in harness mode to workspace architecture tools", async () => {
     const sessionFile = createSessionFile(root, "session-harness.jsonl")
     const { applyPlanMode, getChatMode } = await import("./plan-mode")

@@ -66,6 +66,8 @@ function QredenceLogo({ className }: { className?: string }) {
 
 export const Route = createFileRoute("/")({ component: Chat })
 
+const DOCUMENTATION_URL = "https://docs.qredence.ai"
+
 function buildSlashCommands(
   resources: ChatResourcesResponse | null,
   enabled: boolean
@@ -153,10 +155,15 @@ function AccountMenu() {
             <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Account</span>
           </button>
-          <button type="button" className={menuItemClass}>
+          <a
+            href={DOCUMENTATION_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={menuItemClass}
+          >
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Documentations</span>
-          </button>
+          </a>
           <button
             type="button"
             className={menuItemClass}
@@ -179,10 +186,15 @@ function AccountMenu() {
             <LogIn className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Sign in</span>
           </button>
-          <button type="button" className={menuItemClass}>
+          <a
+            href={DOCUMENTATION_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={menuItemClass}
+          >
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Documentations</span>
-          </button>
+          </a>
         </>
       )}
     </Popover>

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   createWorkspaceHealthFailure,
   loadAgentWorkspaceHealth,
 } from "@/lib/workspace/bootstrap-agent-workspace"
+import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
-export async function workspaceHealthHandler() {
-  const context = resolveAppRuntimeContext()
+export async function workspaceHealthHandler(request: Request) {
+  const context = await resolveWorkspaceContext(request)
 
   try {
     return Response.json(await loadAgentWorkspaceHealth(context))
@@ -18,7 +18,7 @@ export async function workspaceHealthHandler() {
 export const Route = createFileRoute("/api/workspace/health")({
   server: {
     handlers: {
-      GET: workspaceHealthHandler,
+      GET: ({ request }) => workspaceHealthHandler(request),
     },
   },
 })

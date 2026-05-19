@@ -160,6 +160,56 @@ again later."`
 
 ---
 
+## Auth Database Role Separation
+
+Production connects to the Neon auth database as `fleet_pi_app` (DML only).
+Local standalone development can leave `FLEET_PI_AUTH_DATABASE_URL` unset and
+use the SQLite fallback at `.fleet/auth.sqlite`. Schema migrations for Neon run
+as `neondb_owner` (full DDL).
+
+### Roles
+
+| Role           | Privileges                                    | Used by             |
+| -------------- | --------------------------------------------- | ------------------- |
+| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)    | Migration CLI only  |
+| `fleet_pi_app` | SELECT, INSERT, UPDATE, DELETE on auth tables | Running application |
+
+### Running migrations
+
+```bash
+pnpm --filter web auth:migrate
+```
+
+Requires `FLEET_PI_AUTH_MIGRATION_DATABASE_URL` to be set (neondb_owner connection
+string).
+
+### Adding new Better Auth plugins that create tables
+
+1. Run `pnpm --filter web auth:migrate` (creates the tables as neondb_owner)
+2. Grant DML on new tables to fleet_pi_app:
+   ```sql
+   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."<new_table>" TO fleet_pi_app;
+   ```
+3. Verify the app can access the new table
+
+### Rotating the fleet_pi_app password
+
+1. Connect as neondb_owner and run:
+   ```sql
+   ALTER ROLE fleet_pi_app PASSWORD '<new-password>';
+   ```
+2. Update `FLEET_PI_AUTH_DATABASE_URL` in all deployment environments
+3. Restart the application
+
+### Current auth tables
+
+- `public."user"` — User accounts
+- `public."session"` — Active sessions
+- `public."account"` — OAuth/credential accounts
+- `public."verification"` — Email verification tokens
+
+---
+
 ## Quick Reference
 
 | Command                                            | Purpose                                          |

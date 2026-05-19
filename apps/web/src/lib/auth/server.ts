@@ -2,18 +2,17 @@ import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { betterAuth } from "better-auth"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
+import { Pool } from "@neondatabase/serverless"
 import Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 
-function getAuthDatabasePath(): string {
-  if (process.env.AUTH_DATABASE_PATH) {
-    return process.env.AUTH_DATABASE_PATH
-  }
-  return resolve(getDefaultProjectRoot(), ".fleet", "auth.sqlite")
-}
-
 function openAuthDatabase() {
-  const dbPath = getAuthDatabasePath()
+  const url = process.env.FLEET_PI_AUTH_DATABASE_URL
+  if (url) return new Pool({ connectionString: url })
+
+  const dbPath =
+    process.env.AUTH_DATABASE_PATH ??
+    resolve(getDefaultProjectRoot(), ".fleet", "auth.sqlite")
   mkdirSync(dirname(dbPath), { recursive: true })
   const db = new Database(dbPath)
   migrateAuthSchema(db)

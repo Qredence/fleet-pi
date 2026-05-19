@@ -5,6 +5,7 @@ import type {
   TurnStartContext,
 } from "@/lib/pi/server-chat-stream"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { auth } from "@/lib/auth/server"
 import { ChatRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
@@ -36,9 +37,16 @@ export const Route = createFileRoute("/api/chat")({
 
         try {
           const runtimeContext = resolveAppRuntimeContext()
+          const authSession = await auth.api
+            .getSession({ headers: request.headers })
+            .catch(() => null)
           const body = ChatRequestSchema.parse(
             await request.json()
           ) as ChatRequest
+          if (authSession?.user) {
+            body.userId = authSession.user.id
+            body.userEmail = authSession.user.email
+          }
           const rawPrompt =
             typeof body.message === "string" ? body.message.trim() : ""
           const prompt = sanitizePii(rawPrompt)
@@ -98,7 +106,7 @@ export const Route = createFileRoute("/api/chat")({
                   body.model
                 )
                 const currentSession = result.runtime.session
-                releaseRuntime = retainPiRuntime(result.runtime)
+                releaseRuntime = retainPiRuntime(result.runtime, body.userId)
                 log.info(
                   {
                     sessionId: currentSession.sessionId,

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
 import {
   EXPECTED_PROJECT_EXTENSION_NAMES,
@@ -30,6 +31,25 @@ describe("resource expectations", () => {
     expect(diagnostics).toContain("Missing expected Pi extension: web-fetch")
     expect(diagnostics).toContain(
       "Missing expected Pi extension: resource-install"
+    )
+    expect(diagnostics).toContain(
+      "Missing expected Pi extension: daytona-sandbox"
+    )
+  })
+
+  it("keeps expected project extensions registered in Pi settings", async () => {
+    const settings = JSON.parse(
+      await readFile(
+        new URL("../../../../../.pi/settings.json", import.meta.url),
+        "utf8"
+      )
+    ) as { extensions?: Array<string> }
+
+    expect(settings.extensions).toEqual(
+      expect.arrayContaining([
+        "extensions/resource-install",
+        "extensions/daytona-sandbox",
+      ])
     )
   })
 })

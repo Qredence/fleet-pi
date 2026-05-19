@@ -30,7 +30,9 @@ describe("GET /api/workspace/health", () => {
     const projectRoot = createProjectRoot()
     process.env.FLEET_PI_REPO_ROOT = projectRoot
 
-    const response = await workspaceHealthHandler()
+    const response = await workspaceHealthHandler(
+      new Request("http://localhost:3000/api/workspace/health")
+    )
     const body = (await response.json()) as {
       status: string
       workspaceRoot: string
@@ -51,7 +53,9 @@ describe("GET /api/workspace/health", () => {
     process.env.FLEET_PI_REPO_ROOT = projectRoot
     writeFileSync(join(projectRoot, "agent-workspace"), "blocked")
 
-    const response = await workspaceHealthHandler()
+    const response = await workspaceHealthHandler(
+      new Request("http://localhost:3000/api/workspace/health")
+    )
     const body = (await response.json()) as {
       status: string
       workspace: { available: boolean }

@@ -34,6 +34,13 @@ const config = defineConfig({
       brotliSize: true,
     }),
   ],
+  ssr: {
+    external: [
+      "@daytonaio/sdk",
+      "@daytona/api-client",
+      "@daytona/toolbox-api-client",
+    ],
+  },
 })
 
 export default config
