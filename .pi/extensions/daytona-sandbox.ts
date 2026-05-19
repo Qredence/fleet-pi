@@ -21,6 +21,8 @@ import {
   type SandboxConfig,
 } from "../../apps/web/src/lib/daytona/client"
 
+const DOWNLOAD_PREVIEW_MAX_BYTES = 64 * 1024
+
 export default function daytonaSandboxExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "daytona_create_sandbox",
@@ -272,19 +274,26 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
       const client = createDaytonaClient()
       const sandbox = await client.get(params.sandboxId)
       const buffer = await downloadFile(sandbox, params.path)
-      const content = buffer.toString("utf-8")
+      const previewBuffer = buffer.subarray(0, DOWNLOAD_PREVIEW_MAX_BYTES)
+      const content = previewBuffer.toString("utf-8")
+      const truncated = buffer.length > DOWNLOAD_PREVIEW_MAX_BYTES
+      const suffix = truncated
+        ? `\n\n[truncated after ${DOWNLOAD_PREVIEW_MAX_BYTES} bytes]`
+        : ""
 
       return {
         content: [
           {
             type: "text",
-            text: `Downloaded file from ${params.path} (${buffer.length} bytes):\n${content}`,
+            text: `Downloaded file from ${params.path} (${buffer.length} bytes):\n${content}${suffix}`,
           },
         ],
         details: {
           path: params.path,
           size: buffer.length,
-          content,
+          preview: content,
+          previewBytes: previewBuffer.length,
+          truncated,
         },
       }
     },

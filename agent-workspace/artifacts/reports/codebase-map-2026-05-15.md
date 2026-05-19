@@ -53,47 +53,46 @@ _Generated: 2026-05-15_
 | `api/workspace/search.ts`  | `GET /api/workspace/search`   | Full-text workspace search                                                      |
 | `api/workspace/reindex.ts` | `POST /api/workspace/reindex` | Trigger SQLite workspace re-index                                               |
 | `api/workspace/health.ts`  | `GET /api/workspace/health`   | Workspace index health                                                          |
+| `api/webhooks/daytona.ts`  | `POST /api/webhooks/daytona`  | Daytona sandbox lifecycle webhook                                               |
 
 ### 2b. Lib Modules (`apps/web/src/lib/`)
 
 **`pi/`** — Pi agent integration (server + browser)
 
-| File                               | Purpose                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `server.ts`                        | Master Pi server setup: session validation, event normalization, model discovery, transcript hydration |
-| `server-runtime.ts`                | `AgentSessionRuntime` lifecycle + in-memory TTL cache                                                  |
-| `server-sessions.ts`               | Pi session CRUD helpers                                                                                |
-| `server-chat-stream.ts`            | NDJSON streaming loop from Pi runtime                                                                  |
-| `server-settings.ts`               | `.pi/settings.json` read/write logic                                                                   |
-| `server-shared.ts`                 | Shared server-only Pi helpers                                                                          |
-| `server-utils.ts`                  | Misc server utilities                                                                                  |
-| `server-catalog.ts`                | Resource catalog construction                                                                          |
-| `chat-protocol.ts`                 | Browser-safe NDJSON event type definitions                                                             |
-| `chat-protocol.zod.ts`             | Zod schemas for chat protocol events                                                                   |
-| `chat-client.ts`                   | Browser client wrapping `/api/chat` stream                                                             |
-| `chat-fetch.ts`                    | Fetch wrapper for chat API                                                                             |
-| `chat-helpers.ts`                  | Event/message normalisation helpers                                                                    |
-| `chat-message-helpers.ts`          | Per-message part helpers                                                                               |
-| `chat-queries.ts`                  | TanStack Query hooks for chat data                                                                     |
-| `chat-stream-state.ts`             | Client-side streaming state machine                                                                    |
-| `plan-mode.ts`                     | Web-native Pi Plan Mode extension (read-only tools, plan extraction, question flow)                    |
-| `plan-parser.ts`                   | Parse numbered `Plan:` steps from assistant output                                                     |
-| `plan-state.ts`                    | Plan execution state (steps, progress, mode)                                                           |
-| `plan-questionnaire.ts`            | Plan-mode question helpers                                                                             |
-| `command-policy.ts`                | Bash command allow/block policy for Plan mode                                                          |
-| `circuit-breaker.ts`               | Opossum circuit breaker for Pi runtime calls                                                           |
-| `use-pi-chat.ts`                   | Top-level React hook composing Pi chat state                                                           |
-| `use-chat-shell-state.ts`          | Shell-level ephemeral chat state (queued messages, abort)                                              |
-| `use-chat-storage.ts`              | localStorage session-metadata persistence                                                              |
-| `use-chat-view.ts`                 | View-level scroll / message-list state                                                                 |
-| `resource-install.ts`              | Browser-side resource install trigger                                                                  |
-| `resource-install-refresh.ts`      | Post-install reload logic                                                                              |
-| `resource-expectations.ts`         | Expected resource presence checks                                                                      |
-| `workspace-resource-catalog.ts`    | Workspace-level Pi resource catalog                                                                    |
-| `run-provenance.ts`                | Run provenance data helpers                                                                            |
-| `provenance-query.ts`              | TanStack Query hooks for provenance                                                                    |
-| `url-security.ts` (lib/)           | URL allow-list for web-fetch tool                                                                      |
-| `workspace-memory-index.ts` (lib/) | Pi workspace memory index integration                                                                  |
+| File                            | Purpose                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `server.ts`                     | Master Pi server setup: session validation, event normalization, model discovery, transcript hydration |
+| `server-runtime.ts`             | `AgentSessionRuntime` lifecycle + in-memory TTL cache                                                  |
+| `server-sessions.ts`            | Pi session CRUD helpers                                                                                |
+| `server-chat-stream.ts`         | NDJSON streaming loop from Pi runtime                                                                  |
+| `server-settings.ts`            | `.pi/settings.json` read/write logic                                                                   |
+| `server-shared.ts`              | Shared server-only Pi helpers                                                                          |
+| `server-utils.ts`               | Misc server utilities                                                                                  |
+| `server-catalog.ts`             | Resource catalog construction                                                                          |
+| `chat-protocol.ts`              | Browser-safe NDJSON event type definitions                                                             |
+| `chat-protocol.zod.ts`          | Zod schemas for chat protocol events                                                                   |
+| `chat-client.ts`                | Browser client wrapping `/api/chat` stream                                                             |
+| `chat-fetch.ts`                 | Fetch wrapper for chat API                                                                             |
+| `chat-helpers.ts`               | Event/message normalisation helpers                                                                    |
+| `chat-message-helpers.ts`       | Per-message part helpers                                                                               |
+| `chat-queries.ts`               | TanStack Query hooks for chat data                                                                     |
+| `chat-stream-state.ts`          | Client-side streaming state machine                                                                    |
+| `plan-mode.ts`                  | Web-native Pi Plan Mode extension (read-only tools, plan extraction, question flow)                    |
+| `plan-parser.ts`                | Parse numbered `Plan:` steps from assistant output                                                     |
+| `plan-state.ts`                 | Plan execution state (steps, progress, mode)                                                           |
+| `plan-questionnaire.ts`         | Plan-mode question helpers                                                                             |
+| `command-policy.ts`             | Bash command allow/block policy for Plan mode                                                          |
+| `circuit-breaker.ts`            | Opossum circuit breaker for Pi runtime calls                                                           |
+| `use-pi-chat.ts`                | Top-level React hook composing Pi chat state                                                           |
+| `use-chat-shell-state.ts`       | Shell-level ephemeral chat state (queued messages, abort)                                              |
+| `use-chat-storage.ts`           | localStorage session-metadata persistence                                                              |
+| `use-chat-view.ts`              | View-level scroll / message-list state                                                                 |
+| `resource-install.ts`           | Browser-side resource install trigger                                                                  |
+| `resource-install-refresh.ts`   | Post-install reload logic                                                                              |
+| `resource-expectations.ts`      | Expected resource presence checks                                                                      |
+| `workspace-resource-catalog.ts` | Workspace-level Pi resource catalog                                                                    |
+| `run-provenance.ts`             | Run provenance data helpers                                                                            |
+| `provenance-query.ts`           | TanStack Query hooks for provenance                                                                    |
 
 **`workspace/`** — `agent-workspace/` server management
 
@@ -274,9 +273,9 @@ The primary chat/tool rendering system:
 | `lib/url-security.ts`           | URL allow-list for web-fetch                                                 |
 | `lib/workspace-memory-index.ts` | Workspace memory index helpers                                               |
 
-### `.pi/npm/`
+### Pi npm packages
 
-Pi packages installed locally (pi-autoresearch, pi-skill-palette, pi-autocontext, pi-subagents, zod).
+Pi package resources are configured as npm package specifiers in `.pi/settings.json`, not vendored under `.pi/npm/`.
 
 ---
 
