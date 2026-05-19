@@ -145,6 +145,18 @@ describe("WriteOperations", () => {
       "mkdir -p '/home/daytona/deep/nested/dir'"
     )
   })
+
+  it("throws when mkdir fails", async () => {
+    mockedExecuteCommand.mockResolvedValue({
+      result: "permission denied",
+      exitCode: 1,
+    })
+    const ops = createSandboxWriteOperations(sandbox)
+
+    await expect(ops.mkdir("/home/daytona/deep")).rejects.toThrow(
+      "Failed to create sandbox directory"
+    )
+  })
 })
 
 describe("EditOperations", () => {
@@ -225,6 +237,21 @@ describe("FindOperations", () => {
     })
 
     expect(results).toEqual(["/home/daytona/a.ts", "/home/daytona/b.ts"])
+  })
+
+  it("throws when find exits non-zero", async () => {
+    mockedExecuteCommand.mockResolvedValue({
+      result: "missing cwd",
+      exitCode: 1,
+    })
+    const ops = createSandboxFindOperations(sandbox)
+
+    await expect(
+      ops.glob("*.ts", "/home/daytona/missing", {
+        ignore: [],
+        limit: 100,
+      })
+    ).rejects.toThrow("Sandbox find failed")
   })
 })
 

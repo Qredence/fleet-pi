@@ -129,7 +129,11 @@ export async function createSandbox(
       ...baseConfig,
       image: DEFAULT_IMAGE,
       name,
-      resources: DEFAULT_RESOURCES,
+      resources: {
+        cpu: cpu ?? DEFAULT_RESOURCES.cpu,
+        memory: memory ?? DEFAULT_RESOURCES.memory,
+        disk: disk ?? DEFAULT_RESOURCES.disk,
+      },
     })
   } catch (error) {
     if (error instanceof DaytonaError) {

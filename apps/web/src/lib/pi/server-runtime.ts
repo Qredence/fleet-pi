@@ -63,6 +63,10 @@ import {
 } from "@/lib/daytona/sandbox-operations"
 import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
 import { executeCommand as daytonaExecuteCommand } from "@/lib/daytona/client"
+import {
+  trackDaytonaToolSession,
+  untrackDaytonaToolSession,
+} from "@/lib/daytona/tool-context"
 
 const DEFAULT_RUNTIME_TTL_MS = 600_000
 
@@ -339,7 +343,7 @@ export function answerChatQuestion(
 
 function findRuntimeRecord(metadata: ChatRuntimeMetadata) {
   const matchesUser = (active: ActiveSessionRecord) =>
-    active.userId === metadata.userId
+    metadata.userId === undefined || active.userId === metadata.userId
 
   if (metadata.sessionFile) {
     const requested = safeRealpath(metadata.sessionFile)
@@ -388,6 +392,7 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   record.sessionId = session.sessionId
   record.lastUsedAt = Date.now()
   if (userId) record.userId = userId
+  trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
   runtimeRecords.set(session.sessionId, record)
   return record
 }
@@ -427,6 +432,7 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
 
       clearPlanModeSession(record.sessionId)
       runtimeRecords.delete(record.sessionId)
+      untrackDaytonaToolSession(record.sessionId, record.sessionFile)
       if (record.userId && !hasOtherRuntimeForUser(record.userId)) {
         void releaseUserSandbox(record.userId)
       }

@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { daytonaWebhookHandler } from "./daytona"
 
-const { clearSandboxCache, getCachedUserSandbox } = vi.hoisted(() => ({
-  clearSandboxCache: vi.fn(),
+const { clearUserSandboxCache, getCachedUserSandbox } = vi.hoisted(() => ({
+  clearUserSandboxCache: vi.fn(),
   getCachedUserSandbox: vi.fn(),
 }))
 
 vi.mock("@/lib/daytona/user-sandbox", () => ({
-  clearSandboxCache,
+  clearUserSandboxCache,
   getCachedUserSandbox,
 }))
 
@@ -34,7 +34,7 @@ describe("daytonaWebhookHandler", () => {
 
     expect(response.status).toBe(200)
     expect(getCachedUserSandbox).not.toHaveBeenCalled()
-    expect(clearSandboxCache).not.toHaveBeenCalled()
+    expect(clearUserSandboxCache).not.toHaveBeenCalled()
   })
 
   it("does not mutate sandbox cache when the signature is invalid", async () => {
@@ -47,7 +47,7 @@ describe("daytonaWebhookHandler", () => {
 
     expect(response.status).toBe(200)
     expect(getCachedUserSandbox).not.toHaveBeenCalled()
-    expect(clearSandboxCache).not.toHaveBeenCalled()
+    expect(clearUserSandboxCache).not.toHaveBeenCalled()
   })
 
   it("clears cached sandbox state for verified error webhooks", async () => {
@@ -60,7 +60,7 @@ describe("daytonaWebhookHandler", () => {
 
     expect(response.status).toBe(200)
     expect(getCachedUserSandbox).toHaveBeenCalledWith("user-1")
-    expect(clearSandboxCache).toHaveBeenCalledTimes(1)
+    expect(clearUserSandboxCache).toHaveBeenCalledWith("user-1")
   })
 })
 

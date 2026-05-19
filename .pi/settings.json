@@ -19,6 +19,7 @@
   "defaultModel": "us.anthropic.claude-sonnet-4-6",
   "defaultThinkingLevel": "high",
   "enabledModels": [
+    "amazon-bedrock/us.anthropic.claude-sonnet-4-6",
     "amazon-bedrock/anthropic.claude-sonnet-4-6",
     "amazon-bedrock/global.anthropic.claude-sonnet-4-6"
   ]

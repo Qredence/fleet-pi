@@ -2,7 +2,6 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import {
   createDaytonaClient,
-  createSandbox,
   executeCommand,
   runCode,
   uploadFile,
@@ -18,8 +17,17 @@ import {
   deleteVolume,
   getOrCreateVolume,
   listVolumes,
-  type SandboxConfig,
+  type VolumeInfo,
 } from "../../apps/web/src/lib/daytona/client"
+import {
+  getCachedUserSandbox,
+  getSessionVolumeName,
+  getUserSandbox,
+  getVolumeName,
+  type UserSandboxHandle,
+} from "../../apps/web/src/lib/daytona/user-sandbox"
+import { resolveDaytonaToolUser } from "../../apps/web/src/lib/daytona/tool-context"
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent"
 
 const DOWNLOAD_PREVIEW_MAX_BYTES = 64 * 1024
 
@@ -95,31 +103,18 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         })
       ),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const volumes =
-        params.volumeId && params.volumeMountPath
-          ? [
-              createVolumeMount({
-                volumeId: params.volumeId,
-                mountPath: params.volumeMountPath,
-                subpath: params.volumeSubpath,
-              }),
-            ]
-          : undefined
-      const config: SandboxConfig = {
-        name: params.name,
-        image: params.image,
-        snapshot: params.snapshot,
-        language: params.language,
-        public: params.public,
-        autoStopInterval: params.autoStopInterval,
-        volumes,
-        cpu: params.cpu,
-        memory: params.memory,
-        disk: params.disk,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const handle = await getAuthorizedHandle(ctx)
+      assertSandboxName(handle, params.name)
+      assertVolumeMount(handle, params.volumeId)
+      if (params.volumeId && params.volumeMountPath) {
+        createVolumeMount({
+          volumeId: params.volumeId,
+          mountPath: params.volumeMountPath,
+          subpath: params.volumeSubpath,
+        })
       }
-      const sandbox = await createSandbox(client, config)
+      const sandbox = handle.sandbox
 
       return {
         content: [
@@ -160,9 +155,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         })
       ),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       const result = await executeCommand(
         sandbox,
         params.command,
@@ -204,9 +198,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         })
       ),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       const result = await runCode(sandbox, params.code, params.timeout)
 
       return {
@@ -239,9 +232,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The destination path in the sandbox",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       await uploadFile(sandbox, params.content, params.path)
 
       return {
@@ -270,9 +262,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The path of the file to download",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       const buffer = await downloadFile(sandbox, params.path)
       const previewBuffer = buffer.subarray(0, DOWNLOAD_PREVIEW_MAX_BYTES)
       const content = previewBuffer.toString("utf-8")
@@ -311,9 +302,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The directory path to list",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       const files = await listFiles(sandbox, params.path)
 
       const fileList = files
@@ -344,9 +334,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The sandbox ID to stop",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       await stopSandbox(sandbox)
 
       return {
@@ -372,9 +361,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The sandbox ID to start",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       await startSandbox(sandbox)
 
       return {
@@ -400,9 +388,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The sandbox ID to delete",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       await deleteSandbox(sandbox)
 
       return {
@@ -428,9 +415,8 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The sandbox ID to get status for",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const client = createDaytonaClient()
-      const sandbox = await client.get(params.sandboxId)
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const sandbox = await getAuthorizedSandbox(ctx, params.sandboxId)
       const status = await getSandboxStatus(sandbox)
 
       return {
@@ -455,7 +441,9 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The Daytona volume name",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const userId = requireDaytonaToolUser(ctx)
+      assertUserVolumeName(userId, params.name)
       const client = createDaytonaClient()
       const volume = await getOrCreateVolume(client, params.name)
 
@@ -477,9 +465,10 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
     description:
       "List Daytona volumes available to the configured organization.",
     parameters: Type.Object({}),
-    async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      const userId = requireDaytonaToolUser(ctx)
       const client = createDaytonaClient()
-      const volumes = await listVolumes(client)
+      const volumes = filterUserVolumes(userId, await listVolumes(client))
       const summary = volumes
         .map(
           (volume) =>
@@ -511,7 +500,9 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
         description: "The Daytona volume name to delete",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const userId = requireDaytonaToolUser(ctx)
+      assertUserVolumeName(userId, params.name)
       const client = createDaytonaClient()
       await deleteVolume(client, params.name)
 
@@ -583,4 +574,70 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
       }
     },
   })
+}
+
+function requireDaytonaToolUser(ctx: ExtensionContext): string {
+  const userId = resolveDaytonaToolUser(
+    ctx.sessionManager.getSessionId(),
+    ctx.sessionManager.getSessionFile()
+  )
+  if (!userId) {
+    throw new Error("Daytona tools require an authenticated Fleet Pi session.")
+  }
+  return userId
+}
+
+async function getAuthorizedHandle(ctx: ExtensionContext) {
+  const userId = requireDaytonaToolUser(ctx)
+  return getCachedUserSandbox(userId) ?? getUserSandbox({ userId })
+}
+
+async function getAuthorizedSandbox(ctx: ExtensionContext, sandboxId: string) {
+  const handle = await getAuthorizedHandle(ctx)
+  assertSandboxId(handle, sandboxId)
+  return handle.sandbox
+}
+
+function assertSandboxId(handle: UserSandboxHandle, sandboxId: string) {
+  if (sandboxId !== handle.sandboxId && sandboxId !== handle.sandbox.name) {
+    throw new Error(
+      "Daytona sandbox access is limited to your Fleet Pi sandbox."
+    )
+  }
+}
+
+function assertSandboxName(
+  handle: UserSandboxHandle,
+  name: string | undefined
+) {
+  if (name && name !== handle.sandbox.name && name !== handle.sandboxId) {
+    throw new Error(
+      "Daytona sandbox creation is limited to your Fleet Pi sandbox."
+    )
+  }
+}
+
+function assertVolumeMount(
+  handle: UserSandboxHandle,
+  volumeId: string | undefined
+) {
+  if (volumeId && volumeId !== handle.volumeId) {
+    throw new Error(
+      "Daytona volume mounts are limited to your Fleet Pi volume."
+    )
+  }
+}
+
+function assertUserVolumeName(userId: string, name: string) {
+  const allowed = new Set([getVolumeName(userId), getSessionVolumeName(userId)])
+  if (!allowed.has(name)) {
+    throw new Error(
+      "Daytona volume access is limited to your Fleet Pi volumes."
+    )
+  }
+}
+
+function filterUserVolumes(userId: string, volumes: Array<VolumeInfo>) {
+  const allowed = new Set([getVolumeName(userId), getSessionVolumeName(userId)])
+  return volumes.filter((volume) => allowed.has(volume.name))
 }

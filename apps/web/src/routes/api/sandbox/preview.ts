@@ -30,7 +30,12 @@ export const Route = createFileRoute("/api/sandbox/preview")({
 
         const url = new URL(request.url)
         const port = Number(url.searchParams.get("port") ?? "3000")
-        if (!Number.isFinite(port) || port < 1 || port > 65535) {
+        if (
+          !Number.isFinite(port) ||
+          !Number.isInteger(port) ||
+          port < 1 ||
+          port > 65535
+        ) {
           return Response.json({ error: "Invalid port" }, { status: 400 })
         }
 

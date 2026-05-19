@@ -3,6 +3,7 @@ import {
   createSandbox,
   createVolumeMount,
   deleteSandbox,
+  executeCommand,
   getOrCreateVolume,
   getSandboxStatus,
   startSandbox,
@@ -17,6 +18,8 @@ const SESSION_VOLUME_PREFIX = "fleet-pi-sessions-"
 const MANAGED_BY_LABEL = "fleet-pi"
 const WORKSPACE_MOUNT_PATH = "/home/daytona/fleet-pi/agent-workspace"
 const SESSION_MOUNT_PATH = "/home/daytona/fleet-pi/.fleet"
+const REPOSITORY_ROOT = "/home/daytona/fleet-pi"
+const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
 export interface UserSandboxConfig {
   userId: string
@@ -35,6 +38,7 @@ export interface UserSandboxHandle {
 }
 
 const userSandboxes = new Map<string, UserSandboxHandle>()
+const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 
 export function isDaytonaEnabled(userId?: string): boolean {
   return Boolean(userId) && Boolean(process.env.DAYTONA_API_KEY)
@@ -48,7 +52,7 @@ export function getVolumeName(userId: string): string {
   return `${VOLUME_NAME_PREFIX}${userId}`
 }
 
-function getSessionVolumeName(userId: string): string {
+export function getSessionVolumeName(userId: string): string {
   return `${SESSION_VOLUME_PREFIX}${userId}`
 }
 
@@ -57,6 +61,19 @@ export function isSessionPersistenceEnabled(): boolean {
 }
 
 export async function getUserSandbox(
+  config: UserSandboxConfig
+): Promise<UserSandboxHandle> {
+  const inFlight = userSandboxRequests.get(config.userId)
+  if (inFlight) return inFlight
+
+  const request = resolveUserSandbox(config).finally(() => {
+    userSandboxRequests.delete(config.userId)
+  })
+  userSandboxRequests.set(config.userId, request)
+  return request
+}
+
+async function resolveUserSandbox(
   config: UserSandboxConfig
 ): Promise<UserSandboxHandle> {
   const cached = userSandboxes.get(config.userId)
@@ -77,6 +94,11 @@ export async function getUserSandbox(
   let sandbox: Sandbox
 
   if (existing) {
+    if (!isManagedSandboxForUser(existing, config.userId)) {
+      throw new Error(
+        `Refusing to use unmanaged Daytona sandbox named ${sandboxName}`
+      )
+    }
     sandbox = existing
     if (existing.state === "stopped" || existing.state === "archived") {
       await startSandbox(existing)
@@ -114,6 +136,7 @@ export async function getUserSandbox(
       autoStopInterval: 30,
     })
   }
+  await ensureRepositoryCheckout(sandbox)
 
   const handle: UserSandboxHandle = {
     sandbox,
@@ -157,6 +180,12 @@ export function getCachedUserSandbox(
 
 export function clearSandboxCache(): void {
   userSandboxes.clear()
+  userSandboxRequests.clear()
+}
+
+export function clearUserSandboxCache(userId: string): void {
+  userSandboxes.delete(userId)
+  userSandboxRequests.delete(userId)
 }
 
 function buildLabels(config: UserSandboxConfig): Record<string, string> {
@@ -176,6 +205,36 @@ async function isSandboxHealthy(sandbox: Sandbox): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+function isManagedSandboxForUser(sandbox: Sandbox, userId: string): boolean {
+  const labels = (sandbox as { labels?: Record<string, string> }).labels
+  return labels?.managedBy === MANAGED_BY_LABEL && labels.userId === userId
+}
+
+async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
+  const repoUrl = process.env.FLEET_PI_REPOSITORY_URL ?? DEFAULT_REPOSITORY_URL
+  const command = [
+    `if [ ! -d ${shellEscape(`${REPOSITORY_ROOT}/.git`)} ]; then`,
+    "if ! command -v git >/dev/null 2>&1; then",
+    "apt-get update && apt-get install -y git ca-certificates;",
+    "fi;",
+    "tmpdir=$(mktemp -d);",
+    `git clone --depth 1 ${shellEscape(repoUrl)} "$tmpdir";`,
+    `mkdir -p ${shellEscape(REPOSITORY_ROOT)};`,
+    `cp -a "$tmpdir"/. ${shellEscape(REPOSITORY_ROOT)}/;`,
+    'rm -rf "$tmpdir";',
+    "fi;",
+    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)} ${shellEscape(SESSION_MOUNT_PATH)}`,
+  ].join(" ")
+  const result = await executeCommand(sandbox, command)
+  if (result.exitCode !== 0) {
+    throw new Error(`Failed to prepare Daytona repository: ${result.result}`)
+  }
+}
+
+function shellEscape(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`
 }
 
 async function findExistingSandbox(

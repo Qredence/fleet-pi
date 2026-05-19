@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { createFileRoute } from "@tanstack/react-router"
 import {
-  clearSandboxCache,
+  clearUserSandboxCache,
   getCachedUserSandbox,
 } from "@/lib/daytona/user-sandbox"
 
@@ -67,7 +67,7 @@ function handleSandboxEvent(payload: DaytonaWebhookPayload) {
         console.warn(
           `Sandbox ${sandboxName} entered error state for user ${userId}, clearing cache`
         )
-        clearSandboxCache()
+        clearUserSandboxCache(userId)
       }
     }
   }

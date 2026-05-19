@@ -51,7 +51,15 @@ export function createSandboxWriteOperations(
       await uploadFile(sandbox, content, absolutePath)
     },
     mkdir: async (dir) => {
-      await executeCommand(sandbox, `mkdir -p ${shellEscape(dir)}`)
+      const result = await executeCommand(
+        sandbox,
+        `mkdir -p ${shellEscape(dir)}`
+      )
+      if (result.exitCode !== 0) {
+        throw new Error(
+          `Failed to create sandbox directory ${dir}: ${result.result}`
+        )
+      }
     },
   }
 }
@@ -114,6 +122,9 @@ export function createSandboxFindOperations(sandbox: Sandbox): FindOperations {
         .join(" ")
       const cmd = `find ${shellEscape(cwd)} -name ${shellEscape(pattern)} ${ignoreArgs} | head -n ${limit}`
       const result = await executeCommand(sandbox, cmd)
+      if (result.exitCode !== 0) {
+        throw new Error(`Sandbox find failed: ${result.result}`)
+      }
       return result.result
         .split("\n")
         .map((l) => l.trim())

@@ -89,7 +89,7 @@ When `FLEET_PI_PERSIST_SESSIONS=true`, a second volume (`fleet-pi-sessions-{user
 
 ## Chat tool workflow
 
-The `.pi/extensions/daytona-sandbox` extension still provides 14 explicit tools for direct sandbox management (Agent/Harness mode only). These are separate from the transparent tool routing above — they let the agent create additional sandboxes, manage volumes/snapshots explicitly, etc.
+The `.pi/extensions/daytona-sandbox` extension still provides 15 explicit tools for direct sandbox management (Agent/Harness mode only). These are separate from the transparent tool routing above — they let the agent manage the authenticated user's sandbox, volumes, and snapshots explicitly.
 
 Plan mode remains read-only and does not allow Daytona sandbox tools.
 
@@ -124,8 +124,8 @@ Each user (default): 1 vCPU + 1 GB RAM + 3 GB disk when running.
 | `apps/web/src/lib/pi/server-runtime.ts`          | Runtime wiring (sandbox provisioning + customTools) |
 | `apps/web/src/routes/api/sandbox/preview.ts`     | Auth-gated preview URL endpoint                     |
 | `apps/web/src/routes/api/webhooks/daytona.ts`    | Webhook lifecycle event handler                     |
+| `.pi/extensions/daytona-sandbox.ts`              | 15 explicit Daytona tools for agent                 |
 
 Webhook lifecycle events are accepted for observability without a secret, but
 cache-mutating side effects only run when `x-daytona-signature` matches
 `DAYTONA_WEBHOOK_SECRET`.
-| `.pi/extensions/daytona-sandbox.ts` | 14 explicit Daytona tools for agent |

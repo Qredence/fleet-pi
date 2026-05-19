@@ -66,6 +66,9 @@ const DAYTONA_SANDBOX_TOOLS = [
   "daytona_start_sandbox",
   "daytona_delete_sandbox",
   "daytona_get_status",
+  "daytona_get_or_create_volume",
+  "daytona_list_volumes",
+  "daytona_delete_volume",
   "daytona_create_snapshot",
   "daytona_delete_snapshot",
 ]

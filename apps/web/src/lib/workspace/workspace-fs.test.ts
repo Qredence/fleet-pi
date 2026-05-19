@@ -13,7 +13,7 @@ describe("SandboxWorkspaceFS", () => {
   describe("stat", () => {
     it("detects directories", async () => {
       mockedExecuteCommand.mockResolvedValue({
-        result: "directory\n",
+        result: "directory 4096\n",
         exitCode: 0,
       })
       const fs = createSandboxWorkspaceFS(ops)
@@ -25,7 +25,7 @@ describe("SandboxWorkspaceFS", () => {
 
     it("detects regular files", async () => {
       mockedExecuteCommand.mockResolvedValue({
-        result: "regular file\n",
+        result: "regular file 123\n",
         exitCode: 0,
       })
       const fs = createSandboxWorkspaceFS(ops)
@@ -35,11 +35,12 @@ describe("SandboxWorkspaceFS", () => {
       )
       expect(s.isDirectory()).toBe(false)
       expect(s.isFile()).toBe(true)
+      expect(s.size).toBe(123)
     })
 
     it("detects regular empty files", async () => {
       mockedExecuteCommand.mockResolvedValue({
-        result: "regular empty file\n",
+        result: "regular empty file 0\n",
         exitCode: 0,
       })
       const fs = createSandboxWorkspaceFS(ops)
@@ -105,6 +106,18 @@ describe("SandboxWorkspaceFS", () => {
         "mkdir '/home/daytona/fleet-pi/agent-workspace/new'"
       )
     })
+
+    it("throws when directory creation fails", async () => {
+      mockedExecuteCommand.mockResolvedValue({
+        result: "permission denied",
+        exitCode: 1,
+      })
+      const fs = createSandboxWorkspaceFS(ops)
+
+      await expect(
+        fs.mkdir("/home/daytona/fleet-pi/agent-workspace/new")
+      ).rejects.toMatchObject({ code: "EIO" })
+    })
   })
 
   describe("writeFile", () => {
@@ -161,6 +174,29 @@ describe("SandboxWorkspaceFS", () => {
         c[0].includes("base64 -d")
       )
       expect(writeCall).toBeDefined()
+    })
+
+    it("throws when parent directory creation fails", async () => {
+      mockedExecuteCommand.mockResolvedValue({
+        result: "permission denied",
+        exitCode: 1,
+      })
+      const fs = createSandboxWorkspaceFS(ops)
+
+      await expect(
+        fs.writeFile("/home/daytona/fleet-pi/agent-workspace/new.md", "content")
+      ).rejects.toMatchObject({ code: "EIO" })
+    })
+
+    it("throws when the sandbox write command fails", async () => {
+      mockedExecuteCommand
+        .mockResolvedValueOnce({ result: "", exitCode: 0 })
+        .mockResolvedValueOnce({ result: "disk full", exitCode: 1 })
+      const fs = createSandboxWorkspaceFS(ops)
+
+      await expect(
+        fs.writeFile("/home/daytona/fleet-pi/agent-workspace/new.md", "content")
+      ).rejects.toMatchObject({ code: "EIO" })
     })
   })
 

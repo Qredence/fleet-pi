@@ -162,7 +162,7 @@ function AccountMenu() {
             className={menuItemClass}
           >
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Documentations</span>
+            <span className="truncate">Documentation</span>
           </a>
           <button
             type="button"
@@ -193,7 +193,7 @@ function AccountMenu() {
             className={menuItemClass}
           >
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Documentations</span>
+            <span className="truncate">Documentation</span>
           </a>
         </>
       )}

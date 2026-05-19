@@ -92,4 +92,31 @@ describe("Daytona client", () => {
       ],
     })
   })
+
+  it("passes resource overrides when using the default Daytona image", async () => {
+    const calls: Array<unknown> = []
+    const sandbox = { id: "sandbox-1" } as Sandbox
+    const client = {
+      create: (params: unknown) => {
+        calls.push(params)
+        return Promise.resolve(sandbox)
+      },
+    } as unknown as Daytona
+
+    await createSandbox(client, {
+      name: "fleet-pi",
+      cpu: 2,
+      memory: 4,
+      disk: 8,
+    })
+
+    expect(calls[0]).toMatchObject({
+      image: "debian:12.9",
+      resources: {
+        cpu: 2,
+        memory: 4,
+        disk: 8,
+      },
+    })
+  })
 })

@@ -59,8 +59,11 @@ function makeMockSandbox(overrides?: Partial<Sandbox>): Sandbox {
     id: "sandbox-abc",
     name: "fleet-pi-user-user123",
     state: "started",
-    labels: {},
-    process: { executeCommand: vi.fn(), codeRun: vi.fn() },
+    labels: { managedBy: "fleet-pi", userId: "user123" },
+    process: {
+      executeCommand: vi.fn().mockResolvedValue({ result: "", exitCode: 0 }),
+      codeRun: vi.fn(),
+    },
     fs: {
       uploadFile: vi.fn(),
       downloadFile: vi.fn(),
@@ -149,6 +152,7 @@ describe("getUserSandbox", () => {
     expect(handle.userId).toBe("user123")
     expect(handle.volumeId).toBe("vol-1")
     expect(handle.sandboxId).toBe("sandbox-abc")
+    expect(sandbox.process.executeCommand).toHaveBeenCalled()
   })
 
   it("returns cached handle on second call when sandbox is healthy", async () => {
@@ -212,6 +216,50 @@ describe("getUserSandbox", () => {
     expect(mockedCreateSandbox).not.toHaveBeenCalled()
     expect(mockedStartSandbox).toHaveBeenCalledWith(stoppedSandbox)
     expect(handle.sandboxId).toBe("sandbox-abc")
+  })
+
+  it("rejects an existing sandbox with unexpected ownership labels", async () => {
+    const client = makeMockClient()
+    const unmanagedSandbox = makeMockSandbox({
+      labels: { managedBy: "someone-else", userId: "user123" },
+    })
+
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    ;(client.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      unmanagedSandbox
+    )
+
+    await expect(getUserSandbox({ userId: "user123" })).rejects.toThrow(
+      "Refusing to use unmanaged Daytona sandbox"
+    )
+  })
+
+  it("coalesces concurrent provisioning for the same user", async () => {
+    const client = makeMockClient()
+    const sandbox = makeMockSandbox()
+    let resolveCreate: (sandbox: Sandbox) => void = () => {}
+
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCreate = resolve
+      })
+    )
+
+    const first = getUserSandbox({ userId: "user123" })
+    const second = getUserSandbox({ userId: "user123" })
+    resolveCreate(sandbox)
+
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2)
+    expect(mockedCreateSandbox).toHaveBeenCalledTimes(1)
   })
 
   it("isolates sandboxes between different users", async () => {

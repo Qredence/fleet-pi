@@ -145,9 +145,10 @@ async function loadWorkspaceFileViaFS(
   const subPath = filePath.substring(AGENT_WORKSPACE_DIRECTORY.length)
   const resolvedPath = `${context.workspaceRoot}${subPath}`
   const fs = context.workspaceFS!
+  let fileStat: Awaited<ReturnType<WorkspaceFS["stat"]>>
 
   try {
-    const fileStat = await fs.stat(resolvedPath)
+    fileStat = await fs.stat(resolvedPath)
     if (!fileStat.isFile()) {
       throw new WorkspaceFileError("Workspace path is not a file.", 400)
     }
@@ -159,15 +160,42 @@ async function loadWorkspaceFileViaFS(
     throw new WorkspaceFileError("Failed to access workspace file.", 500)
   }
 
-  const content = await fs.readFile(resolvedPath, "utf8")
   const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${resolvedPath.substring(context.workspaceRoot.length)}`
+  const size = fileStat.size ?? 0
+
+  if (size > WORKSPACE_PREVIEW_MAX_BYTES) {
+    return {
+      path: relativePath,
+      name: basename(resolvedPath),
+      content: "",
+      mediaType: "text/plain",
+      size,
+      status: "too-large",
+    }
+  }
+
+  const content = await fs.readFile(resolvedPath, "utf8")
+  const buffer = Buffer.from(content, "utf8")
+  const bytesToCheck = Math.min(buffer.length, BINARY_SAMPLE_BYTES)
+  const isBinary = buffer.subarray(0, bytesToCheck).includes(0)
+
+  if (isBinary) {
+    return {
+      path: relativePath,
+      name: basename(resolvedPath),
+      content: "",
+      mediaType: "application/octet-stream",
+      size,
+      status: "unsupported",
+    }
+  }
 
   return {
     path: relativePath,
     name: basename(resolvedPath),
     content,
     mediaType: getWorkspaceMediaType(resolvedPath),
-    size: Buffer.byteLength(content, "utf8"),
+    size,
     status: "ok",
   }
 }

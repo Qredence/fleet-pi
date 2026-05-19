@@ -17,9 +17,18 @@ interface RegisteredTool {
   }>
 }
 
-const { mockCreateDaytonaClient, mockDownloadFile } = vi.hoisted(() => ({
+const {
+  mockCreateDaytonaClient,
+  mockDownloadFile,
+  mockGetCachedUserSandbox,
+  mockGetUserSandbox,
+  mockResolveDaytonaToolUser,
+} = vi.hoisted(() => ({
   mockCreateDaytonaClient: vi.fn(),
   mockDownloadFile: vi.fn(),
+  mockGetCachedUserSandbox: vi.fn(),
+  mockGetUserSandbox: vi.fn(),
+  mockResolveDaytonaToolUser: vi.fn(),
 }))
 
 vi.mock("@/lib/daytona/client", () => ({
@@ -42,12 +51,32 @@ vi.mock("@/lib/daytona/client", () => ({
   listVolumes: vi.fn(),
 }))
 
+vi.mock("@/lib/daytona/user-sandbox", () => ({
+  getCachedUserSandbox: mockGetCachedUserSandbox,
+  getSessionVolumeName: (userId: string) => `fleet-pi-sessions-${userId}`,
+  getUserSandbox: mockGetUserSandbox,
+  getVolumeName: (userId: string) => `fleet-pi-ws-${userId}`,
+}))
+
+vi.mock("@/lib/daytona/tool-context", () => ({
+  resolveDaytonaToolUser: mockResolveDaytonaToolUser,
+}))
+
+const client = { get: vi.fn() }
+
 describe("daytona sandbox extension", () => {
   it("truncates downloaded file content in chat output and details", async () => {
-    const sandbox = {}
-    const client = { get: vi.fn(() => Promise.resolve(sandbox)) }
+    const sandbox = { id: "sandbox-1", name: "fleet-pi-user-user-1" }
     mockCreateDaytonaClient.mockReturnValue(client)
     mockDownloadFile.mockResolvedValue(Buffer.alloc(70 * 1024, "a"))
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue({
+      sandbox,
+      sandboxId: "sandbox-1",
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      userId: "user-1",
+    })
 
     const tool = registerTool("daytona_download_file")
     const result = await tool.execute(
@@ -55,10 +84,9 @@ describe("daytona sandbox extension", () => {
       { path: "/tmp/large.txt", sandboxId: "sandbox-1" },
       undefined,
       vi.fn(),
-      {}
+      makeToolContext()
     )
 
-    expect(client.get).toHaveBeenCalledWith("sandbox-1")
     expect(mockDownloadFile).toHaveBeenCalledWith(sandbox, "/tmp/large.txt")
     expect(result.content[0]?.text).toContain("truncated after 65536 bytes")
     expect(result.content[0]?.text.length).toBeLessThan(67_000)
@@ -69,6 +97,30 @@ describe("daytona sandbox extension", () => {
       truncated: true,
     })
     expect((result.details as { content?: string }).content).toBeUndefined()
+  })
+
+  it("rejects sandbox access outside the authenticated user's sandbox", async () => {
+    const sandbox = { id: "sandbox-1", name: "fleet-pi-user-user-1" }
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue({
+      sandbox,
+      sandboxId: "sandbox-1",
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      userId: "user-1",
+    })
+
+    const tool = registerTool("daytona_download_file")
+
+    await expect(
+      tool.execute(
+        "call-1",
+        { path: "/tmp/large.txt", sandboxId: "sandbox-2" },
+        undefined,
+        vi.fn(),
+        makeToolContext()
+      )
+    ).rejects.toThrow("limited to your Fleet Pi sandbox")
   })
 })
 
@@ -88,4 +140,13 @@ function registerTool(name: string) {
   }
 
   return registered
+}
+
+function makeToolContext() {
+  return {
+    sessionManager: {
+      getSessionId: () => "session-1",
+      getSessionFile: () => "/tmp/session.jsonl",
+    },
+  } as never
 }
