@@ -22,3 +22,8 @@ allowBuilds:
   msw: true
   protobufjs: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@earendil-works/pi-agent-core@0.75.3'
+  - '@earendil-works/pi-ai@0.75.3'
+  - '@earendil-works/pi-coding-agent@0.75.3'
+  - '@earendil-works/pi-tui@0.75.3'
