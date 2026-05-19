@@ -77,6 +77,26 @@ describe("workspace server", () => {
     ).rejects.toMatchObject({ status: 403 })
   })
 
+  it("rejects traversal paths when using a sandbox workspace filesystem", async () => {
+    const context = createWorkspaceContext()
+    context.workspaceFS = {
+      access: () => Promise.resolve(),
+      mkdir: () => Promise.resolve(),
+      readFile: () => Promise.resolve("secret"),
+      readdir: () => Promise.resolve([]),
+      stat: (absolutePath) =>
+        Promise.resolve({
+          isDirectory: () => absolutePath === context.workspaceRoot,
+          isFile: () => absolutePath !== context.workspaceRoot,
+        }),
+      writeFile: () => Promise.resolve(),
+    }
+
+    await expect(
+      loadAgentWorkspaceFile(context, "agent-workspace/../.fleet/session.jsonl")
+    ).rejects.toMatchObject({ status: 403 })
+  })
+
   it("rejects directories", async () => {
     const context = createWorkspaceContext()
 

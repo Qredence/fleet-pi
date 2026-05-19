@@ -427,13 +427,20 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
 
       clearPlanModeSession(record.sessionId)
       runtimeRecords.delete(record.sessionId)
-      if (record.userId) {
+      if (record.userId && !hasOtherRuntimeForUser(record.userId)) {
         void releaseUserSandbox(record.userId)
       }
       void current.runtime.dispose()
     },
     Math.max(0, RUNTIME_TTL_MS)
   )
+}
+
+function hasOtherRuntimeForUser(userId: string) {
+  for (const active of runtimeRecords.values()) {
+    if (active.userId === userId) return true
+  }
+  return false
 }
 
 function matchesPendingPlanDecisionToolCall(

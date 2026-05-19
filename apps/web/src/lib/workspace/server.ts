@@ -136,6 +136,12 @@ async function loadWorkspaceFileViaFS(
       403
     )
   }
+  if (hasUnsafeWorkspacePathSegments(filePath)) {
+    throw new WorkspaceFileError(
+      "Workspace file path is outside agent-workspace.",
+      403
+    )
+  }
   const subPath = filePath.substring(AGENT_WORKSPACE_DIRECTORY.length)
   const resolvedPath = `${context.workspaceRoot}${subPath}`
   const fs = context.workspaceFS!
@@ -164,6 +170,10 @@ async function loadWorkspaceFileViaFS(
     size: Buffer.byteLength(content, "utf8"),
     status: "ok",
   }
+}
+
+function hasUnsafeWorkspacePathSegments(filePath: string) {
+  return filePath.split("/").some((part) => part === "." || part === "..")
 }
 
 async function readTreeChildrenViaFS(
