@@ -213,7 +213,7 @@ function isManagedSandboxForUser(sandbox: Sandbox, userId: string): boolean {
 }
 
 async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
-  const repoUrl = process.env.FLEET_PI_REPOSITORY_URL ?? DEFAULT_REPOSITORY_URL
+  const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
   const command = [
     `if [ ! -d ${shellEscape(`${REPOSITORY_ROOT}/.git`)} ]; then`,
     "if ! command -v git >/dev/null 2>&1; then",
@@ -231,6 +231,24 @@ async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
   if (result.exitCode !== 0) {
     throw new Error(`Failed to prepare Daytona repository: ${result.result}`)
   }
+}
+
+function resolveRepositoryUrl(value: string | undefined): string {
+  const trimmed = value?.trim()
+  if (!trimmed) return DEFAULT_REPOSITORY_URL
+
+  let url: URL
+  try {
+    url = new URL(trimmed)
+  } catch {
+    throw new Error("FLEET_PI_REPOSITORY_URL must be an HTTPS URL")
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("FLEET_PI_REPOSITORY_URL must be an HTTPS URL")
+  }
+
+  return url.toString()
 }
 
 function shellEscape(s: string): string {

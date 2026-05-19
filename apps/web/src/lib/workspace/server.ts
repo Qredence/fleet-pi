@@ -145,20 +145,7 @@ async function loadWorkspaceFileViaFS(
   const subPath = filePath.substring(AGENT_WORKSPACE_DIRECTORY.length)
   const resolvedPath = `${context.workspaceRoot}${subPath}`
   const fs = context.workspaceFS!
-  let fileStat: Awaited<ReturnType<WorkspaceFS["stat"]>>
-
-  try {
-    fileStat = await fs.stat(resolvedPath)
-    if (!fileStat.isFile()) {
-      throw new WorkspaceFileError("Workspace path is not a file.", 400)
-    }
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      throw new WorkspaceFileError("Workspace file was not found.", 404)
-    }
-    if (error instanceof WorkspaceFileError) throw error
-    throw new WorkspaceFileError("Failed to access workspace file.", 500)
-  }
+  const fileStat = await statWorkspaceFile(fs, resolvedPath)
 
   const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${resolvedPath.substring(context.workspaceRoot.length)}`
   const size = fileStat.size ?? 0
@@ -197,6 +184,22 @@ async function loadWorkspaceFileViaFS(
     mediaType: getWorkspaceMediaType(resolvedPath),
     size,
     status: "ok",
+  }
+}
+
+async function statWorkspaceFile(fs: WorkspaceFS, resolvedPath: string) {
+  try {
+    const fileStat = await fs.stat(resolvedPath)
+    if (!fileStat.isFile()) {
+      throw new WorkspaceFileError("Workspace path is not a file.", 400)
+    }
+    return fileStat
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      throw new WorkspaceFileError("Workspace file was not found.", 404)
+    }
+    if (error instanceof WorkspaceFileError) throw error
+    throw new WorkspaceFileError("Failed to access workspace file.", 500)
   }
 }
 

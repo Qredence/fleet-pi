@@ -610,6 +610,7 @@ function assertSandboxName(
   handle: UserSandboxHandle,
   name: string | undefined
 ) {
+  // Undefined means "use my tracked Fleet Pi sandbox".
   if (name && name !== handle.sandbox.name && name !== handle.sandboxId) {
     throw new Error(
       "Daytona sandbox creation is limited to your Fleet Pi sandbox."
