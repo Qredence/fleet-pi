@@ -215,6 +215,7 @@ function isManagedSandboxForUser(sandbox: Sandbox, userId: string): boolean {
 async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
   const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
   const command = [
+    "set -e;",
     `if [ ! -d ${shellEscape(`${REPOSITORY_ROOT}/.git`)} ]; then`,
     "if ! command -v git >/dev/null 2>&1; then",
     "apt-get update && apt-get install -y git ca-certificates;",

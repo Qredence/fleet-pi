@@ -87,9 +87,10 @@ export function createSandboxWorkspaceFS(
       }
       const statOutput = result.result.trim()
       const sizeMatch = statOutput.match(/ (\d+)$/)
-      const type = sizeMatch
-        ? statOutput.substring(0, sizeMatch.index)
-        : statOutput
+      const type =
+        sizeMatch && sizeMatch.index !== undefined
+          ? statOutput.substring(0, sizeMatch.index)
+          : statOutput
       return {
         isDirectory: () => type === "directory",
         isFile: () => type === "regular file" || type === "regular empty file",

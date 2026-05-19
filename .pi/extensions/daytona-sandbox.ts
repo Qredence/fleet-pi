@@ -108,6 +108,7 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
       assertSandboxName(handle, params.name)
       assertVolumeMount(handle, params.volumeId)
       if (params.volumeId && params.volumeMountPath) {
+        // Validate the requested mount shape, but keep using the tracked user sandbox.
         createVolumeMount({
           volumeId: params.volumeId,
           mountPath: params.volumeMountPath,
