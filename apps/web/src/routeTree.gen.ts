@@ -20,6 +20,8 @@ import { Route as ApiWorkspaceItemsRouteImport } from './routes/api/workspace/it
 import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/item'
 import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
+import { Route as ApiWebhooksDaytonaRouteImport } from './routes/api/webhooks/daytona'
+import { Route as ApiSandboxPreviewRouteImport } from './routes/api/sandbox/preview'
 import { Route as ApiChatSettingsRouteImport } from './routes/api/chat/settings'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
 import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
@@ -87,6 +89,16 @@ const ApiWorkspaceHealthRoute = ApiWorkspaceHealthRouteImport.update({
 const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
   id: '/api/workspace/file',
   path: '/api/workspace/file',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksDaytonaRoute = ApiWebhooksDaytonaRouteImport.update({
+  id: '/api/webhooks/daytona',
+  path: '/api/webhooks/daytona',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSandboxPreviewRoute = ApiSandboxPreviewRouteImport.update({
+  id: '/api/sandbox/preview',
+  path: '/api/sandbox/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatSettingsRoute = ApiChatSettingsRouteImport.update({
@@ -173,6 +185,8 @@ export interface FileRoutesByFullPath {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -199,6 +213,8 @@ export interface FileRoutesByTo {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -226,6 +242,8 @@ export interface FileRoutesById {
   '/api/chat/session': typeof ApiChatSessionRoute
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
   '/api/workspace/item': typeof ApiWorkspaceItemRoute
@@ -254,6 +272,8 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -280,6 +300,8 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -306,6 +328,8 @@ export interface FileRouteTypes {
     | '/api/chat/session'
     | '/api/chat/sessions'
     | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
     | '/api/workspace/item'
@@ -321,6 +345,8 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiSandboxPreviewRoute: typeof ApiSandboxPreviewRoute
+  ApiWebhooksDaytonaRoute: typeof ApiWebhooksDaytonaRoute
   ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
   ApiWorkspaceHealthRoute: typeof ApiWorkspaceHealthRoute
   ApiWorkspaceItemRoute: typeof ApiWorkspaceItemRoute
@@ -407,6 +433,20 @@ declare module '@tanstack/react-router' {
       path: '/api/workspace/file'
       fullPath: '/api/workspace/file'
       preLoaderRoute: typeof ApiWorkspaceFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/daytona': {
+      id: '/api/webhooks/daytona'
+      path: '/api/webhooks/daytona'
+      fullPath: '/api/webhooks/daytona'
+      preLoaderRoute: typeof ApiWebhooksDaytonaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sandbox/preview': {
+      id: '/api/sandbox/preview'
+      path: '/api/sandbox/preview'
+      fullPath: '/api/sandbox/preview'
+      preLoaderRoute: typeof ApiSandboxPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat/settings': {
@@ -542,6 +582,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiSandboxPreviewRoute: ApiSandboxPreviewRoute,
+  ApiWebhooksDaytonaRoute: ApiWebhooksDaytonaRoute,
   ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
   ApiWorkspaceHealthRoute: ApiWorkspaceHealthRoute,
   ApiWorkspaceItemRoute: ApiWorkspaceItemRoute,

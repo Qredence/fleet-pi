@@ -7,12 +7,19 @@ const createAgentSessionFromServices = vi.fn()
 const createAgentSessionRuntime = vi.fn()
 const createAgentSessionServices = vi.fn()
 const getAgentDir = vi.fn(() => "/tmp/pi-agent")
+const releaseUserSandbox = vi.fn(() => Promise.resolve())
 
 vi.mock("@earendil-works/pi-coding-agent", () => ({
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   createAgentSessionServices,
   getAgentDir,
+}))
+
+vi.mock("@/lib/daytona/user-sandbox", () => ({
+  getUserSandbox: vi.fn(),
+  isDaytonaEnabled: vi.fn(() => false),
+  releaseUserSandbox,
 }))
 
 describe("answerChatQuestion", () => {
@@ -23,6 +30,7 @@ describe("answerChatQuestion", () => {
     createAgentSessionFromServices.mockReset()
     createAgentSessionRuntime.mockReset()
     createAgentSessionServices.mockReset()
+    releaseUserSandbox.mockClear()
     getAgentDir.mockClear()
   })
 
@@ -177,6 +185,29 @@ describe("answerChatQuestion", () => {
     })
   })
 
+  it("does not queue a follow-up onto another user's active runtime", async () => {
+    const sessionFile = join(root, ".fleet", "sessions", "shared-session.jsonl")
+    const { queuePromptOnActiveSession, retainPiRuntime } =
+      await import("./server-runtime")
+    const runtime = createMockRuntime("session-shared", sessionFile)
+    runtime.session.isStreaming = true
+
+    retainPiRuntime(runtime, "user-a")
+
+    const queued = await queuePromptOnActiveSession(
+      {
+        sessionFile,
+        sessionId: "session-shared",
+        userId: "user-b",
+      },
+      "queued prompt",
+      "followUp"
+    )
+
+    expect(queued).toBeUndefined()
+    expect(runtime.session.prompt).not.toHaveBeenCalled()
+  })
+
   it("limits active tools in harness mode to workspace architecture tools", async () => {
     const sessionFile = createSessionFile(root, "session-harness.jsonl")
     const { applyPlanMode, getChatMode } = await import("./plan-mode")
@@ -214,6 +245,41 @@ describe("answerChatQuestion", () => {
 
       expect(runtime.dispose).toHaveBeenCalledTimes(1)
       expect(getChatMode(runtime)).toBe("agent")
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps a user's sandbox alive while another runtime for that user is active", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const firstRuntime = createMockRuntime(
+      "session-disposal-a",
+      createSessionFile(root, "session-disposal-a.jsonl")
+    )
+    const secondRuntime = createMockRuntime(
+      "session-disposal-b",
+      createSessionFile(root, "session-disposal-b.jsonl")
+    )
+
+    try {
+      const { retainPiRuntime } = await import("./server-runtime")
+      const releaseFirst = retainPiRuntime(firstRuntime, "user-1")
+      const releaseSecond = retainPiRuntime(secondRuntime, "user-1")
+
+      releaseFirst()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(firstRuntime.dispose).toHaveBeenCalledTimes(1)
+      expect(releaseUserSandbox).not.toHaveBeenCalled()
+
+      releaseSecond()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(secondRuntime.dispose).toHaveBeenCalledTimes(1)
+      expect(releaseUserSandbox).toHaveBeenCalledWith("user-1")
     } finally {
       process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
       vi.useRealTimers()

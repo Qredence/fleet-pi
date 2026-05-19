@@ -7,6 +7,7 @@ export const EXPECTED_PROJECT_EXTENSION_NAMES = [
   "workspace-context",
   "web-fetch",
   "resource-install",
+  "daytona-sandbox",
 ]
 
 export function collectResourceExpectationDiagnostics(

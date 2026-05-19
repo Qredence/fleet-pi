@@ -10,6 +10,7 @@
   "extensions": [
     "extensions/bedrock-bearer-auth",
     "extensions/resource-install",
+    "extensions/daytona-sandbox",
     "extensions/vendor/filechanges",
     "extensions/vendor/subagents",
     "../agent-workspace/pi/extensions/enabled"
@@ -17,5 +18,9 @@
   "defaultProvider": "amazon-bedrock",
   "defaultModel": "us.anthropic.claude-sonnet-4-6",
   "defaultThinkingLevel": "high",
-  "enabledModels": ["amazon-bedrock/*"]
+  "enabledModels": [
+    "amazon-bedrock/us.anthropic.claude-sonnet-4-6",
+    "amazon-bedrock/anthropic.claude-sonnet-4-6",
+    "amazon-bedrock/global.anthropic.claude-sonnet-4-6"
+  ]
 }

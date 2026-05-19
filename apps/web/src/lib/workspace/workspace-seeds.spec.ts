@@ -7,119 +7,17 @@ const REPO_ROOT = resolve(
   fileURLToPath(new URL("../../../../../", import.meta.url))
 )
 
-const EXPECTED_CANONICAL_MEMORY_TEMPLATES: Record<string, string> = {
-  "architecture.md": [
-    "# Architecture",
-    "",
-    "Status: Seeded stub.",
-    "",
-    "Use this file for durable, repo-grounded architecture notes.",
-    "",
-    "Suggested sections:",
-    "",
-    "- Stable structure",
-    "- Runtime boundaries",
-    "- Key data flows",
-    "- Source anchors",
-    "",
-  ].join("\n"),
-  "decisions.md": [
-    "# Decisions",
-    "",
-    "Status: Seeded stub.",
-    "",
-    "Use this file for durable project decisions and their rationale.",
-    "",
-    "Template:",
-    "",
-    "## Decision",
-    "",
-    "- Decision:",
-    "- Status:",
-    "- Date:",
-    "- Context:",
-    "- Rationale:",
-    "- Consequences:",
-    "- Source:",
-    "",
-  ].join("\n"),
-  "preferences.md": [
-    "# Preferences",
-    "",
-    "Status: Seeded stub.",
-    "",
-    "Use this file for stable user or project preferences that repeatedly affect how",
-    "work should be done.",
-    "",
-    "Template:",
-    "",
-    "## Preference",
-    "",
-    "- Preference:",
-    "- Applies to:",
-    "- Why it matters:",
-    "- Evidence:",
-    "- Last confirmed:",
-    "",
-  ].join("\n"),
-  "open-questions.md": [
-    "# Open Questions",
-    "",
-    "Status: Seeded stub.",
-    "",
-    "Use this file for unresolved questions that block design clarity or repeatedly",
-    "surface during implementation.",
-    "",
-    "Template:",
-    "",
-    "## Question",
-    "",
-    "- Question:",
-    "- Why it matters:",
-    "- Current evidence:",
-    "- Next step:",
-    "- Owner:",
-    "",
-  ].join("\n"),
-  "known-issues.md": [
-    "# Known Issues",
-    "",
-    "Status: Seeded stub.",
-    "",
-    "Use this file for durable issues or rough edges that future agents should keep",
-    "in mind.",
-    "",
-    "Template:",
-    "",
-    "## Issue",
-    "",
-    "- Issue:",
-    "- Affected area:",
-    "- Symptoms:",
-    "- Current status:",
-    "- Workaround:",
-    "- Follow-up:",
-    "",
-  ].join("\n"),
+const EXPECTED_CANONICAL_MEMORY_MARKERS: Record<string, string> = {
+  "architecture.md": "`agent-workspace/` is Fleet Pi’s durable adaptive layer",
+  "decisions.md":
+    "Treat `agent-workspace/` as Fleet Pi’s persistent agent operating surface",
+  "known-issues.md":
+    "The canonical project memory files existed as seeded stubs",
+  "open-questions.md":
+    "Should Fleet Pi build its own workspace-native memory lifecycle first",
+  "preferences.md":
+    "Prefer small, focused, reviewable diffs over broad rewrites",
 }
-
-const EXPECTED_BACKLOG_TEMPLATE = [
-  "# Plan Backlog",
-  "",
-  "Status: Seeded stub.",
-  "",
-  "Use this file for candidate plans or follow-up work worth revisiting later.",
-  "",
-  "Template:",
-  "",
-  "## Candidate plan",
-  "",
-  "- Goal:",
-  "- Why now:",
-  "- Inputs:",
-  "- Next step:",
-  "",
-].join("\n")
 
 const EXPECTED_REPORT_SEEDS = [
   ".gitkeep",
@@ -127,7 +25,7 @@ const EXPECTED_REPORT_SEEDS = [
 ].sort((left, right) => left.localeCompare(right))
 
 describe("clean clone workspace seeds", () => {
-  it("keeps canonical project memory files as neutral starter templates", async () => {
+  it("keeps canonical project memory files as durable workspace memory", async () => {
     const projectMemoryDir = resolve(
       REPO_ROOT,
       "agent-workspace/memory/project"
@@ -137,7 +35,7 @@ describe("clean clone workspace seeds", () => {
       .sort((left, right) => left.localeCompare(right))
 
     expect(entries).toEqual(
-      Object.keys(EXPECTED_CANONICAL_MEMORY_TEMPLATES).sort((left, right) =>
+      Object.keys(EXPECTED_CANONICAL_MEMORY_MARKERS).sort((left, right) =>
         left.localeCompare(right)
       )
     )
@@ -145,12 +43,13 @@ describe("clean clone workspace seeds", () => {
     await Promise.all(
       entries.map(async (entry) => {
         const content = await readFile(resolve(projectMemoryDir, entry), "utf8")
-        expect(content).toBe(EXPECTED_CANONICAL_MEMORY_TEMPLATES[entry])
+        expect(content).not.toContain("Status: Seeded stub.")
+        expect(content).toContain(EXPECTED_CANONICAL_MEMORY_MARKERS[entry])
       })
     )
   })
 
-  it("removes maintainer-enriched user seeds while preserving repo-owned report artifacts", async () => {
+  it("keeps scratch daily seeds clean while preserving durable workspace artifacts", async () => {
     const dailyEntries = await readdir(
       resolve(REPO_ROOT, "agent-workspace/memory/daily")
     )
@@ -168,12 +67,12 @@ describe("clean clone workspace seeds", () => {
     expect(
       dailyEntries.sort((left, right) => left.localeCompare(right))
     ).toEqual([".gitkeep"])
-    expect(
-      researchEntries.sort((left, right) => left.localeCompare(right))
-    ).toEqual(["index.md"])
-    expect(
-      reportEntries.sort((left, right) => left.localeCompare(right))
-    ).toEqual(EXPECTED_REPORT_SEEDS)
-    expect(backlog).toBe(EXPECTED_BACKLOG_TEMPLATE)
+    expect(researchEntries).toContain("index.md")
+    expect(reportEntries).toEqual(expect.arrayContaining(EXPECTED_REPORT_SEEDS))
+    expect(backlog).not.toContain("Status: Seeded stub.")
+    expect(backlog).toContain("## Candidate plan: prompt-aware memory recall")
+    expect(backlog).toContain(
+      "## Candidate plan: self-improvement candidate extraction"
+    )
   })
 })

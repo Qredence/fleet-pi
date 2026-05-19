@@ -1,10 +1,11 @@
-import { constants } from "node:fs"
-import { access, open, readdir, realpath, stat } from "node:fs/promises"
+import { open, realpath, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
 import { RequestContextError } from "../app-runtime"
 import { bootstrapAgentWorkspace } from "./bootstrap-agent-workspace"
+import { createLocalWorkspaceFS } from "./workspace-fs"
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
 import type { AppRuntimeContext } from "../app-runtime"
+import type { WorkspaceFS } from "./workspace-fs"
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
@@ -31,11 +32,17 @@ export async function loadAgentWorkspaceTree(
     throw new RequestContextError(message, 503)
   }
 
-  await access(context.workspaceRoot, constants.R_OK)
+  const fs = context.workspaceFS ?? createLocalWorkspaceFS()
+
+  await fs.access(context.workspaceRoot)
 
   return {
     root: AGENT_WORKSPACE_DIRECTORY,
-    nodes: await readTreeChildren(context.projectRoot, context.workspaceRoot),
+    nodes: await readTreeChildrenViaFS(
+      fs,
+      context.workspaceRoot,
+      context.workspaceRoot
+    ),
     diagnostics,
   }
 }
@@ -49,6 +56,10 @@ export async function loadAgentWorkspaceFile(
     const message =
       collectWorkspaceMessages(health)[0] ?? "Workspace is unavailable."
     throw new WorkspaceFileError(message, 503)
+  }
+
+  if (context.workspaceFS) {
+    return loadWorkspaceFileViaFS(context, filePath)
   }
 
   const previewFile = await resolveWorkspacePreviewFile(context, filePath)
@@ -103,11 +114,105 @@ export async function loadAgentWorkspaceFile(
   }
 }
 
-async function readTreeChildren(
-  projectRoot: string,
+async function loadWorkspaceFileViaFS(
+  context: AppRuntimeContext,
+  filePath: string | null
+): Promise<WorkspaceFileResponse> {
+  if (!filePath) {
+    throw new WorkspaceFileError("Missing workspace file path.", 400)
+  }
+  if (isAbsolute(filePath)) {
+    throw new WorkspaceFileError(
+      "Workspace file path must be project-relative.",
+      400
+    )
+  }
+  if (
+    filePath !== AGENT_WORKSPACE_DIRECTORY &&
+    !filePath.startsWith(`${AGENT_WORKSPACE_DIRECTORY}/`)
+  ) {
+    throw new WorkspaceFileError(
+      "Workspace file path is outside agent-workspace.",
+      403
+    )
+  }
+  if (hasUnsafeWorkspacePathSegments(filePath)) {
+    throw new WorkspaceFileError(
+      "Workspace file path is outside agent-workspace.",
+      403
+    )
+  }
+  const subPath = filePath.substring(AGENT_WORKSPACE_DIRECTORY.length)
+  const resolvedPath = `${context.workspaceRoot}${subPath}`
+  const fs = context.workspaceFS!
+  const fileStat = await statWorkspaceFile(fs, resolvedPath)
+
+  const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${resolvedPath.substring(context.workspaceRoot.length)}`
+  const size = fileStat.size ?? 0
+
+  if (size > WORKSPACE_PREVIEW_MAX_BYTES) {
+    return {
+      path: relativePath,
+      name: basename(resolvedPath),
+      content: "",
+      mediaType: "text/plain",
+      size,
+      status: "too-large",
+    }
+  }
+
+  const content = await fs.readFile(resolvedPath, "utf8")
+  const buffer = Buffer.from(content, "utf8")
+  const bytesToCheck = Math.min(buffer.length, BINARY_SAMPLE_BYTES)
+  const isBinary = buffer.subarray(0, bytesToCheck).includes(0)
+
+  if (isBinary) {
+    return {
+      path: relativePath,
+      name: basename(resolvedPath),
+      content: "",
+      mediaType: "application/octet-stream",
+      size,
+      status: "unsupported",
+    }
+  }
+
+  return {
+    path: relativePath,
+    name: basename(resolvedPath),
+    content,
+    mediaType: getWorkspaceMediaType(resolvedPath),
+    size,
+    status: "ok",
+  }
+}
+
+async function statWorkspaceFile(fs: WorkspaceFS, resolvedPath: string) {
+  try {
+    const fileStat = await fs.stat(resolvedPath)
+    if (!fileStat.isFile()) {
+      throw new WorkspaceFileError("Workspace path is not a file.", 400)
+    }
+    return fileStat
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      throw new WorkspaceFileError("Workspace file was not found.", 404)
+    }
+    if (error instanceof WorkspaceFileError) throw error
+    throw new WorkspaceFileError("Failed to access workspace file.", 500)
+  }
+}
+
+function hasUnsafeWorkspacePathSegments(filePath: string) {
+  return filePath.split("/").some((part) => part === "." || part === "..")
+}
+
+async function readTreeChildrenViaFS(
+  fs: WorkspaceFS,
+  workspaceRoot: string,
   directory: string
 ): Promise<Array<WorkspaceTreeNode>> {
-  const entries = await readdir(directory, { withFileTypes: true })
+  const entries = await fs.readdir(directory)
   const sorted = entries.sort((left, right) => {
     if (left.isDirectory() !== right.isDirectory()) {
       return left.isDirectory() ? -1 : 1
@@ -117,20 +222,21 @@ async function readTreeChildren(
 
   return Promise.all(
     sorted.map(async (entry) => {
-      const path = resolve(directory, entry.name)
+      const path = `${directory}/${entry.name}`
+      const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${path.substring(workspaceRoot.length)}`
       if (!entry.isDirectory()) {
         return {
           name: entry.name,
-          path: toWorkspacePath(projectRoot, path),
+          path: relativePath,
           type: "file" as const,
         }
       }
 
       return {
         name: entry.name,
-        path: toWorkspacePath(projectRoot, path),
+        path: relativePath,
         type: "directory" as const,
-        children: await readTreeChildren(projectRoot, path),
+        children: await readTreeChildrenViaFS(fs, workspaceRoot, path),
       }
     })
   )

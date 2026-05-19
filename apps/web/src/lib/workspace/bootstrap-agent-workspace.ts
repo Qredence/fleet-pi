@@ -1,10 +1,9 @@
-import { constants } from "node:fs"
-import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import {
   WORKSPACE_PROJECTION_DATABASE_FILENAME,
   initializeWorkspaceProjection,
 } from "../db/workspace-projection"
+import { createLocalWorkspaceFS } from "./workspace-fs"
 import {
   AGENT_WORKSPACE_DIRECTORY,
   WORKSPACE_MANIFEST_RELATIVE_PATH,
@@ -16,6 +15,7 @@ import {
   toWorkspaceProjectPath,
   workspaceManifestSchema,
 } from "./workspace-contract"
+import type { WorkspaceFS } from "./workspace-fs"
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
   WorkspaceManifest,
@@ -129,12 +129,14 @@ const EMPTY_MANIFEST_STATE: WorkspaceManifestState = {
 export async function bootstrapAgentWorkspace(
   context: AppRuntimeContext
 ): Promise<WorkspaceHealthResponse> {
+  const fs = context.workspaceFS ?? createLocalWorkspaceFS()
   const diagnostics: Array<WorkspaceHealthDiagnostic> = []
   const warnings = new Set<string>()
   const createdPaths = new Set<string>()
 
   const workspace = await ensureWorkspaceRoot(
     context,
+    fs,
     diagnostics,
     createdPaths
   )
@@ -146,6 +148,7 @@ export async function bootstrapAgentWorkspace(
     WORKSPACE_SECTION_DEFINITIONS.map((section) =>
       ensureDirectoryState(
         context,
+        fs,
         section.path,
         createdPaths,
         diagnostics,
@@ -162,6 +165,7 @@ export async function bootstrapAgentWorkspace(
     WORKSPACE_REQUIRED_DIRECTORY_PATHS.map((path) =>
       ensureDirectoryState(
         context,
+        fs,
         path,
         createdPaths,
         diagnostics,
@@ -172,6 +176,7 @@ export async function bootstrapAgentWorkspace(
 
   const manifest = await ensureManifestState(
     context,
+    fs,
     createdPaths,
     diagnostics,
     warnings
@@ -181,6 +186,7 @@ export async function bootstrapAgentWorkspace(
     WORKSPACE_POLICY_FILE_DEFINITIONS.map((policy) =>
       ensureFileState(
         context,
+        fs,
         policy.path,
         policy.contents,
         createdPaths,
@@ -195,7 +201,15 @@ export async function bootstrapAgentWorkspace(
 
   const scratchProtectionStates = await Promise.all(
     WORKSPACE_SCRATCH_PROTECTION_PATHS.map((path) =>
-      ensureFileState(context, path, "", createdPaths, diagnostics, "scratch")
+      ensureFileState(
+        context,
+        fs,
+        path,
+        "",
+        createdPaths,
+        diagnostics,
+        "scratch"
+      )
     )
   )
 
@@ -338,13 +352,14 @@ export function createWorkspaceHealthFailure(
 
 async function ensureWorkspaceRoot(
   context: AppRuntimeContext,
+  fs: WorkspaceFS,
   diagnostics: Array<WorkspaceHealthDiagnostic>,
   createdPaths: Set<string>
 ) {
   try {
-    const existing = await getExistingPathType(context.workspaceRoot)
+    const existing = await getExistingPathType(fs, context.workspaceRoot)
     if (existing === "directory") {
-      await access(context.workspaceRoot, constants.R_OK)
+      await fs.access(context.workspaceRoot)
       return { available: true, created: false }
     }
 
@@ -361,9 +376,9 @@ async function ensureWorkspaceRoot(
       return { available: false, created: false }
     }
 
-    await mkdir(context.workspaceRoot, { recursive: true })
+    await fs.mkdir(context.workspaceRoot, { recursive: true })
     createdPaths.add(AGENT_WORKSPACE_DIRECTORY)
-    await access(context.workspaceRoot, constants.R_OK)
+    await fs.access(context.workspaceRoot)
     return { available: true, created: true }
   } catch (error) {
     diagnostics.push(
@@ -381,6 +396,7 @@ async function ensureWorkspaceRoot(
 
 async function ensureDirectoryState(
   context: AppRuntimeContext,
+  fs: WorkspaceFS,
   workspaceRelativePath: string,
   createdPaths: Set<string>,
   diagnostics: Array<WorkspaceHealthDiagnostic>,
@@ -390,7 +406,7 @@ async function ensureDirectoryState(
   const path = toWorkspaceProjectPath(workspaceRelativePath)
 
   try {
-    const existing = await getExistingPathType(absolutePath)
+    const existing = await getExistingPathType(fs, absolutePath)
     if (existing === "directory") {
       return {
         path,
@@ -418,7 +434,7 @@ async function ensureDirectoryState(
       }
     }
 
-    await mkdir(absolutePath, { recursive: true })
+    await fs.mkdir(absolutePath, { recursive: true })
     createdPaths.add(path)
     return {
       path,
@@ -447,6 +463,7 @@ async function ensureDirectoryState(
 
 async function ensureFileState(
   context: AppRuntimeContext,
+  fs: WorkspaceFS,
   workspaceRelativePath: string,
   contents: string,
   createdPaths: Set<string>,
@@ -457,7 +474,7 @@ async function ensureFileState(
   const path = toWorkspaceProjectPath(workspaceRelativePath)
 
   try {
-    const existing = await getExistingPathType(absolutePath)
+    const existing = await getExistingPathType(fs, absolutePath)
     if (existing === "file") {
       return {
         path,
@@ -485,8 +502,8 @@ async function ensureFileState(
       }
     }
 
-    await mkdir(dirname(absolutePath), { recursive: true })
-    await writeFile(absolutePath, normalizeSeedContents(contents), {
+    await fs.mkdir(dirname(absolutePath), { recursive: true })
+    await fs.writeFile(absolutePath, normalizeSeedContents(contents), {
       flag: "wx",
     })
     createdPaths.add(path)
@@ -497,8 +514,6 @@ async function ensureFileState(
       type: "file",
     }
   } catch (error) {
-    // Treat EEXIST as success: a concurrent bootstrap created the file between
-    // our existence check and this write, so the file now exists as intended.
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       return {
         path,
@@ -527,12 +542,14 @@ async function ensureFileState(
 
 async function ensureManifestState(
   context: AppRuntimeContext,
+  fs: WorkspaceFS,
   createdPaths: Set<string>,
   diagnostics: Array<WorkspaceHealthDiagnostic>,
   warnings: Set<string>
 ): Promise<WorkspaceManifestState> {
   const manifestFile = await ensureFileState(
     context,
+    fs,
     WORKSPACE_MANIFEST_RELATIVE_PATH,
     JSON.stringify(createDefaultWorkspaceManifest(), null, 2),
     createdPaths,
@@ -544,7 +561,7 @@ async function ensureManifestState(
 
   try {
     const manifest = JSON.parse(
-      await readFile(
+      await fs.readFile(
         join(context.workspaceRoot, WORKSPACE_MANIFEST_RELATIVE_PATH),
         "utf8"
       )
@@ -684,9 +701,9 @@ function buildUnavailableHealth(
   }
 }
 
-async function getExistingPathType(path: string) {
+async function getExistingPathType(fs: WorkspaceFS, path: string) {
   try {
-    const fileStats = await stat(path)
+    const fileStats = await fs.stat(path)
     if (fileStats.isDirectory()) return "directory"
     if (fileStats.isFile()) return "file"
     return "other"

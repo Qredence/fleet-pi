@@ -1,6 +1,13 @@
 import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
+  createBashToolDefinition,
+  createEditToolDefinition,
+  createFindToolDefinition,
+  createGrepToolDefinition,
+  createLsToolDefinition,
+  createReadToolDefinition,
+  createWriteToolDefinition,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import {
@@ -29,6 +36,7 @@ import { createSessionManager, isUsableSessionFile } from "./server-sessions"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
+  ToolDefinition,
 } from "@earendil-works/pi-coding-agent"
 import type {
   ChatMode,
@@ -39,6 +47,26 @@ import type {
   ChatSessionMetadata,
 } from "./chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import {
+  getUserSandbox,
+  isDaytonaEnabled,
+  releaseUserSandbox,
+} from "@/lib/daytona/user-sandbox"
+import {
+  createSandboxBashOperations,
+  createSandboxEditOperations,
+  createSandboxFindOperations,
+  createSandboxGrepOperations,
+  createSandboxLsOperations,
+  createSandboxReadOperations,
+  createSandboxWriteOperations,
+} from "@/lib/daytona/sandbox-operations"
+import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
+import { executeCommand as daytonaExecuteCommand } from "@/lib/daytona/client"
+import {
+  trackDaytonaToolSession,
+  untrackDaytonaToolSession,
+} from "@/lib/daytona/tool-context"
 
 const DEFAULT_RUNTIME_TTL_MS = 600_000
 
@@ -57,12 +85,15 @@ const RUNTIME_TTL_MS = resolveRuntimeTtlMs(process.env.FLEET_PI_RUNTIME_TTL_MS)
 type ChatRuntimeMetadata = ChatSessionMetadata & {
   mode?: ChatMode
   planAction?: ChatPlanAction
+  userId?: string
+  userEmail?: string
 }
 
 type ActiveSessionRecord = {
   runtime: AgentSessionRuntime
   sessionFile?: string
   sessionId: string
+  userId?: string
   lastUsedAt: number
   disposeTimer?: ReturnType<typeof setTimeout>
 }
@@ -83,8 +114,8 @@ bedrockCircuitBreaker.fallback(() => {
   throw createBedrockFallbackError()
 })
 
-export function retainPiRuntime(runtime: AgentSessionRuntime) {
-  const record = trackRuntime(runtime)
+export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
+  const record = trackRuntime(runtime, userId)
   if (record.disposeTimer) {
     clearTimeout(record.disposeTimer)
     record.disposeTimer = undefined
@@ -95,7 +126,7 @@ export function retainPiRuntime(runtime: AgentSessionRuntime) {
   }
 }
 
-export async function abortActiveSession(metadata: ChatSessionMetadata) {
+export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
   const active = findRuntimeRecord(metadata)
   if (!active) return false
 
@@ -110,7 +141,7 @@ export async function abortActiveSession(metadata: ChatSessionMetadata) {
 }
 
 export async function queuePromptOnActiveSession(
-  metadata: ChatSessionMetadata,
+  metadata: ChatRuntimeMetadata,
   prompt: string,
   streamingBehavior: "steer" | "followUp"
 ) {
@@ -134,6 +165,22 @@ export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
+  if (isDaytonaEnabled(metadata.userId) && !context.workspaceFS) {
+    const handle = await getUserSandbox({
+      userId: metadata.userId!,
+      userEmail: metadata.userEmail,
+    })
+    const sb = handle.sandbox
+    const sandboxWorkspaceRoot = "/home/daytona/fleet-pi/agent-workspace"
+    // Ensure the workspace directory exists in the sandbox (FUSE volume may be empty on first mount)
+    await daytonaExecuteCommand(sb, `mkdir -p ${sandboxWorkspaceRoot}`)
+    context.workspaceFS = createSandboxWorkspaceFS({
+      executeCommand: (cmd, cwd) => daytonaExecuteCommand(sb, cmd, cwd),
+    })
+    context.workspaceRoot = sandboxWorkspaceRoot
+    context.workspaceBootstrap = undefined // reset so bootstrap re-runs with sandbox FS
+  }
+
   const services = await createSessionServices(context)
   const requestDiagnostics = collectDiagnostics(services)
   const sessionDir = getSessionDir(context.projectRoot, services)
@@ -190,6 +237,40 @@ export async function createPiRuntime(
       runtimeServices,
       modelSelection
     )
+
+    let customTools: Array<ToolDefinition> | undefined
+    if (isDaytonaEnabled(metadata.userId)) {
+      const handle = await getUserSandbox({
+        userId: metadata.userId!,
+        userEmail: metadata.userEmail,
+      })
+      const sandboxCwd = "/home/daytona/fleet-pi"
+      const s = handle.sandbox
+      customTools = [
+        createBashToolDefinition(sandboxCwd, {
+          operations: createSandboxBashOperations(s),
+        }),
+        createReadToolDefinition(sandboxCwd, {
+          operations: createSandboxReadOperations(s),
+        }),
+        createWriteToolDefinition(sandboxCwd, {
+          operations: createSandboxWriteOperations(s),
+        }),
+        createEditToolDefinition(sandboxCwd, {
+          operations: createSandboxEditOperations(s),
+        }),
+        createGrepToolDefinition(sandboxCwd, {
+          operations: createSandboxGrepOperations(s),
+        }),
+        createFindToolDefinition(sandboxCwd, {
+          operations: createSandboxFindOperations(s),
+        }),
+        createLsToolDefinition(sandboxCwd, {
+          operations: createSandboxLsOperations(s),
+        }),
+      ] as Array<ToolDefinition>
+    }
+
     const result = await bedrockCircuitBreaker.fire({
       services: runtimeServices,
       sessionManager: runtimeSessionManager,
@@ -197,6 +278,7 @@ export async function createPiRuntime(
       model,
       thinkingLevel,
       tools: CHAT_TOOL_ALLOWLIST,
+      customTools,
     })
 
     return {
@@ -210,7 +292,7 @@ export async function createPiRuntime(
     agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
     sessionManager,
   })
-  trackRuntime(runtime)
+  trackRuntime(runtime, metadata.userId)
   applyPlanMode(runtime, metadata.mode, metadata.planAction)
 
   return {
@@ -259,7 +341,10 @@ export function answerChatQuestion(
       }
 }
 
-function findRuntimeRecord(metadata: ChatSessionMetadata) {
+function findRuntimeRecord(metadata: ChatRuntimeMetadata) {
+  const matchesUser = (active: ActiveSessionRecord) =>
+    metadata.userId === undefined || active.userId === metadata.userId
+
   if (metadata.sessionFile) {
     const requested = safeRealpath(metadata.sessionFile)
     if (!requested) {
@@ -267,12 +352,15 @@ function findRuntimeRecord(metadata: ChatSessionMetadata) {
       const active = runtimeRecords.get(metadata.sessionId)
       if (!active?.sessionFile) return undefined
 
-      return active.sessionFile === metadata.sessionFile ? active : undefined
+      return active.sessionFile === metadata.sessionFile && matchesUser(active)
+        ? active
+        : undefined
     }
 
     for (const active of runtimeRecords.values()) {
       if (
         active.sessionFile &&
+        matchesUser(active) &&
         (active.sessionFile === metadata.sessionFile ||
           safeRealpath(active.sessionFile) === requested)
       ) {
@@ -284,10 +372,11 @@ function findRuntimeRecord(metadata: ChatSessionMetadata) {
   }
 
   if (!metadata.sessionId) return undefined
-  return runtimeRecords.get(metadata.sessionId)
+  const active = runtimeRecords.get(metadata.sessionId)
+  return active && matchesUser(active) ? active : undefined
 }
 
-function trackRuntime(runtime: AgentSessionRuntime) {
+function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   const session = runtime.session
   const record =
     runtimeRecords.get(session.sessionId) ??
@@ -302,6 +391,8 @@ function trackRuntime(runtime: AgentSessionRuntime) {
   record.sessionFile = session.sessionFile
   record.sessionId = session.sessionId
   record.lastUsedAt = Date.now()
+  if (userId) record.userId = userId
+  trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
   runtimeRecords.set(session.sessionId, record)
   return record
 }
@@ -341,10 +432,21 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
 
       clearPlanModeSession(record.sessionId)
       runtimeRecords.delete(record.sessionId)
+      untrackDaytonaToolSession(record.sessionId, record.sessionFile)
+      if (record.userId && !hasOtherRuntimeForUser(record.userId)) {
+        void releaseUserSandbox(record.userId)
+      }
       void current.runtime.dispose()
     },
     Math.max(0, RUNTIME_TTL_MS)
   )
+}
+
+function hasOtherRuntimeForUser(userId: string) {
+  for (const active of runtimeRecords.values()) {
+    if (active.userId === userId) return true
+  }
+  return false
 }
 
 function matchesPendingPlanDecisionToolCall(

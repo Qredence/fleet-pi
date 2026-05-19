@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { getResponseStatus } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
+import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
-export async function workspaceTreeHandler() {
+export async function workspaceTreeHandler(request: Request) {
   try {
-    return Response.json(
-      await loadAgentWorkspaceTree(resolveAppRuntimeContext())
-    )
+    const context = await resolveWorkspaceContext(request)
+    return Response.json(await loadAgentWorkspaceTree(context))
   } catch (error) {
     return Response.json(
       { message: getErrorMessage(error) },
@@ -19,7 +19,7 @@ export async function workspaceTreeHandler() {
 export const Route = createFileRoute("/api/workspace/tree")({
   server: {
     handlers: {
-      GET: workspaceTreeHandler,
+      GET: ({ request }) => workspaceTreeHandler(request),
     },
   },
 })

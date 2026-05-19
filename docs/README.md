@@ -24,6 +24,8 @@ Start here if you want the human-facing documentation for Fleet Pi.
 - [Runbooks](runbooks.md) — runtime troubleshooting and incident response
 - [Runtime SDK Integration Seams](runtime-sdk-integration.md) — current runtime
   integration boundaries for deeper platform work
+- [Daytona Stateful Sandbox](daytona.md) — run Fleet Pi in Daytona with
+  `agent-workspace/` mounted on a persistent volume
 
 ## Reference
 

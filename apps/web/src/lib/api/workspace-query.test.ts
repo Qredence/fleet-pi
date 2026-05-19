@@ -7,7 +7,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { workspaceItemHandler } from "../../routes/api/workspace/item"
 import { workspaceItemsHandler } from "../../routes/api/workspace/items"
 import { workspaceReindexHandler } from "../../routes/api/workspace/reindex"
@@ -15,20 +15,48 @@ import { workspaceSearchHandler } from "../../routes/api/workspace/search"
 import { workspaceFileHandler } from "../../routes/api/workspace/file"
 import { workspaceTreeHandler } from "../../routes/api/workspace/tree"
 
+const { mockGetSession } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
+}))
+
+vi.mock("@/lib/auth/server", () => ({
+  auth: {
+    api: {
+      getSession: mockGetSession,
+    },
+  },
+}))
+
 const roots = new Set<string>()
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
+const originalAuthDatabaseUrl = process.env.FLEET_PI_AUTH_DATABASE_URL
+const originalDaytonaApiKey = process.env.DAYTONA_API_KEY
 
 beforeEach(() => {
   delete process.env.FLEET_PI_REPO_ROOT
+  delete process.env.FLEET_PI_AUTH_DATABASE_URL
+  delete process.env.DAYTONA_API_KEY
+  mockGetSession.mockReset()
 })
 
 afterEach(() => {
-  process.env.FLEET_PI_REPO_ROOT = originalRepoRoot
+  restoreEnv("FLEET_PI_REPO_ROOT", originalRepoRoot)
+  restoreEnv("FLEET_PI_AUTH_DATABASE_URL", originalAuthDatabaseUrl)
+  restoreEnv("DAYTONA_API_KEY", originalDaytonaApiKey)
   for (const root of roots) {
     rmSync(root, { force: true, recursive: true })
   }
   roots.clear()
 })
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key]
+    return
+  }
+
+  process.env[key] = value
+}
 
 function createProjectRoot() {
   const root = mkdtempSync(join(tmpdir(), "fleet-pi-workspace-query-"))
@@ -52,6 +80,34 @@ function createRequest(path: string, init?: RequestInit) {
 }
 
 describe("workspace query APIs", () => {
+  it("uses the local agent workspace when auth is configured but no user is signed in", async () => {
+    const projectRoot = createProjectRoot()
+    process.env.FLEET_PI_AUTH_DATABASE_URL = "postgres://auth.example/test"
+    process.env.DAYTONA_API_KEY = "daytona-test-key"
+    mockGetSession.mockResolvedValue(null)
+
+    writeWorkspaceFile(
+      projectRoot,
+      "memory/project/preferences.md",
+      "# Preferences\n\n- Prefer local workspace fallback.\n"
+    )
+
+    const treeResponse = await workspaceTreeHandler(
+      createRequest("/api/workspace/tree")
+    )
+    const treeBody = (await treeResponse.json()) as {
+      root: string
+      nodes: Array<{ path: string }>
+    }
+
+    expect(treeResponse.status).toBe(200)
+    expect(treeBody.root).toBe("agent-workspace")
+    expect(
+      treeBody.nodes.some((node) => node.path === "agent-workspace/memory")
+    ).toBe(true)
+    expect(mockGetSession).toHaveBeenCalled()
+  })
+
   it("returns structured reindex outcomes and canonical-backed query results", async () => {
     const projectRoot = createProjectRoot()
 
@@ -455,7 +511,9 @@ describe("workspace query APIs", () => {
       ])
     )
 
-    const treeResponse = await workspaceTreeHandler()
+    const treeResponse = await workspaceTreeHandler(
+      new Request("http://localhost:3000/api/workspace/tree")
+    )
     const treeBody = (await treeResponse.json()) as {
       root: string
       nodes: Array<{ path: string }>

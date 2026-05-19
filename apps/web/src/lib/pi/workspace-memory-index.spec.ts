@@ -66,6 +66,7 @@ describe("workspace memory index", () => {
       exists: true,
       hasContent: true,
       headings: ["User Identity"],
+      snippets: expect.arrayContaining(["Preference: User's name is Zachary"]),
     })
     expect(index.orphaned).toHaveLength(1)
     expect(index.orphaned[0]).toMatchObject({
@@ -90,10 +91,15 @@ describe("workspace memory index", () => {
 
     const index = await readProjectMemoryIndex(root)
     const startup = formatProjectMemoryForStartupContext(index)
-    const workspaceIndex = formatProjectMemoryForWorkspaceIndex(index).join("\n")
+    const workspaceIndex =
+      formatProjectMemoryForWorkspaceIndex(index).join("\n")
 
     expect(startup).toContain("Project memory index:")
     expect(startup).toContain("preferences: has content")
+    expect(startup).toContain("Project memory recall snippets:")
+    expect(startup).toContain(
+      "- preferences: Preference: User's name is Zachary"
+    )
     expect(startup).toContain("orphaned: memory-harness-test.md")
     expect(startup).toContain("Recall protocol")
     expect(startup).toContain("find/grep across agent-workspace/memory/project")
