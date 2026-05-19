@@ -1,75 +1,75 @@
-"use client";
+"use client"
 
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
-import { useTheme } from "next-themes";
-import { cn } from "./utils/cn";
-import { spiralFastData, spiralSlowData } from "./spiral-loader-data";
-import type { LottieRefCurrentProps } from "lottie-react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
+import { useTheme } from "next-themes"
+import { cn } from "./utils/cn"
+import { spiralFastData, spiralSlowData } from "./spiral-loader-data"
+import type { LottieRefCurrentProps } from "lottie-react"
 
-const LottieLazy = lazy(() => import("lottie-react"));
+const LottieLazy = lazy(() => import("./spiral-loader-lottie"))
 
 function Lottie(props: any) {
   return (
     <Suspense fallback={null}>
       <LottieLazy {...props} />
     </Suspense>
-  );
+  )
 }
 
-const FAST_REPEATS = 4;
-const SLOW_REPEATS = 2;
+const FAST_REPEATS = 4
+const SLOW_REPEATS = 2
 
 export type SpiralLoaderProps = {
-  size?: number;
-  className?: string;
-};
+  size?: number
+  className?: string
+}
 
 export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  const [phase, setPhase] = useState<"fast" | "slow">("fast");
-  const repeatCountRef = useRef(0);
-  const fastRef = useRef<LottieRefCurrentProps | null>(null);
-  const slowRef = useRef<LottieRefCurrentProps | null>(null);
-  const { resolvedTheme } = useTheme();
+  const [isMounted, setIsMounted] = useState(false)
+  const [phase, setPhase] = useState<"fast" | "slow">("fast")
+  const repeatCountRef = useRef(0)
+  const fastRef = useRef<LottieRefCurrentProps | null>(null)
+  const slowRef = useRef<LottieRefCurrentProps | null>(null)
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    setIsMounted(true)
+  }, [])
 
   const startFastPhase = useCallback(() => {
-    repeatCountRef.current = 0;
-    setPhase("fast");
-    slowRef.current?.stop();
-    fastRef.current?.goToAndPlay(0, true);
-  }, []);
+    repeatCountRef.current = 0
+    setPhase("fast")
+    slowRef.current?.stop()
+    fastRef.current?.goToAndPlay(0, true)
+  }, [])
 
   const startSlowPhase = useCallback(() => {
-    repeatCountRef.current = 0;
-    setPhase("slow");
-    fastRef.current?.stop();
-    slowRef.current?.goToAndPlay(0, true);
-  }, []);
+    repeatCountRef.current = 0
+    setPhase("slow")
+    fastRef.current?.stop()
+    slowRef.current?.goToAndPlay(0, true)
+  }, [])
 
   const handleFastComplete = useCallback(() => {
-    repeatCountRef.current += 1;
+    repeatCountRef.current += 1
     if (repeatCountRef.current < FAST_REPEATS) {
-      fastRef.current?.goToAndPlay(0, true);
+      fastRef.current?.goToAndPlay(0, true)
     } else {
-      startSlowPhase();
+      startSlowPhase()
     }
-  }, [startSlowPhase]);
+  }, [startSlowPhase])
 
   const handleSlowComplete = useCallback(() => {
-    repeatCountRef.current += 1;
+    repeatCountRef.current += 1
     if (repeatCountRef.current < SLOW_REPEATS) {
-      slowRef.current?.goToAndPlay(0, true);
+      slowRef.current?.goToAndPlay(0, true)
     } else {
-      startFastPhase();
+      startFastPhase()
     }
-  }, [startFastPhase]);
+  }, [startFastPhase])
 
-  if (!isMounted) return null;
-  const needsInvert = resolvedTheme !== "dark";
+  if (!isMounted) return null
+  const needsInvert = resolvedTheme !== "dark"
 
   return (
     <div
@@ -80,7 +80,7 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
         className={cn(
           "absolute inset-0 transition-opacity duration-75",
           needsInvert && "invert",
-          phase === "fast" ? "opacity-100" : "opacity-0",
+          phase === "fast" ? "opacity-100" : "opacity-0"
         )}
       >
         <Lottie
@@ -96,7 +96,7 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
         className={cn(
           "absolute inset-0 transition-opacity duration-75",
           needsInvert && "invert",
-          phase === "slow" ? "opacity-100" : "opacity-0",
+          phase === "slow" ? "opacity-100" : "opacity-0"
         )}
       >
         <Lottie
@@ -109,5 +109,5 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
         />
       </div>
     </div>
-  );
+  )
 }

@@ -825,6 +825,32 @@ function mockChatSession(page: Page) {
   )
 }
 
+function mockPendingChatSession(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/chat/session?**",
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          session: {
+            sessionFile: MOCK_SESSION_FILE,
+            sessionId: MOCK_SESSION_ID,
+          },
+          messages: [
+            {
+              id: "user-msg-pending",
+              role: "user",
+              createdAt: Date.now() - 1000,
+              parts: [{ type: "text", text: "Continue the pending task" }],
+            },
+          ],
+        }),
+      })
+    }
+  )
+}
+
 function mockChatStream(
   page: Page,
   options: {
@@ -1203,6 +1229,41 @@ test.describe("chat flows", () => {
     await expect(
       page.locator("text=Hello! How can I help you today?")
     ).toBeVisible({ timeout: 10000 })
+  })
+
+  test("hydrates a pending session without tripping the UI error boundary", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({ sessionFile, sessionId }) => {
+        window.localStorage.setItem(
+          "fleet-pi-chat-sessions",
+          JSON.stringify({
+            normal: { sessionFile, sessionId },
+            harness: {},
+          })
+        )
+      },
+      { sessionFile: MOCK_SESSION_FILE, sessionId: MOCK_SESSION_ID }
+    )
+
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockPendingChatSession(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await expect(
+      page.locator("text=Continue the pending task").first()
+    ).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page.locator("text=Processing...")).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page.locator("text=Something went wrong")).toHaveCount(0)
   })
 
   test("opens model picker and changes selection", async ({ page }) => {
