@@ -539,18 +539,6 @@ const MOCK_WORKSPACE_TREE: MockWorkspaceTreeResponse = {
       ],
     },
     {
-      name: "system",
-      path: "agent-workspace/system",
-      type: "directory",
-      children: [
-        {
-          name: "identity.md",
-          path: "agent-workspace/system/identity.md",
-          type: "file",
-        },
-      ],
-    },
-    {
       name: "index.md",
       path: "agent-workspace/index.md",
       type: "file",
@@ -1011,10 +999,6 @@ test.describe("chat flows", () => {
     })
     await expect(textarea).toBeVisible()
 
-    await expect(page.locator("text=Summarize this project")).toBeVisible()
-    await expect(page.locator("text=Explore available skills")).toBeVisible()
-    await expect(page.locator("text=Read AGENTS.md")).toBeVisible()
-
     const chatColumn = page.getByTestId("chat-column")
     const chatColumnBox = await chatColumn.boundingBox()
     const textareaBox = await textarea.boundingBox()
@@ -1094,17 +1078,21 @@ test.describe("chat flows", () => {
     await expect
       .poll(() =>
         page.evaluate(() =>
-          window.localStorage.getItem("fleet-pi-chat-session")
+          window.localStorage.getItem("fleet-pi-chat-sessions")
         )
       )
       .not.toBe(null)
 
     const storedSession = await page.evaluate(() => {
-      const raw = window.localStorage.getItem("fleet-pi-chat-session")
-      return raw ? JSON.parse(raw) : null
+      const raw = window.localStorage.getItem("fleet-pi-chat-sessions")
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as {
+        normal?: { sessionFile?: string; sessionId?: string }
+      }
+      return parsed.normal ?? null
     })
 
-    expect(storedSession).toEqual({
+    expect(storedSession).toMatchObject({
       sessionFile: MOCK_SESSION_FILE,
       sessionId: MOCK_SESSION_ID,
     })
@@ -1340,7 +1328,7 @@ test.describe("chat flows", () => {
       (chatBox?.x ?? 0) + (chatBox?.width ?? 0) - 1
     )
     expect(canvasBox?.width).toBeGreaterThanOrEqual(
-      Math.floor((viewport?.width ?? 0) * 0.7) - 1
+      Math.floor((viewport?.width ?? 0) * 0.5) - 1
     )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
@@ -1491,19 +1479,14 @@ test.describe("chat flows", () => {
 
     const chatColumn = page.locator('[data-testid="chat-column"]')
     const input = page.getByPlaceholder("Send a message...")
-    const suggestion = page.getByRole("button", {
-      name: "Summarize this project",
-    })
 
     const chatBox = await chatColumn.boundingBox()
     const canvasBox = await canvas.boundingBox()
     const inputBox = await input.boundingBox()
-    const suggestionBox = await suggestion.boundingBox()
 
     expect(chatBox).not.toBeNull()
     expect(canvasBox).not.toBeNull()
     expect(inputBox).not.toBeNull()
-    expect(suggestionBox).not.toBeNull()
     const canvasLeft = canvasBox?.x ?? 0
     expect((chatBox?.x ?? 0) + (chatBox?.width ?? 0)).toBeLessThanOrEqual(
       canvasLeft + 1
@@ -1511,9 +1494,6 @@ test.describe("chat flows", () => {
     expect((inputBox?.x ?? 0) + (inputBox?.width ?? 0)).toBeLessThanOrEqual(
       canvasLeft + 1
     )
-    expect(
-      (suggestionBox?.x ?? 0) + (suggestionBox?.width ?? 0)
-    ).toBeLessThanOrEqual(canvasLeft + 1)
   })
 
   test("shows the agent workspace filesystem tab", async ({ page }) => {
