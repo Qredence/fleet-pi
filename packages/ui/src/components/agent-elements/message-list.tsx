@@ -47,11 +47,19 @@ export type MessageListProps = {
       enableImagePreview?: boolean
     }>
     ToolRenderer?: React.ComponentType<ToolRendererProps>
+    TextRenderer?: React.ComponentType<{
+      content: string
+      className?: string
+      isStreaming?: boolean
+      messageId?: string
+      onOpenUIAction?: (message: string) => void
+    }>
   }
   classNames?: {
     userMessage?: string
   }
   toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
+  onOpenUIAction?: (message: string) => void
   /** Node rendered after the last message turn, before the breathing space. */
   trailing?: React.ReactNode
 }
@@ -299,6 +307,7 @@ export const MessageList = memo(function MessageList({
   slots,
   classNames,
   toolRenderers,
+  onOpenUIAction,
   trailing,
 }: MessageListProps) {
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -315,6 +324,7 @@ export const MessageList = memo(function MessageList({
 
   const CustomUserMessage = slots?.UserMessage || UserMessage
   const CustomToolRenderer = slots?.ToolRenderer || DefaultToolRenderer
+  const CustomTextRenderer = slots?.TextRenderer || Markdown
 
   const markCopied = useCallback((id: string) => {
     setActiveCopyId(id)
@@ -606,7 +616,9 @@ export const MessageList = memo(function MessageList({
                                 isStreaming={isStreaming}
                                 suppressQuestionTool={suppressQuestionTool}
                                 ToolRendererComponent={CustomToolRenderer}
+                                TextRendererComponent={CustomTextRenderer}
                                 toolRenderers={toolRenderers}
+                                onOpenUIAction={onOpenUIAction}
                               />
                             )
                           })}
@@ -664,14 +676,24 @@ function AssistantParts({
   isStreaming,
   suppressQuestionTool,
   ToolRendererComponent,
+  TextRendererComponent,
   toolRenderers,
+  onOpenUIAction,
 }: {
   msg: ChatMessage
   isLast: boolean
   isStreaming: boolean
   suppressQuestionTool: boolean
   ToolRendererComponent: React.ComponentType<ToolRendererProps>
+  TextRendererComponent: React.ComponentType<{
+    content: string
+    className?: string
+    isStreaming?: boolean
+    messageId?: string
+    onOpenUIAction?: (message: string) => void
+  }>
   toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
+  onOpenUIAction?: (message: string) => void
 }) {
   const parts = useMemo(
     () => normalizeAssistantToolParts(msg.parts ?? []),
@@ -776,8 +798,11 @@ function AssistantParts({
           key={`${msg.id}-text-final`}
           className="group/assistant-text text-[14px]"
         >
-          <Markdown
+          <TextRendererComponent
             content={text}
+            isStreaming={isStreaming}
+            messageId={msg.id}
+            onOpenUIAction={onOpenUIAction}
             className="leading-relaxed [&_p]:leading-relaxed"
           />
         </div>
@@ -792,7 +817,9 @@ function AssistantParts({
     isStreaming,
     suppressQuestionTool,
     ToolRendererComponent,
+    TextRendererComponent,
     toolRenderers,
+    onOpenUIAction,
   ])
 
   if (elements.length > 1) {

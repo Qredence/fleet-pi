@@ -26,6 +26,7 @@ import { ChatCommandPalette } from "@/components/chat-command-palette"
 import { UiErrorBoundary } from "@/components/ui-error-boundary"
 import { ChatRightPanels } from "@/components/chat-right-panels"
 import { PI_TOOL_RENDERERS } from "@/components/pi/tool-renderers"
+import { GenerativeTextRenderer } from "@/components/openui/inline-renderer"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { CHAT_MODES, queueLabel } from "@/lib/pi/chat-helpers"
 import {
@@ -527,6 +528,7 @@ function ChatWorkspaceShell() {
               messages={messages}
               status={status}
               onSend={(msg) => sendMessage({ text: msg.content })}
+              onOpenUIAction={(message) => sendMessage({ text: message })}
               onStop={stop}
               questionTool={{
                 submitLabel: "Continue",
@@ -543,6 +545,7 @@ function ChatWorkspaceShell() {
               style={agentChatStyle}
               toolRenderers={PI_TOOL_RENDERERS}
               slots={{
+                TextRenderer: GenerativeTextRenderer,
                 InputBar: (props) => (
                   <InputBar
                     {...props}
