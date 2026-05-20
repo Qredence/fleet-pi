@@ -12,12 +12,16 @@ describe("OpenUI content utilities", () => {
     expect(isOpenUIProgram('```openui\nroot = Root([Text("Hi")])\n```')).toBe(
       true
     )
+    expect(isOpenUIProgram("```ts\nroot = path.resolve('.')\n```")).toBe(false)
     expect(isOpenUIProgram("plain markdown")).toBe(false)
   })
 
-  it("strips code fences", () => {
+  it("strips only OpenUI code fences", () => {
     expect(stripOpenUIWrapper("```openui\nroot = Root([])\n```")).toBe(
       "root = Root([])"
+    )
+    expect(stripOpenUIWrapper("```ts\nroot = path.resolve('.')\n```")).toBe(
+      "```ts\nroot = path.resolve('.')\n```"
     )
   })
 
@@ -30,6 +34,14 @@ describe("OpenUI content utilities", () => {
       { type: "markdown", content: "Before\n" },
       { type: "openui", content: 'root = Root([body])\nbody = Text("Hi")' },
       { type: "markdown", content: "\nAfter" },
+    ])
+  })
+
+  it("leaves non-OpenUI fenced code as markdown", () => {
+    const content = "```ts\nroot = path.resolve('.')\n```"
+
+    expect(segmentOpenUIContent(content)).toEqual([
+      { type: "markdown", content },
     ])
   })
 })

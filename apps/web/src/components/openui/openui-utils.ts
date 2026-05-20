@@ -3,20 +3,14 @@ export type OpenUIContentSegment =
   | { content: string; type: "openui" }
 
 const OPENUI_FENCE_PATTERN = /```(?:openui|openui-lang)\s*\n([\s\S]*?)```/gi
+const OPENUI_WRAPPER_PATTERN = /^```(?:openui|openui-lang)\s*\n([\s\S]*?)```$/i
 
 export function stripOpenUIWrapper(content: string) {
   const cleaned = content.trim()
+  const openUIFenceMatch = cleaned.match(OPENUI_WRAPPER_PATTERN)
 
-  if (cleaned.startsWith("```")) {
-    const firstLineEnd = cleaned.indexOf("\n")
-    if (firstLineEnd === -1) return cleaned
-
-    const rest = cleaned.slice(firstLineEnd + 1).trim()
-    return rest.endsWith("```") ? rest.slice(0, -3).trim() : rest
-  }
-
-  if (cleaned.startsWith("`") && cleaned.endsWith("`")) {
-    return cleaned.slice(1, -1).trim()
+  if (openUIFenceMatch) {
+    return openUIFenceMatch[1].trim()
   }
 
   return cleaned
@@ -44,7 +38,7 @@ export function segmentOpenUIContent(
       segments.push({ type: "markdown", content: markdown })
     }
 
-    const openUI = stripOpenUIWrapper(match[1])
+    const openUI = match[1].trim()
     segments.push(
       isOpenUIProgram(openUI)
         ? { type: "openui", content: openUI }

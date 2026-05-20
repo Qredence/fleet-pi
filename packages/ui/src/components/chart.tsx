@@ -154,7 +154,7 @@ function ChartTooltipContent({
     const value =
       !labelKey && typeof label === "string"
         ? (config[label]?.label ?? label) // eslint-disable-line @typescript-eslint/no-unnecessary-condition
-        : itemConfig.label
+        : itemConfig?.label
 
     if (labelFormatter) {
       return (
