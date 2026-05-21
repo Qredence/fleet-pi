@@ -1,4 +1,5 @@
 import { Renderer } from "@openuidev/react-lang"
+import { getChartColorVarName } from "@workspace/ui/components/chart"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
@@ -48,5 +49,15 @@ chart = BarChart("Coverage", "OpenUI checks", "area", [{dataKey: "value", label:
 
     expect(html).toContain("Coverage")
     expect(html).toContain("Prompt")
+  })
+
+  it("sanitizes chart series keys for CSS variable usage", () => {
+    const html = renderOpenUI(`
+root = Root([chart])
+chart = BarChart("Coverage", "OpenUI checks", "area", [{dataKey: "value/%", label: "Checks"}], [{area: "Prompt", "value/%": 2}, {area: "Renderer", "value/%": 3}])
+`)
+
+    expect(html).toContain("--color-value__")
+    expect(getChartColorVarName("value/%")).toBe("--color-value__")
   })
 })

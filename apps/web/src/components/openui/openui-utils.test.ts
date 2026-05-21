@@ -12,12 +12,16 @@ describe("OpenUI content utilities", () => {
     expect(isOpenUIProgram('```openui\nroot = Root([Text("Hi")])\n```')).toBe(
       true
     )
+    expect(isOpenUIProgram('```openui root = Root([Text("Hi")])```')).toBe(true)
     expect(isOpenUIProgram("```ts\nroot = path.resolve('.')\n```")).toBe(false)
     expect(isOpenUIProgram("plain markdown")).toBe(false)
   })
 
   it("strips only OpenUI code fences", () => {
     expect(stripOpenUIWrapper("```openui\nroot = Root([])\n```")).toBe(
+      "root = Root([])"
+    )
+    expect(stripOpenUIWrapper("```openui root = Root([])```")).toBe(
       "root = Root([])"
     )
     expect(stripOpenUIWrapper("```ts\nroot = path.resolve('.')\n```")).toBe(

@@ -23,6 +23,7 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
+  getChartColorVarName,
 } from "@workspace/ui/components/chart"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -321,8 +322,8 @@ export const ListDef = defineComponent({
           ordered ? "list-decimal" : "list-disc"
         )}
       >
-        {items.map((item) => (
-          <li key={item}>{item}</li>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`}>{item}</li>
         ))}
       </Tag>
     )
@@ -405,7 +406,7 @@ export const TableDef = defineComponent({
 export const BarChartDef = defineComponent({
   name: "BarChart",
   description:
-    "A bar chart for visualizing comparisons or trends. Generates realistic, plausible data if none is explicitly provided.",
+    "A bar chart for visualizing comparisons or trends using explicitly provided data points.",
   props: z.object({
     title: z.string().describe("The title of the chart"),
     description: z
@@ -469,7 +470,7 @@ export const BarChartDef = defineComponent({
                 <Bar
                   key={s.dataKey}
                   dataKey={s.dataKey}
-                  fill={`var(--color-${s.dataKey})`}
+                  fill={`var(${getChartColorVarName(s.dataKey)})`}
                   radius={4}
                 />
               ))}

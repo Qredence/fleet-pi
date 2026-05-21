@@ -2,8 +2,10 @@ export type OpenUIContentSegment =
   | { content: string; type: "markdown" }
   | { content: string; type: "openui" }
 
-const OPENUI_FENCE_PATTERN = /```(?:openui|openui-lang)\s*\n([\s\S]*?)```/gi
-const OPENUI_WRAPPER_PATTERN = /^```(?:openui|openui-lang)\s*\n([\s\S]*?)```$/i
+const OPENUI_FENCE_PATTERN =
+  /```(?:openui|openui-lang)(?:[ \t]*\r?\n|[ \t]+)([\s\S]*?)```/gi
+const OPENUI_WRAPPER_PATTERN =
+  /^```(?:openui|openui-lang)(?:[ \t]*\r?\n|[ \t]+)([\s\S]*?)```$/i
 
 export function stripOpenUIWrapper(content: string) {
   const cleaned = content.trim()

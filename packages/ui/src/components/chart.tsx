@@ -7,7 +7,16 @@ import type { TooltipValueType } from "recharts"
 const THEMES = { light: "", dark: ".dark" } as const
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const
+const CHART_TOKEN_PATTERN = /[^\w-]/g
 type TooltipNameType = number | string
+
+export function sanitizeChartToken(value: string) {
+  return value.replace(CHART_TOKEN_PATTERN, "_")
+}
+
+export function getChartColorVarName(key: string) {
+  return `--color-${sanitizeChartToken(key)}`
+}
 
 export type ChartConfig = Record<
   string,
@@ -54,7 +63,9 @@ function ChartContainer({
   }
 }) {
   const uniqueId = React.useId()
-  const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`
+  const chartId = sanitizeChartToken(
+    `chart-${id ?? uniqueId.replace(/:/g, "")}`
+  )
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -79,6 +90,7 @@ function ChartContainer({
 }
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+  const sanitizedId = sanitizeChartToken(id)
   const colorConfig = Object.entries(config).filter(
     ([, itemCfg]) => itemCfg.theme ?? itemCfg.color
   )
@@ -93,13 +105,13 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart="${sanitizedId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color ? `  ${getChartColorVarName(key)}: ${color};` : null
   })
   .join("\n")}
 }
