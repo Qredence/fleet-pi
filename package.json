@@ -59,16 +59,5 @@
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@11.1.3",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@google/genai",
-      "better-sqlite3",
-      "esbuild",
-      "koffi",
-      "msw",
-      "protobufjs",
-      "unrs-resolver"
-    ]
-  }
+  "packageManager": "pnpm@11.1.3"
 }

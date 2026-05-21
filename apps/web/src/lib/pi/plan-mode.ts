@@ -1,3 +1,4 @@
+import { buildOpenUIPrompt } from "../../components/openui/openui-prompt"
 import { evaluatePlanCommand } from "./command-policy"
 import {
   registerPlanQuestionnaireTool,
@@ -238,6 +239,9 @@ Do not make code changes in plan mode.`,
         const todoList = remaining
           .map((todo) => `${todo.step}. ${todo.text}`)
           .join("\n")
+
+        const openUiPrompt = buildOpenUIPrompt("plan-execution")
+
         return {
           message: {
             customType: PLAN_EXECUTION_CONTEXT_CUSTOM_TYPE,
@@ -246,7 +250,9 @@ Do not make code changes in plan mode.`,
 Remaining steps:
 ${todoList}
 
-Execute each step in order. After completing a step, include a [DONE:n] tag in your response.`,
+Execute each step in order. After completing a step, include a [DONE:n] tag in your response.
+
+${openUiPrompt}`,
             display: false,
           },
         }
@@ -277,12 +283,18 @@ Restrictions:
         }
       }
 
+      const openUiPrompt = buildOpenUIPrompt(
+        activeMode === "plan" ? "plan" : "agent"
+      )
+
       return {
         message: {
           customType: AGENT_MODE_CONTEXT_CUSTOM_TYPE,
           content: `[AGENT MODE ACTIVE]
 Follow the operating constraints from agent-workspace/AGENTS.md (injected in workspace context).
-Use agent-workspace/ as context when it helps the coding task. Do not redesign or manage the agent-workspace/ architecture from Agent mode unless the user explicitly asks to switch to Harness mode.`,
+Use agent-workspace/ as context when it helps the coding task. Do not redesign or manage the agent-workspace/ architecture from Agent mode unless the user explicitly asks to switch to Harness mode.
+
+${openUiPrompt}`,
           display: false,
         },
       }

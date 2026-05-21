@@ -18,6 +18,7 @@ export function AgentChat({
   classNames,
   slots,
   toolRenderers,
+  onOpenUIAction,
   attachments,
   showCopyToolbar,
   initialScrollBehavior,
@@ -153,6 +154,7 @@ export function AgentChat({
           classNames={classNames}
           slots={slots}
           toolRenderers={toolRenderers}
+          onOpenUIAction={onOpenUIAction}
           showCopyToolbar={showCopyToolbar}
           initialScrollBehavior={initialScrollBehavior}
           enableImagePreview={enableImagePreview}

@@ -2,8 +2,7 @@
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
-    "npm:pi-autocontext",
-    "npm:pi-subagents"
+    "npm:pi-autocontext"
   ],
   "skills": ["../agent-workspace/pi/skills"],
   "prompts": ["../agent-workspace/pi/prompts"],
