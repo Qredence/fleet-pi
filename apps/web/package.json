@@ -20,7 +20,7 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@daytonaio/sdk": "^0.175.0",
-    "@earendil-works/pi-agent-core": "^0.75.3",
+    "@earendil-works/pi-agent-core": "^0.75.4",
     "@earendil-works/pi-ai": "^0.75.3",
     "@earendil-works/pi-coding-agent": "^0.75.3",
     "@neondatabase/serverless": "^1.1.0",
