@@ -6,6 +6,7 @@ import type {
 } from "@/lib/pi/server-chat-stream"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { auth } from "@/lib/auth/server"
+import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 import { ChatRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
@@ -172,6 +173,10 @@ export const Route = createFileRoute("/api/chat")({
                   session: currentSession,
                   sessionReset: result.sessionReset,
                 })
+                await syncPiSessionMirrorSafely(
+                  result.runtime.session.sessionManager,
+                  { userId: body.userId }
+                )
 
                 log.info(
                   { sessionId: currentSession.sessionId },
@@ -197,7 +202,7 @@ export const Route = createFileRoute("/api/chat")({
               } finally {
                 unsubscribe?.()
                 releaseRuntime?.()
-                recorder.close()
+                await recorder.close()
                 controller.close()
               }
             },

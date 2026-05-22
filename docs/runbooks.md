@@ -210,6 +210,41 @@ string).
 
 ---
 
+## Chat Session Mirror Database
+
+Pi session JSONL files under `.fleet/sessions/` remain authoritative. When
+`FLEET_PI_CHAT_DATABASE_URL` is set, Fleet Pi mirrors full session entries and
+run provenance into Neon Postgres for search, analytics, cross-surface history,
+and debugging.
+
+### Roles
+
+| Role           | Privileges                                      | Used by             |
+| -------------- | ----------------------------------------------- | ------------------- |
+| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)      | Migration CLI only  |
+| `fleet_pi_app` | SELECT, INSERT, UPDATE, DELETE on `pi_*` tables | Running application |
+
+### Running migrations
+
+```bash
+pnpm --filter web chat:migrate
+```
+
+Requires `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` to be set to a direct
+`neondb_owner` connection string. Runtime deployments should use
+`FLEET_PI_CHAT_DATABASE_URL` with a pooled app-role connection string.
+
+### Current chat mirror tables
+
+- `public.pi_sessions` — Pi session headers and current session metadata
+- `public.pi_session_entries` — Full raw Pi entries plus normalized search fields
+- `public.pi_runs` — Assistant turn/run summaries
+- `public.pi_run_events` — Ordered streamed chat events
+- `public.pi_tool_executions` — Tool call inputs, outputs, and claimed paths
+- `public.pi_file_mutations` — File mutation summaries attributed to runs/tools
+
+---
+
 ## Quick Reference
 
 | Command                                            | Purpose                                          |
