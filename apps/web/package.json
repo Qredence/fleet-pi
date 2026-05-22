@@ -15,7 +15,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
-    "auth:migrate": "bash ../../scripts/auth-migrate.sh"
+    "auth:migrate": "bash ../../scripts/auth-migrate.sh",
+    "chat:migrate": "tsx scripts/chat-migrate.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

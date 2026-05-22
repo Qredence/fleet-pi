@@ -19,6 +19,7 @@ import type {
   ChatSessionResponse,
 } from "./chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 
 export type SessionManagerResult = {
   sessionManager: SessionManager
@@ -33,6 +34,8 @@ export async function createNewChatSession(
     context.projectRoot,
     getSessionDir(context.projectRoot, services)
   )
+  // Fire-and-forget: mirror sync must not delay session response.
+  void syncPiSessionMirrorSafely(sessionManager)
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -58,6 +61,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
+    void syncPiSessionMirrorSafely(sessionManager)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -72,12 +76,15 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
+    void syncPiSessionMirrorSafely(fresh)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
       sessionReset: true,
     }
   }
+
+  void syncPiSessionMirrorSafely(sessionManager)
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -96,7 +103,6 @@ export async function listChatSessions(
     context.projectRoot,
     getSessionDir(context.projectRoot, services)
   )
-
   return sessions.map((session) => ({
     path: session.path,
     id: session.id,
