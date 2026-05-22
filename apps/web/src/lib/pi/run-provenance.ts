@@ -107,6 +107,7 @@ export function createRunProvenanceRecorder(
 ): RunProvenanceRecorder {
   let connection: WorkspaceProvenanceConnection | undefined
   let activeRun: ActiveRunState | undefined
+  const postgresQueue = createChatPostgresOperationQueue()
 
   try {
     connection = openWorkspaceProvenance(context)
@@ -115,15 +116,10 @@ export function createRunProvenanceRecorder(
       "[run-provenance] workspace provenance unavailable (non-fatal):",
       error
     )
-    return { record: () => undefined, close: async () => {} }
+    // Continue without local provenance; Postgres mirroring is still active.
   }
 
-  const postgresQueue = createChatPostgresOperationQueue()
-
   const record = (event: ChatStreamEvent) => {
-    const activeConnection = connection
-    if (!activeConnection) return
-
     try {
       if (event.type === "start") {
         if (activeRun) {
@@ -142,15 +138,17 @@ export function createRunProvenanceRecorder(
           toolCalls: [],
         }
         const startedAt = timestamp()
-        insertRunStart(activeConnection.db, {
-          runId: activeRun.runId,
-          assistantMessageId: activeRun.runId,
-          sessionId: activeRun.sessionId,
-          sessionFile: activeRun.sessionFile,
-          mode: options.mode,
-          planAction: options.planAction,
-          startedAt,
-        })
+        if (connection) {
+          insertRunStart(connection.db, {
+            runId: activeRun.runId,
+            assistantMessageId: activeRun.runId,
+            sessionId: activeRun.sessionId,
+            sessionFile: activeRun.sessionFile,
+            mode: options.mode,
+            planAction: options.planAction,
+            startedAt,
+          })
+        }
         const startedRun = { ...activeRun }
         postgresQueue.enqueue((client) =>
           insertPiRunStart(client, {
@@ -172,14 +170,16 @@ export function createRunProvenanceRecorder(
 
       activeRun.sequence += 1
       const recordedAt = timestamp()
-      appendRunEvent(activeConnection.db, {
-        runId: activeRun.runId,
-        sequence: activeRun.sequence,
-        eventType: event.type,
-        summary: summarizeStreamEvent(event),
-        payload: event,
-        recordedAt,
-      })
+      if (connection) {
+        appendRunEvent(connection.db, {
+          runId: activeRun.runId,
+          sequence: activeRun.sequence,
+          eventType: event.type,
+          summary: summarizeStreamEvent(event),
+          payload: event,
+          recordedAt,
+        })
+      }
       const eventRunId = activeRun.runId
       const eventSequence = activeRun.sequence
       const eventSummary = summarizeStreamEvent(event)
@@ -225,8 +225,8 @@ export function createRunProvenanceRecorder(
   return { record, close }
 
   function recordToolEvent(part: ChatToolPart) {
+    if (!activeRun || !part.toolCallId) return
     const activeConnection = connection
-    if (!activeConnection || !activeRun || !part.toolCallId) return
 
     const toolName = part.type.startsWith("tool-")
       ? part.type.slice("tool-".length)
@@ -276,18 +276,20 @@ export function createRunProvenanceRecorder(
       activeRun.toolCalls.push(nextToolCall)
     }
 
-    upsertToolCall(activeConnection.db, {
-      runId: activeRun.runId,
-      toolCallId: nextToolCall.toolCallId,
-      toolName: nextToolCall.toolName,
-      state: nextToolCall.state,
-      isError: nextToolCall.isError,
-      input: asRecord(part.input),
-      output: asRecordOrNull(part.output),
-      claimedPaths: nextToolCall.claimedPaths,
-      firstSequence: nextToolCall.firstSequence,
-      lastSequence: nextToolCall.lastSequence,
-    })
+    if (activeConnection) {
+      upsertToolCall(activeConnection.db, {
+        runId: activeRun.runId,
+        toolCallId: nextToolCall.toolCallId,
+        toolName: nextToolCall.toolName,
+        state: nextToolCall.state,
+        isError: nextToolCall.isError,
+        input: asRecord(part.input),
+        output: asRecordOrNull(part.output),
+        claimedPaths: nextToolCall.claimedPaths,
+        firstSequence: nextToolCall.firstSequence,
+        lastSequence: nextToolCall.lastSequence,
+      })
+    }
     const runId = activeRun.runId
     const sessionId = activeRun.sessionId
     postgresQueue.enqueue((client) =>
@@ -312,8 +314,8 @@ export function createRunProvenanceRecorder(
     message?: ChatMessage,
     errorMessage?: string
   ) {
+    if (!activeRun) return
     const activeConnection = connection
-    if (!activeConnection || !activeRun) return
 
     const runToFinalize = activeRun
     activeRun = undefined
@@ -327,11 +329,13 @@ export function createRunProvenanceRecorder(
       : []
 
     const recordedAt = timestamp()
-    replaceRunMutations(activeConnection.db, {
-      runId: runToFinalize.runId,
-      recordedAt,
-      mutations,
-    })
+    if (activeConnection) {
+      replaceRunMutations(activeConnection.db, {
+        runId: runToFinalize.runId,
+        recordedAt,
+        mutations,
+      })
+    }
     postgresQueue.enqueue((client) =>
       replacePiFileMutations(client, {
         runId: runToFinalize.runId,
@@ -340,13 +344,15 @@ export function createRunProvenanceRecorder(
       })
     )
     const completedAt = timestamp()
-    finalizeRun(activeConnection.db, {
-      runId: runToFinalize.runId,
-      status,
-      assistantPreview: message ? summarizeAssistantMessage(message) : null,
-      errorMessage: errorMessage ?? null,
-      completedAt,
-    })
+    if (activeConnection) {
+      finalizeRun(activeConnection.db, {
+        runId: runToFinalize.runId,
+        status,
+        assistantPreview: message ? summarizeAssistantMessage(message) : null,
+        errorMessage: errorMessage ?? null,
+        completedAt,
+      })
+    }
     postgresQueue.enqueue((client) =>
       finalizePiRun(client, {
         runId: runToFinalize.runId,

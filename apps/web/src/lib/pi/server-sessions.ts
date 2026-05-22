@@ -34,7 +34,8 @@ export async function createNewChatSession(
     context.projectRoot,
     getSessionDir(context.projectRoot, services)
   )
-  await syncPiSessionMirrorSafely(sessionManager)
+  // Fire-and-forget: mirror sync must not delay session response.
+  void syncPiSessionMirrorSafely(sessionManager)
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -60,7 +61,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
-    await syncPiSessionMirrorSafely(sessionManager)
+    void syncPiSessionMirrorSafely(sessionManager)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -75,7 +76,7 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
-    await syncPiSessionMirrorSafely(fresh)
+    void syncPiSessionMirrorSafely(fresh)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -83,7 +84,7 @@ export async function hydrateChatSession(
     }
   }
 
-  await syncPiSessionMirrorSafely(sessionManager)
+  void syncPiSessionMirrorSafely(sessionManager)
 
   return {
     session: toSessionMetadata(sessionManager),
