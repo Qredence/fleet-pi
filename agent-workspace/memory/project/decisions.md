@@ -38,12 +38,20 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Consequences: Session summaries and raw research should be synthesized into `memory/project/*` only when they are durable and broadly useful.
 - Source: `.pi/extensions/lib/workspace-memory-index.ts`, `agent-workspace/evals/memory-quality.md`.
 
-## pi-web-access installed as project-scoped Pi package
+## Neon mirror is additive and non-blocking
 
-- Decision: Add `npm:pi-web-access` to `.pi/settings.json` packages and wire its tools into Fleet Pi's mode allowlists.
+- Decision: The Neon Postgres mirror of Pi sessions is a convenience layer, not the source of truth. Pi JSONL remains canonical.
 - Status: Active.
-- Context: Fleet Pi needed web search, URL fetching, GitHub repo cloning, YouTube understanding, PDF extraction, and code search as first-class agent tools — not ad-hoc `web_fetch` calls.
-- Rationale: `pi-web-access` provides a smart fallback chain (Exa → Perplexity → Gemini), zero-config Exa MCP, GitHub clone-over-scrape, and a bundled `librarian` skill. Scope is project (`.pi/settings.json`) to match existing packages and share with the team.
-- Governance: `web_search`, `code_search`, `get_search_content` are read-only and added to Plan, Harness, and Agent mode allowlists. `fetch_content` (can clone repos to `/tmp/`) is Agent and Harness mode only. This is an explicit user-approved activation, accepted before a formal package trust model exists.
-- Consequences: `web_fetch` remains for single quick URL reads in extension code; `web_search`/`fetch_content` are the preferred tools for research tasks in chat sessions.
-- Source: `.pi/settings.json`, `apps/web/src/lib/pi/plan-mode.ts`, `AGENTS.md`, `agent-workspace/plans/active/install-pi-web-access.md`.
+- Context: When `FLEET_PI_CHAT_DATABASE_URL` is set, Fleet Pi mirrors Pi session entries, run events, tool executions, and file mutations into Neon Postgres tables (`pi_*`). The mirror is opt-in and additive.
+- Rationale: Making chat streaming depend on database availability would couple reliability to an optional observability feature.
+- Consequences: Mirror failures must be logged but must not throw or abort the streaming response. The chat API must work identically whether or not the database is configured.
+- Source: `apps/web/src/routes/api/chat.ts`, `AGENTS.md` (AI Integration section).
+
+## Session runtime instances are retained in-memory with a TTL
+
+- Decision: Live Pi `AgentSessionRuntime` instances are kept in memory for a short TTL (`FLEET_PI_RUNTIME_TTL_MS`, default 10 minutes) and discarded afterwards.
+- Status: Active.
+- Context: Aborts and follow-up prompts need to operate on the same runtime instance to preserve session continuity and allow proper queuing.
+- Rationale: In-memory retention avoids re-initializing the runtime on every message; the TTL prevents unbounded memory growth.
+- Consequences: Sessions beyond the TTL must fall back to creating a fresh runtime from the Pi session file. Invalid, outside, or missing session files must start a new project-scoped session rather than returning an error.
+- Source: `apps/web/src/lib/pi/server-runtime.ts`, `AGENTS.md` (AI Integration section).

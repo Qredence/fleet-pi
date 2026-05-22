@@ -9,6 +9,20 @@ Stable user or project preferences that repeatedly affect how Fleet Pi work shou
 - Why it matters: Fleet Pi is both product code and an adaptive agent workspace, so uncontrolled churn makes future reasoning and review harder.
 - Evidence: `agent-workspace/AGENTS.md` and repository validation conventions emphasize reading before editing, minimal diffs, and targeted validation.
 
+## Read before editing
+
+- Preference: Always read the relevant file before proposing or applying an edit. Never guess at content.
+- Applies to: app code, Pi extensions, workspace files, and documentation.
+- Why it matters: Files may have conventions, in-progress changes, or structural constraints that are only visible from the actual content. Editing without reading produces conflicting diffs.
+- Evidence: `agent-workspace/AGENTS.md` operating constraints state "read before editing" as the first code quality rule.
+
+## Clarify before acting with questionnaire
+
+- Preference: Use `questionnaire` to surface intent, scope, or tradeoff choices before writing code or making irreversible changes.
+- Applies to: any task with ambiguous scope, destructive operations, or decisions that affect multiple areas.
+- Why it matters: Acting on misunderstood intent wastes effort and produces diffs that need immediate revert. A clarifying question costs less than a bad edit.
+- Evidence: `agent-workspace/AGENTS.md` communication guidelines: "Surface uncertainty early. Use `questionnaire` to clarify before writing code."
+
 ## Workspace-first self-improvement
 
 - Preference: Put durable agent learnings, plans, reports, eval evidence, and staged resources in `agent-workspace/` rather than hidden local state.

@@ -13,19 +13,19 @@ Unresolved questions that affect Fleet Pi's Pi-native memory, reasoning, and sel
 
 - Question: How should Fleet Pi select task-relevant memory snippets without over-injecting all project memory into every turn?
 - Why it matters: Startup context needs enough continuity to help reasoning, but excessive memory can waste tokens or bias unrelated tasks.
-- Current evidence: Startup context now has compact canonical snippets, but no semantic or prompt-aware retrieval.
-- Next step: Add prompt-aware or search-index-backed recall after the canonical memory model proves useful.
+- Current evidence: Snippet extraction is static (first 4 bullet items per file, 3 surfaced per turn = max 15 fixed snippets). A prompt-aware retrieval plan using `workspace_index` search is now actively being implemented.
+- Next step: Complete the retrieval implementation in `.pi/extensions/lib/workspace-memory-index.ts` and validate with a memory-recall eval scenario in `pi-autocontext`.
 
-## Eval runner
+## Eval runner — scenario design
 
-- Question: Should Fleet Pi use `pi-autocontext`, `pi-autoresearch`, a custom Fleet Pi extension, or an external evaluator for repeatable self-improvement scoring?
-- Why it matters: A self-improvement loop needs evidence that changes improve memory recall, mode boundaries, and tool use.
-- Current evidence: Eval checklist files exist in `agent-workspace/evals/`, and Pi packages for judging/experiments are installed.
-- Next step: Define one executable memory-recall or mode-boundary eval before expanding the runner.
+- Question: What should the first executable memory-recall scenario look like: what questions, what rubric dimensions, and what pass threshold?
+- Why it matters: Running the eval is now unblocked (pi-autocontext chosen), but the scenario specification is still missing.
+- Current evidence: `agent-workspace/evals/memory-quality.md` exists as a checklist; `pi-autocontext` judging is installed. A `memory-recall.md` rubric file is planned as part of the active improvement plan.
+- Next step: Write `agent-workspace/evals/memory-recall.md` with scored questions (3–5 dimensions, 0–1 scale) and register a matching autocontext scenario.
 
 ## Package activation policy
 
 - Question: Should project-local npm/git Pi packages ever be auto-activated, or should executable activation always require explicit user approval?
 - Why it matters: Package activation can introduce executable code into the Pi runtime.
-- Current evidence: `resource_install` stages executable extensions/packages unless activation is explicitly requested. The `pi-web-access` install (2026-05-22) established a precedent: explicit user request during a planning conversation is an acceptable activation path before a formal trust model exists. The package was reviewed via `https://pi.dev/packages/pi-web-access` and its GitHub source before approval.
-- Next step: Formalize the trust criteria (source review, pi.dev listing, explicit user approval) as a lightweight checklist in `system/` before the next package install.
+- Current evidence: `resource_install` stages executable extensions/packages unless activation is explicitly requested.
+- Next step: Keep staged-by-default behavior until a package trust model exists.
