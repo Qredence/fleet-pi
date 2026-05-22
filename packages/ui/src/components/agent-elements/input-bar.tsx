@@ -361,7 +361,11 @@ export const InputBar = memo(function InputBar({
           allowSkip={questionBarData!.allowSkip}
           onSubmit={(answer) => {
             questionBarData!.onSubmit(answer)
-            setDismissedQuestionId(questionBarData!.id)
+            if (clampedQuestionIndex >= totalQuestions) {
+              setDismissedQuestionId(questionBarData!.id)
+            } else {
+              setQuestionBarIndex((prev) => Math.min(totalQuestions, prev + 1))
+            }
           }}
           onSkip={() => {
             questionBarData!.onSkip?.()

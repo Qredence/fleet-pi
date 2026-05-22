@@ -174,6 +174,13 @@ export type AgentChatProps = {
     }) => void
   }
 
+  /**
+   * When true, `tool-Question` parts are hidden from the inline message list.
+   * Use alongside the InputBar `questionBar` prop to avoid rendering the same
+   * question in both the message stream and the composer.
+   */
+  suppressQuestionTool?: boolean
+
   className?: string
   style?: React.CSSProperties
 }

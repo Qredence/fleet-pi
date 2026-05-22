@@ -28,6 +28,7 @@ export function AgentChat({
   emptySuggestionsPlacement = "input",
   emptySuggestionsPosition = "top",
   questionTool,
+  suppressQuestionTool = false,
   className,
   style,
 }: AgentChatProps) {
@@ -158,6 +159,7 @@ export function AgentChat({
           showCopyToolbar={showCopyToolbar}
           initialScrollBehavior={initialScrollBehavior}
           enableImagePreview={enableImagePreview}
+          suppressQuestionTool={suppressQuestionTool}
           trailing={conversationSuggestionsNode}
         />
       )}
