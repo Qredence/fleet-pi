@@ -19,10 +19,7 @@ import type {
   ChatSessionResponse,
 } from "./chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import {
-  isPiSessionMirrorEnabled,
-  syncPiSessionMirrorSafely,
-} from "@/lib/db/pi-session-mirror"
+import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 
 export type SessionManagerResult = {
   sessionManager: SessionManager
@@ -105,21 +102,6 @@ export async function listChatSessions(
     context.projectRoot,
     getSessionDir(context.projectRoot, services)
   )
-  if (isPiSessionMirrorEnabled()) {
-    await Promise.all(
-      sessions.map(async (session) => {
-        const sessionManager = openSessionManager(
-          session.path,
-          getSessionDir(context.projectRoot, services),
-          context.projectRoot
-        )
-        if (sessionManager) {
-          await syncPiSessionMirrorSafely(sessionManager)
-        }
-      })
-    )
-  }
-
   return sessions.map((session) => ({
     path: session.path,
     id: session.id,

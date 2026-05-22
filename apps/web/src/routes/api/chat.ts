@@ -173,7 +173,8 @@ export const Route = createFileRoute("/api/chat")({
                   session: currentSession,
                   sessionReset: result.sessionReset,
                 })
-                await syncPiSessionMirrorSafely(
+                // Fire-and-forget: mirror sync must not delay stream close.
+                void syncPiSessionMirrorSafely(
                   result.runtime.session.sessionManager,
                   { userId: body.userId }
                 )

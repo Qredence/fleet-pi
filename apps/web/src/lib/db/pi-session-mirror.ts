@@ -12,6 +12,17 @@ import type {
 } from "../pi/chat-protocol"
 import type { ProvenanceMutationKind } from "./workspace-provenance"
 
+let sharedPool: InstanceType<typeof Pool> | undefined
+
+function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
+  const connectionString = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
+  if (!connectionString) return undefined
+  if (!sharedPool) {
+    sharedPool = new Pool({ connectionString })
+  }
+  return sharedPool
+}
+
 type QueryResult<T = Record<string, unknown>> = {
   rows: Array<T>
 }
@@ -135,6 +146,7 @@ export async function syncPiSessionMirror(
   sessionManager: SessionManager,
   options: { userId?: string } = {}
 ) {
+  if (!isPiSessionMirrorEnabled()) return
   const session = extractPiSessionMirrorInput(sessionManager, options)
   if (!session) return
 
@@ -149,8 +161,9 @@ export async function syncPiSessionMirrorSafely(
 ) {
   try {
     await syncPiSessionMirror(sessionManager, options)
-  } catch {
+  } catch (error) {
     // Chat persistence is a mirror; Pi JSONL remains authoritative.
+    console.warn("[pi-session-mirror] sync failed (non-fatal):", error)
   }
 }
 
@@ -272,8 +285,8 @@ export async function upsertPiSessionMirror(
     ]
   )
 
-  for (const entry of input.entries) {
-    await upsertPiSessionEntry(client, entry)
+  if (input.entries.length > 0) {
+    await upsertPiSessionEntriesBatch(client, input.entries)
   }
 }
 
@@ -512,7 +525,7 @@ export function createChatPostgresOperationQueue() {
     }
   }
 
-  const pool = new Pool({ connectionString })
+  const pool = getChatPostgresPool()!
   let pending: Promise<void> = Promise.resolve()
 
   const enqueue = (
@@ -531,7 +544,7 @@ export function createChatPostgresOperationQueue() {
     enqueue,
     close: async () => {
       await pending.catch(() => undefined)
-      await pool.end().catch(() => undefined)
+      // Shared pool; do not end it here.
     },
   }
 }
@@ -539,10 +552,9 @@ export function createChatPostgresOperationQueue() {
 async function withChatPostgresTransaction(
   operation: (client: PostgresQueryClient) => Promise<void>
 ) {
-  const connectionString = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (!connectionString) return
+  const pool = getChatPostgresPool()
+  if (!pool) return
 
-  const pool = new Pool({ connectionString })
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -553,80 +565,77 @@ async function withChatPostgresTransaction(
     throw error
   } finally {
     client.release()
-    await pool.end()
   }
 }
 
-async function upsertPiSessionEntry(
+async function upsertPiSessionEntriesBatch(
   client: PostgresQueryClient,
-  entry: PiSessionEntryMirrorInput
+  entries: Array<PiSessionEntryMirrorInput>
 ) {
-  await client.query(
-    `
-      INSERT INTO pi_session_entries (
-        session_id,
-        entry_id,
-        parent_entry_id,
-        entry_type,
-        role,
-        custom_type,
-        provider,
-        model_id,
-        thinking_level,
-        target_entry_id,
-        from_entry_id,
-        content_text,
-        summary,
-        is_error,
-        tokens_total,
-        cost_total,
-        raw_entry,
-        entry_timestamp,
-        synced_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17::jsonb, $18, now()
+  if (entries.length === 0) return
+
+  // Build a multi-row VALUES clause with positional parameters.
+  // Each row has 18 columns; chunk in groups of 50 to stay within pg param limit.
+  const CHUNK_SIZE = 50
+  const COLS = 18
+  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+    const chunk = entries.slice(i, i + CHUNK_SIZE)
+    const values: Array<unknown> = []
+    const rowPlaceholders = chunk.map((entry, rowIdx) => {
+      const base = rowIdx * COLS + 1
+      values.push(
+        entry.sessionId,
+        entry.entryId,
+        entry.parentEntryId,
+        entry.entryType,
+        entry.role ?? null,
+        entry.customType ?? null,
+        entry.provider ?? null,
+        entry.modelId ?? null,
+        entry.thinkingLevel ?? null,
+        entry.targetEntryId ?? null,
+        entry.fromEntryId ?? null,
+        entry.contentText ?? null,
+        entry.summary ?? null,
+        entry.isError,
+        entry.tokensTotal ?? null,
+        entry.costTotal ?? null,
+        JSON.stringify(sanitizeForJson(entry.rawEntry)),
+        entry.entryTimestamp
       )
-      ON CONFLICT (session_id, entry_id) DO UPDATE SET
-        parent_entry_id = EXCLUDED.parent_entry_id,
-        entry_type = EXCLUDED.entry_type,
-        role = EXCLUDED.role,
-        custom_type = EXCLUDED.custom_type,
-        provider = EXCLUDED.provider,
-        model_id = EXCLUDED.model_id,
-        thinking_level = EXCLUDED.thinking_level,
-        target_entry_id = EXCLUDED.target_entry_id,
-        from_entry_id = EXCLUDED.from_entry_id,
-        content_text = EXCLUDED.content_text,
-        summary = EXCLUDED.summary,
-        is_error = EXCLUDED.is_error,
-        tokens_total = EXCLUDED.tokens_total,
-        cost_total = EXCLUDED.cost_total,
-        raw_entry = EXCLUDED.raw_entry,
-        entry_timestamp = EXCLUDED.entry_timestamp,
-        synced_at = now()
-    `,
-    [
-      entry.sessionId,
-      entry.entryId,
-      entry.parentEntryId,
-      entry.entryType,
-      entry.role ?? null,
-      entry.customType ?? null,
-      entry.provider ?? null,
-      entry.modelId ?? null,
-      entry.thinkingLevel ?? null,
-      entry.targetEntryId ?? null,
-      entry.fromEntryId ?? null,
-      entry.contentText ?? null,
-      entry.summary ?? null,
-      entry.isError,
-      entry.tokensTotal ?? null,
-      entry.costTotal ?? null,
-      JSON.stringify(sanitizeForJson(entry.rawEntry)),
-      entry.entryTimestamp,
-    ]
-  )
+      const p = (n: number) => `$${base + n}`
+      return `(${p(0)},${p(1)},${p(2)},${p(3)},${p(4)},${p(5)},${p(6)},${p(7)},${p(8)},${p(9)},${p(10)},${p(11)},${p(12)},${p(13)},${p(14)},${p(15)},${p(16)}::jsonb,${p(17)},now())`
+    })
+    await client.query(
+      `
+        INSERT INTO pi_session_entries (
+          session_id, entry_id, parent_entry_id, entry_type,
+          role, custom_type, provider, model_id, thinking_level,
+          target_entry_id, from_entry_id, content_text, summary,
+          is_error, tokens_total, cost_total, raw_entry, entry_timestamp, synced_at
+        ) VALUES ${rowPlaceholders.join(",")}
+        ON CONFLICT (session_id, entry_id) DO UPDATE SET
+          parent_entry_id = EXCLUDED.parent_entry_id,
+          entry_type = EXCLUDED.entry_type,
+          role = EXCLUDED.role,
+          custom_type = EXCLUDED.custom_type,
+          provider = EXCLUDED.provider,
+          model_id = EXCLUDED.model_id,
+          thinking_level = EXCLUDED.thinking_level,
+          target_entry_id = EXCLUDED.target_entry_id,
+          from_entry_id = EXCLUDED.from_entry_id,
+          content_text = EXCLUDED.content_text,
+          summary = EXCLUDED.summary,
+          is_error = EXCLUDED.is_error,
+          tokens_total = EXCLUDED.tokens_total,
+          cost_total = EXCLUDED.cost_total,
+          raw_entry = EXCLUDED.raw_entry,
+          entry_timestamp = EXCLUDED.entry_timestamp,
+          synced_at = now()
+      `,
+      values
+    )
+  }
 }
 
 async function upsertPiSessionStub(

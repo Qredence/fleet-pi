@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS fleet_pi_chat_migrations (
 
 CREATE TABLE IF NOT EXISTS pi_sessions (
   id TEXT PRIMARY KEY,
-  user_id TEXT NULL REFERENCES public."user"(id) ON DELETE SET NULL,
+  user_id TEXT NULL,
   session_file_path TEXT UNIQUE NOT NULL,
   cwd TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 3,
