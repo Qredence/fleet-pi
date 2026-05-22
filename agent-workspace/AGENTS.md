@@ -94,5 +94,11 @@ Write to the narrowest canonical file. Prefer durable memory and plans over hidd
 - `workspace_write` — durable workspace updates (with rationale for protected areas)
 - `resource_install` — Pi skills, prompts, extensions, themes, packages
 - `project_inventory` — app and resource overview
-- `web_fetch` — external context (only when repo-local sources are insufficient)
+- `web_search` — research queries; Exa → Perplexity → Gemini fallback (Plan, Harness, Agent)
+- `code_search` — code examples and API docs via Exa MCP, no key needed (Plan, Harness, Agent)
+- `fetch_content` — smart router: URLs, GitHub repos, YouTube, PDFs (Harness, Agent only)
+- `get_search_content` — retrieve full stored content from a prior search (Plan, Harness, Agent)
+- `web_fetch` — single quick URL reads in extension code or when the URL is already known (Harness, Agent)
 - `questionnaire` — clarify intent, scope, or tradeoffs before acting
+
+See `system/tool-policy.md` for when to prefer each web access tool.

@@ -28,7 +28,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
         "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
       )
       parts.push(
-        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed."
+        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed (single quick URL reads). For research: use web_search, code_search, fetch_content (Harness+Agent), or get_search_content from pi-web-access."
       )
       parts.push(
         "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."

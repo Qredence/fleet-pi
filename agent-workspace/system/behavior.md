@@ -56,8 +56,9 @@ access, an unknown CLI, or content you cannot retrieve — do not improvise sile
 2. State clearly what is missing and why you cannot proceed without it.
 3. List every option you can identify. Examples:
    - Install a Pi skill: `gh skill install <url>` (if the source follows Pi skill format)
+   - Search the web: `web_search` for unknown sources, `code_search` for code/API docs, `fetch_content` for a specific URL, repo, video, or PDF
+   - Fetch a single known URL directly with `web_fetch`
    - Fetch via researcher subagent: `subagent { agent: "researcher", task: "fetch and summarize <url>" }`
-   - Fetch directly with `web_fetch` if available
    - Ask the user to paste the content directly
 4. Wait for the user's choice before taking any action.
 

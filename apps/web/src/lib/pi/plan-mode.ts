@@ -73,6 +73,12 @@ const DAYTONA_SANDBOX_TOOLS = [
   "daytona_create_snapshot",
   "daytona_delete_snapshot",
 ]
+const WEB_ACCESS_READ_TOOLS = [
+  "web_search",
+  "code_search",
+  "get_search_content",
+]
+const WEB_ACCESS_AGENT_TOOLS = [...WEB_ACCESS_READ_TOOLS, "fetch_content"]
 const PLAN_MODE_TOOLS = [
   "read",
   "bash",
@@ -82,6 +88,7 @@ const PLAN_MODE_TOOLS = [
   "questionnaire",
   ...PROJECT_RESOURCE_TOOLS,
   ...AUTOCONTEXT_STATUS_TOOLS,
+  ...WEB_ACCESS_READ_TOOLS,
 ]
 const HARNESS_MODE_TOOLS = [
   "read",
@@ -96,6 +103,7 @@ const HARNESS_MODE_TOOLS = [
   ...PROJECT_RESOURCE_TOOLS,
   ...AUTOCONTEXT_STATUS_TOOLS,
   ...DAYTONA_SANDBOX_TOOLS,
+  ...WEB_ACCESS_AGENT_TOOLS,
 ]
 const NORMAL_MODE_TOOLS = [
   "read",
@@ -111,6 +119,7 @@ const NORMAL_MODE_TOOLS = [
   ...AUTORESEARCH_AGENT_TOOLS,
   ...SUBAGENT_AGENT_TOOLS,
   ...DAYTONA_SANDBOX_TOOLS,
+  ...WEB_ACCESS_AGENT_TOOLS,
 ]
 export const CHAT_TOOL_ALLOWLIST = [
   ...NORMAL_MODE_TOOLS,

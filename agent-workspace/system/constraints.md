@@ -48,7 +48,7 @@ Operating constraints for the Fleet Pi coding agent.
 
 ## 5. AI & Chat Runtime
 
-- **Plan mode is read-only.** Never add mutating tools (`write`, `edit`, `bash`, research, subagent) to Plan mode's allowlist.
+- **Plan mode is read-only.** Never add mutating tools (`write`, `edit`) or tools with file-system side effects (`fetch_content`, `subagent`) to Plan mode. Read-only external research (`web_search`, `code_search`, `get_search_content`) is permitted in Plan mode.
 - **Session hygiene.** Invalid, outside, or missing `sessionFile` values must silently start a fresh project-scoped session — never surface an error to the user for this case.
 - **Tool execution is project-scoped.** File paths and bash `cwd` for chat-driven tool execution must remain inside the active `projectRoot`.
 - **Extensions are staged by default.** Use `resource_install` for Pi resources. Executable extensions and packages require explicit user activation (`activate: true`); skills/prompts become usable after reload/new session.

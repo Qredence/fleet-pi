@@ -1,13 +1,13 @@
 # Open Questions
 
-Unresolved questions that affect Fleet Pi’s Pi-native memory, reasoning, and self-improvement design.
+Unresolved questions that affect Fleet Pi's Pi-native memory, reasoning, and self-improvement design.
 
 ## Memory package strategy
 
 - Question: Should Fleet Pi build its own workspace-native memory lifecycle first, adopt a third-party Pi memory package, or combine both behind clear source-of-truth boundaries?
 - Why it matters: The Pi package catalog includes persistent memory packages, but Fleet Pi already has a reviewable `agent-workspace/memory/project/*` contract.
 - Current evidence: `@samfp/pi-memory` and `pi-hermes-memory` are available in the Pi package catalog; Fleet Pi currently indexes canonical Markdown memory through `.pi/extensions/lib/workspace-memory-index.ts`.
-- Next step: Compare package behavior against Fleet Pi’s requirement that durable canonical memory stay in `agent-workspace/`.
+- Next step: Compare package behavior against Fleet Pi's requirement that durable canonical memory stay in `agent-workspace/`.
 
 ## Recall relevance
 
@@ -27,5 +27,5 @@ Unresolved questions that affect Fleet Pi’s Pi-native memory, reasoning, and s
 
 - Question: Should project-local npm/git Pi packages ever be auto-activated, or should executable activation always require explicit user approval?
 - Why it matters: Package activation can introduce executable code into the Pi runtime.
-- Current evidence: `resource_install` stages executable extensions/packages unless activation is explicitly requested.
-- Next step: Keep staged-by-default behavior until a package trust model exists.
+- Current evidence: `resource_install` stages executable extensions/packages unless activation is explicitly requested. The `pi-web-access` install (2026-05-22) established a precedent: explicit user request during a planning conversation is an acceptable activation path before a formal trust model exists. The package was reviewed via `https://pi.dev/packages/pi-web-access` and its GitHub source before approval.
+- Next step: Formalize the trust criteria (source review, pi.dev listing, explicit user approval) as a lightweight checklist in `system/` before the next package install.

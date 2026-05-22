@@ -1,10 +1,10 @@
 # Decisions
 
-Durable project decisions and rationale for Fleet Pi’s Pi-native agent workspace.
+Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace.
 
 ## agent-workspace is the durable adaptive layer
 
-- Decision: Treat `agent-workspace/` as Fleet Pi’s persistent agent operating surface, not as incidental storage.
+- Decision: Treat `agent-workspace/` as Fleet Pi's persistent agent operating surface, not as incidental storage.
 - Status: Active.
 - Context: Fleet Pi needs long-term memory, self-improvement artifacts, policies, plans, evals, and runtime resource orientation that survive browser refreshes, process restarts, and individual Pi sessions.
 - Rationale: Keeping adaptive state in `agent-workspace/` makes it visible, reviewable, source-controlled, and separate from app product code.
@@ -37,3 +37,13 @@ Durable project decisions and rationale for Fleet Pi’s Pi-native agent workspa
 - Rationale: Small curated memory is easier to trust, search, inject, and evaluate.
 - Consequences: Session summaries and raw research should be synthesized into `memory/project/*` only when they are durable and broadly useful.
 - Source: `.pi/extensions/lib/workspace-memory-index.ts`, `agent-workspace/evals/memory-quality.md`.
+
+## pi-web-access installed as project-scoped Pi package
+
+- Decision: Add `npm:pi-web-access` to `.pi/settings.json` packages and wire its tools into Fleet Pi's mode allowlists.
+- Status: Active.
+- Context: Fleet Pi needed web search, URL fetching, GitHub repo cloning, YouTube understanding, PDF extraction, and code search as first-class agent tools — not ad-hoc `web_fetch` calls.
+- Rationale: `pi-web-access` provides a smart fallback chain (Exa → Perplexity → Gemini), zero-config Exa MCP, GitHub clone-over-scrape, and a bundled `librarian` skill. Scope is project (`.pi/settings.json`) to match existing packages and share with the team.
+- Governance: `web_search`, `code_search`, `get_search_content` are read-only and added to Plan, Harness, and Agent mode allowlists. `fetch_content` (can clone repos to `/tmp/`) is Agent and Harness mode only. This is an explicit user-approved activation, accepted before a formal package trust model exists.
+- Consequences: `web_fetch` remains for single quick URL reads in extension code; `web_search`/`fetch_content` are the preferred tools for research tasks in chat sessions.
+- Source: `.pi/settings.json`, `apps/web/src/lib/pi/plan-mode.ts`, `AGENTS.md`, `agent-workspace/plans/active/install-pi-web-access.md`.
