@@ -43,6 +43,7 @@ import {
   useActiveSessionLabel,
   useChatSuggestions,
 } from "@/lib/pi/use-chat-view"
+import { usePendingQuestionBar } from "@/lib/pi/use-pending-question-bar"
 
 function QredenceLogo({ className }: { className?: string }) {
   return (
@@ -441,6 +442,12 @@ function ChatWorkspaceShell() {
   ])
 
   const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
+  const pendingQuestionBar = usePendingQuestionBar({
+    messages,
+    answerQuestion: ({ toolCallId, answer }) => {
+      void answerQuestion({ toolCallId, answer }).catch(() => undefined)
+    },
+  })
   const activeSessionLabel = useActiveSessionLabel({
     activeSessionId: sessionMetadata.sessionId,
     messages,
@@ -539,6 +546,7 @@ function ChatWorkspaceShell() {
                   )
                 },
               }}
+              suppressQuestionTool={!!pendingQuestionBar}
               error={error ?? undefined}
               emptyStatePosition="default"
               suggestions={inputSuggestions}
@@ -589,6 +597,7 @@ function ChatWorkspaceShell() {
                       </div>
                     }
                     slashCommands={slashCommands}
+                    questionBar={pendingQuestionBar}
                   />
                 ),
               }}
