@@ -533,8 +533,11 @@ export function createChatPostgresOperationQueue() {
   ) => {
     pending = pending
       .then(() => operation(pool))
-      .catch(() => {
-        // Mirror writes must not affect chat streaming.
+      .catch((error) => {
+        logger.debug(
+          { error },
+          "[pi-session-mirror] async mirror write failed (non-fatal)"
+        )
       })
     return pending
   }
