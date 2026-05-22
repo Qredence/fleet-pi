@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { logger } from "../logger"
 import {
   appendPiRunEvent,
   extractPiSessionMirrorInput,
@@ -6,6 +7,7 @@ import {
   insertPiRunStart,
   mapSessionEntryToMirrorRow,
   replacePiFileMutations,
+  syncPiSessionMirrorSafely,
   upsertPiSessionMirror,
   upsertPiToolExecution,
 } from "./pi-session-mirror"
@@ -15,6 +17,13 @@ import type {
   SessionEntryBase,
   SessionHeader,
 } from "@earendil-works/pi-coding-agent"
+
+const originalChatDatabaseUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
+
+afterEach(() => {
+  process.env.FLEET_PI_CHAT_DATABASE_URL = originalChatDatabaseUrl
+  vi.restoreAllMocks()
+})
 
 type RecordedQuery = {
   sql: string
@@ -359,5 +368,25 @@ describe("Pi session mirror repository", () => {
       query.sql.includes("INSERT INTO pi_run_events")
     )
     expect(eventQuery?.params[4]).toBe('{"type":"tool","value":"1"}')
+  })
+
+  it("logs non-fatal mirror sync failures", async () => {
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined)
+
+    await expect(
+      syncPiSessionMirrorSafely({
+        getHeader() {
+          throw new Error("boom")
+        },
+      } as never)
+    ).resolves.toBeUndefined()
+
+    expect(warn).toHaveBeenCalledWith(
+      {
+        error: expect.objectContaining({ message: "boom" }),
+      },
+      "[pi-session-mirror] sync failed (non-fatal)"
+    )
   })
 })

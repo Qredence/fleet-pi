@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { Pool } from "@neondatabase/serverless"
+import { logger } from "../logger"
 import type {
   SessionEntry,
   SessionHeader,
@@ -162,8 +163,7 @@ export async function syncPiSessionMirrorSafely(
   try {
     await syncPiSessionMirror(sessionManager, options)
   } catch (error) {
-    // Chat persistence is a mirror; Pi JSONL remains authoritative.
-    console.warn("[pi-session-mirror] sync failed (non-fatal):", error)
+    logger.warn({ error }, "[pi-session-mirror] sync failed (non-fatal)")
   }
 }
 
