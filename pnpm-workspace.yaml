@@ -17,7 +17,7 @@ overrides:
   '@google/genai>protobufjs': '>=8.2.0'
   '@opentelemetry/otlp-transformer>protobufjs': '>=8.2.0'
   '@grpc/proto-loader>protobufjs': '7.5.8'
-  ws@>=8.0.0 <8.20.1: '>=8.20.1'
+  'ws@>=8.0.0 <8.20.1': '>=8.20.1'
 allowBuilds:
   '@google/genai': true
   better-sqlite3: true
