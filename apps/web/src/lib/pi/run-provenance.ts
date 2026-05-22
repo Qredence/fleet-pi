@@ -107,16 +107,18 @@ export function createRunProvenanceRecorder(
 ): RunProvenanceRecorder {
   let connection: WorkspaceProvenanceConnection | undefined
   let activeRun: ActiveRunState | undefined
-  const postgresQueue = createChatPostgresOperationQueue()
 
   try {
     connection = openWorkspaceProvenance(context)
-  } catch {
-    return {
-      record: () => undefined,
-      close: () => postgresQueue.close(),
-    }
+  } catch (error) {
+    console.warn(
+      "[run-provenance] workspace provenance unavailable (non-fatal):",
+      error
+    )
+    return { record: () => undefined, close: async () => {} }
   }
+
+  const postgresQueue = createChatPostgresOperationQueue()
 
   const record = (event: ChatStreamEvent) => {
     const activeConnection = connection

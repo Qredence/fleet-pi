@@ -203,7 +203,8 @@ export const Route = createFileRoute("/api/chat")({
               } finally {
                 unsubscribe?.()
                 releaseRuntime?.()
-                await recorder.close()
+                // Fire-and-forget: mirror queue flush must not delay stream close.
+                void recorder.close()
                 controller.close()
               }
             },
