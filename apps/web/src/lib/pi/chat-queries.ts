@@ -1,9 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { chatClient } from "./chat-client"
-import type { ChatSettingsUpdateRequest } from "./chat-protocol"
+import type {
+  ChatProviderUpdateRequest,
+  ChatProviderUpdateResponse,
+  ChatSettingsUpdateRequest,
+} from "./chat-protocol"
 
 const keys = {
   models: ["chat", "models"] as const,
+  providers: ["chat", "providers"] as const,
   resources: ["chat", "resources"] as const,
   settings: ["chat", "settings"] as const,
   workspace: ["workspace", "tree"] as const,
@@ -49,5 +54,28 @@ export function useWorkspaceTree(options?: { enabled?: boolean }) {
     queryKey: keys.workspace,
     queryFn: () => chatClient.getWorkspaceTree(),
     enabled: options?.enabled,
+  })
+}
+
+export function useChatProviders() {
+  return useQuery({
+    queryKey: keys.providers,
+    queryFn: () => chatClient.getProviders(),
+  })
+}
+
+export function useUpdateChatProvider() {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    ChatProviderUpdateResponse,
+    Error,
+    ChatProviderUpdateRequest
+  >({
+    mutationFn: (request) => chatClient.updateProvider(request),
+    onSuccess: (data) => {
+      queryClient.setQueryData(keys.providers, data)
+      void queryClient.invalidateQueries({ queryKey: keys.models })
+    },
   })
 }

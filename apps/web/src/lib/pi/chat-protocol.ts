@@ -232,6 +232,24 @@ export type ChatModelsResponse = {
   diagnostics: Array<string>
 }
 
+export type ChatProviderInfo = {
+  id: string
+  name: string
+  isConfigured: boolean
+  envVarName: string
+}
+
+export type ChatProviderUpdateRequest = {
+  providerId: string
+  apiKey: string
+}
+
+export type ChatProviderUpdateResponse = {
+  success: boolean
+  providers: Array<ChatProviderInfo>
+  reloadRequired?: boolean
+}
+
 export type ChatSessionResponse = {
   session: ChatSessionMetadata
   messages: Array<ChatMessage>

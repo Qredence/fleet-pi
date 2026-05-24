@@ -6,6 +6,9 @@ import {
 } from "./chat-fetch"
 import {
   ChatModelsResponseSchema,
+  ChatProviderUpdateRequestSchema,
+  ChatProviderUpdateResponseSchema,
+  ChatProvidersResponseSchema,
   ChatQuestionAnswerResponseSchema,
   ChatResourcesResponseSchema,
   ChatSessionResponseSchema,
@@ -16,6 +19,9 @@ import {
 } from "./chat-protocol.zod"
 import type {
   ChatModelsResponse,
+  ChatProviderInfo,
+  ChatProviderUpdateRequest,
+  ChatProviderUpdateResponse,
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
   ChatRequest,
@@ -50,6 +56,10 @@ export type ChatClient = {
     onEvent: (event: ChatStreamEvent) => void,
     signal?: AbortSignal
   ) => Promise<void>
+  getProviders: () => Promise<{ providers: Array<ChatProviderInfo> }>
+  updateProvider: (
+    request: ChatProviderUpdateRequest
+  ) => Promise<ChatProviderUpdateResponse>
 }
 
 export const chatClient: ChatClient = {
@@ -151,5 +161,25 @@ export const chatClient: ChatClient = {
     }
 
     await readChatStream(response, onEvent)
+  },
+
+  async getProviders() {
+    return fetchValidatedJson(
+      "/api/chat/providers",
+      ChatProvidersResponseSchema
+    )
+  },
+
+  async updateProvider(request) {
+    const body = ChatProviderUpdateRequestSchema.parse(request)
+    return fetchValidatedJson(
+      "/api/chat/providers",
+      ChatProviderUpdateResponseSchema,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    )
   },
 }

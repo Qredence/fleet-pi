@@ -3,10 +3,16 @@
 import {
   Activity,
   Bot,
+  Brain,
   Cable,
   Check,
   Cpu,
+  Eye,
+  EyeOff,
   Info,
+  Key,
+  Loader2,
+  Lock,
   Monitor,
   Moon,
   Palette,
@@ -17,9 +23,14 @@ import {
   RotateCcw,
   Save,
   Search,
+  Server,
+  ShieldCheck,
+  Sparkles,
   Sun,
   Trash2,
+  Wind,
   Wrench,
+  Zap,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -27,6 +38,8 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Select } from "@workspace/ui/components/select"
 import { Switch } from "@workspace/ui/components/switch"
+import { Badge } from "@workspace/ui/components/badge"
+import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { cn } from "@workspace/ui/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
@@ -45,6 +58,7 @@ import type { ThemePreference } from "@/lib/canvas-utils"
 import type { QueueState } from "@/lib/pi/chat-fetch"
 import type { ChatStatus } from "@workspace/ui/components/agent-elements/chat-types"
 import { queueLabel } from "@/lib/pi/chat-helpers"
+import { useChatProviders, useUpdateChatProvider } from "@/lib/pi/chat-queries"
 
 const THINKING_LEVELS: Array<ChatThinkingLevel> = [
   "off",
@@ -343,6 +357,8 @@ export function ConfigurationsPanelContent({
         settingsError={settingsError}
         settingsLoading={settingsLoading}
       />
+
+      <ProviderCredentialsSection />
 
       <ConfigurationSection icon={Cpu} label="Model Defaults">
         <EditableSection
@@ -681,49 +697,509 @@ function RuntimeStatusSection({
   settingsError: Error | null
   settingsLoading: boolean
 }) {
+  const isQueueActive = queue.followUp.length + queue.steering.length > 0
+
   return (
     <ConfigurationSection icon={Activity} label="Runtime">
-      <ConfigurationRow
-        description={activityLabel ?? "Idle and waiting for the next prompt."}
-        status={runtimeStatus}
-        title="Request status"
-      />
-      <ConfigurationRow
-        description={queueDescription}
-        status={
-          queue.followUp.length + queue.steering.length > 0 ? "Active" : "Idle"
-        }
-        title="Prompt queue"
-      />
-      <ConfigurationRow
-        description={
-          planLabel ??
-          (mode === "plan"
-            ? "Plan mode is enabled and ready for the next planning turn."
-            : mode === "harness"
-              ? "Harness mode is active for agent-workspace architecture management."
-              : "No active plan decision is pending.")
-        }
-        status={
-          mode === "plan"
-            ? "Plan mode"
-            : mode === "harness"
-              ? "Harness mode"
-              : "Agent mode"
-        }
-        title="Plan state"
-      />
-      <ConfigurationRow
-        description={
-          settingsError
-            ? settingsError.message
-            : settings
-              ? `Project settings are loaded from ${settings.projectPath}.`
-              : "Loading project-scoped Pi settings."
-        }
-        status={settingsError ? "Error" : settingsLoading ? "Loading" : "Ready"}
-        title="Settings source"
-      />
+      <div className="space-y-2.5 rounded-[10px] border border-border/40 bg-background/30 p-3 shadow-lg backdrop-blur-md">
+        {/* Info Header */}
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/50 shadow-sm">
+            <Activity className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-semibold tracking-wide text-foreground/80">
+              System Core Telemetry
+            </div>
+            <p className="text-[10px] leading-relaxed text-foreground/45">
+              Live observability monitors for active streaming controllers,
+              prompts backlog, and workspace settings.
+            </p>
+          </div>
+        </div>
+
+        {/* 2x2 Telemetry Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Card 1: Request Status */}
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
+                Core Request
+              </span>
+              {runtimeStatus === "Streaming" ? (
+                <Badge variant="default" className="gap-1.5 shadow-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-background opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-background"></span>
+                  </span>
+                  Streaming
+                </Badge>
+              ) : runtimeStatus === "Submitting" ? (
+                <Badge variant="secondary" className="gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-foreground"></span>
+                  </span>
+                  Submitting
+                </Badge>
+              ) : runtimeStatus === "Error" ? (
+                <Badge variant="destructive">Error</Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-primary/20 bg-primary/10 text-primary"
+                >
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
+                  </span>
+                  Ready
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
+              {activityLabel ?? "Idle and waiting for the next prompt."}
+            </p>
+          </div>
+
+          {/* Card 2: Prompt Queue */}
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
+                Prompts Queue
+              </span>
+              {isQueueActive ? (
+                <Badge variant="secondary" className="gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-foreground"></span>
+                  </span>
+                  Active ({queue.followUp.length + queue.steering.length})
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="border-transparent bg-foreground/5 text-foreground/50"
+                >
+                  Idle
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
+              {queueDescription}
+            </p>
+          </div>
+
+          {/* Card 3: Plan State */}
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
+                Plan Context
+              </span>
+              {mode === "plan" ? (
+                <Badge variant="default" className="gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-background opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-background"></span>
+                  </span>
+                  Planning
+                </Badge>
+              ) : mode === "harness" ? (
+                <Badge
+                  variant="outline"
+                  className="border-primary/20 bg-primary/10 text-primary"
+                >
+                  Harness
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="border-transparent bg-foreground/5 text-foreground/50"
+                >
+                  Agent
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
+              {planLabel ??
+                (mode === "plan"
+                  ? "Planning Turn: Streaming steps proposal."
+                  : mode === "harness"
+                    ? "Harness Turn: Sandbox active."
+                    : "Autonomous coding execution active.")}
+            </p>
+          </div>
+
+          {/* Card 4: Settings Source */}
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
+                Settings Sync
+              </span>
+              {settingsError ? (
+                <Badge variant="destructive">Error</Badge>
+              ) : settingsLoading ? (
+                <Badge variant="outline" className="gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading
+                </Badge>
+              ) : (
+                <Badge variant="default" className="shadow-sm">
+                  Synced
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
+              {settingsError
+                ? settingsError.message
+                : settings
+                  ? `Active config loaded from ${settings.projectPath.replace(/^.*\/fleet-pi\//, "")}`
+                  : "Resolving active project-scoped Pi properties..."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </ConfigurationSection>
+  )
+}
+
+const PROVIDER_METADATA: Record<
+  string,
+  {
+    icon: LucideIcon
+    placeholder: string
+    help: string
+  }
+> = {
+  "amazon-bedrock": {
+    icon: Server,
+    placeholder: "Bedrock region (e.g. us-east-1)",
+    help: "Amazon Bedrock reads AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION from your local shell or AWS configuration file.",
+  },
+  openai: {
+    icon: Sparkles,
+    placeholder: "sk-proj-...",
+    help: "Stored securely in your root .env.local file. Overrides the active OPENAI_API_KEY environment variable.",
+  },
+  anthropic: {
+    icon: Bot,
+    placeholder: "sk-ant-...",
+    help: "Stored securely in your root .env.local file. Overrides the active ANTHROPIC_API_KEY environment variable.",
+  },
+  "google-vertex": {
+    icon: ShieldCheck,
+    placeholder: "Path to service account JSON, or credentials text...",
+    help: "Stored securely in your root .env.local file. Overrides the active GOOGLE_APPLICATION_CREDENTIALS environment variable.",
+  },
+  "google-genai": {
+    icon: Brain,
+    placeholder: "AIzaSy...",
+    help: "Stored securely in your root .env.local file. Overrides the active GEMINI_API_KEY environment variable.",
+  },
+  mistral: {
+    icon: Wind,
+    placeholder: "Your Mistral API key...",
+    help: "Stored securely in your root .env.local file. Overrides the active MISTRAL_API_KEY environment variable.",
+  },
+  groq: {
+    icon: Zap,
+    placeholder: "gsk_...",
+    help: "Stored securely in your root .env.local file. Overrides the active GROQ_API_KEY environment variable.",
+  },
+  ollama: {
+    icon: Cpu,
+    placeholder: "http://localhost:11434 (default)",
+    help: "Configure local Ollama execution endpoints. Overrides the active OLLAMA_BASE_URL environment variable.",
+  },
+}
+
+function ProviderCredentialsSection() {
+  const { data, isLoading } = useChatProviders()
+  const { mutateAsync: updateProvider, isPending } = useUpdateChatProvider()
+  const [editingProvider, setEditingProvider] = useState<string | null>(null)
+  const [apiKey, setApiKey] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "missing"
+  >("all")
+
+  const providers = data?.providers ?? []
+
+  const filteredProviders = useMemo(() => {
+    return providers.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.envVarName.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && p.isConfigured) ||
+        (statusFilter === "missing" && !p.isConfigured)
+
+      return matchesSearch && matchesStatus
+    })
+  }, [providers, searchQuery, statusFilter])
+
+  const handleSave = async (providerId: string) => {
+    if (!apiKey.trim()) return
+    try {
+      const result = await updateProvider({ providerId, apiKey: apiKey.trim() })
+      if (result.reloadRequired) {
+        toast.success(
+          "Provider credentials saved. Reload the page to apply to active sessions.",
+          {
+            duration: 5000,
+          }
+        )
+      } else {
+        toast.success("Provider credentials updated successfully")
+      }
+      setEditingProvider(null)
+      setApiKey("")
+      setShowPassword(false)
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update provider"
+      )
+    }
+  }
+
+  return (
+    <ConfigurationSection icon={Key} label="Provider Credentials">
+      <div className="space-y-3.5 rounded-[10px] border border-border/40 bg-background/30 p-3.5 shadow-lg backdrop-blur-md">
+        {/* Info Header */}
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="shrink-0 rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/60 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <Lock className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-semibold tracking-wide text-foreground/85">
+              Credentials Vault
+            </div>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-foreground/45">
+              Securely store credentials in your local environment `.env.local`.
+              Overrides apply instantly to the active workspace process.
+            </p>
+          </div>
+        </div>
+
+        {/* Search & Status Filters */}
+        {!isLoading && providers.length > 0 && (
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border/15 bg-foreground/[0.015] p-2 shadow-inner">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-2.5 h-3 w-3 text-foreground/30" />
+              <Input
+                type="text"
+                placeholder="Search credentials..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-7 w-full rounded-[6px] border-border/30 bg-background/40 pr-2 pl-7 text-[11px] transition-all duration-150 placeholder:text-foreground/20 focus-visible:border-border/60 focus-visible:ring-1 focus-visible:ring-foreground/10"
+              />
+            </div>
+            <div className="flex gap-1">
+              {(["all", "active", "missing"] as const).map((filter) => {
+                const count = providers.filter((p) => {
+                  if (filter === "all") return true
+                  if (filter === "active") return p.isConfigured
+                  return !p.isConfigured
+                }).length
+
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setStatusFilter(filter)}
+                    className={cn(
+                      "flex-1 cursor-pointer rounded-[5px] border py-1 text-[10px] font-medium capitalize transition-all duration-200",
+                      statusFilter === filter
+                        ? "border-border/30 bg-foreground/5 font-semibold text-foreground/80 shadow-sm"
+                        : "border-transparent text-foreground/45 hover:bg-foreground/[0.01] hover:text-foreground/75"
+                    )}
+                  >
+                    {filter}{" "}
+                    <span className="font-normal opacity-55">({count})</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-[11px] text-foreground/40">
+            <Loader2 className="h-3 w-3 animate-spin text-foreground/45" />
+            <span>Decrypting providers...</span>
+          </div>
+        ) : providers.length === 0 ? (
+          <p className="py-3 text-center text-[11.5px] text-foreground/40">
+            No providers discovered.
+          </p>
+        ) : filteredProviders.length === 0 ? (
+          <div className="py-4 text-center text-[11px] text-foreground/35">
+            No matching providers found.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {filteredProviders.map((p) => {
+              const isEditing = editingProvider === p.id
+              const meta = PROVIDER_METADATA[p.id] ?? {
+                icon: Cpu,
+                placeholder: "Enter credentials...",
+                help: "Stored securely in your local environment overrides.",
+              }
+              const IconComponent = meta.icon
+
+              return (
+                <div
+                  key={p.id}
+                  className={cn(
+                    "flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.02] hover:shadow-sm",
+                    isEditing &&
+                      "translate-y-0 border-border/50 bg-foreground/[0.015] shadow-md sm:col-span-2",
+                    p.isConfigured &&
+                      !isEditing &&
+                      "border-primary/30 shadow-[0_0_8px_rgba(0,0,0,0.05)]"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div
+                        className={cn(
+                          "flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-[8px] border border-border/20 bg-background/50 transition-all duration-300",
+                          p.isConfigured && "border-primary/20 bg-primary/5"
+                        )}
+                      >
+                        <IconComponent
+                          className={cn(
+                            "h-4 w-4",
+                            p.isConfigured
+                              ? "text-primary"
+                              : "text-foreground/35"
+                          )}
+                        />
+                      </div>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-[11.5px] leading-tight font-bold text-foreground/80">
+                          {p.name}
+                        </span>
+                        <span className="mt-0.5 truncate font-mono text-[9.5px] text-foreground/35">
+                          {p.envVarName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {p.isConfigured ? (
+                        <Badge variant="default" className="gap-1.5 shadow-sm">
+                          <span className="relative flex h-1 w-1">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-background opacity-75"></span>
+                            <span className="relative inline-flex h-1 w-1 rounded-full bg-background"></span>
+                          </span>
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Missing</Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-6 cursor-pointer rounded-[5px] px-2 text-[10px] text-foreground/50 transition-all duration-200 hover:bg-foreground/5 hover:text-foreground/80",
+                          isEditing &&
+                            "bg-foreground/5 font-semibold text-foreground/70"
+                        )}
+                        onClick={() => {
+                          setEditingProvider(isEditing ? null : p.id)
+                          setApiKey("")
+                          setShowPassword(false)
+                        }}
+                      >
+                        {isEditing
+                          ? "Cancel"
+                          : p.isConfigured
+                            ? "Update"
+                            : "Configure"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isEditing && (
+                    <div className="mt-3 flex flex-col gap-2.5 border-t border-border/15 pt-2.5">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9.5px] font-bold tracking-wide text-foreground/45 uppercase">
+                          {p.name} API Key / Config Value
+                        </label>
+                        <div className="relative flex items-center">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder={meta.placeholder}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            className={cn(
+                              FIELD_CONTROL_CLASS,
+                              "w-full border-border/40 bg-background/50 pr-8 text-[11px] focus:border-border/80 focus-visible:ring-foreground/5 focus-visible:ring-offset-0"
+                            )}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 cursor-pointer text-foreground/35 transition-colors duration-150 hover:text-foreground/60"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <Alert variant="default" className="px-3 py-2.5">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription className="mt-0 text-[10px] leading-relaxed text-foreground/60">
+                          {meta.help}
+                        </AlertDescription>
+                      </Alert>
+
+                      <div className="mt-1 flex items-center justify-end gap-1.5 border-t border-border/10 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 cursor-pointer rounded-[6px] px-2.5 text-[10px] text-foreground/40 hover:text-foreground/75"
+                          onClick={() => {
+                            setEditingProvider(null)
+                            setApiKey("")
+                            setShowPassword(false)
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className={cn(
+                            "h-7 cursor-pointer rounded-[6px] bg-foreground px-3 text-[10px] font-bold text-background transition-all duration-150 hover:bg-foreground/90 disabled:opacity-50",
+                            "shadow-sm active:scale-95"
+                          )}
+                          disabled={isPending || !apiKey.trim()}
+                          onClick={() => handleSave(p.id)}
+                        >
+                          {isPending ? (
+                            <span className="flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Saving
+                            </span>
+                          ) : (
+                            "Save Key"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </ConfigurationSection>
   )
 }
@@ -735,41 +1211,94 @@ function PersonalizationSection({
   onThemePreferenceChange: (preference: ThemePreference) => void
   themePreference: ThemePreference
 }) {
+  const haloColor =
+    themePreference === "light"
+      ? "shadow-[0_0_15px_rgba(245,158,11,0.08)] border-amber-500/10"
+      : themePreference === "dark"
+        ? "shadow-[0_0_15px_rgba(139,92,246,0.08)] border-violet-500/10"
+        : "shadow-[0_0_15px_rgba(100,116,139,0.08)] border-slate-500/10"
+
   return (
     <ConfigurationSection icon={Palette} label="Personalization">
-      <div className="rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
-        <div className="mb-2 flex min-w-0 items-center gap-2">
+      <div
+        className={cn(
+          "space-y-3 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-md backdrop-blur-md transition-all duration-300",
+          haloColor
+        )}
+      >
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="shrink-0 rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/50 shadow-sm">
+            <Palette className="h-3.5 w-3.5 text-foreground/60" />
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium text-foreground/75">
-              Theme
+            <div className="text-[12px] font-semibold tracking-wide text-foreground/80">
+              Interface Customization
             </div>
-            <p className="mt-0.5 text-[11px] leading-4 text-foreground/40">
-              Choose Light, Dark, or follow the system appearance.
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-foreground/45">
+              Personalize theme preference settings. System preference
+              coordinates with host browser rendering.
             </p>
           </div>
         </div>
-        <div className="flex rounded-[7px] bg-foreground/5 p-0.5">
+
+        <div className="relative flex rounded-[8px] border border-border/10 bg-foreground/5 p-0.5">
           <ThemeSegment
             active={themePreference === "light"}
             icon={Sun}
             label="Light"
+            activeGlow="border-primary/20 bg-background text-primary shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
             onClick={() => onThemePreferenceChange("light")}
           />
           <ThemeSegment
             active={themePreference === "dark"}
             icon={Moon}
             label="Dark"
+            activeGlow="border-primary/20 bg-background text-primary shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
             onClick={() => onThemePreferenceChange("dark")}
           />
           <ThemeSegment
             active={themePreference === "system"}
             icon={Monitor}
             label="System"
+            activeGlow="border-primary/20 bg-background text-primary shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
             onClick={() => onThemePreferenceChange("system")}
           />
         </div>
       </div>
     </ConfigurationSection>
+  )
+}
+
+function ThemeSegment({
+  active,
+  icon: Icon,
+  label,
+  activeGlow,
+  onClick,
+}: {
+  active: boolean
+  icon: LucideIcon
+  label: string
+  activeGlow: string
+  onClick: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant={active ? "outline" : "ghost"}
+      size="sm"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "h-7 min-w-0 flex-1 cursor-pointer justify-center gap-1.5 rounded-[6px] border-transparent px-2 text-[10.5px] font-bold shadow-none transition-all duration-300",
+        active
+          ? activeGlow
+          : "text-foreground/40 hover:bg-transparent hover:text-foreground/65"
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </Button>
   )
 }
 
@@ -791,43 +1320,79 @@ function EditableSection({
   title: string
 }) {
   return (
-    <div className="rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
-      <div className="mb-2 flex min-w-0 items-center gap-2">
+    <div
+      className={cn(
+        "space-y-3.5 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-md backdrop-blur-md transition-all duration-300",
+        dirty && "border-primary/30 shadow-[0_0_12px_rgba(0,0,0,0.05)]"
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-2.5 border-b border-border/10 pb-2.5">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[12px] font-medium text-foreground/75">
+          <div className="truncate text-[12px] font-bold tracking-wide text-foreground/80">
             {title}
           </div>
-          <p className="mt-0.5 text-[11px] leading-4 text-foreground/40">
-            {dirty
-              ? "Unsaved project override changes."
-              : "Project override is current."}
-          </p>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            {dirty ? (
+              <Badge variant="secondary" className="gap-1.5 shadow-sm">
+                <span className="relative flex h-1 w-1">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75"></span>
+                  <span className="relative inline-flex h-1 w-1 rounded-full bg-foreground"></span>
+                </span>
+                Unsaved changes
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1 border-primary/20 bg-primary/10 text-primary"
+              >
+                <Check className="h-2 w-2" />
+                In sync
+              </Badge>
+            )}
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="text-foreground/35 hover:bg-foreground/6 hover:text-foreground/65"
-          disabled={!dirty || disabled || saving}
-          onClick={onRevert}
-          aria-label={`Revert ${title}`}
-          title="Revert"
-        >
-          <RotateCcw />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 border-border/60 bg-background/65 text-[11px] text-foreground/55 hover:bg-foreground/6 hover:text-foreground/75"
-          disabled={!dirty || disabled || saving}
-          onClick={onSave}
-        >
-          <Save data-icon="inline-start" />
-          <span>{saving ? "Saving" : "Save"}</span>
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            className={cn(
+              "h-7 w-7 cursor-pointer rounded-[6px] p-0 text-foreground/35 transition-all duration-150 hover:bg-foreground/5 hover:text-foreground/65 disabled:opacity-35",
+              !dirty && "hidden"
+            )}
+            disabled={!dirty || disabled || saving}
+            onClick={onRevert}
+            aria-label={`Revert ${title}`}
+            title="Revert changes"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-7 cursor-pointer rounded-[6px] border-border/45 bg-background/50 px-2.5 text-[10px] font-bold text-foreground/60 shadow-sm transition-all duration-200 hover:bg-foreground/5 hover:text-foreground/80 disabled:opacity-40",
+              dirty &&
+                "border-primary/30 text-primary shadow-sm hover:bg-primary/5 hover:text-primary/90 active:scale-95"
+            )}
+            disabled={!dirty || disabled || saving}
+            onClick={onSave}
+          >
+            {saving ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin text-foreground/50" />
+                Saving
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Save className="h-3 w-3" />
+                Commit
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
-      <div className="space-y-2">{children}</div>
+      <div className="space-y-3.5">{children}</div>
     </div>
   )
 }
@@ -841,7 +1406,7 @@ function FieldLabel({
 }) {
   return (
     <label className="block space-y-1">
-      <span className="text-[11px] font-medium text-foreground/45">
+      <span className="text-[10px] font-bold tracking-wide text-foreground/45 uppercase">
         {label}
       </span>
       {children}
@@ -912,8 +1477,8 @@ function ToggleField({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex h-8 items-center justify-between gap-3 rounded-[7px] border border-border/50 bg-background/40 px-2">
-      <span className="truncate text-[11px] font-medium text-foreground/60">
+    <label className="flex h-8.5 cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-border/30 bg-background/40 px-2.5 transition-all duration-200 hover:border-border/45 hover:bg-foreground/[0.015]">
+      <span className="truncate text-[11px] font-semibold text-foreground/65">
         {label}
       </span>
       <Switch
@@ -921,6 +1486,7 @@ function ToggleField({
         checked={checked}
         disabled={disabled}
         onCheckedChange={onChange}
+        className="scale-90"
       />
     </label>
   )
@@ -933,18 +1499,52 @@ function DefaultModelSummary({
   model?: ConfigModelInfo
   provider?: string
 }) {
+  const meta = provider ? PROVIDER_METADATA[provider] : null
+  const IconComponent = meta?.icon ?? Bot
+  const hasReasoning = model?.reasoning === true
+
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-[7px] border border-border/50 bg-background/40 px-2 py-1.5">
-      <Bot className="shrink-0 text-foreground/35" />
+    <div className="flex min-w-0 items-center gap-3 rounded-[10px] border border-border/30 bg-gradient-to-br from-background/95 via-foreground/[0.005] to-foreground/[0.03] p-2.5 shadow-md transition-all duration-300 hover:border-border/45">
+      {/* Dynamic Brand Processor Container */}
+      <div
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-300",
+          "border-primary/20 bg-primary/5 shadow-[0_0_8px_rgba(0,0,0,0.05)]"
+        )}
+      >
+        <IconComponent
+          className={cn("h-4.5 w-4.5 animate-pulse", "text-primary")}
+        />
+      </div>
+
+      {/* Model Information */}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[12px] font-medium text-foreground/75">
-          {model?.name ?? model?.modelId ?? "No default model"}
+        <div className="truncate text-[12.5px] font-bold tracking-wide text-foreground/85">
+          {model?.name ?? model?.modelId ?? "No active default model"}
         </div>
-        <p className="truncate text-[11px] leading-4 text-foreground/35">
-          {provider && model
-            ? `${provider} / ${model.modelId}`
-            : "Choose a model from the managed list below."}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className="truncate font-mono text-[9.5px] font-semibold tracking-tight text-foreground/40">
+            {provider && model
+              ? `${provider}/${model.modelId}`
+              : "Choose a default model below"}
+          </span>
+          {hasReasoning && (
+            <Badge
+              variant="secondary"
+              className="gap-0.5 shadow-[0_0_6px_rgba(0,0,0,0.05)]"
+            >
+              Reasoning
+            </Badge>
+          )}
+          {model?.available !== false && (
+            <Badge
+              variant="outline"
+              className="gap-0.5 border-primary/20 bg-primary/10 text-primary"
+            >
+              Stream
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -966,58 +1566,93 @@ function ProviderManagementList({
   if (providers.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="text-[11px] font-medium text-foreground/45">
-        Providers
+    <div className="flex flex-col gap-2">
+      <div className="text-[11px] font-bold tracking-wide text-foreground/45 uppercase">
+        Providers Network
       </div>
-      <div className="grid gap-1 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {providers.map((provider) => {
           const active = provider.active > 0
           const isDefault = provider.provider === defaultProvider
+          const meta = PROVIDER_METADATA[provider.provider] ?? {
+            icon: Cpu,
+          }
+          const IconComponent = meta.icon
+
           return (
             <div
-              className="flex min-w-0 items-center gap-2 rounded-[7px] border border-border/50 bg-background/40 px-2 py-1.5"
               key={provider.provider}
+              className={cn(
+                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/30 bg-background/30 p-2 transition-all duration-300 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.02] hover:shadow-sm",
+                isDefault && "border-primary/30 bg-primary/[0.015] shadow-sm"
+              )}
             >
-              <Switch
-                aria-label={`Activate provider ${provider.provider}`}
-                checked={active}
-                onCheckedChange={(checked) =>
-                  onToggle(provider.provider, checked)
-                }
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <Switch
+                  aria-label={`Activate provider ${provider.provider}`}
+                  checked={active}
+                  onCheckedChange={(checked) =>
+                    onToggle(provider.provider, checked)
+                  }
+                  className="scale-90"
+                />
+                <div
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-[6px] border border-border/20 bg-background/50 text-foreground/50 transition-all duration-300",
+                    active && "border-primary/20 bg-primary/5"
+                  )}
+                >
+                  <IconComponent
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      active ? "text-primary" : "text-foreground/35"
+                    )}
+                  />
+                </div>
+              </div>
+
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[12px] font-medium text-foreground/70">
+                  <span className="truncate text-[11.5px] leading-none font-semibold text-foreground/75">
                     {provider.provider}
                   </span>
-                  {isDefault ? <StatusPill>Default</StatusPill> : null}
+                  {isDefault && (
+                    <Badge variant="default" className="shadow-sm">
+                      Default
+                    </Badge>
+                  )}
                 </div>
-                <p className="truncate text-[11px] leading-4 text-foreground/35">
-                  {provider.active} of {provider.total} active
+                <p className="mt-1 truncate text-[9.5px] leading-none text-foreground/40">
+                  {provider.active} / {provider.total} active
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="text-foreground/40"
-                onClick={() => onConnect(provider.provider)}
-                title="Prepare custom model for this provider"
-                aria-label={`Connect provider ${provider.provider}`}
-              >
-                <PlugZap />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[11px] text-foreground/45"
-                disabled={isDefault}
-                onClick={() => onDefault(provider.provider)}
-              >
-                Use
-              </Button>
+
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="h-6 w-6 rounded-[5px] text-foreground/35 transition-all duration-200 hover:bg-foreground/5 hover:text-foreground/60"
+                  onClick={() => onConnect(provider.provider)}
+                  title="Prepare custom model for this provider"
+                  aria-label={`Connect provider ${provider.provider}`}
+                >
+                  <PlugZap className="h-3 w-3" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-6 rounded-[5px] px-2 text-[10px] text-foreground/45 transition-all duration-200 hover:bg-foreground/5 hover:text-foreground/75",
+                    isDefault && "cursor-not-allowed opacity-30"
+                  )}
+                  disabled={isDefault}
+                  onClick={() => onDefault(provider.provider)}
+                >
+                  Use
+                </Button>
+              </div>
             </div>
           )
         })}
@@ -1085,13 +1720,13 @@ function StringListEditor({
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {rows.length > 0 ? (
-        <div className="space-y-1">
+        <div className="space-y-1.5 rounded-lg border border-border/20 bg-background/15 p-2">
           {rows.map((value, index) => (
             <div
-              className="flex min-w-0 items-center gap-1 rounded-[7px] border border-border/50 bg-background/40 p-1"
               key={`${value}-${index}`}
+              className="group flex min-w-0 items-center gap-1.5 rounded-md border border-border/20 bg-background/40 px-2 py-0.5 shadow-sm transition-all duration-200 hover:border-border/30 hover:bg-background/55"
             >
               <Input
                 aria-label={`${addLabel} ${index + 1}`}
@@ -1099,29 +1734,27 @@ function StringListEditor({
                 onChange={(event) => updateRow(index, event.target.value)}
                 className={cn(
                   FIELD_CONTROL_CLASS,
-                  "h-7 border-transparent bg-transparent focus-visible:ring-0"
+                  "h-7 flex-1 border-transparent bg-transparent px-1 text-[11px] leading-none font-medium text-foreground/75 focus-visible:border-transparent focus-visible:ring-0"
                 )}
               />
-              <Button
+              <button
                 type="button"
                 aria-label={`Remove ${value || "row"}`}
                 title="Remove"
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 text-foreground/35 hover:text-red-300"
+                className="flex h-5.5 w-5.5 shrink-0 cursor-pointer items-center justify-center rounded-full text-foreground/30 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_6px_rgba(239,68,68,0.2)]"
                 onClick={() => removeRow(index)}
               >
-                <Trash2 />
-              </Button>
+                <Trash2 className="h-3 w-3" />
+              </button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-[7px] border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] leading-4 text-foreground/35">
+        <div className="rounded-[8px] border border-dashed border-border/25 bg-background/10 px-3 py-3 text-center text-[11px] leading-relaxed font-medium text-foreground/35">
           {emptyLabel}
         </div>
       )}
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1.5">
         <Input
           aria-label={addLabel}
           value={newValue}
@@ -1139,11 +1772,11 @@ function StringListEditor({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 border-border/60 bg-background/65 text-[11px] text-foreground/55"
+          className="h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-all duration-150 hover:bg-foreground/5 disabled:opacity-50"
           onClick={addRow}
           disabled={!newValue.trim()}
         >
-          <Plus data-icon="inline-start" />
+          <Plus className="mr-1 h-3.5 w-3.5 text-foreground/60" />
           Add
         </Button>
       </div>
@@ -1199,24 +1832,27 @@ function ModelActivationList({
   ).length
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <div className="text-[11px] font-medium text-foreground/45">
-          Model activation
+    <div className="flex flex-col gap-2.5">
+      {/* Header and Pill */}
+      <div className="flex min-w-0 items-center justify-between gap-2 border-b border-border/10 pb-1.5">
+        <div className="text-[11px] font-bold tracking-wide text-foreground/45 uppercase">
+          Model Routing Registry
         </div>
-        <StatusPill>
-          {activeCount} / {models.length} active
-        </StatusPill>
+        <Badge variant="default" className="shadow-sm">
+          {activeCount} / {models.length} Activated
+        </Badge>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-1">
+
+      {/* Toolbar Search + Filter */}
+      <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-1.5 rounded-lg border border-border/15 bg-foreground/[0.015] p-1 shadow-inner">
         <div className="relative min-w-0">
-          <Search className="absolute top-2 left-2 text-foreground/25" />
+          <Search className="pointer-events-none absolute top-2.5 left-2.5 h-3 w-3 text-foreground/30" />
           <Input
             aria-label="Search models"
             value={filter}
             onChange={(event) => onFilterChange(event.target.value)}
-            placeholder="Search model or provider"
-            className={cn(FIELD_CONTROL_CLASS, "pl-7")}
+            placeholder="Search model ID or brand..."
+            className={cn(FIELD_CONTROL_CLASS, "w-full pl-7.5")}
           />
         </div>
         <Select
@@ -1225,94 +1861,111 @@ function ModelActivationList({
           onValueChange={onProviderFilterChange}
           className={FIELD_CONTROL_CLASS}
           options={[
-            { label: "All providers", value: "all" },
-            ...providers.map((provider) => ({
-              label: provider.provider,
-              value: provider.provider,
+            { label: "All Providers", value: "all" },
+            ...providers.map((p) => ({
+              label: p.provider,
+              value: p.provider,
             })),
           ]}
         />
       </div>
-      <div className="grid grid-cols-3 gap-1">
+
+      {/* Action Pills */}
+      <div className="grid grid-cols-3 gap-1.5">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 border-border/60 bg-background/65 text-[11px] text-foreground/55"
+          className="h-7.5 cursor-pointer rounded-[6px] border-border/35 bg-background/40 text-[10.5px] font-semibold text-foreground/60 transition-all duration-150 hover:bg-foreground/5"
           onClick={() => onSetAll(true)}
         >
-          <Power data-icon="inline-start" />
-          All
+          <Power className="mr-1.5 h-3 w-3 text-foreground/45" />
+          Enable All
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 border-border/60 bg-background/65 text-[11px] text-foreground/55"
+          className="h-7.5 cursor-pointer rounded-[6px] border-border/35 bg-background/40 text-[10.5px] font-semibold text-foreground/60 transition-all duration-150 hover:bg-foreground/5"
           onClick={() => onSetAll(false)}
         >
-          <PowerOff data-icon="inline-start" />
-          None
+          <PowerOff className="mr-1.5 h-3 w-3 text-foreground/45" />
+          Disable All
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 border-border/60 bg-background/65 text-[11px] text-foreground/55"
+          className="h-7.5 cursor-pointer rounded-[6px] border-border/35 bg-background/40 text-[10.5px] font-semibold text-foreground/60 transition-all duration-150 hover:bg-foreground/5"
           onClick={onUseRecommended}
         >
-          <Check data-icon="inline-start" />
-          Default
+          <Check className="mr-1.5 h-3 w-3 text-foreground/45" />
+          Recommended
         </Button>
       </div>
+
+      {/* Scrollable Model List */}
       <div
-        className="max-h-100 space-y-1 overflow-y-auto pr-1"
+        className="max-h-80 scrollbar-thin scrollbar-thumb-foreground/10 space-y-1.5 overflow-y-auto pr-1"
         data-testid="runtime-models-list"
       >
         {visibleModels.length === 0 ? (
-          <div className="rounded-[7px] border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] leading-4 text-foreground/35">
-            No models match this filter.
+          <div className="rounded-[8px] border border-dashed border-border/25 bg-background/10 px-3 py-4 text-center text-[11px] leading-relaxed text-foreground/35">
+            No models found matching the search criteria.
           </div>
         ) : null}
         {visibleModels.map((model) => {
           const active = isModelEnabled(model, enabledPatterns)
           const isDefault =
             model.provider === defaultProvider && model.modelId === defaultModel
+
           return (
             <div
-              className="flex min-w-0 items-center gap-2 rounded-[7px] border border-border/50 bg-background/40 px-2 py-1.5"
               key={model.id}
+              className={cn(
+                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/25 bg-background/40 px-2.5 py-2 transition-all duration-200 hover:translate-x-[2px] hover:border-border/45 hover:bg-foreground/[0.025]",
+                isDefault && "border-blue-500/25 bg-blue-500/[0.01]"
+              )}
             >
               <Switch
                 aria-label={`Activate ${model.name}`}
                 checked={active}
                 onCheckedChange={(checked) => onToggle(model, checked)}
+                className="scale-90"
               />
+
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[12px] font-medium text-foreground/70">
+                  <span className="truncate text-[11.5px] leading-tight font-bold text-foreground/75">
                     {model.name}
                   </span>
-                  <StatusPill
-                    className={
-                      active
-                        ? "bg-emerald-500/10 text-emerald-200"
-                        : "bg-foreground/5 text-foreground/30"
-                    }
-                  >
-                    {active ? "Active" : "Disabled"}
-                  </StatusPill>
-                  {isDefault ? <StatusPill>Default</StatusPill> : null}
+                  {isDefault && (
+                    <Badge variant="default" className="shadow-sm">
+                      Default
+                    </Badge>
+                  )}
+                  {model.reasoning && (
+                    <Badge variant="secondary" className="gap-0.5 shadow-sm">
+                      Reason
+                    </Badge>
+                  )}
                 </div>
-                <p className="truncate text-[11px] leading-4 text-foreground/35">
-                  {model.provider} / {model.modelId}
+                <p className="mt-0.5 truncate font-mono text-[10px] leading-none tracking-tight text-foreground/40">
+                  <span className={cn("font-semibold", "text-primary/70")}>
+                    {model.provider}
+                  </span>{" "}
+                  / {model.modelId}
                 </p>
               </div>
+
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 shrink-0 text-[11px] text-foreground/45"
+                className={cn(
+                  "h-6.5 shrink-0 rounded-[5px] px-2 text-[10px] text-foreground/45 transition-all duration-250 hover:bg-foreground/5 hover:text-foreground/75",
+                  isDefault && "cursor-not-allowed opacity-30"
+                )}
                 disabled={isDefault}
                 onClick={() => onDefault(model)}
               >
@@ -1342,55 +1995,72 @@ function CustomModelEditor({
   providers: Array<string>
 }) {
   return (
-    <div className="rounded-[7px] border border-border/50 bg-background/40 p-2">
-      <div className="mb-1.5 text-[11px] font-medium text-foreground/45">
-        Connect custom provider/model
+    <div className="space-y-2.5 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-sm backdrop-blur-md">
+      <div className="flex items-center gap-1.5">
+        <Wrench className="h-3.5 w-3.5 text-foreground/50" />
+        <span className="text-[11.5px] font-semibold tracking-wide text-foreground/75">
+          Connect Custom Endpoint
+        </span>
       </div>
-      <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_auto] gap-1">
-        <Input
-          aria-label="Custom provider"
-          value={provider}
-          onChange={(event) => onProviderChange(event.target.value)}
-          className={FIELD_CONTROL_CLASS}
-          placeholder="provider"
-          list="pi-config-providers"
-        />
-        <datalist id="pi-config-providers">
-          {providers.map((item) => (
-            <option key={item} value={item} />
-          ))}
-        </datalist>
-        <Input
-          aria-label="Custom model"
-          value={model}
-          onChange={(event) => onModelChange(event.target.value)}
-          placeholder="model-id"
-          className={FIELD_CONTROL_CLASS}
-        />
+      <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_auto] items-end gap-1.5">
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-medium tracking-wider text-foreground/45 uppercase">
+            Provider
+          </label>
+          <Input
+            aria-label="Custom provider"
+            value={provider}
+            onChange={(event) => onProviderChange(event.target.value)}
+            className={FIELD_CONTROL_CLASS}
+            placeholder="e.g. openrouter"
+            list="pi-config-providers"
+          />
+          <datalist id="pi-config-providers">
+            {providers.map((item) => (
+              <option key={item} value={item} />
+            ))}
+          </datalist>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-medium tracking-wider text-foreground/45 uppercase">
+            Model Identifier
+          </label>
+          <Input
+            aria-label="Custom model"
+            value={model}
+            onChange={(event) => onModelChange(event.target.value)}
+            placeholder="e.g. deepseek/deepseek-chat"
+            className={FIELD_CONTROL_CLASS}
+          />
+        </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 border-border/60 bg-background/65 text-[11px] text-foreground/55"
+          className="h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-all duration-200 hover:bg-foreground/5 disabled:opacity-50"
           onClick={onUse}
+          disabled={!provider.trim() || !model.trim()}
         >
-          <Plus data-icon="inline-start" />
-          Add
+          <Plus className="mr-1 h-3.5 w-3.5 text-foreground/60" />
+          Connect
         </Button>
       </div>
-      <p className="mt-1.5 text-[11px] leading-4 text-foreground/35">
-        Provider credentials stay in environment or Pi auth storage; this adds
-        the provider/model default for new requests.
-      </p>
+      <div className="flex items-start gap-1.5 rounded border border-border/10 bg-foreground/[0.015] p-2 text-[9.5px] leading-normal text-foreground/45">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/35" />
+        <span>
+          Local or self-hosted endpoint configurations. Valid model patterns are
+          resolved automatically to instantiate a project-scoped session.
+        </span>
+      </div>
     </div>
   )
 }
 
 function InlineNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2 rounded-[7px] border border-border/50 bg-background/40 px-2 py-1.5 text-[11px] leading-4 text-foreground/45">
-      <Info className="mt-0.5 size-3 shrink-0" />
-      <span>{children}</span>
+    <div className="flex items-start gap-2.5 rounded-[8px] border border-border/15 bg-foreground/[0.015] p-2.5 text-[10px] leading-normal text-foreground/50">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/40" />
+      <span className="font-medium">{children}</span>
     </div>
   )
 }
@@ -1440,60 +2110,6 @@ function ConfigurationRow({
         </p>
       </div>
     </div>
-  )
-}
-
-function StatusPill({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-lg bg-foreground/5 px-1.5 py-0.5 text-[10px] text-foreground/35",
-        className
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
-function ThemeSegment({
-  active,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  active: boolean
-  icon: LucideIcon
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <Button
-      type="button"
-      variant={active ? "outline" : "ghost"}
-      size="sm"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "h-7 min-w-0 flex-1 justify-center gap-1 rounded-[6px] border-transparent px-2 text-[11px] font-medium shadow-none",
-        active
-          ? "border-border/60 bg-background text-foreground/75"
-          : "text-foreground/40 hover:bg-transparent hover:text-foreground/65"
-      )}
-    >
-      {active ? (
-        <Check data-icon="inline-start" />
-      ) : (
-        <Icon data-icon="inline-start" />
-      )}
-      <span className="truncate">{label}</span>
-    </Button>
   )
 }
 

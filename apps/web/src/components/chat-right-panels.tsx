@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { Folder, Library, Settings } from "lucide-react"
 import { ConfigurationsPanelContent } from "./pi/config-panel"
 import { MobilePanel, RightPanelLauncher } from "./pi/right-panel-launcher"
@@ -72,6 +73,53 @@ export function ChatRightPanels({
   workspaceLoading: boolean
   workspaceTree: WorkspaceTreeResponse | null
 }) {
+  const panelMeta = useMemo(() => {
+    switch (rightPanel) {
+      case "resources":
+        return {
+          title: "Pi Resources",
+          icon: Library,
+          loading: resourcesLoading,
+          onRefresh: refreshResources,
+          dataTestid: "pi-resources-canvas",
+          mobileDataTestid: "pi-resources-mobile-panel",
+        }
+      case "workspace":
+        return {
+          title: "Workspace",
+          icon: Folder,
+          loading: workspaceLoading,
+          onRefresh: refreshWorkspace,
+          dataTestid: "pi-workspace-canvas",
+          mobileDataTestid: "pi-workspace-mobile-panel",
+        }
+      case "configurations":
+        return {
+          title: "Configurations",
+          icon: Settings,
+          loading: false,
+          onRefresh: undefined,
+          dataTestid: "pi-config-canvas",
+          mobileDataTestid: "pi-config-mobile-panel",
+        }
+      default:
+        return {
+          title: "",
+          icon: Library,
+          loading: false,
+          onRefresh: undefined,
+          dataTestid: "pi-unified-canvas",
+          mobileDataTestid: "pi-unified-mobile-panel",
+        }
+    }
+  }, [
+    rightPanel,
+    resourcesLoading,
+    refreshResources,
+    workspaceLoading,
+    refreshWorkspace,
+  ])
+
   const headerLauncher = (
     <RightPanelLauncher
       activePanel={rightPanel}
@@ -90,121 +138,95 @@ export function ChatRightPanels({
         resources={resources}
         workspace={workspaceTree}
       />
+
       <MobilePanel
-        dataTestid="pi-resources-mobile-panel"
-        icon={Library}
+        dataTestid={panelMeta.mobileDataTestid}
+        icon={panelMeta.icon}
         onClose={() => setRightPanel(null)}
-        open={rightPanel === "resources"}
-        title="Pi Resources"
+        open={rightPanel !== null}
+        title={panelMeta.title}
       >
-        <ResourcesPanelContent
-          error={resourcesError}
-          loading={resourcesLoading}
-          resources={resources}
-          workspace={workspaceTree}
-        />
+        {rightPanel === "resources" && (
+          <ResourcesPanelContent
+            error={resourcesError}
+            loading={resourcesLoading}
+            resources={resources}
+            workspace={workspaceTree}
+          />
+        )}
+        {rightPanel === "workspace" && (
+          <WorkspacePanelContent
+            error={workspaceError}
+            loading={workspaceLoading}
+            workspace={workspaceTree}
+          />
+        )}
+        {rightPanel === "configurations" && (
+          <ConfigurationsPanelContent
+            activityLabel={activityLabel}
+            mode={mode}
+            models={models}
+            onThemePreferenceChange={handleThemePreferenceChange}
+            planLabel={planLabel}
+            queue={queue}
+            resources={resources}
+            saveSettings={saveSettings}
+            selectedModelKey={selectedModelKey}
+            settings={settings}
+            settingsError={settingsError}
+            settingsLoading={settingsLoading}
+            status={status}
+            themePreference={themePreference}
+          />
+        )}
       </MobilePanel>
-      <MobilePanel
-        dataTestid="pi-workspace-mobile-panel"
-        icon={Folder}
-        onClose={() => setRightPanel(null)}
-        open={rightPanel === "workspace"}
-        title="Workspace"
-      >
-        <WorkspacePanelContent
-          error={workspaceError}
-          loading={workspaceLoading}
-          workspace={workspaceTree}
-        />
-      </MobilePanel>
-      <MobilePanel
-        dataTestid="pi-config-mobile-panel"
-        icon={Settings}
-        onClose={() => setRightPanel(null)}
-        open={rightPanel === "configurations"}
-        title="Configurations"
-      >
-        <ConfigurationsPanelContent
-          activityLabel={activityLabel}
-          mode={mode}
-          models={models}
-          onThemePreferenceChange={handleThemePreferenceChange}
-          planLabel={planLabel}
-          queue={queue}
-          resources={resources}
-          saveSettings={saveSettings}
-          selectedModelKey={selectedModelKey}
-          settings={settings}
-          settingsError={settingsError}
-          settingsLoading={settingsLoading}
-          status={status}
-          themePreference={themePreference}
-        />
-      </MobilePanel>
+
       <ResizableCanvas
-        dataTestid="pi-resources-canvas"
-        loading={resourcesLoading}
+        key={rightPanel ?? "closed"}
+        dataTestid={panelMeta.dataTestid}
+        loading={panelMeta.loading}
         onClose={() => setRightPanel(null)}
-        onRefresh={refreshResources}
+        onRefresh={panelMeta.onRefresh}
         onResizeStart={handleResourceCanvasResizeStart}
-        open={rightPanel === "resources"}
+        open={rightPanel !== null}
         headerActions={headerLauncher}
-        title="Pi Resources"
-        titleIcon={Library}
+        title={panelMeta.title}
+        titleIcon={panelMeta.icon}
         width={resourceCanvasWidth}
       >
-        <ResourcesPanelContent
-          error={resourcesError}
-          loading={resourcesLoading}
-          resources={resources}
-          workspace={workspaceTree}
-        />
-      </ResizableCanvas>
-      <ResizableCanvas
-        dataTestid="pi-workspace-canvas"
-        loading={workspaceLoading}
-        onClose={() => setRightPanel(null)}
-        onRefresh={refreshWorkspace}
-        onResizeStart={handleResourceCanvasResizeStart}
-        open={rightPanel === "workspace"}
-        headerActions={headerLauncher}
-        title="Workspace"
-        titleIcon={Folder}
-        width={resourceCanvasWidth}
-      >
-        <WorkspacePanelContent
-          error={workspaceError}
-          loading={workspaceLoading}
-          workspace={workspaceTree}
-        />
-      </ResizableCanvas>
-      <ResizableCanvas
-        dataTestid="pi-config-canvas"
-        loading={false}
-        onClose={() => setRightPanel(null)}
-        onResizeStart={handleResourceCanvasResizeStart}
-        open={rightPanel === "configurations"}
-        headerActions={headerLauncher}
-        title="Configurations"
-        titleIcon={Settings}
-        width={resourceCanvasWidth}
-      >
-        <ConfigurationsPanelContent
-          activityLabel={activityLabel}
-          mode={mode}
-          models={models}
-          onThemePreferenceChange={handleThemePreferenceChange}
-          planLabel={planLabel}
-          queue={queue}
-          resources={resources}
-          saveSettings={saveSettings}
-          selectedModelKey={selectedModelKey}
-          settings={settings}
-          settingsError={settingsError}
-          settingsLoading={settingsLoading}
-          status={status}
-          themePreference={themePreference}
-        />
+        {rightPanel === "resources" && (
+          <ResourcesPanelContent
+            error={resourcesError}
+            loading={resourcesLoading}
+            resources={resources}
+            workspace={workspaceTree}
+          />
+        )}
+        {rightPanel === "workspace" && (
+          <WorkspacePanelContent
+            error={workspaceError}
+            loading={workspaceLoading}
+            workspace={workspaceTree}
+          />
+        )}
+        {rightPanel === "configurations" && (
+          <ConfigurationsPanelContent
+            activityLabel={activityLabel}
+            mode={mode}
+            models={models}
+            onThemePreferenceChange={handleThemePreferenceChange}
+            planLabel={planLabel}
+            queue={queue}
+            resources={resources}
+            saveSettings={saveSettings}
+            selectedModelKey={selectedModelKey}
+            settings={settings}
+            settingsError={settingsError}
+            settingsLoading={settingsLoading}
+            status={status}
+            themePreference={themePreference}
+          />
+        )}
       </ResizableCanvas>
     </>
   )

@@ -499,3 +499,33 @@ export const ErrorResponseSchema = z
     message: z.string(),
   })
   .openapi({ description: "Error response" })
+
+export const ChatProviderInfoSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    isConfigured: z.boolean(),
+    envVarName: z.string(),
+  })
+  .openapi({ description: "Chat provider info" })
+
+export const ChatProvidersResponseSchema = z
+  .object({
+    providers: z.array(ChatProviderInfoSchema),
+  })
+  .openapi({ description: "Chat providers response" })
+
+export const ChatProviderUpdateRequestSchema = z
+  .object({
+    providerId: z.string(),
+    apiKey: z.string().max(4096),
+  })
+  .openapi({ description: "Chat provider update request" })
+
+export const ChatProviderUpdateResponseSchema = z
+  .object({
+    success: z.boolean(),
+    providers: z.array(ChatProviderInfoSchema),
+    reloadRequired: z.boolean().optional(),
+  })
+  .openapi({ description: "Chat provider update response" })
