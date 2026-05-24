@@ -1,8 +1,17 @@
+import path from "node:path"
+import dotenv from "dotenv"
 import { Pool } from "@neondatabase/serverless"
 import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
+
+// Load environment variables from process.cwd() or parent directories
+const cwd = process.cwd()
+dotenv.config({ path: path.resolve(cwd, ".env.local") })
+dotenv.config({ path: path.resolve(cwd, ".env") })
+dotenv.config({ path: path.resolve(cwd, "../..", ".env.local") })
+dotenv.config({ path: path.resolve(cwd, "../..", ".env") })
 
 async function main() {
   const connectionString = process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL

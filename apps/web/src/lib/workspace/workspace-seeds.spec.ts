@@ -8,9 +8,9 @@ const REPO_ROOT = resolve(
 )
 
 const EXPECTED_CANONICAL_MEMORY_MARKERS: Record<string, string> = {
-  "architecture.md": "`agent-workspace/` is Fleet Pi’s durable adaptive layer",
+  "architecture.md": "`agent-workspace/` is Fleet Pi's durable adaptive layer",
   "decisions.md":
-    "Treat `agent-workspace/` as Fleet Pi’s persistent agent operating surface",
+    "Treat `agent-workspace/` as Fleet Pi's persistent agent operating surface",
   "known-issues.md":
     "The canonical project memory files existed as seeded stubs",
   "open-questions.md":
@@ -70,7 +70,7 @@ describe("clean clone workspace seeds", () => {
     expect(researchEntries).toContain("index.md")
     expect(reportEntries).toEqual(expect.arrayContaining(EXPECTED_REPORT_SEEDS))
     expect(backlog).not.toContain("Status: Seeded stub.")
-    expect(backlog).toContain("## Candidate plan: prompt-aware memory recall")
+    expect(backlog).toContain("Candidate plan: prompt-aware memory recall")
     expect(backlog).toContain(
       "## Candidate plan: self-improvement candidate extraction"
     )

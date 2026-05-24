@@ -1851,19 +1851,19 @@ test.describe("chat flows", () => {
       configurations.getByText("Model Defaults", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Model activation", { exact: true })
+      configurations.getByText("Model Routing Registry", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByText("Providers", { exact: true })
+      configurations.getByText("Providers Network", { exact: true })
     ).toBeVisible()
     await expect(
       configurations.getByText("Runtime Policy", { exact: true })
     ).toBeVisible()
     await expect(
-      configurations.getByRole("button", { exact: true, name: "All" })
+      configurations.getByRole("button", { exact: true, name: "Enable All" })
     ).toBeVisible()
     await expect(
-      configurations.getByRole("button", { exact: true, name: "None" })
+      configurations.getByRole("button", { exact: true, name: "Disable All" })
     ).toBeVisible()
     await expect(
       configurations.getByRole("switch", {
@@ -1881,17 +1881,15 @@ test.describe("chat flows", () => {
     )
     await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
       "max-height",
-      "400px"
+      "320px"
     )
 
     await configurations
       .getByRole("combobox", { name: "Thinking level" })
       .click()
     await page.getByRole("option", { name: "xhigh" }).click()
-    await configurations.getByRole("button", { name: "Save" }).first().click()
-    await expect(
-      configurations.getByText("Project override is current.").first()
-    ).toBeVisible()
+    await configurations.getByRole("button", { name: "Commit" }).first().click()
+    await expect(configurations.getByText("In sync").first()).toBeVisible()
 
     await configurations
       .getByLabel("Add package", { exact: true })
