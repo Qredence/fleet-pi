@@ -49,7 +49,7 @@ dirs: src/components/agent-elements → main chat UI (AgentChat, InputBar, Messa
 
 ## STACK
 
-web → framework: TanStack Start + React 19, routing: TanStack Router (file-based), state: React Query, db: better-sqlite3 (SQLite in-process), auth: better-auth (email/password + Google), runtime: Nitro/Hono, ai: Pi coding agent (pi-coding-agent v0.74), provider: amazon-bedrock
+web → framework: TanStack Start + React 19, routing: TanStack Router (file-based), state: React Query, db: better-sqlite3 (SQLite in-process), auth: better-auth (email/password + Google), runtime: Nitro/Hono, ai: Pi coding agent (pi-coding-agent v0.79.0), provider: google (gemini-3.5-flash)
 
 @workspace/ui → framework: React 19, styling: Tailwind CSS v4 + CVA, icons: Tabler Icons + Lucide, motion: Motion v12, toast: Sonner, ui: Base UI (accessible primitives)
 
@@ -159,6 +159,7 @@ web::.github/workflows/ci.yml | readFor: CI steps | affects: PR checks | related
 
 - agent-workspace/ owns durable project state: memory/{architecture,decisions,preferences}, plans/, artifacts/, evals/, pi/{skills,prompts,extensions}.
 - .pi/settings.json bridges backward compat, points to workspace-native resources.
+- .pi/extensions/trust-handler.ts implements Pi 0.79.0 project trust with auto-approval for workspace-native paths.
 - Canonical project memory in agent-workspace/memory/project/\*.md.
 
 ### Chat Protocol

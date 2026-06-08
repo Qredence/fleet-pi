@@ -64,10 +64,27 @@ packages/
 
 - Project-local Pi resources in `.pi/`:
   - Skills: `.pi/skills/` (agent-elements, fleet-pi-orientation, etc.)
-  - Extensions: `.pi/extensions/` (project-inventory, vendored filechanges/subagents)
+  - Extensions: `.pi/extensions/` (project-inventory, workspace-index, daytona-sandbox, trust-handler, vendored filechanges/subagents)
   - Settings: `.pi/settings.json` (loads pi-autoresearch, pi-skill-palette, pi-autocontext)
 - Resources browser exposes available skills, prompts, extensions, themes, context files
 - Supports custom tool registration via extensions
+
+### Project Trust (Pi 0.79.0+)
+
+Fleet Pi implements a custom `project_trust` extension handler (`.pi/extensions/trust-handler.ts`) that:
+
+- Auto-approves workspace-native paths (`agent-workspace/pi/*`, `.pi/skills`, `.pi/prompts`)
+- Requires explicit confirmation for protected paths (`agent-workspace/system`, `agent-workspace/evals`)
+- Logs trust decisions for auditability
+- Uses `ctx.mode` to differentiate behavior between TUI and RPC/JSON modes
+
+### Extension Mode Awareness (Pi 0.79.0+)
+
+Extensions leverage `ctx.mode` and `ctx.getSystemPromptOptions()` for context-aware behavior:
+
+- `workspace-index.ts` returns compact output in JSON/RPC modes, full output in TUI mode
+- `project-inventory.ts` includes execution mode in diagnostic output
+- Mode detection enables appropriate UI responses based on execution context
 
 ## Development Commands
 

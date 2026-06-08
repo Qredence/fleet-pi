@@ -12,7 +12,7 @@ import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../workspace/bootstrap-agent-workspace"
 
-export const DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-6"
+export const DEFAULT_MODEL = "gemini-3.5-flash"
 
 type ModelDefaultSettingsLike = {
   getDefaultModel: () => string | undefined
@@ -107,8 +107,8 @@ export function resolveDefaultModelSelection(
   settingsManager: ModelDefaultSettingsLike
 ) {
   return {
-    defaultProvider: settingsManager.getDefaultProvider() ?? "amazon-bedrock",
-    defaultModel: settingsManager.getDefaultModel() ?? DEFAULT_BEDROCK_MODEL,
+    defaultProvider: settingsManager.getDefaultProvider() ?? "google",
+    defaultModel: settingsManager.getDefaultModel() ?? DEFAULT_MODEL,
   }
 }
 

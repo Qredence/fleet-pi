@@ -32,21 +32,21 @@
     "generate:docs": "node scripts/generate-docs.js"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.75.3",
-    "@earendil-works/pi-tui": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.79.0",
+    "@earendil-works/pi-tui": "^0.79.0",
     "diff": "^8.0.2",
     "typebox": "1.1.38",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "jscpd": "^4.0.9",
-    "knip": "^6.8.0",
+    "jscpd": "^4.1.0",
+    "knip": "^6.12.2",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "syncpack": "^14.3.1",
-    "turbo": "^2.9.12",
+    "turbo": "^2.9.14",
     "typescript": "^6.0.3"
   },
   "lint-staged": {

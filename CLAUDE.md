@@ -44,8 +44,7 @@ Backend routes live in TanStack Start file routes under `apps/web/src/routes/api
 ### AI/LLM integration
 
 - `@earendil-works/pi-ai` powers the server-side LLM stream.
-- The primary provider is Amazon Bedrock through Pi's `amazon-bedrock` provider.
-- Bedrock credentials use standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1`; `AWS_PROFILE` and `AWS_BEARER_TOKEN_BEDROCK` are passed through when set.
+- The primary provider is Google through Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The React client in `apps/web/src/routes/index.tsx` uses a small local `fetch` + `AbortController` hook and consumes `/api/chat` NDJSON events (`start`, `delta`, `done`, `error`).
 
 ### Agent UI components

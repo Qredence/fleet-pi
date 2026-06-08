@@ -7,6 +7,8 @@ import {
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
 
+type ExtensionMode = "tui" | "rpc" | "json" | "print"
+
 type WorkspaceEntryKind = "file" | "directory"
 
 type WorkspaceEntry = {
@@ -138,25 +140,40 @@ export default function workspaceIndexExtension(pi: ExtensionAPI) {
         .filter((entry) => !entry.exists)
         .map((entry) => entry.path)
 
-      const summary = [
-        "Fleet Pi agent workspace",
-        WORKSPACE_PURPOSE,
-        "Agent home: use agent-workspace as the primary surface for Fleet Pi skills, tools, memory, plans, evals, artifacts, and runtime resource orientation.",
-        "Workspace-native installs: resource_install writes Pi skills, prompts, staged/enabled extensions, and package bundles under agent-workspace/pi. Start a new session or reload after installing.",
-        rootExists
-          ? undefined
-          : "Workspace root missing: agent-workspace/ (tool returned the expected layout with missing entries marked).",
-        ...sections.flatMap((section) =>
-          formatSection(section.title, section.entries)
-        ),
-        ...formatProjectMemoryForWorkspaceIndex(projectMemory),
-        "Runtime tools:",
-        ...RUNTIME_TOOLS.map((tool) => `- ${tool}`),
-        "Mutation boundaries:",
-        `- ${MUTATION_BOUNDARIES_NOTE}`,
-      ]
-        .filter(Boolean)
-        .join("\n")
+      // Mode-aware summary generation
+      const mode = (ctx as { mode?: ExtensionMode }).mode ?? "tui"
+      const isCompactMode = mode === "json" || mode === "rpc"
+
+      const summary = isCompactMode
+        ? // Compact version for JSON/RPC modes
+          [
+            `Fleet Pi workspace (${mode})`,
+            `Root: ${WORKSPACE_ROOT} (${rootExists ? "exists" : "missing"})`,
+            `Sections: ${sections.length}`,
+            `Missing: ${missingPaths.length}`,
+            `Runtime tools: ${RUNTIME_TOOLS.length}`,
+          ].join(" | ")
+        : // Full version for TUI/print modes
+          [
+            "Fleet Pi agent workspace",
+            WORKSPACE_PURPOSE,
+            `Mode: ${mode}`,
+            "Agent home: use agent-workspace as the primary surface for Fleet Pi skills, tools, memory, plans, evals, artifacts, and runtime resource orientation.",
+            "Workspace-native installs: resource_install writes Pi skills, prompts, staged/enabled extensions, and package bundles under agent-workspace/pi. Start a new session or reload after installing.",
+            rootExists
+              ? undefined
+              : "Workspace root missing: agent-workspace/ (tool returned the expected layout with missing entries marked).",
+            ...sections.flatMap((section) =>
+              formatSection(section.title, section.entries)
+            ),
+            ...formatProjectMemoryForWorkspaceIndex(projectMemory),
+            "Runtime tools:",
+            ...RUNTIME_TOOLS.map((tool) => `- ${tool}`),
+            "Mutation boundaries:",
+            `- ${MUTATION_BOUNDARIES_NOTE}`,
+          ]
+            .filter(Boolean)
+            .join("\n")
 
       return {
         content: [{ type: "text", text: summary }],

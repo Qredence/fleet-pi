@@ -76,8 +76,8 @@ describe("createSessionServices", () => {
         getDefaultProvider: () => undefined,
       })
     ).toEqual({
-      defaultProvider: "amazon-bedrock",
-      defaultModel: "us.anthropic.claude-sonnet-4-6",
+      defaultProvider: "google",
+      defaultModel: "gemini-3.5-flash",
     })
   })
 })

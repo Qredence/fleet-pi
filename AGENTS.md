@@ -66,8 +66,9 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## AI Integration
 
-- The chat backend uses `@earendil-works/pi-coding-agent` on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
-- The primary provider is Amazon Bedrock via Pi's `amazon-bedrock` provider.
+- The chat backend uses `@earendil-works/pi-coding-agent` v0.79.0 on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
+- Pi 0.79.0+ extensions can access `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()` for context-aware behavior.
+- The primary provider is Google via Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.
 - Shared browser-safe chat protocol types live in `apps/web/src/lib/pi/chat-protocol.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.
@@ -90,7 +91,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Model choices should come from Pi `ModelRegistry`/`SettingsManager`, not a hard-coded UI list. Project-local Pi resources under `.pi/skills`, `.pi/prompts`, and `.pi/extensions` are loaded through `DefaultResourceLoader` and surfaced through `/api/chat/resources`.
 - Project-local Pi skills currently include `.pi/skills/fleet-pi-orientation`, `.pi/skills/chat-runtime-debugging`, `.pi/skills/agent-ui-workflows`, and the `.pi/skills/agent-elements` symlink to `.agents/skills/agent-elements`.
 - `.pi/settings.json` loads project Pi packages `npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, and `npm:pi-web-access`, plus vendored extension directories under `.pi/extensions/vendor`.
-- `.pi/extensions/project-inventory.ts` registers the read-only `project_inventory` tool, and `.pi/extensions/workspace-index.ts` registers the read-only `workspace_index` tool. Both are included in Agent and Plan mode tool allowlists.
+- `.pi/extensions/project-inventory.ts` registers the read-only `project_inventory` tool, `.pi/extensions/workspace-index.ts` registers the read-only `workspace_index` tool, and `.pi/extensions/trust-handler.ts` implements Pi 0.79.0 `project_trust` event handling with mode-aware auto-approval for workspace-native paths. All are included in Agent and Plan mode tool allowlists.
 - `.pi/extensions/vendor/filechanges` provides `/filechanges`, `/filechanges-accept`, and `/filechanges-decline`; `.pi/extensions/vendor/subagents` registers the `subagent` tool. Keep each folder's `UPSTREAM.md` current when refreshing vendored source.
 - Agent mode explicitly allows external tools `init_experiment`, `run_experiment`, `log_experiment`, `autocontext_judge`, `autocontext_improve`, `autocontext_status`, `autocontext_scenarios`, `autocontext_queue`, `autocontext_runtime_snapshot`, `subagent`, `web_search`, `fetch_content`, `code_search`, and `get_search_content`. Do not add mutating research, file-change, or subagent tools to Plan mode.
 - Plan mode and Harness mode also allow `web_search`, `code_search`, and `get_search_content` (read-only). `fetch_content` is Agent and Harness mode only — it can clone GitHub repos to `/tmp/`, which is a side effect inconsistent with Plan mode's read-only contract.
