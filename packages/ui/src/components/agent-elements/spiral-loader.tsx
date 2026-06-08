@@ -4,11 +4,11 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import { cn } from "./utils/cn"
 import { spiralFastData, spiralSlowData } from "./spiral-loader-data"
-import type { LottieRefCurrentProps } from "lottie-react"
+import type { LottieComponentProps, LottieRefCurrentProps } from "lottie-react"
 
 const LottieLazy = lazy(() => import("./spiral-loader-lottie"))
 
-function Lottie(props: any) {
+function Lottie(props: LottieComponentProps) {
   return (
     <Suspense fallback={null}>
       <LottieLazy {...props} />

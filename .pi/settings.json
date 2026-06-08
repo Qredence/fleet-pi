@@ -15,13 +15,8 @@
     "extensions/vendor/subagents",
     "../agent-workspace/pi/extensions/enabled"
   ],
-  "defaultProvider": "amazon-bedrock",
-  "defaultModel": "us.anthropic.claude-sonnet-4-6",
+  "defaultProvider": "google",
+  "defaultModel": "gemini-3.5-flash",
   "defaultThinkingLevel": "high",
-  "enabledModels": [
-    "amazon-bedrock/anthropic.claude-sonnet-4-6",
-    "amazon-bedrock/global.anthropic.claude-sonnet-4-6",
-    "amazon-bedrock/us.anthropic.claude-sonnet-4-6",
-    "amazon-bedrock/amazon.nova-2-lite-v1:0"
-  ]
+  "enabledModels": ["google/*", "github-copilot/*"]
 }

@@ -12,7 +12,8 @@ overrides:
   fast-uri: '>=3.1.2'
   uuid: '>=11.1.1'
   ip-address: '>=10.1.1'
-  hono: '>=4.12.18'
+  hono: '>=4.12.21'
+  qs: '>=6.15.2'
   mermaid: '>=11.15.0'
   '@google/genai>protobufjs': '>=8.2.0'
   '@opentelemetry/otlp-transformer>protobufjs': '>=8.2.0'
@@ -27,7 +28,7 @@ allowBuilds:
   protobufjs: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - '@earendil-works/pi-agent-core@0.75.3'
-  - '@earendil-works/pi-ai@0.75.3'
-  - '@earendil-works/pi-coding-agent@0.75.3'
-  - '@earendil-works/pi-tui@0.75.3'
+  - '@earendil-works/pi-agent-core'
+  - '@earendil-works/pi-ai'
+  - '@earendil-works/pi-coding-agent'
+  - '@earendil-works/pi-tui'

@@ -3,6 +3,8 @@ import { resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 
+type ExtensionMode = "tui" | "rpc" | "json" | "print"
+
 const RESOURCE_DIRS = [
   ".pi/skills",
   ".pi/prompts",
@@ -30,6 +32,7 @@ export default function projectInventoryExtension(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.sessionManager.getCwd()
+      const mode = (ctx as { mode?: ExtensionMode }).mode ?? "tui"
       const resources = RESOURCE_DIRS.map((dir) => {
         const path = resolve(cwd, dir)
         return {
@@ -39,7 +42,7 @@ export default function projectInventoryExtension(pi: ExtensionAPI) {
       })
       const focus = params.focus?.trim()
       const summary = [
-        "Fleet Pi is a TanStack Start chat app backed by Pi coding-agent sessions.",
+        `Fleet Pi (${mode} mode) — TanStack Start chat app backed by Pi coding-agent sessions.`,
         "Core backend files live under apps/web/src/lib/pi and apps/web/src/routes/api/chat*.ts.",
         "The browser chat surface lives in apps/web/src/routes/index.tsx and shared Agent Elements components live in packages/ui.",
         "Project-local Pi resources are discovered from root .pi plus workspace-native installs under agent-workspace/pi.",
@@ -51,7 +54,7 @@ export default function projectInventoryExtension(pi: ExtensionAPI) {
 
       return {
         content: [{ type: "text", text: summary }],
-        details: { resources, focus },
+        details: { resources, focus, mode },
       }
     },
   })
