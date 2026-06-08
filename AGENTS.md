@@ -68,7 +68,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 - The chat backend uses `@earendil-works/pi-coding-agent` v0.79.0 on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
 - Pi 0.79.0+ extensions can access `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()` for context-aware behavior.
-- The primary provider is Amazon Bedrock via Pi's `amazon-bedrock` provider.
+- The primary provider is Google via Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.
 - Shared browser-safe chat protocol types live in `apps/web/src/lib/pi/chat-protocol.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.

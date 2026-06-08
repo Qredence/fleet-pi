@@ -49,7 +49,7 @@ dirs: src/components/agent-elements → main chat UI (AgentChat, InputBar, Messa
 
 ## STACK
 
-web → framework: TanStack Start + React 19, routing: TanStack Router (file-based), state: React Query, db: better-sqlite3 (SQLite in-process), auth: better-auth (email/password + Google), runtime: Nitro/Hono, ai: Pi coding agent (pi-coding-agent v0.79.0), provider: amazon-bedrock
+web → framework: TanStack Start + React 19, routing: TanStack Router (file-based), state: React Query, db: better-sqlite3 (SQLite in-process), auth: better-auth (email/password + Google), runtime: Nitro/Hono, ai: Pi coding agent (pi-coding-agent v0.79.0), provider: google (gemini-3.5-flash)
 
 @workspace/ui → framework: React 19, styling: Tailwind CSS v4 + CVA, icons: Tabler Icons + Lucide, motion: Motion v12, toast: Sonner, ui: Base UI (accessible primitives)
 
