@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { createContext, useContext, useMemo } from "react"
 import { AgentChat } from "../../agent-elements/agent-chat"
 import { cn } from "../../agent-elements/utils/cn"
 import { GenerativeTextRenderer } from "../../openui/inline-renderer"
@@ -25,21 +25,29 @@ export type FleetPiAgentChatProps = Omit<
   >
 }
 
-type FleetPiInputBarSlotProps = InputBarProps & {
+const InputBarPropsContext = createContext<{
   inputBar: FleetPiAgentChatProps["inputBar"]
   status: ChatStatus
   onStop: () => void
+} | null>(null)
+
+function StableInputBarSlot(props: InputBarProps) {
+  const ctx = useContext(InputBarPropsContext)
+  if (!ctx) return null
+
+  return (
+    <FleetPiInputBar
+      {...props}
+      {...ctx.inputBar}
+      status={ctx.status}
+      onStop={ctx.onStop}
+    />
+  )
 }
 
-function FleetPiInputBarSlot({
-  inputBar,
-  status,
-  onStop,
-  ...props
-}: FleetPiInputBarSlotProps) {
-  return (
-    <FleetPiInputBar {...props} {...inputBar} status={status} onStop={onStop} />
-  )
+const fleetPiAgentChatSlots = {
+  TextRenderer: GenerativeTextRenderer,
+  InputBar: StableInputBarSlot,
 }
 
 export function FleetPiAgentChat({
@@ -53,30 +61,22 @@ export function FleetPiAgentChat({
 }: FleetPiAgentChatProps) {
   const styledSuggestions = withFleetPiSuggestionStyles(suggestions)
 
-  const slots = useMemo(
-    () => ({
-      TextRenderer: GenerativeTextRenderer,
-      InputBar: (props: InputBarProps) => (
-        <FleetPiInputBarSlot
-          {...props}
-          inputBar={inputBar}
-          status={status}
-          onStop={onStop}
-        />
-      ),
-    }),
+  const contextValue = useMemo(
+    () => ({ inputBar, status, onStop }),
     [inputBar, onStop, status]
   )
 
   return (
-    <AgentChat
-      {...agentChatProps}
-      className={cn("fleet-pi-agent-chat", className)}
-      status={status}
-      onStop={onStop}
-      suggestions={styledSuggestions}
-      toolRenderers={toolRenderers}
-      slots={slots}
-    />
+    <InputBarPropsContext.Provider value={contextValue}>
+      <AgentChat
+        {...agentChatProps}
+        className={cn("fleet-pi-agent-chat", className)}
+        status={status}
+        onStop={onStop}
+        suggestions={styledSuggestions}
+        toolRenderers={toolRenderers}
+        slots={fleetPiAgentChatSlots}
+      />
+    </InputBarPropsContext.Provider>
   )
 }

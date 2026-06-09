@@ -6,16 +6,25 @@ export async function loadWorkspaceFile(
   const response = await fetch(
     `/api/workspace/file?path=${encodeURIComponent(path)}`
   )
-  const body: unknown = await response.json()
+  const text = await response.text()
+
   if (!response.ok) {
-    const message =
-      body &&
-      typeof body === "object" &&
-      "message" in body &&
-      typeof body.message === "string"
-        ? body.message
-        : "Unable to load workspace file."
+    let message = "Unable to load workspace file."
+    try {
+      const body: unknown = JSON.parse(text)
+      if (
+        body &&
+        typeof body === "object" &&
+        "message" in body &&
+        typeof body.message === "string"
+      ) {
+        message = body.message
+      }
+    } catch {
+      // Non-JSON error bodies fall back to the default message.
+    }
     throw new Error(message)
   }
-  return body as WorkspaceFileResponse
+
+  return JSON.parse(text) as WorkspaceFileResponse
 }

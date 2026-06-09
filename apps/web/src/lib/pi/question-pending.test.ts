@@ -36,6 +36,21 @@ describe("isQuestionToolPartPending", () => {
     ).toBe(false)
   })
 
+  it("returns false when answer is falsy but defined", () => {
+    expect(
+      isQuestionToolPartPending({
+        type: "tool-Question",
+        output: { answer: false },
+      })
+    ).toBe(false)
+    expect(
+      isQuestionToolPartPending({
+        type: "tool-Question",
+        output: { answer: 0 },
+      })
+    ).toBe(false)
+  })
+
   it("returns false when answers array is populated", () => {
     expect(
       isQuestionToolPartPending({

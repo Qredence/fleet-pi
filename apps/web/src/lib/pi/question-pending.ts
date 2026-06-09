@@ -21,7 +21,7 @@ export function isQuestionToolPartPending(part: ToolQuestionPart): boolean {
 
   const output = part.output
   if (!output) return true
-  if (output.answer) return false
+  if (output.answer !== undefined && output.answer !== null) return false
   if (Array.isArray(output.answers) && output.answers.length > 0) return false
   if (typeof output.content === "string" && output.content.length > 0)
     return false

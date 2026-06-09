@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { startHorizontalResize } from "../../../../lib/horizontal-resize"
 import { WORKSPACE_SPLIT_MIN_WIDTH_PX } from "../../../../lib/layout-constants"
 import {
@@ -58,7 +52,7 @@ export function useWorkspaceSplitLayout(
     [treeWidth]
   )
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const split = splitRef.current
     if (!split) return
 
