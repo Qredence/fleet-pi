@@ -38,11 +38,11 @@ Run any workspace script from the repo root with `--filter`:
 
 ```bash
 pnpm --filter web typecheck
-pnpm --filter @workspace/ui lint
+pnpm --filter @workspace/hax-design lint
 pnpm --filter web test:watch
 ```
 
-The `web` workspace name comes from `apps/web/package.json` `"name": "web"`. The shared UI library is `@workspace/ui`.
+The `web` workspace name comes from `apps/web/package.json` `"name": "web"`. The shared UI library is `@workspace/hax-design`.
 
 ## File-Based Routing with TanStack Router
 
@@ -54,16 +54,16 @@ API routes follow the same file-based pattern. A file at `apps/web/src/routes/ap
 
 ## Adding shadcn Components
 
-shadcn components land in `packages/ui`. Always run the add command from the **repo root** targeting the web app so shadcn can resolve the workspace config:
+shadcn components land in `packages/hax-design`. Always run the add command from the **repo root** targeting the web app so shadcn can resolve the workspace config:
 
 ```bash
 pnpm dlx shadcn@latest add <component> -c apps/web
 ```
 
-After the component is added, import it via the `@workspace/ui` alias:
+After the component is added, import it via the `@workspace/hax-design` alias:
 
 ```ts
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@workspace/hax-design/components/button"
 ```
 
 ## Writing Tests

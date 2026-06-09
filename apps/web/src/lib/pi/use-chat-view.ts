@@ -1,16 +1,16 @@
 import { useMemo } from "react"
-import { normalizeSessionLabel } from "./chat-helpers"
-import type { SuggestionItem } from "@workspace/ui/components/agent-elements/input/suggestions"
+import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
+import type { SuggestionItem } from "@workspace/hax-design/components/agent-elements/input/suggestions"
 import type {
   ChatMessage,
   ChatToolPart,
-} from "@workspace/ui/components/agent-elements/chat-types"
+} from "@workspace/hax-design/components/agent-elements/chat-types"
 import type {
   ChatMode,
   ChatResourcesResponse,
   ChatSessionInfo,
   WorkspaceTreeResponse,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 
 export function useActiveSessionLabel({
   activeSessionId,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeSessionLabel } from "./chat-helpers"
+import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
 
 describe("chat helpers", () => {
   describe("normalizeSessionLabel", () => {

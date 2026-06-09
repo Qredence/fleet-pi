@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { toModelOption, toModelSelection } from "./chat-helpers"
-import { useChatStorage } from "./use-chat-storage"
-import type { PointerEvent as ReactPointerEvent } from "react"
-import type {
-  ChatMode,
-  ChatModelsResponse,
-  ChatSessionMetadata,
-} from "./chat-protocol"
-import type { RightPanel, ThemePreference } from "@/lib/canvas-utils"
+import {
+  toModelOption,
+  toModelSelection,
+} from "@workspace/hax-design/lib/pi/chat-helpers"
 import {
   applyThemePreference,
   clampResourceCanvasWidth,
@@ -16,7 +11,19 @@ import {
   readStoredThemePreference,
   storeResourceCanvasWidth,
   storeThemePreference,
-} from "@/lib/canvas-utils"
+} from "@workspace/hax-design/lib/canvas-utils"
+import { startHorizontalResize } from "@workspace/hax-design/lib/horizontal-resize"
+import { useChatStorage } from "./use-chat-storage"
+import type { PointerEvent as ReactPointerEvent } from "react"
+import type {
+  ChatMode,
+  ChatModelsResponse,
+  ChatSessionMetadata,
+} from "@workspace/hax-design/lib/pi/chat-protocol"
+import type {
+  RightPanel,
+  ThemePreference,
+} from "@workspace/hax-design/lib/canvas-utils"
 
 export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   const {
@@ -62,8 +69,14 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
     return () => media.removeEventListener("change", handleChange)
   }, [themePreference])
 
+  const prevRightPanelRef = useRef<RightPanel>(null)
+
   useEffect(() => {
-    if (!rightPanel) return
+    const prevRightPanel = prevRightPanelRef.current
+    prevRightPanelRef.current = rightPanel
+
+    if (!rightPanel || prevRightPanel !== null) return
+
     const initialWidth = getResourceCanvasInitialWidth()
     setResourceCanvasWidth(initialWidth)
     storeResourceCanvasWidth(initialWidth)
@@ -112,25 +125,18 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
 
   const handleResourceCanvasResizeStart = useCallback(
     (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault()
-      const startX = event.clientX
       const startWidth = resourceCanvasWidth
 
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        const nextWidth = clampResourceCanvasWidth(
-          startWidth - (moveEvent.clientX - startX)
-        )
-        setResourceCanvasWidth(nextWidth)
-        storeResourceCanvasWidth(nextWidth)
-      }
-
-      const handlePointerUp = () => {
-        window.removeEventListener("pointermove", handlePointerMove)
-        window.removeEventListener("pointerup", handlePointerUp)
-      }
-
-      window.addEventListener("pointermove", handlePointerMove)
-      window.addEventListener("pointerup", handlePointerUp, { once: true })
+      startHorizontalResize({
+        event,
+        startWidth,
+        getNextWidth: (clientX, startX, width) =>
+          clampResourceCanvasWidth(width - (clientX - startX)),
+        onWidthChange: (nextWidth) => {
+          setResourceCanvasWidth(nextWidth)
+          storeResourceCanvasWidth(nextWidth)
+        },
+      })
     },
     [resourceCanvasWidth]
   )

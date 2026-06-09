@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { ChatSessionMetadata } from "@/lib/pi/chat-protocol"
+import type { ChatSessionMetadata } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { hydrateChatSession } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"

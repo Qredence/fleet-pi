@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@workspace/ui/components/agent-elements/chat-types"
+import type { ChatMessage } from "@workspace/hax-design/components/agent-elements/chat-types"
 
 export function collectCompletedResourceInstallToolCallIds(
   messages: Array<ChatMessage>

@@ -17,7 +17,7 @@ fleet-pi/
 │   ├── src/lib/workspace/    # agent-workspace tree and file helpers
 │   ├── src/lib/pii/          # PII sanitization module
 │   ├── src/lib/logger.ts     # Pino logger with redaction
-│   └── src/components/pi/    # Right-panel resources, workspace, and config UI
+│   └── packages/hax-design/src/components/fleet-pi/    # Right-panel resources, workspace, and config UI
 ├── packages/ui/              # Shared React component library
 │   └── src/components/
 │       └── agent-elements/   # Reusable chat and tool UI

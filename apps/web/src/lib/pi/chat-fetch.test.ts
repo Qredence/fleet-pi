@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
-import { ChatSessionResponseSchema } from "./chat-protocol.zod"
+import { ChatSessionResponseSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import {
   fetchValidatedJson,
   parseWithSchema,

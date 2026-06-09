@@ -93,7 +93,7 @@ docker: (none; local only)
 ## LOOKUP
 
 add chat route → apps/web/src/routes/, apps/web/src/routes/api/chat/_.ts, export Route handler  
-add Pi tool/command → .pi/extensions/_.ts (register in handler), apps/web/src/lib/pi/command-policy.ts (allowlist), apps/web/src/components/pi/ (UI)  
+add Pi tool/command → .pi/extensions/_.ts (register in handler), apps/web/src/lib/pi/command-policy.ts (allowlist), packages/hax-design/src/components/fleet-pi/ (UI)  
 add shared component → packages/ui/src/components/, update packages/ui/package.json exports  
 add workspace API → apps/web/src/routes/api/workspace/_.ts, apps/web/src/lib/workspace/server.ts (helpers)  
 modify auth → apps/web/src/lib/auth/server.ts (Better Auth config), .env (secrets)  

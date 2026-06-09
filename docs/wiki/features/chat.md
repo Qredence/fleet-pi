@@ -113,4 +113,4 @@ Before each turn, the server selects relevant files from `agent-workspace/memory
 
 - [Chat API](../apps/web/chat-api.md)
 - [Plan mode](../apps/web/plan-mode.md)
-- [Agent-elements UI components](../packages/ui/agent-elements.md)
+- [Agent-elements UI components](../packages/hax-design/agent-elements.md)

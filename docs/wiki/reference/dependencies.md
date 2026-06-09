@@ -46,8 +46,8 @@ These packages are proprietary to the Earendil Works ecosystem and are published
 
 | Package                    | Description                                                                                                                       |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `@workspace/ui`            | Workspace-local shared component library. Contains all shadcn components, the `agent-elements` AI chat UI kit, and global styles. |
-| `streamdown`               | Streaming markdown renderer with syntax highlighting. Used in `packages/ui/src/components/agent-elements/markdown.tsx`.           |
+| `@workspace/hax-design`    | Workspace-local shared component library. Contains all shadcn components, the `agent-elements` AI chat UI kit, and global styles. |
+| `streamdown`               | Streaming markdown renderer with syntax highlighting. Used in `packages/hax-design/src/components/agent-elements/markdown.tsx`.   |
 | `motion`                   | Animation library (formerly Framer Motion) used for UI transitions.                                                               |
 | `lottie-react`             | Lottie animation renderer used for loading states.                                                                                |
 | `@base-ui/react`           | Headless UI primitives (accessible components without built-in styles).                                                           |

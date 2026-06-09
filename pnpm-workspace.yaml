@@ -1,6 +1,6 @@
 packages:
   - "apps/web"
-  - "packages/ui"
+  - "packages/hax-design"
 overrides:
   '@anthropic-ai/sdk': '>=0.91.1'
   handlebars: '>=4.7.9'

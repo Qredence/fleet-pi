@@ -17,7 +17,7 @@ import {
   ChatStreamEventSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
-} from "../src/lib/pi/chat-protocol.zod"
+} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 
 const registry = new OpenAPIRegistry()
 

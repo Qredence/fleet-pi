@@ -33,7 +33,7 @@ type ChatRequest = {
 }
 ```
 
-Defined in `apps/web/src/lib/pi/chat-protocol.ts`, validated at runtime with the Zod schema in `apps/web/src/lib/pi/chat-protocol.zod.ts`.
+Defined in `packages/hax-design/src/lib/pi/chat-protocol.ts`, validated at runtime with the Zod schema in `packages/hax-design/src/lib/pi/chat-protocol.zod.ts`.
 
 ### Follow-up queuing
 

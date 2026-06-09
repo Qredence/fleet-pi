@@ -6,7 +6,7 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
-} from "../pi/chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { WorkspaceProjectionConnection } from "./workspace-projection"
 import type Database from "better-sqlite3"
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Tech Debt Scanner
 # Scans TypeScript/JavaScript source files for TODO, FIXME, HACK, XXX, and BUG
-# comments across apps/web/src and packages/ui/src.
+# comments across apps/web/src and packages/hax-design/src.
 #
 # Outputs:
 #   - Human-readable table to stdout
@@ -13,7 +13,7 @@ set -euo pipefail
 #   0 - no tech debt markers found
 #   1 - one or more tech debt markers found (use with continue-on-error in CI)
 
-SCAN_DIRS=("apps/web/src" "packages/ui/src")
+SCAN_DIRS=("apps/web/src" "packages/hax-design/src")
 MARKERS="TODO|FIXME|HACK|XXX|BUG"
 OUTPUT_FILE="tech-debt-report.json"
 GLOB="*.{ts,tsx,js,jsx}"

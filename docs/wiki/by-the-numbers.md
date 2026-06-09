@@ -6,13 +6,13 @@ Data collected on 2026-05-22.
 
 ## Size
 
-| Metric                  | Value                         |
-| ----------------------- | ----------------------------- |
-| TypeScript / TSX lines  | 42,168                        |
-| CSS lines               | ~663                          |
-| Source files (non-test) | 178                           |
-| Test files              | 52                            |
-| Workspace packages      | 2 (`apps/web`, `packages/ui`) |
+| Metric                  | Value                                 |
+| ----------------------- | ------------------------------------- |
+| TypeScript / TSX lines  | 42,168                                |
+| CSS lines               | ~663                                  |
+| Source files (non-test) | 178                                   |
+| Test files              | 52                                    |
+| Workspace packages      | 2 (`apps/web`, `packages/hax-design`) |
 
 ### Language breakdown
 
@@ -24,7 +24,7 @@ xychart-beta horizontal
   bar [42168, 663, 300]
 ```
 
-The codebase is overwhelmingly TypeScript and TSX. CSS is minimal because Tailwind v4 handles almost all styling declaratively via utility classes; the ~663 CSS lines are concentrated in `packages/ui/src/styles/globals.css` where design tokens and Tailwind configuration live.
+The codebase is overwhelmingly TypeScript and TSX. CSS is minimal because Tailwind v4 handles almost all styling declaratively via utility classes; the ~663 CSS lines are concentrated in `packages/hax-design/src/styles/globals.css` where design tokens and Tailwind configuration live.
 
 ---
 
@@ -36,13 +36,13 @@ All commits originate from April–May 2026. There are no pre-history imports or
 
 ### Most active directories (by file count)
 
-| Directory                                          | Approximate file count |
-| -------------------------------------------------- | ---------------------- |
-| `apps/web/src/lib/pi/`                             | ~40 files              |
-| `packages/ui/src/components/agent-elements/`       | ~40 files              |
-| `apps/web/src/routes/`                             | ~20 files              |
-| `apps/web/src/lib/` (non-pi)                       | ~15 files              |
-| `packages/ui/src/components/` (non-agent-elements) | ~15 files              |
+| Directory                                                  | Approximate file count |
+| ---------------------------------------------------------- | ---------------------- |
+| `apps/web/src/lib/pi/`                                     | ~40 files              |
+| `packages/hax-design/src/components/agent-elements/`       | ~40 files              |
+| `apps/web/src/routes/`                                     | ~20 files              |
+| `apps/web/src/lib/` (non-pi)                               | ~15 files              |
+| `packages/hax-design/src/components/` (non-agent-elements) | ~15 files              |
 
 `apps/web/src/lib/pi/` is the most complex subsystem — it owns Pi session management, plan mode, model discovery, server-side event normalization, and the Neon Postgres mirror integration.
 
@@ -61,6 +61,6 @@ This is a lower bound on AI-assisted work. Commits where AI suggestions were acc
 The two directories with the highest file counts are also the ones with the deepest internal cross-references:
 
 - **`apps/web/src/lib/pi/`** — ~40 files covering server-side session lifecycle, plan mode logic, Bedrock model wiring, Neon mirror, and streaming event normalization. Changes in one file frequently require coordinated updates in several others.
-- **`packages/ui/src/components/agent-elements/`** — ~40 files comprising the self-contained AI chat UI library: `AgentChat`, `MessageList`, `InputBar`, `ToolRegistry`, `ToolRenderer`, streaming markdown, and 30+ individual tool renderer components.
+- **`packages/hax-design/src/components/agent-elements/`** — ~40 files comprising the self-contained AI chat UI library: `AgentChat`, `MessageList`, `InputBar`, `ToolRegistry`, `ToolRenderer`, streaming markdown, and 30+ individual tool renderer components.
 
 These two directories together account for roughly half of all source files in the repository.

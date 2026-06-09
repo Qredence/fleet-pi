@@ -4,7 +4,7 @@ import type {
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatSettingsUpdateRequest,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 
 const keys = {
   models: ["chat", "models"] as const,

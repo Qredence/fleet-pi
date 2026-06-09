@@ -32,7 +32,7 @@
     "allowJs": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@workspace/hax-design/*": ["../../packages/hax-design/src/*"]
     }
   }
 }

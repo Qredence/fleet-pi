@@ -28,8 +28,8 @@
         "pino-pretty"
       ]
     },
-    "packages/ui": {
-      "entry": ["src/**/*.tsx", "src/**/*.ts"]
+    "packages/hax-design": {
+      "entry": ["src/**/*.tsx", "src/**/*.ts", "scripts/**/*.ts"]
     }
   }
 }

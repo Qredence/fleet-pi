@@ -27,7 +27,11 @@ import {
   upsertPiToolExecution,
 } from "../db/pi-session-mirror"
 import type { AppRuntimeContext } from "../app-runtime"
-import type { ChatMode, ChatPlanAction, ChatStreamEvent } from "./chat-protocol"
+import type {
+  ChatMode,
+  ChatPlanAction,
+  ChatStreamEvent,
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type {
   ProvenanceMutationKind,
   WorkspaceProvenanceConnection,
@@ -35,7 +39,7 @@ import type {
 import type {
   ChatMessage,
   ChatToolPart,
-} from "@workspace/ui/components/agent-elements/chat-types"
+} from "@workspace/hax-design/components/agent-elements/chat-types"
 
 type RecorderOptions = {
   mode?: ChatMode

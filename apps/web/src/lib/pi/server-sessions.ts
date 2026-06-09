@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
 import { SessionManager } from "@earendil-works/pi-coding-agent"
+import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
 import { createPlanToolPart, restorePlanState } from "./plan-state"
 import {
   applyChatMessageIdMap,
   restoreChatMessageIdMap,
   sessionEntriesToChatMessages,
 } from "./server-utils"
-import { normalizeSessionLabel } from "./chat-helpers"
 import {
   createSessionServices,
   getSessionDir,
@@ -17,7 +17,7 @@ import type {
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 

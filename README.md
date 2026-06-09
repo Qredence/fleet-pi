@@ -166,7 +166,7 @@ Contributions are welcome! Please read the relevant guides before opening a PR:
 **Development notes:**
 
 - `apps/web` is the TanStack Start app and `/api/chat` backend
-- `packages/ui` contains the shared React UI and agent-elements integration
+- `packages/hax-design` contains the shared React UI, agent-elements, and Fleet Pi surfaces
 - `apps/web/src/routeTree.gen.ts` is generated — do not edit by hand
 
 ## 📄 License

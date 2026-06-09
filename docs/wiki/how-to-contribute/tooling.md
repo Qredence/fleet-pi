@@ -4,7 +4,7 @@ This page describes the development tools configured in Fleet Pi, what they do, 
 
 ## Turborepo
 
-Fleet Pi uses [Turborepo](https://turbo.build/) to coordinate tasks across the `apps/web` and `packages/ui` workspaces.
+Fleet Pi uses [Turborepo](https://turbo.build/) to coordinate tasks across the `apps/web` and `packages/hax-design` workspaces.
 
 **Key commands (all run from repo root):**
 
@@ -69,7 +69,7 @@ Fix `Unused exports` violations by removing the export, using it, or (for test-o
 
 ## jscpd — Duplicate Code Detection
 
-[jscpd](https://github.com/kucherenko/jscpd) detects copy-pasted code blocks across `apps/web/src` and `packages/ui/src`.
+[jscpd](https://github.com/kucherenko/jscpd) detects copy-pasted code blocks across `apps/web/src` and `packages/hax-design/src`.
 
 ```bash
 pnpm jscpd

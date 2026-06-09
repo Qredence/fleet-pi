@@ -61,8 +61,9 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 ## Architecture Notes
 
 - `apps/web` is a TanStack Start app. File routes are generated into `apps/web/src/routeTree.gen.ts`; do not edit that generated file manually.
-- `packages/ui` contains shared React UI components exported under `@workspace/ui/*`.
-- Chat UI types live in `packages/ui/src/components/agent-elements/chat-types.ts`.
+- `packages/hax-design` is the shadcn-style registry (`components.json`, primitives, `agent-elements/`, generative UI in `components/openui/`, Fleet Pi UI under `components/fleet-pi/`). Import from `@workspace/hax-design/*` in apps; use relative imports inside the package.
+- Do not add React components under `apps/web/src/components/`. All UI goes in `packages/hax-design`. Routes may only compose hax-design exports. OpenUI library/registry code must live in `components/openui/`, not in `apps/web`.
+- Chat UI types live in `packages/hax-design/src/components/agent-elements/chat-types.ts`.
 
 ## AI Integration
 
@@ -71,7 +72,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - The primary provider is Google via Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.
-- Shared browser-safe chat protocol types live in `apps/web/src/lib/pi/chat-protocol.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.
+- Shared browser-safe chat protocol types and Zod schemas live in `packages/hax-design/src/lib/pi/chat-protocol.ts` and `chat-protocol.zod.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.
 - The browser chat client consumes newline-delimited JSON events from `/api/chat`.
 - `/api/chat` is session-based: the client sends a single `message` plus optional Pi `sessionFile`/`sessionId` metadata, and the server resumes or creates a persistent Pi session.
 - Supporting chat endpoints are `/api/chat/models`, `/api/chat/resources`, `/api/chat/session`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/resume`, `/api/chat/abort`, `/api/chat/question`, `/api/workspace/tree`, and `/api/workspace/file`.

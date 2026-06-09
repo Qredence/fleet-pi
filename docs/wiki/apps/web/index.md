@@ -6,7 +6,7 @@ Related pages:
 
 - [System architecture](../../overview/architecture.md)
 - [Chat feature overview](../../features/chat.md)
-- [Agent elements UI library](../../packages/ui/agent-elements.md)
+- [Agent elements UI library](../../packages/hax-design/agent-elements.md)
 - [Full API endpoint reference](../../api/endpoints.md)
 - [Daytona sandbox](../../features/daytona-sandbox.md)
 
@@ -52,23 +52,9 @@ apps/web/
 │   │       ├── auth/            # Better Auth catch-all
 │   │       ├── health.ts        # GET /api/health
 │   │       └── webhooks/
-│   ├── components/
-│   │   ├── chat-command-palette.tsx  # Cmd-K command palette
-│   │   ├── chat-right-panels.tsx     # Right panel container
-│   │   ├── ui-error-boundary.tsx
-│   │   ├── pi/                  # Pi-specific UI panels
-│   │   │   ├── config-panel.tsx      # Pi settings UI
-│   │   │   ├── resources-panel.tsx   # Resource browser
-│   │   │   ├── workspace-panel.tsx   # Workspace file browser
-│   │   │   ├── resizable-canvas.tsx  # Drag-to-resize side panel
-│   │   │   ├── right-panel-launcher.tsx
-│   │   │   ├── shared.tsx
-│   │   │   ├── skeleton-loaders.tsx
-│   │   │   └── tool-renderers.tsx    # Custom tool card renderers
-│   │   └── openui/              # OpenUI inline renderer
 │   └── lib/
 │       ├── pi/                  # Pi client + server integration
-│       │   ├── chat-protocol.ts         # Shared browser-safe types
+│       │   ├── chat-protocol.ts         # Re-exported from @workspace/hax-design
 │       │   ├── server-runtime.ts        # Runtime cache, session lifecycle
 │       │   ├── server-chat-stream.ts    # Event normalization
 │       │   ├── server-sessions.ts       # Session creation & hydration
@@ -101,20 +87,20 @@ apps/web/
 
 ## Tech stack
 
-| Layer                | Choice                                                           |
-| -------------------- | ---------------------------------------------------------------- |
-| Framework            | TanStack Start (file-based SSR + API routes via Nitro)           |
-| UI                   | React 19                                                         |
-| Bundler              | Vite                                                             |
-| Routing              | TanStack Router (auto-generated `routeTree.gen.ts`)              |
-| Styling              | Tailwind CSS v4 (config in `packages/ui/src/styles/globals.css`) |
-| Server runtime       | Nitro (Node adapter)                                             |
-| LLM integration      | `@earendil-works/pi-coding-agent` + Amazon Bedrock               |
-| Auth                 | Better Auth                                                      |
-| Database (optional)  | Neon Postgres (`FLEET_PI_CHAT_DATABASE_URL`)                     |
-| Sandboxes (optional) | Daytona (`FLEET_PI_DAYTONA_*`)                                   |
-| Data fetching        | TanStack Query                                                   |
-| Component library    | `@workspace/ui` (packages/ui)                                    |
+| Layer                | Choice                                                                   |
+| -------------------- | ------------------------------------------------------------------------ |
+| Framework            | TanStack Start (file-based SSR + API routes via Nitro)                   |
+| UI                   | React 19                                                                 |
+| Bundler              | Vite                                                                     |
+| Routing              | TanStack Router (auto-generated `routeTree.gen.ts`)                      |
+| Styling              | Tailwind CSS v4 (config in `packages/hax-design/src/styles/globals.css`) |
+| Server runtime       | Nitro (Node adapter)                                                     |
+| LLM integration      | `@earendil-works/pi-coding-agent` + Amazon Bedrock                       |
+| Auth                 | Better Auth                                                              |
+| Database (optional)  | Neon Postgres (`FLEET_PI_CHAT_DATABASE_URL`)                             |
+| Sandboxes (optional) | Daytona (`FLEET_PI_DAYTONA_*`)                                           |
+| Data fetching        | TanStack Query                                                           |
+| Component library    | `@workspace/hax-design` (packages/hax-design)                            |
 
 ---
 
@@ -138,7 +124,7 @@ graph TD
     Shell --> Header["ChatHeader\n(session picker, new session, account)"]
     Shell --> Column["Chat column"]
     Shell --> RightPanels["ChatRightPanels\n(resources / workspace / settings)"]
-    Column --> AgentChat["AgentChat (@workspace/ui)\n(message list + input bar)"]
+    Column --> AgentChat["AgentChat (@workspace/hax-design)\n(message list + input bar)"]
     AgentChat --> InputBar["InputBar\n(mode selector, model picker,\nquestion bar, slash commands)"]
     AgentChat --> MessageList["MessageList\n(text, tool cards, plan card)"]
     Shell --> CommandPalette["ChatCommandPalette\n(Cmd-K)"]

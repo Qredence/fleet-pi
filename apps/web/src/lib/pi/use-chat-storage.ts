@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChatModeSchema, ChatSessionMetadataSchema } from "./chat-protocol.zod"
-import type { ChatMode, ChatSessionMetadata } from "./chat-protocol"
+import {
+  ChatModeSchema,
+  ChatSessionMetadataSchema,
+} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import type {
+  ChatMode,
+  ChatSessionMetadata,
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 
 const CHAT_SESSION_STORAGE_KEY = "fleet-pi-chat-session"
 const CHAT_SESSION_BY_SCOPE_STORAGE_KEY = "fleet-pi-chat-sessions"

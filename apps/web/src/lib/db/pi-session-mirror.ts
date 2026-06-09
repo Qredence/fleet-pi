@@ -10,7 +10,7 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
-} from "../pi/chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { ProvenanceMutationKind } from "./workspace-provenance"
 
 let sharedPool: InstanceType<typeof Pool> | undefined
