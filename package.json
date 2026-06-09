@@ -33,21 +33,21 @@
     "generate:openui-signatures": "pnpm --filter hax-design generate:openui-signatures"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.79.0",
-    "@earendil-works/pi-tui": "^0.79.0",
+    "@earendil-works/pi-coding-agent": "^0.79.1",
+    "@earendil-works/pi-tui": "^0.79.1",
     "diff": "^8.0.2",
-    "typebox": "1.1.38",
+    "typebox": "1.2.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "husky": "^9.1.7",
     "jscpd": "^4.1.0",
-    "knip": "^6.12.2",
+    "knip": "^6.16.1",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.3",
+    "prettier": "^3.8.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "syncpack": "^14.3.1",
-    "turbo": "^2.9.14",
+    "turbo": "^2.9.17",
     "typescript": "^6.0.3"
   },
   "lint-staged": {
