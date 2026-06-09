@@ -5,9 +5,10 @@ import {
   createRootRoute,
 } from "@tanstack/react-router"
 import { QueryClientProvider } from "@tanstack/react-query"
-import { Toaster } from "@workspace/ui/components/sonner"
+import { Toaster } from "@workspace/hax-design/components/sonner"
+import { NotFoundPage } from "@workspace/hax-design/components/fleet-pi/not-found-page"
 
-import appCss from "@workspace/ui/globals.css?url"
+import appCss from "@workspace/hax-design/globals.css?url"
 import { getQueryClient } from "@/lib/query-client"
 
 export const Route = createRootRoute({
@@ -36,12 +37,7 @@ export const Route = createRootRoute({
       <Outlet />
     </QueryClientProvider>
   ),
-  notFoundComponent: () => (
-    <main className="container mx-auto p-4 pt-16">
-      <h1>404</h1>
-      <p>The requested page could not be found.</p>
-    </main>
-  ),
+  notFoundComponent: () => <NotFoundPage />,
   shellComponent: RootDocument,
 })
 

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { ChatQuestionAnswerResponse } from "@/lib/pi/chat-protocol"
+import { ChatQuestionAnswerRequestSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import type { ChatQuestionAnswerResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { answerChatQuestion } from "@/lib/pi/server"
-import { ChatQuestionAnswerRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/question")({

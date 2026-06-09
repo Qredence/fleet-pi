@@ -8,7 +8,7 @@ Run the following from the repository root to build all workspaces:
 pnpm build
 ```
 
-This invokes the Turborepo pipeline, which builds `packages/ui` first and then `apps/web`. The TanStack Start / Nitro build outputs a self-contained server bundle at:
+This invokes the Turborepo pipeline, which builds `packages/hax-design` first and then `apps/web`. The TanStack Start / Nitro build outputs a self-contained server bundle at:
 
 ```
 apps/web/.output/server/index.mjs   # Nitro HTTP server entry point

@@ -45,7 +45,7 @@ import type {
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
   ChatSessionMetadata,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import {
   getUserSandbox,

@@ -3,7 +3,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent"
-import type { ChatQuestionAnswer } from "./chat-protocol"
+import type { ChatQuestionAnswer } from "@workspace/hax-design/lib/pi/chat-protocol"
 
 type QuestionnaireOption = {
   value: string

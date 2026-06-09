@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { ChatProviderInfo } from "@/lib/pi/chat-protocol"
 import {
   ChatProviderUpdateRequestSchema,
   ChatProviderUpdateResponseSchema,
-} from "@/lib/pi/chat-protocol.zod"
+} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import type { ChatProviderInfo } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import { isEnvVarConfigured, updateEnvVar } from "@/lib/env-manager"

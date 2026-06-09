@@ -9,7 +9,7 @@ import type { QueueState } from "./chat-fetch"
 import type {
   ChatMessage,
   ChatStatus,
-} from "@workspace/ui/components/agent-elements/chat-types"
+} from "@workspace/hax-design/components/agent-elements/chat-types"
 import type {
   ChatMode,
   ChatModelSelection,
@@ -18,7 +18,7 @@ import type {
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatStreamEvent,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { ChatClient } from "./chat-client"
 
 export type SendMessageInput = {

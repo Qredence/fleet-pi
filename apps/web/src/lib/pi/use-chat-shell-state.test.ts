@@ -24,7 +24,7 @@ vi.mock("./use-chat-storage", () => ({
   useChatStorage: () => mockUseChatStorage(),
 }))
 
-vi.mock("@/lib/canvas-utils", () => ({
+vi.mock("@workspace/hax-design/lib/canvas-utils", () => ({
   applyThemePreference: vi.fn(),
   clampResourceCanvasWidth: vi.fn((width: number) => width),
   getResourceCanvasInitialWidth: vi.fn(() => 320),

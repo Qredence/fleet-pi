@@ -30,7 +30,7 @@ flowchart LR
     Renderer -->|action event| onOpenUIAction["sendMessage()"]
 ````
 
-The assistant message text is passed to `GenerativeTextRenderer` (`apps/web/src/components/openui/openui-renderer.tsx`), which:
+The assistant message text is passed to `GenerativeTextRenderer` (`packages/hax-design/src/components/openui/openui-renderer.tsx`), which:
 
 1. Calls `segmentOpenUIContent` to split the text into alternating markdown and openui segments.
 2. Renders markdown segments with the existing `<Markdown>` component.
@@ -61,7 +61,7 @@ Each `<OpenUIBlock>` has a stable `blockId` (`<messageId>:<segmentIndex>`). Stat
 
 ## Component library (`openui-library.tsx`)
 
-The library is built with `createLibrary` and registered in `@openuidev/react-lang`. All components map to existing shadcn/ui primitives from `@workspace/ui`.
+The library is built with `createLibrary` and registered in `@openuidev/react-lang`. All components map to existing shadcn/ui primitives from `@workspace/hax-design`.
 
 | Component     | Description                                                            |
 | ------------- | ---------------------------------------------------------------------- |
@@ -98,7 +98,7 @@ Before each turn, the server calls `buildOpenUIPrompt(mode)` and injects the res
    - **Plan mode** — restricts OpenUI to optional visual summaries and disables buttons.
 4. Two canonical examples (status card and conversational action row).
 
-The component signatures embedded in the prompt come from `openUILibrary.prompt(...)`, which serialises each component's name, description, and Zod schema into a compact format Pi can follow.
+The component signatures embedded in the prompt come from `openui-signatures.ts` (generated from `openui-library.tsx` via `pnpm generate:openui-signatures`). `buildOpenUIPrompt` imports signatures only — no React/recharts chain — so server-side plan mode stays lightweight.
 
 ## Error handling
 
@@ -111,15 +111,17 @@ Both are merged and passed to `<OpenUIDiagnostics>`, which renders a collapsible
 
 ## Key source files
 
-| File                                                 | Role                                                                          |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `apps/web/src/components/openui/inline-renderer.tsx` | Re-export of `GenerativeTextRenderer` (entry point used by message rendering) |
-| `apps/web/src/components/openui/openui-renderer.tsx` | `GenerativeTextRenderer`, `OpenUIBlock`, `OpenUIDiagnostics`                  |
-| `apps/web/src/components/openui/openui-library.tsx`  | Component definitions and `openUILibrary` instance                            |
-| `apps/web/src/components/openui/openui-prompt.ts`    | `buildOpenUIPrompt(mode)` — assembles the system prompt fragment              |
-| `apps/web/src/components/openui/openui-utils.ts`     | `segmentOpenUIContent`, `stripOpenUIWrapper`, `isOpenUIProgram`               |
+| File                                                                       | Role                                                                          |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `packages/hax-design/src/components/openui/inline-renderer.tsx`            | Re-export of `GenerativeTextRenderer` (entry point used by message rendering) |
+| `packages/hax-design/src/components/openui/openui-renderer.tsx`            | `GenerativeTextRenderer`, `OpenUIBlock`, `OpenUIDiagnostics`                  |
+| `packages/hax-design/src/components/openui/openui-library.tsx`             | Component definitions and `openUILibrary` instance                            |
+| `packages/hax-design/src/components/openui/openui-signatures.ts`           | Generated component signatures for prompts (do not edit by hand)              |
+| `packages/hax-design/src/components/openui/openui-prompt.ts`               | `buildOpenUIPrompt(mode)` — assembles the system prompt fragment              |
+| `packages/hax-design/src/components/openui/openui-utils.ts`                | `segmentOpenUIContent`, `stripOpenUIWrapper`, `isOpenUIProgram`               |
+| `packages/hax-design/src/components/fleet-pi/chat/fleet-pi-agent-chat.tsx` | Fleet Pi wrapper wiring `GenerativeTextRenderer` into `AgentChat`             |
 
 ## Related pages
 
 - [Chat](./chat.md)
-- [Agent-elements UI components](../packages/ui/agent-elements.md)
+- [Agent-elements UI components](../packages/hax-design/agent-elements.md)

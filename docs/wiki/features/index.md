@@ -14,4 +14,4 @@ Fleet Pi ships a handful of distinct features that work together to give you a p
 
 - [Chat API](../apps/web/chat-api.md) — API route details for `/api/chat` and supporting endpoints
 - [Plan mode](../apps/web/plan-mode.md) — Read-only planning mode and the plan lifecycle
-- [Agent-elements UI components](../packages/ui/agent-elements.md) — The React component library used to render messages, tool outputs, and the input bar
+- [Agent-elements UI components](../packages/hax-design/agent-elements.md) — The React component library used to render messages, tool outputs, and the input bar

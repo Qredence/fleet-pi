@@ -1389,12 +1389,12 @@ test.describe("chat flows", () => {
       (chatBox?.x ?? 0) + (chatBox?.width ?? 0) - 1
     )
     expect(canvasBox?.width).toBeGreaterThanOrEqual(
-      Math.floor((viewport?.width ?? 0) * 0.5) - 1
+      Math.floor((viewport?.width ?? 0) * 0.7) - 1
     )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
     await expect(
-      page.locator('[data-testid="right-panel-floating-launcher"]')
+      page.locator('[data-testid="right-panel-inline-launcher"]')
     ).not.toBeVisible()
     const headerLauncher = canvas.locator(
       '[data-testid="right-panel-header-launcher"]'
@@ -1819,7 +1819,7 @@ test.describe("chat flows", () => {
     const configCanvas = page.locator('[data-testid="pi-config-canvas"]')
     await expect(configCanvas).toBeVisible()
     await expect(
-      page.locator('[data-testid="right-panel-floating-launcher"]')
+      page.locator('[data-testid="right-panel-inline-launcher"]')
     ).not.toBeVisible()
     const headerLauncher = configCanvas.locator(
       '[data-testid="right-panel-header-launcher"]'
@@ -2051,6 +2051,12 @@ test.describe("chat flows", () => {
       '[data-testid="pi-resources-mobile-panel"]'
     )
     await expect(mobilePanel).toBeVisible()
+    await expect(
+      page.locator('[data-testid="right-panel-inline-launcher"]')
+    ).not.toBeVisible()
+    await expect(
+      mobilePanel.locator('[data-testid="right-panel-panel-launcher"]')
+    ).toBeVisible()
     await expect(
       mobilePanel.getByText("codebase-research", { exact: true })
     ).toBeVisible()

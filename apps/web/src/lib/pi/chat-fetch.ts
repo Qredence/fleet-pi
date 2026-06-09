@@ -1,6 +1,9 @@
-import { ChatStreamEventSchema } from "./chat-protocol.zod"
+import { ChatStreamEventSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import type { ZodType } from "zod"
-import type { ChatSessionMetadata, ChatStreamEvent } from "./chat-protocol"
+import type {
+  ChatSessionMetadata,
+  ChatStreamEvent,
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 
 export async function fetchJson<T>(
   url: string,

@@ -18,7 +18,7 @@ The repository was created in April 2026. Every line of code in the repo was wri
 
 ## The spiral loader has two completely separate implementations
 
-The loading animation shown while a stream initializes is a Lottie animation. The animation data is stored in `packages/ui/src/components/agent-elements/spiral-loader-data.ts` as a large JSON object — the full Lottie keyframe spec for a spiral, baked into a TypeScript file. `spiral-loader.tsx` loads this data via the Lottie player.
+The loading animation shown while a stream initializes is a Lottie animation. The animation data is stored in `packages/hax-design/src/components/agent-elements/spiral-loader-data.ts` as a large JSON object — the full Lottie keyframe spec for a spiral, baked into a TypeScript file. `spiral-loader.tsx` loads this data via the Lottie player.
 
 But `spiral-loader.tsx` also contains a pure CSS fallback animation for environments where the Lottie player cannot run. Two completely different rendering paths, same visual output. The CSS version is a hand-coded approximation of what the Lottie JSON describes mathematically.
 

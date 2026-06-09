@@ -58,6 +58,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check OpenUI signatures
+        run: pnpm generate:openui-signatures -- --check
+
   typecheck:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10

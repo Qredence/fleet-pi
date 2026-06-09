@@ -26,10 +26,10 @@ graph TD
 
 ## Monorepo packages
 
-| Package         | Path           | Description                                                                                         |
-| --------------- | -------------- | --------------------------------------------------------------------------------------------------- |
-| `web`           | `apps/web/`    | TanStack Start full-stack app. Serves the chat UI and all API routes.                               |
-| `@workspace/ui` | `packages/ui/` | Shared React component library. Contains `agent-elements`, shadcn primitives, and Tailwind globals. |
+| Package                 | Path                   | Description                                                                                         |
+| ----------------------- | ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `web`                   | `apps/web/`            | TanStack Start full-stack app. Serves the chat UI and all API routes.                               |
+| `@workspace/hax-design` | `packages/hax-design/` | Shared React component library. Contains `agent-elements`, shadcn primitives, and Tailwind globals. |
 
 ## `apps/web` internal structure
 

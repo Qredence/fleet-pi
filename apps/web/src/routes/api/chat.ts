@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import type { ChatRequest, ChatStreamEvent } from "@/lib/pi/chat-protocol"
+import { ChatRequestSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import type {
+  ChatRequest,
+  ChatStreamEvent,
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type {
   AssistantTurnState,
   TurnStartContext,
@@ -7,7 +11,6 @@ import type {
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { auth } from "@/lib/auth/server"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
-import { ChatRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
 import {

@@ -24,7 +24,7 @@ import type {
   ChatModelsResponse,
   ChatResourcesResponse,
   ChatThinkingLevel,
-} from "./chat-protocol"
+} from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const THINKING_LEVELS = new Set<ChatThinkingLevel>([

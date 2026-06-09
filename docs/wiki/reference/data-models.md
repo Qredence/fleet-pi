@@ -2,7 +2,7 @@
 
 This page documents the key TypeScript types used in the chat protocol and the Neon Postgres schema for the session mirror.
 
-All chat protocol types are in [`apps/web/src/lib/pi/chat-protocol.ts`](../../../apps/web/src/lib/pi/chat-protocol.ts). UI message types are in [`packages/ui/src/components/agent-elements/chat-types.ts`](../../../packages/ui/src/components/agent-elements/chat-types.ts). The Neon schema is in [`apps/web/src/lib/db/chat-postgres-schema.ts`](../../../apps/web/src/lib/db/chat-postgres-schema.ts).
+All chat protocol types are in [`apps/web/src/lib/pi/chat-protocol.ts`](../../../apps/web/src/lib/pi/chat-protocol.ts). UI message types are in [`packages/hax-design/src/components/agent-elements/chat-types.ts`](../../../packages/hax-design/src/components/agent-elements/chat-types.ts). The Neon schema is in [`apps/web/src/lib/db/chat-postgres-schema.ts`](../../../apps/web/src/lib/db/chat-postgres-schema.ts).
 
 ---
 
@@ -164,7 +164,7 @@ type ChatPlanTodo = {
 
 ## UI Message Types
 
-Defined in [`packages/ui/src/components/agent-elements/chat-types.ts`](../../../packages/ui/src/components/agent-elements/chat-types.ts).
+Defined in [`packages/hax-design/src/components/agent-elements/chat-types.ts`](../../../packages/hax-design/src/components/agent-elements/chat-types.ts).
 
 ### `ChatMessage`
 

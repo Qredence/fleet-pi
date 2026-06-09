@@ -1,6 +1,6 @@
 import { readFile, readdir, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
-import type { ChatResourceInfo } from "./chat-protocol"
+import type { ChatResourceInfo } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 type WorkspaceResourceCatalog = {

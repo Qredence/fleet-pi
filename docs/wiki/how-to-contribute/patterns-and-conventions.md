@@ -5,14 +5,14 @@
 - **Package manager:** pnpm only. Never run `npm install` or `yarn` in this repo.
 - **Monorepo commands:** Run from the repo root using `pnpm --filter <workspace> <script>` for workspace-scoped work. `turbo` handles caching and parallelism.
 - **File-based routing:** `apps/web/src/routes/` is TanStack Router territory. Never edit `src/routeTree.gen.ts` manually — it is auto-generated on `pnpm dev`.
-- **Component imports:** Use `@workspace/ui/components/<name>` for shared UI components, never relative cross-package imports.
-- **shadcn components:** Always install from the repo root targeting the web app: `pnpm dlx shadcn@latest add <component> -c apps/web`. shadcn places output in `packages/ui`.
+- **Component imports:** Use `@workspace/hax-design/components/<name>` for shared UI components, never relative cross-package imports.
+- **shadcn components:** Always install from the repo root targeting the web app: `pnpm dlx shadcn@latest add <component> -c apps/web`. shadcn places output in `packages/hax-design`.
 
 ## Code style
 
 - **Prettier:** 80-char line width, 2-space indent, no semicolons. Tailwind classes sorted via `prettier-plugin-tailwindcss`.
-- **Path aliases:** `@/*` → `apps/web/src/*`, `@workspace/ui/*` → `packages/ui/src/*`.
-- **Tailwind CSS v4:** No `tailwind.config.js`. All design tokens live in `packages/ui/src/styles/globals.css`.
+- **Path aliases:** `@/*` → `apps/web/src/*`, `@workspace/hax-design/*` → `packages/hax-design/src/*`.
+- **Tailwind CSS v4:** No `tailwind.config.js`. All design tokens live in `packages/hax-design/src/styles/globals.css`.
 - **No explicit `any`:** TypeScript strict mode is on. Use proper types or `unknown` + narrowing.
 - **ESLint rules of note:** Complexity cap (≤ 10), max-lines warning (300), `@typescript-eslint/naming-convention` for consistent casing.
 

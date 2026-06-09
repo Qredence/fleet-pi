@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { ChatSettingsUpdateRequestSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { ChatSettingsUpdateRequestSchema } from "@/lib/pi/chat-protocol.zod"
 import {
   getErrorMessage,
   loadChatSettings,

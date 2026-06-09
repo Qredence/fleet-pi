@@ -1,9 +1,10 @@
 import { useMemo } from "react"
+import { isQuestionToolPartPending } from "./question-pending"
 import type {
   QuestionAnswer,
   QuestionConfig,
   QuestionOption,
-} from "@workspace/ui/components/agent-elements/question/question-prompt"
+} from "@workspace/hax-design/components/agent-elements/question/question-prompt"
 
 type ToolQuestionPart = {
   type: "tool-Question"
@@ -91,23 +92,10 @@ function findPendingQuestionPart(messages: Array<ChatMessageLike>) {
     for (let j = msg.parts.length - 1; j >= 0; j--) {
       const part = msg.parts[j] as ToolQuestionPart | undefined
       if (part?.type !== "tool-Question") continue
-      if (isPending(part)) return { part }
+      if (isQuestionToolPartPending(part)) return { part }
     }
   }
   return undefined
-}
-
-function isPending(part: ToolQuestionPart): boolean {
-  if (part.state === "output-available" || part.state === "output-error")
-    return false
-  const output = part.output
-  if (!output) return true
-  if (output.answer) return false
-  if (Array.isArray(output.answers) && output.answers.length > 0) return false
-  // Normalized tool output uses content + details, not answer/answers
-  if (typeof output.content === "string" && output.content.length > 0)
-    return false
-  return true
 }
 
 type RawQuestion = {

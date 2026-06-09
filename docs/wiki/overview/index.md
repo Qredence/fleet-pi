@@ -26,7 +26,7 @@ Fleet Pi is a browser-based coding-agent workspace built on Qredence's Pi AI cod
 ```
 fleet-pi/
 ├── apps/web/          TanStack Start app (React 19 + Vite + Nitro)
-├── packages/ui/       Shared component library (@workspace/ui)
+├── packages/hax-design/       Shared component library (@workspace/hax-design)
 ├── agent-workspace/   Durable agent home (skills, memory, plans)
 ├── .pi/               Pi runtime configuration and extensions
 └── scripts/           Tooling scripts (auth migration, doc generation)
