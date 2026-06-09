@@ -184,7 +184,7 @@ export function ToggleField({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex h-8.5 cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-border/30 bg-background/40 px-2.5 transition-all duration-200 hover:border-border/45 hover:bg-foreground/[0.015]">
+    <label className="flex h-8.5 cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-border/30 bg-background/40 px-2.5 transition-all duration-200 hover:border-border/45 hover:bg-foreground/1.5">
       <span className="truncate text-[11px] font-semibold text-foreground/65">
         {label}
       </span>
@@ -201,7 +201,7 @@ export function ToggleField({
 
 export function InlineNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-[8px] border border-border/15 bg-foreground/[0.015] p-2.5 text-[10px] leading-normal text-foreground/50">
+    <div className="flex items-start gap-2.5 rounded-[8px] border border-border/15 bg-foreground/1.5 p-2.5 text-[10px] leading-normal text-foreground/50">
       <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/40" />
       <span className="font-medium">{children}</span>
     </div>

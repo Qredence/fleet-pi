@@ -106,7 +106,7 @@ export function ProviderCredentialsSection({
         </div>
 
         {!isLoading && providers.length > 0 && (
-          <div className="flex flex-col gap-1.5 rounded-lg border border-border/15 bg-foreground/[0.015] p-2 shadow-inner">
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border/15 bg-foreground/1.5 p-2 shadow-inner">
             <div className="relative flex items-center">
               <Search className="pointer-events-none absolute left-2.5 h-3 w-3 text-foreground/30" />
               <Input
@@ -133,7 +133,7 @@ export function ProviderCredentialsSection({
                       "flex-1 cursor-pointer rounded-[5px] border py-1 text-[10px] font-medium capitalize transition-all duration-200",
                       statusFilter === filter
                         ? "border-border/30 bg-foreground/5 font-semibold text-foreground/80 shadow-sm"
-                        : "border-transparent text-foreground/45 hover:bg-foreground/[0.01] hover:text-foreground/75"
+                        : "border-transparent text-foreground/45 hover:bg-foreground/1 hover:text-foreground/75"
                     )}
                   >
                     {filter}{" "}
@@ -173,9 +173,9 @@ export function ProviderCredentialsSection({
                 <div
                   key={p.id}
                   className={cn(
-                    "flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.02] hover:shadow-sm",
+                    "flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/2 hover:shadow-sm",
                     isEditing &&
-                      "translate-y-0 border-border/50 bg-foreground/[0.015] shadow-md sm:col-span-2",
+                      "translate-y-0 border-border/50 bg-foreground/1.5 shadow-md sm:col-span-2",
                     p.isConfigured &&
                       !isEditing &&
                       "border-primary/30 shadow-[0_0_8px_rgba(0,0,0,0.05)]"

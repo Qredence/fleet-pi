@@ -49,7 +49,7 @@ export function RuntimeStatusSection({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Core Request
@@ -90,7 +90,7 @@ export function RuntimeStatusSection({
             </p>
           </div>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Prompts Queue
@@ -117,7 +117,7 @@ export function RuntimeStatusSection({
             </p>
           </div>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Plan Context
@@ -156,7 +156,7 @@ export function RuntimeStatusSection({
             </p>
           </div>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/[0.015] p-2 transition-all duration-200 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.035] hover:shadow-sm">
+          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Settings Sync

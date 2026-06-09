@@ -37,7 +37,7 @@ export function DefaultModelSummary({
   const hasReasoning = model?.reasoning === true
 
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-[10px] border border-border/30 bg-gradient-to-br from-background/95 via-foreground/[0.005] to-foreground/[0.03] p-2.5 shadow-md transition-all duration-300 hover:border-border/45">
+    <div className="flex min-w-0 items-center gap-3 rounded-[10px] border border-border/30 bg-gradient-to-br from-background/95 via-foreground/0.5 to-foreground/3 p-2.5 shadow-md transition-all duration-300 hover:border-border/45">
       <div
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-300",
@@ -114,7 +114,7 @@ export function ProviderManagementList({
             <div
               key={provider.provider}
               className={cn(
-                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/30 bg-background/30 p-2 transition-all duration-300 hover:-translate-y-[1px] hover:border-border/45 hover:bg-foreground/[0.02] hover:shadow-sm",
+                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/30 bg-background/30 p-2 transition-all duration-300 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/2 hover:shadow-sm",
                 isDefault && "border-primary/30 bg-primary/[0.015] shadow-sm"
               )}
             >
@@ -373,7 +373,7 @@ export function ModelActivationList({
         </Badge>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-1.5 rounded-lg border border-border/15 bg-foreground/[0.015] p-1 shadow-inner">
+      <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-1.5 rounded-lg border border-border/15 bg-foreground/1.5 p-1 shadow-inner">
         <div className="relative min-w-0">
           <Search className="pointer-events-none absolute top-2.5 left-2.5 h-3 w-3 text-foreground/30" />
           <Input
@@ -450,7 +450,7 @@ export function ModelActivationList({
             <div
               key={model.id}
               className={cn(
-                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/25 bg-background/40 px-2.5 py-2 transition-all duration-200 hover:translate-x-[2px] hover:border-border/45 hover:bg-foreground/[0.025]",
+                "flex min-w-0 items-center gap-2.5 rounded-[8px] border border-border/25 bg-background/40 px-2.5 py-2 transition-all duration-200 hover:translate-x-0.5 hover:border-border/45 hover:bg-foreground/2.5",
                 isDefault && "border-blue-500/25 bg-blue-500/[0.01]"
               )}
             >
@@ -572,7 +572,7 @@ export function CustomModelEditor({
           Connect
         </Button>
       </div>
-      <div className="flex items-start gap-1.5 rounded border border-border/10 bg-foreground/[0.015] p-2 text-[9.5px] leading-normal text-foreground/45">
+      <div className="flex items-start gap-1.5 rounded border border-border/10 bg-foreground/1.5 p-2 text-[9.5px] leading-normal text-foreground/45">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/35" />
         <span>
           Local or self-hosted endpoint configurations. Valid model patterns are
