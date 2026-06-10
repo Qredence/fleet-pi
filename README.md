@@ -6,171 +6,165 @@
 
 <div align="center">
 
+[![Latest release](https://img.shields.io/github/v/release/Qredence/fleet-pi?label=release)](https://github.com/Qredence/fleet-pi/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/Qredence/fleet-pi/actions/workflows/ci.yml/badge.svg)](https://github.com/Qredence/fleet-pi/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10.33.3-orange.svg)](https://pnpm.io/)
 
-**A local browser workspace for Pi-powered coding agents, with durable plans, memory, and repo-scoped tools in Git.**
+**A local browser workspace for Pi-powered coding agents — with durable memory, resumable plans, and repo-scoped tools you can review in Git.**
+
+[Quick start](#-quick-start) · [Features](#-features) · [Docs](docs/README.md) · [Releases](https://github.com/Qredence/fleet-pi/releases)
 
 </div>
 
-<!-- screenshot: capture from http://localhost:3000 and commit to docs/assets/ before publishing -->
-
 ---
 
-## ✨ Why Fleet Pi?
+Most agent tools hide memory, plans, and session state in the cloud or in logs you cannot diff. **Fleet Pi runs on your machine**, keeps adaptive state in `agent-workspace/`, and gives you a full chat UI with Agent and Plan modes before anything mutates your repo.
 
-Most coding-agent tools keep plans, memory, and session state locked away in the cloud or in ephemeral logs. Fleet Pi takes the opposite approach:
+## Why Fleet Pi?
 
-- **Reviewable agent state** — memory, plans, skills, and artifacts live in `agent-workspace/` and show up in normal Git diffs
-- **Safe exploration before execution** — Plan mode lets the agent inspect your repo, produce numbered execution plans, and keep those plan cards resumable across refresh/resume without touching files
-- **Local-first with your own credentials** — runs entirely on your machine using standard AWS Bedrock credentials; no hosted SaaS account required
-- **Composable with your Pi resources** — project-local skills, prompts, and extensions load automatically from `.pi/` and `agent-workspace/pi/`
+|                          |                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **Git-native state**     | Memory, plans, skills, and artifacts live in reviewable files under `agent-workspace/`                             |
+| **Plan before you ship** | Plan mode inspects the repo read-only, asks follow-up questions, and produces numbered plans you can execute later |
+| **Your credentials**     | Default model is Google **Gemini** (`gemini-3.5-flash`); Bedrock and other Pi providers still work                 |
+| **Your Pi stack**        | Project skills, prompts, and extensions load from `.pi/` and `agent-workspace/pi/`                                 |
 
-## ⚡ Quick Start
+## Quick start
+
+**Prerequisites:** Node.js 22+, [pnpm 10.33.3](https://pnpm.io/) (via Corepack), and LLM credentials through Pi's normal provider auth flow.
 
 ```zsh
 git clone https://github.com/Qredence/fleet-pi.git
 cd fleet-pi
+corepack enable
 pnpm install
 cp .env.example .env
 pnpm dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) and verify the health
-endpoint:
+Open [http://localhost:3000](http://localhost:3000), then sanity-check the server:
 
 ```zsh
-# in a second terminal
 curl http://localhost:3000/api/health
+# → {"status":"ok"}
 ```
 
-Full setup instructions:
+In the chat UI, try `read package.json` and confirm a **Read** tool card appears.
 
-- [docs/README.md](docs/README.md) for the docs hub and recommended reading
-  order
-- [docs/quickstart.md](docs/quickstart.md) for standalone and Pi/Codex setup
-- [docs/codex.md](docs/codex.md) for the advanced Codex local environment
-- [docs/adaptive-workspace.md](docs/adaptive-workspace.md) for the accepted
-  canonical workspace contract
+**Need more detail?** See [docs/quickstart.md](docs/quickstart.md) for standalone vs Codex paths, provider setup, and smoke checks.
 
-## 🚀 Features
+## Features
 
-| Category        | Capability                                                                                           |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| 💬 Chat         | Persistent Pi sessions, streaming responses, session resume after refresh                            |
-| 🛠 Tools        | Repo-scoped `read`, `write`, `edit`, and `bash` in Agent mode                                        |
-| 🗺 Planning     | Read-only Plan mode with structured execution plans, follow-up questions, and resumable plan actions |
-| 🧠 Memory       | `agent-workspace/` keeps memory, plans, evals, and artifacts in Git                                  |
-| 🔌 Resources    | Browser for project-local Pi skills, prompts, and extensions                                         |
-| 🏗 Architecture | TanStack Start app + Nitro backend + React 19 UI                                                     |
+|                          |                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| **Chat**                 | Persistent Pi sessions, streaming NDJSON, resume after refresh                                        |
+| **Agent mode**           | Repo-scoped `read`, `write`, `edit`, `bash` plus approved Pi extensions                               |
+| **Plan mode**            | Read-only exploration, structured plans, InputBar questions, execute / refine / stay                  |
+| **OpenUI**               | Inline generative UI blocks inside assistant messages                                                 |
+| **Resources**            | Browse skills, prompts, extensions, and workspace files from the side panel                           |
+| **Memory**               | Durable project memory and recall under `agent-workspace/memory/`                                     |
+| **Web access**           | `web_search`, `fetch_content`, and `code_search` in Agent mode (`pi-web-access`)                      |
+| **Optional Neon mirror** | Mirror Pi sessions to Postgres when `FLEET_PI_CHAT_DATABASE_URL` is set — JSONL stays source of truth |
 
-## 📋 Prerequisites
+Built with **TanStack Start**, **React 19**, **Pi coding agent**, and **`@workspace/hax-design`** (agent-elements + OpenUI).
 
-Before you start, make sure you have:
+## How it works
 
-- **Node.js >=22** — [nodejs.org](https://nodejs.org/)
-- **pnpm 10.33.3** via [Corepack](https://nodejs.org/api/corepack.html): `corepack enable && corepack prepare pnpm@10.33.3 --activate`
-- **AWS account with Bedrock access** — Claude models must be enabled in your region
-- **AWS credentials configured** — `~/.aws/credentials`, environment variables, or an IAM role
-- `AWS_REGION` defaults to `us-east-1` if not set
+```
+Browser chat UI  →  /api/chat  →  Pi AgentSession  →  repo-scoped tools
+                      ↓
+              agent-workspace/  +  .pi/settings.json  +  .fleet/sessions/
+```
 
-## 🛠 Setup Paths
+1. You send a message from the web app.
+2. Fleet Pi resumes or creates a Pi session scoped to the active project root.
+3. Tool calls run on the server inside that boundary; Plan mode blocks mutating commands.
+4. Durable context is written to workspace files you can commit, diff, and share.
 
-### Standalone
+## Setup paths
 
-Run Fleet Pi locally as a web app with Pi-backed chat. You need Bedrock access
-and AWS credentials, but no Codex app or multi-agent operator setup.
+### Standalone (recommended)
+
+Run Fleet Pi as a normal local web app. No Codex desktop app required — just Node, pnpm, and working LLM provider credentials.
 
 ### Pi / Codex
 
-Use Fleet Pi's shared Codex local environment and worktree bootstrap flow.
-Fleet Pi ships `.codex/environments/environment.toml` and
-`.codex/workspace-bootstrap.zsh` for that path.
+Use the shared Codex environment and worktree bootstrap when you want Fleet Pi inside a Codex workflow:
 
-## 🧠 Key Concepts
+- [`.codex/environments/environment.toml`](.codex/environments/environment.toml)
+- [`.codex/workspace-bootstrap.zsh`](.codex/workspace-bootstrap.zsh)
+- [docs/codex.md](docs/codex.md)
 
-### Agent mode and Plan mode
+## Optional integrations
 
-- **Agent mode** enables repo-scoped coding tools (`read`, `write`, `edit`,
-  `bash`) plus approved external Pi tools.
-- **Plan mode** is read-only. The agent inspects the repo, asks focused
-  follow-up questions, and produces numbered execution plans. Structured plan
-  cards keep execute / stay / refine actions visible after refresh or session
-  resume, while legacy text parsing remains as a compatibility fallback.
+Set these in `.env` only when you need them — local dev works without them.
 
-### `agent-workspace/`
+| Integration             | Env vars                                           | What it enables                                           |
+| ----------------------- | -------------------------------------------------- | --------------------------------------------------------- |
+| **Neon session mirror** | `FLEET_PI_CHAT_DATABASE_URL`                       | Queryable mirror of Pi sessions, runs, and tool events    |
+| **App auth**            | `BETTER_AUTH_SECRET`, `FLEET_PI_AUTH_DATABASE_URL` | Multi-user login (email/password + optional Google OAuth) |
+| **Daytona sandboxes**   | `DAYTONA_API_KEY`                                  | Isolated container execution for file/bash tools          |
+| **Amazon Bedrock**      | `AWS_REGION`, `AWS_PROFILE`                        | Use Bedrock models instead of the Gemini default          |
 
-`agent-workspace/` is Fleet Pi's durable adaptive layer and the canonical
-durable adaptive state.
+See [`.env.example`](.env.example) for the full list.
 
-- Human-facing docs live under [`docs/`](docs/).
-- Agent-facing memory, plans, skills, evals, artifacts, and scratch space live
-  under [`agent-workspace/`](agent-workspace/).
-- Workspace-installed Pi resources live under `agent-workspace/pi/`, while root
-  `.pi/settings.json` stays a small compatibility bridge.
-- `agent-workspace/indexes/` is reserved for non-canonical projection storage.
+## Key concepts
 
-Read more in [docs/adaptive-workspace.md](docs/adaptive-workspace.md).
+**Agent vs Plan mode**
 
-### Project-local Pi resources
+- **Agent** — full coding tools and approved external Pi tools.
+- **Plan** — read-only inspection, follow-up questions, numbered `Plan:` steps, and resumable plan cards after refresh.
 
-Fleet Pi loads committed project resources from `.pi/` and surfaces them in the
-chat resources browser. Chat-driven installs go into `agent-workspace/pi/`, and
-the UI distinguishes active, staged, and reload-required workspace resources so
-they stay discoverable and reviewable.
+**`agent-workspace/`**
 
-## ✅ Validation
+Fleet Pi's durable adaptive layer: memory, plans, evals, artifacts, and chat-installed Pi resources. Human docs live in [`docs/`](docs/); agent-facing files live here. See [docs/agent-workspace.md](docs/agent-workspace.md).
+
+**Project-local Pi resources**
+
+Committed resources under `.pi/` surface in the resources browser. Chat-driven installs land in `agent-workspace/pi/` and stay reviewable in Git.
+
+## Docs
+
+| Document                                           | Description                        |
+| -------------------------------------------------- | ---------------------------------- |
+| [docs/README.md](docs/README.md)                   | Docs hub and reading order         |
+| [docs/quickstart.md](docs/quickstart.md)           | Setup, providers, and verification |
+| [docs/agent-workspace.md](docs/agent-workspace.md) | Durable workspace model            |
+| [docs/codex.md](docs/codex.md)                     | Advanced Codex / worktree path     |
+| [docs/architecture.md](docs/architecture.md)       | Generated architecture reference   |
+| [docs/api.md](docs/api.md)                         | Generated API reference            |
+| [RELEASE_NOTES_v0.5.0.md](RELEASE_NOTES_v0.5.0.md) | Latest release highlights          |
+
+## Development
 
 ```zsh
-# from repo root
 pnpm lint
 pnpm typecheck
-pnpm --filter web test
-pnpm validate-agents-md
-```
-
-Useful extra checks:
-
-```zsh
+pnpm test
 pnpm build
-pnpm e2e
-pnpm syncpack
-pnpm generate:docs
 ```
 
-## 📚 Docs
+Extra checks: `pnpm e2e`, `pnpm syncpack`, `pnpm generate:docs`, `pnpm validate-agents-md`.
 
-| Document                                                 | Description                                          |
-| -------------------------------------------------------- | ---------------------------------------------------- |
-| [docs/README.md](docs/README.md)                         | Docs hub and recommended reading order               |
-| [docs/quickstart.md](docs/quickstart.md)                 | Recommended setup paths                              |
-| [docs/agent-workspace.md](docs/agent-workspace.md)       | Human guide to the durable workspace model           |
-| [docs/adaptive-workspace.md](docs/adaptive-workspace.md) | Canonical workspace contract and projection boundary |
-| [docs/codex.md](docs/codex.md)                           | Advanced Codex environment and action setup          |
-| [docs/runbooks.md](docs/runbooks.md)                     | Operator runbooks for runtime issues                 |
-| [docs/architecture.md](docs/architecture.md)             | Generated architecture reference                     |
-| [docs/api.md](docs/api.md)                               | Generated API reference                              |
-| [docs/project-structure.md](docs/project-structure.md)   | Generated repo map                                   |
+| Path                   | Role                                                  |
+| ---------------------- | ----------------------------------------------------- |
+| `apps/web/`            | TanStack Start app, `/api/chat`, and file routes      |
+| `packages/hax-design/` | Shared UI — agent-elements, OpenUI, Fleet Pi surfaces |
+| `agent-workspace/`     | Durable agent memory and workspace artifacts          |
+| `.pi/`                 | Pi settings, skills, prompts, and extensions          |
 
-## 🤝 Contributing
+`apps/web/src/routeTree.gen.ts` is generated — do not edit by hand.
 
-Contributions are welcome! Please read the relevant guides before opening a PR:
+## Contributing
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute code and open issues
+Contributions welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards
-- [SECURITY.md](SECURITY.md) — how to report vulnerabilities responsibly
-- [GitHub Issues](https://github.com/Qredence/fleet-pi/issues) — bug reports and feature requests
+- [SECURITY.md](SECURITY.md) — responsible disclosure
+- [Issues](https://github.com/Qredence/fleet-pi/issues) — bugs and feature requests
 
-**Development notes:**
-
-- `apps/web` is the TanStack Start app and `/api/chat` backend
-- `packages/hax-design` contains the shared React UI, agent-elements, and Fleet Pi surfaces
-- `apps/web/src/routeTree.gen.ts` is generated — do not edit by hand
-
-## 📄 License
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+## License
 
 Fleet Pi is released under the [Apache 2.0 License](LICENSE).
