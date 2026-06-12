@@ -6,7 +6,7 @@ import {
   Folder,
   HardDrive,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Markdown } from "../../agent-elements/markdown"
 import { Button } from "../../button"
 import {
@@ -19,6 +19,7 @@ import {
   WORKSPACE_SPLIT_GAP_RESET,
   WORKSPACE_SPLIT_HIDDEN_BLOCK,
 } from "../../../lib/layout-constants"
+import { isPathWithinScope } from "../../../lib/workspace-path-nav"
 import { useWorkspaceSplitLayout } from "./hooks/use-workspace-split-layout"
 import {
   ResourceChipSection,
@@ -33,18 +34,51 @@ import type {
   WorkspaceTreeResponse,
 } from "../../../lib/pi/chat-protocol"
 
-export function WorkspacePanelContent({
-  error,
-  loadWorkspaceFile,
-  loading,
-  workspace,
-}: {
+export type WorkspacePanelContentProps = {
   error?: Error | null
+  emptyDescription?: string
+  emptyTitle?: string
   loadWorkspaceFile: (path: string) => Promise<WorkspaceFileResponse>
   loading: boolean
+  onSelectedPathChange?: (path: string | null) => void
+  previewEmptyDescription?: string
+  previewEmptyTitle?: string
+  scopePath?: string
+  scopeLabel?: string
+  selectedPath?: string | null
+  treeTestId?: string
   workspace: WorkspaceTreeResponse | null
-}) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
+}
+
+export function WorkspacePanelContent({
+  error,
+  emptyDescription = "agent-workspace has not been loaded yet.",
+  emptyTitle = "Workspace unavailable",
+  loadWorkspaceFile,
+  loading,
+  onSelectedPathChange,
+  previewEmptyDescription = "Choose a workspace file to preview its Markdown.",
+  previewEmptyTitle = "Select a file",
+  scopePath,
+  scopeLabel,
+  selectedPath: selectedPathProp,
+  treeTestId = "workspace-tree",
+  workspace,
+}: WorkspacePanelContentProps) {
+  const [internalSelectedPath, setInternalSelectedPath] = useState<
+    string | null
+  >(null)
+  const isControlled = onSelectedPathChange !== undefined
+  const selectedPath = isControlled
+    ? (selectedPathProp ?? null)
+    : internalSelectedPath
+  const setSelectedPath = (path: string | null) => {
+    if (isControlled) {
+      onSelectedPathChange(path)
+      return
+    }
+    setInternalSelectedPath(path)
+  }
   const [preview, setPreview] = useState<WorkspaceFileResponse | null>(null)
   const [previewError, setPreviewError] = useState<Error | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -52,8 +86,52 @@ export function WorkspacePanelContent({
   const { handleTreeResizeStart, splitRef, splitStyle } =
     useWorkspaceSplitLayout(workspace)
 
+  const scopedView = useMemo(() => {
+    if (!workspace) {
+      return {
+        headerLabel: scopeLabel ?? "agent-workspace",
+        nodes: [] as Array<WorkspaceTreeNode>,
+      }
+    }
+
+    if (!scopePath) {
+      return {
+        headerLabel: workspace.root,
+        nodes: workspace.nodes,
+      }
+    }
+
+    const scopedNode = findWorkspaceNode(workspace.nodes, scopePath)
+    if (!scopedNode) {
+      return {
+        headerLabel: scopeLabel ?? scopePath.split("/").pop() ?? scopePath,
+        nodes: [] as Array<WorkspaceTreeNode>,
+      }
+    }
+
+    if (scopedNode.type === "directory") {
+      return {
+        headerLabel: scopeLabel ?? scopedNode.name,
+        nodes: scopedNode.children ?? [],
+      }
+    }
+
+    return {
+      headerLabel: scopeLabel ?? scopedNode.name,
+      nodes: [scopedNode],
+    }
+  }, [scopeLabel, scopePath, workspace])
+
   useEffect(() => {
     if (!workspace || !selectedPath) return
+
+    if (scopePath && !isPathWithinScope(selectedPath, scopePath)) {
+      setSelectedPath(null)
+      setPreview(null)
+      setPreviewError(null)
+      return
+    }
+
     if (findWorkspaceNode(workspace.nodes, selectedPath)?.type === "file") {
       return
     }
@@ -61,7 +139,7 @@ export function WorkspacePanelContent({
     setSelectedPath(null)
     setPreview(null)
     setPreviewError(null)
-  }, [selectedPath, workspace])
+  }, [onSelectedPathChange, scopePath, selectedPath, workspace])
 
   useEffect(() => {
     if (!selectedPath) return
@@ -126,8 +204,18 @@ export function WorkspacePanelContent({
     return (
       <ResourceNotice
         icon={HardDrive}
-        title="Workspace unavailable"
-        description="agent-workspace has not been loaded yet."
+        title={emptyTitle}
+        description={emptyDescription}
+      />
+    )
+  }
+
+  if (scopePath && scopedView.nodes.length === 0) {
+    return (
+      <ResourceNotice
+        icon={HardDrive}
+        title={emptyTitle}
+        description={emptyDescription}
       />
     )
   }
@@ -140,17 +228,17 @@ export function WorkspacePanelContent({
     >
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
         <div
-          data-testid="workspace-tree"
+          data-testid={treeTestId}
           className="min-h-0 min-w-0 flex-1 overflow-y-auto"
         >
           <div className="mb-2 flex min-w-0 items-center gap-2 rounded-[6px] bg-foreground/5 px-2 py-1.5">
             <HardDrive className="size-3.5 shrink-0 text-foreground/45" />
             <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
-              {workspace.root}
+              {scopedView.headerLabel}
             </span>
           </div>
           <div className="space-y-0.5">
-            {workspace.nodes.map((node) => (
+            {scopedView.nodes.map((node) => (
               <WorkspaceNode
                 key={node.path}
                 node={node}
@@ -159,7 +247,7 @@ export function WorkspacePanelContent({
               />
             ))}
           </div>
-          {workspace.diagnostics.length > 0 && (
+          {workspace.diagnostics.length > 0 && !scopePath && (
             <div className="mt-2 border-t border-border/60 pt-2">
               <ResourceChipSection
                 id="workspace-diagnostics"
@@ -182,6 +270,8 @@ export function WorkspacePanelContent({
         onPointerDown={handleTreeResizeStart}
       />
       <WorkspacePreview
+        emptyDescription={previewEmptyDescription}
+        emptyTitle={previewEmptyTitle}
         error={previewError}
         loading={previewLoading}
         preview={preview}
@@ -257,12 +347,16 @@ function WorkspaceNode({
 }
 
 function WorkspacePreview({
+  emptyDescription,
+  emptyTitle,
   error,
   loading,
   preview,
   previewRef,
   selectedPath,
 }: {
+  emptyDescription: string
+  emptyTitle: string
   error: Error | null
   loading: boolean
   preview: WorkspaceFileResponse | null
@@ -285,8 +379,8 @@ function WorkspacePreview({
         {!selectedPath && (
           <ResourceNotice
             icon={FileText}
-            title="Select a file"
-            description="Choose a workspace file to preview its Markdown."
+            title={emptyTitle}
+            description={emptyDescription}
           />
         )}
         {selectedPath && loading && <WorkspacePreviewSkeleton />}

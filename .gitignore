@@ -68,3 +68,7 @@ agent-workspace/memory/research/qredence-fleet-rlm.md
 .claude/
 .factory/
 .cursor/settings.json
+.agents/impeccable/
+.agents/skills/impeccable/
+.cursor/hooks/
+.impeccable/

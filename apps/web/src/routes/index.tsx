@@ -30,6 +30,7 @@ import {
 } from "@/lib/pi/chat-queries"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
+import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
 import {
   useActiveSessionLabel,
   useChatSuggestions,
@@ -87,12 +88,15 @@ function ChatWorkspaceShell() {
     modelKey,
     modelSelection,
     models,
+    openWorkspacePath,
     persistSession,
     resourceCanvasWidth,
     rightPanel,
+    selectedWorkspacePath,
     setCommandPaletteOpen,
     setModelKey,
     setRightPanel,
+    setSelectedWorkspacePath,
     themePreference,
   } = useChatShellState(modelsData)
 
@@ -109,7 +113,9 @@ function ChatWorkspaceShell() {
   } = useChatSettings()
   const updateSettings = useUpdateChatSettings()
   const shouldLoadWorkspaceTree =
-    rightPanel === "resources" || rightPanel === "workspace"
+    rightPanel === "resources" ||
+    rightPanel === "workspace" ||
+    rightPanel === "artifacts"
   const {
     data: workspaceData,
     isLoading: workspaceLoading,
@@ -234,68 +240,39 @@ function ChatWorkspaceShell() {
       ),
     [resources, settingsData]
   )
-  const rightPanelContextValue = useMemo(
-    () => ({
-      activityLabel,
-      isLoadingProviders,
-      isUpdatingProvider,
-      mode,
-      models,
-      onThemePreferenceChange: handleThemePreferenceChange,
-      onUpdateProvider,
-      planLabel,
-      providers: providersData?.providers ?? [],
-      queue,
-      refreshResources,
-      refreshWorkspace,
-      resources,
-      resourcesError,
-      resourcesLoading,
-      rightPanel,
-      saveSettings,
-      selectedModelKey: modelKey,
-      setRightPanel,
-      settings: settingsData ?? null,
-      settingsError,
-      settingsLoading: settingsLoading || updateSettings.isPending,
-      status,
-      themePreference,
-      workspaceError,
-      workspaceLoading,
-      workspaceTree,
-      loadWorkspaceFile,
-    }),
-    [
-      activityLabel,
-      handleThemePreferenceChange,
-      isLoadingProviders,
-      isUpdatingProvider,
-      mode,
-      modelKey,
-      models,
-      onUpdateProvider,
-      planLabel,
-      providersData?.providers,
-      queue,
-      refreshResources,
-      refreshWorkspace,
-      resources,
-      resourcesError,
-      resourcesLoading,
-      rightPanel,
-      saveSettings,
-      setRightPanel,
-      settingsData,
-      settingsError,
-      settingsLoading,
-      status,
-      themePreference,
-      updateSettings.isPending,
-      workspaceError,
-      workspaceLoading,
-      workspaceTree,
-    ]
-  )
+  const rightPanelContextValue = useRightPanelContextValue({
+    activityLabel,
+    handleThemePreferenceChange,
+    isLoadingProviders,
+    isUpdatingProvider,
+    loadWorkspaceFile,
+    mode,
+    modelKey,
+    models,
+    onUpdateProvider,
+    openWorkspacePath,
+    planLabel,
+    providers: providersData?.providers ?? [],
+    queue,
+    refreshResources,
+    refreshWorkspace,
+    resources,
+    resourcesError,
+    resourcesLoading,
+    rightPanel,
+    saveSettings,
+    selectedWorkspacePath,
+    setRightPanel,
+    setSelectedWorkspacePath,
+    settings: settingsData ?? null,
+    settingsError,
+    settingsLoading: settingsLoading || updateSettings.isPending,
+    status,
+    themePreference,
+    workspaceError,
+    workspaceLoading,
+    workspaceTree,
+  })
 
   return (
     <>
@@ -339,7 +316,7 @@ function ChatWorkspaceShell() {
               onResumeSession={(metadata) => void resumeSession(metadata)}
             />
           }
-          headerRight={<RightPanelLauncherFromContext placement="inline" />}
+          headerRight={<RightPanelLauncherFromContext />}
           panel={
             <UiErrorBoundary>
               <RightPanelShell

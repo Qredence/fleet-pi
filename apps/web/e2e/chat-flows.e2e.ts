@@ -594,6 +594,32 @@ const MOCK_WORKSPACE_FILES = new Map<string, MockWorkspaceFileEntry>([
     },
   ],
   [
+    "agent-workspace/artifacts/reports/summary.md",
+    {
+      status: 200,
+      body: {
+        path: "agent-workspace/artifacts/reports/summary.md",
+        name: "summary.md",
+        content: "# Summary\n\nArtifact report preview.\n",
+        mediaType: "text/markdown",
+        status: "ok",
+      },
+    },
+  ],
+  [
+    "agent-workspace/memory/project/architecture.md",
+    {
+      status: 200,
+      body: {
+        path: "agent-workspace/memory/project/architecture.md",
+        name: "architecture.md",
+        content: "# Architecture\n\nProject memory architecture notes.\n",
+        mediaType: "text/markdown",
+        status: "ok",
+      },
+    },
+  ],
+  [
     "agent-workspace/pi/prompts/daily-brief.md",
     {
       status: 200,
@@ -856,6 +882,7 @@ function mockChatStream(
   options: {
     assistantText?: string
     planMode?: boolean
+    toolParts?: Array<Record<string, unknown>>
   } = {}
 ) {
   const assistantId = `assistant-${Date.now()}`
@@ -958,7 +985,7 @@ function mockChatStream(
                   },
                 },
               ]
-            : [{ type: "text", text }],
+            : [...(options.toolParts ?? []), { type: "text", text }],
         },
         sessionFile: MOCK_SESSION_FILE,
         sessionId: MOCK_SESSION_ID,
@@ -1081,7 +1108,7 @@ test.describe("chat flows", () => {
     await expect(
       page.locator('[data-testid="pi-resources-canvas"]')
     ).toBeVisible()
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
     await expect(
       page.locator('[data-testid="pi-workspace-canvas"]')
     ).toBeVisible()
@@ -1146,6 +1173,13 @@ test.describe("chat flows", () => {
     await expect(
       page.locator("text=Hello! How can I help you today?")
     ).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByRole("button", { name: "Stop" })).not.toBeVisible()
+    await textarea.fill("Follow up after done")
+    await page.keyboard.press("Enter")
+    await expect(
+      page.locator("text=Follow up after done").first()
+    ).toBeVisible()
   })
 
   test("updates suggestions based on the conversation context", async ({
@@ -1304,7 +1338,7 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
 
     const conversationsButton = page.locator(
       '[aria-label="Open conversations"]'
@@ -1393,16 +1427,16 @@ test.describe("chat flows", () => {
     )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
-    await expect(
-      page.locator('[data-testid="right-panel-inline-launcher"]')
-    ).not.toBeVisible()
-    const headerLauncher = canvas.locator(
-      '[data-testid="right-panel-header-launcher"]'
+    const inlineLauncher = page.locator(
+      '[data-testid="right-panel-inline-launcher"]'
     )
-    await expect(headerLauncher).toBeVisible()
+    await expect(inlineLauncher).toBeVisible()
     await expect(
-      headerLauncher.getByRole("button", { name: "Pi resources" })
+      inlineLauncher.getByRole("tab", { name: "Pi resources" })
     ).toContainText(/\d+/)
+    await expect(
+      canvas.locator('[data-testid="right-panel-header-launcher"]')
+    ).not.toBeVisible()
     await expect(
       canvas.getByTestId("resource-chip-section-skills")
     ).toBeVisible()
@@ -1571,7 +1605,7 @@ test.describe("chat flows", () => {
 
     const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(resourcesCanvas).toBeVisible()
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
 
     const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
     await expect(workspaceCanvas).toBeVisible()
@@ -1655,9 +1689,202 @@ test.describe("chat flows", () => {
       })
     ).toBeVisible()
 
-    await page.getByRole("button", { name: "Pi resources" }).click()
+    await page.getByRole("tab", { name: "Pi resources" }).click()
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
+    ).toBeVisible()
+  })
+
+  test("shows the artifacts tab scoped to agent-workspace/artifacts", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page
+      .getByRole("tab", { name: "Workspace artifacts", exact: true })
+      .click()
+
+    const artifactsCanvas = page.locator('[data-testid="pi-artifacts-canvas"]')
+    await expect(artifactsCanvas).toBeVisible()
+
+    const artifactsTree = artifactsCanvas.locator(
+      '[data-testid="artifacts-tree"]'
+    )
+    await expect(artifactsTree).toBeVisible()
+    await expect(artifactsTree.getByText("artifacts")).toBeVisible()
+    await expect(
+      artifactsTree.getByRole("button", { name: "memory", exact: true })
+    ).toHaveCount(0)
+    await expect(
+      artifactsTree.getByText("Diagnostics", { exact: true })
+    ).toHaveCount(0)
+    await expect(
+      artifactsTree.getByRole("button", { name: "reports", exact: true })
+    ).toBeVisible()
+
+    await expandWorkspacePath(artifactsTree, ["reports"])
+    await artifactsTree
+      .getByRole("button", { name: "summary.md", exact: true })
+      .click()
+
+    const preview = artifactsCanvas.locator('[data-testid="workspace-preview"]')
+    await expect(preview).toBeVisible()
+    await expect(preview.getByText("summary.md", { exact: true })).toBeVisible()
+  })
+
+  test("clears workspace preview when switching to the artifacts tab", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
+
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+
+    const workspaceTree = workspaceCanvas.locator(
+      '[data-testid="workspace-tree"]'
+    )
+    await expandWorkspacePath(workspaceTree, ["memory", "project"])
+    await workspaceTree
+      .getByRole("button", { name: "architecture.md", exact: true })
+      .click()
+
+    const workspacePreview = workspaceCanvas.locator(
+      '[data-testid="workspace-preview"]'
+    )
+    await expect(
+      workspacePreview.getByText("architecture.md", { exact: true })
+    ).toBeVisible()
+
+    await page
+      .getByRole("tab", { name: "Workspace artifacts", exact: true })
+      .click()
+
+    const artifactsCanvas = page.locator('[data-testid="pi-artifacts-canvas"]')
+    await expect(artifactsCanvas).toBeVisible()
+
+    const artifactsPreview = artifactsCanvas.locator(
+      '[data-testid="workspace-preview"]'
+    )
+    await expect(
+      artifactsPreview.getByText("Select an artifact", { exact: true })
+    ).toBeVisible()
+    await expect(
+      artifactsPreview.getByText("architecture.md", { exact: true })
+    ).toHaveCount(0)
+  })
+
+  test("clears artifact preview when switching to the workspace tab", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    await page
+      .getByRole("tab", { name: "Workspace artifacts", exact: true })
+      .click()
+
+    const artifactsCanvas = page.locator('[data-testid="pi-artifacts-canvas"]')
+    await expect(artifactsCanvas).toBeVisible()
+
+    const artifactsTree = artifactsCanvas.locator(
+      '[data-testid="artifacts-tree"]'
+    )
+    await expandWorkspacePath(artifactsTree, ["reports"])
+    await artifactsTree
+      .getByRole("button", { name: "summary.md", exact: true })
+      .click()
+
+    const artifactsPreview = artifactsCanvas.locator(
+      '[data-testid="workspace-preview"]'
+    )
+    await expect(
+      artifactsPreview.getByText("summary.md", { exact: true })
+    ).toBeVisible()
+
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
+
+    const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
+    await expect(workspaceCanvas).toBeVisible()
+
+    const workspacePreview = workspaceCanvas.locator(
+      '[data-testid="workspace-preview"]'
+    )
+    await expect(
+      workspacePreview.getByText("Select a file", { exact: true })
+    ).toBeVisible()
+    await expect(
+      workspacePreview.getByText("summary.md", { exact: true })
+    ).toHaveCount(0)
+  })
+
+  test("opens artifacts from a completed Write tool path click", async ({
+    page,
+  }) => {
+    await mockChatModels(page)
+    await mockChatSessions(page)
+    await mockChatResources(page)
+    await mockWorkspaceTree(page)
+    await mockWorkspaceFile(page)
+    await mockChatStream(page, {
+      assistantText: "Saved the artifact report.",
+      toolParts: [
+        {
+          type: "tool-Write",
+          toolCallId: "write-artifact-summary",
+          state: "output-available",
+          input: {
+            file_path: "agent-workspace/artifacts/reports/summary.md",
+            content: "# Summary\n\nArtifact report preview.\n",
+          },
+          output: {
+            content: "# Summary\n\nArtifact report preview.\n",
+          },
+        },
+      ],
+    })
+
+    await page.goto("/")
+    await page.waitForLoadState("networkidle")
+
+    const textarea = page.locator('textarea[placeholder="Send a message..."]')
+    await textarea.fill("Write an artifact report")
+    await page.keyboard.press("Enter")
+
+    const writePathButton = page.getByRole("button", {
+      name: "summary.md",
+      exact: true,
+    })
+    await expect(writePathButton).toBeVisible({ timeout: 10000 })
+    await writePathButton.click()
+
+    const artifactsCanvas = page.locator('[data-testid="pi-artifacts-canvas"]')
+    await expect(artifactsCanvas).toBeVisible()
+    const preview = artifactsCanvas.locator('[data-testid="workspace-preview"]')
+    await expect(preview.getByText("summary.md", { exact: true })).toBeVisible()
+    await expect(
+      preview.getByRole("heading", { name: "Summary" })
     ).toBeVisible()
   })
 
@@ -1686,7 +1913,7 @@ test.describe("chat flows", () => {
       resourcesCanvas.getByRole("listitem", { name: /needs a reload/i })
     ).toBeVisible()
 
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
     const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
     await expect(workspaceCanvas).toBeVisible()
     const workspaceTree = workspaceCanvas.locator(
@@ -1731,7 +1958,7 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
 
     const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')
     await expect(workspaceCanvas).toBeVisible()
@@ -1812,25 +2039,23 @@ test.describe("chat flows", () => {
 
     const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(resourcesCanvas).toBeVisible()
-    await page
-      .getByRole("button", { name: "Configurations", exact: true })
-      .click()
+    await page.getByRole("tab", { name: "Configurations", exact: true }).click()
 
     const configCanvas = page.locator('[data-testid="pi-config-canvas"]')
     await expect(configCanvas).toBeVisible()
-    await expect(
-      page.locator('[data-testid="right-panel-inline-launcher"]')
-    ).not.toBeVisible()
-    const headerLauncher = configCanvas.locator(
-      '[data-testid="right-panel-header-launcher"]'
+    const inlineLauncher = page.locator(
+      '[data-testid="right-panel-inline-launcher"]'
     )
-    await expect(headerLauncher).toBeVisible()
+    await expect(inlineLauncher).toBeVisible()
     await expect(
-      headerLauncher.getByRole("button", { name: "Pi resources" })
+      inlineLauncher.getByRole("tab", { name: "Pi resources" })
     ).toContainText(/\d+/)
     await expect(
-      headerLauncher.getByRole("button", { name: "Configurations" })
+      inlineLauncher.getByRole("tab", { name: "Configurations" })
     ).toContainText("Configurations")
+    await expect(
+      configCanvas.locator('[data-testid="right-panel-header-launcher"]')
+    ).not.toBeVisible()
     const configurations = configCanvas.locator(
       '[data-testid="configurations-tab"]'
     )
@@ -1915,13 +2140,12 @@ test.describe("chat flows", () => {
       )
       .toBe(false)
 
-    await headerLauncher.getByRole("button", { name: "Pi resources" }).click()
+    await inlineLauncher.getByRole("tab", { name: "Pi resources" }).click()
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
-    await resourcesCanvas
-      .locator('[data-testid="right-panel-header-launcher"]')
-      .getByRole("button", { name: "Workspace", exact: true })
+    await inlineLauncher
+      .getByRole("tab", { name: "Workspace", exact: true })
       .click()
     await expect(
       page.locator(
@@ -2053,10 +2277,10 @@ test.describe("chat flows", () => {
     await expect(mobilePanel).toBeVisible()
     await expect(
       page.locator('[data-testid="right-panel-inline-launcher"]')
-    ).not.toBeVisible()
+    ).toBeVisible()
     await expect(
       mobilePanel.locator('[data-testid="right-panel-panel-launcher"]')
-    ).toBeVisible()
+    ).not.toBeVisible()
     await expect(
       mobilePanel.getByText("codebase-research", { exact: true })
     ).toBeVisible()
@@ -2097,9 +2321,7 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page
-      .getByRole("button", { name: "Configurations", exact: true })
-      .click()
+    await page.getByRole("tab", { name: "Configurations", exact: true }).click()
 
     const mobilePanel = page.locator('[data-testid="pi-config-mobile-panel"]')
     await expect(mobilePanel).toBeVisible()
@@ -2121,7 +2343,7 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("button", { name: "Workspace", exact: true }).click()
+    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
 
     const mobilePanel = page.locator(
       '[data-testid="pi-workspace-mobile-panel"]'

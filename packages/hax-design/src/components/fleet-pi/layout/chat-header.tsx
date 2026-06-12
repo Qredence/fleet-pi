@@ -7,7 +7,7 @@ import {
   Plus,
 } from "lucide-react"
 import { Popover } from "../../agent-elements/input/popover"
-import type { ReactNode } from "react"
+import { ChromePillButton } from "../primitives/chrome-pill"
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,
@@ -36,35 +36,7 @@ function QredenceLogo({ className }: { className?: string }) {
   )
 }
 
-export function HeaderPillButton({
-  active = false,
-  ariaLabel,
-  children,
-  className,
-  onClick,
-}: {
-  active?: boolean
-  ariaLabel: string
-  children: ReactNode
-  className?: string
-  onClick?: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium whitespace-nowrap shadow-sm backdrop-blur transition-colors ${
-        active
-          ? "border-border/70 bg-background text-foreground/75"
-          : "border-border/70 bg-sidebar text-foreground/55 hover:bg-background hover:text-foreground/75"
-      } ${className ?? ""}`}
-      aria-label={ariaLabel}
-      title={ariaLabel}
-    >
-      {children}
-    </button>
-  )
-}
+export { ChromePillButton as HeaderPillButton }
 
 export type AccountMenuUser = {
   name?: string | null
@@ -88,10 +60,10 @@ export function AccountMenu({
       side="bottom"
       align="start"
       trigger={
-        <HeaderPillButton ariaLabel="Open account menu">
+        <ChromePillButton ariaLabel="Open account menu">
           <QredenceLogo className="size-3.5 shrink-0" />
           <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
-        </HeaderPillButton>
+        </ChromePillButton>
       }
     >
       {user ? (
@@ -163,7 +135,7 @@ export function SessionControls({
         className="w-[min(360px,calc(100vw-2rem))]"
         overlay
         trigger={
-          <HeaderPillButton
+          <ChromePillButton
             ariaLabel="Open conversations"
             className="w-28 justify-between sm:w-36 md:w-44 lg:w-52 xl:w-64"
           >
@@ -174,7 +146,7 @@ export function SessionControls({
               </span>
             </div>
             <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
-          </HeaderPillButton>
+          </ChromePillButton>
         }
       >
         {sessions.length === 0 ? (
@@ -209,10 +181,10 @@ export function SessionControls({
           })
         )}
       </Popover>
-      <HeaderPillButton ariaLabel="New session" onClick={onNewSession}>
+      <ChromePillButton ariaLabel="New session" onClick={onNewSession}>
         <Plus className="size-3.5 shrink-0" />
         <span className="hidden whitespace-nowrap sm:inline">New session</span>
-      </HeaderPillButton>
+      </ChromePillButton>
     </>
   )
 }

@@ -4,6 +4,7 @@
 @import "@fontsource-variable/inter";
 @import "../components/agent-elements/agent-ui.css";
 @import "../components/fleet-pi/chat/fleet-pi-agent-chat.css";
+@import "../components/fleet-pi/primitives/discrete-tab.css";
 
 @custom-variant dark (&:is(.dark *));
 @source "../../../apps/**/*.{ts,tsx}";

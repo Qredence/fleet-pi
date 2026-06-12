@@ -8,15 +8,15 @@ import tailwindcss from "@tailwindcss/vite"
 import { config as dotenvConfig } from "dotenv"
 import { visualizer } from "rollup-plugin-visualizer"
 
-// Load .env from the monorepo root into process.env for server-side routes
-dotenvConfig({
-  path: resolve(import.meta.dirname, "../../.env"),
-  override: false,
-})
+const repoRoot = resolve(import.meta.dirname, "../..")
+
+// Load repo-root env files for server-side routes (.env.local overrides .env)
+dotenvConfig({ path: resolve(repoRoot, ".env"), override: false })
+dotenvConfig({ path: resolve(repoRoot, ".env.local"), override: true })
 
 // Ensure server-side code resolves projectRoot to the monorepo root, not apps/web/
 if (!process.env.FLEET_PI_REPO_ROOT) {
-  process.env.FLEET_PI_REPO_ROOT = resolve(import.meta.dirname, "../..")
+  process.env.FLEET_PI_REPO_ROOT = repoRoot
 }
 
 const config = defineConfig({

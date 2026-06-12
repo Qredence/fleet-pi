@@ -18,6 +18,8 @@ import { Select } from "../../../../select"
 import { Switch } from "../../../../switch"
 import { Badge } from "../../../../badge"
 import { cn } from "../../../../../lib/utils"
+import { COMPACT_ACTION_BUTTON_CLASS } from "../../../styles/tokens"
+import { SectionSurface } from "../../../primitives/surface"
 import { FIELD_CONTROL_CLASS } from "./constants"
 import { FieldLabel } from "./fields"
 import { isModelEnabled } from "./model-patterns"
@@ -303,7 +305,7 @@ export function StringListEditor({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-all duration-150 hover:bg-foreground/5 disabled:opacity-50"
+          className={COMPACT_ACTION_BUTTON_CLASS}
           onClick={addRow}
           disabled={!newValue.trim()}
         >
@@ -522,7 +524,7 @@ export function CustomModelEditor({
   providers: Array<string>
 }) {
   return (
-    <div className="space-y-2.5 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-sm backdrop-blur-md">
+    <SectionSurface elevation="quiet" className="space-y-2.5">
       <div className="flex items-center gap-1.5">
         <Wrench className="h-3.5 w-3.5 text-foreground/50" />
         <span className="text-[11.5px] font-semibold tracking-wide text-foreground/75">
@@ -564,7 +566,7 @@ export function CustomModelEditor({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-all duration-200 hover:bg-foreground/5 disabled:opacity-50"
+          className={COMPACT_ACTION_BUTTON_CLASS}
           onClick={onUse}
           disabled={!provider.trim() || !model.trim()}
         >
@@ -579,6 +581,6 @@ export function CustomModelEditor({
           resolved automatically to instantiate a project-scoped session.
         </span>
       </div>
-    </div>
+    </SectionSurface>
   )
 }

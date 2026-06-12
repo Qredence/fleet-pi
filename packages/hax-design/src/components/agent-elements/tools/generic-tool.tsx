@@ -33,6 +33,7 @@ export type GenericToolProps = {
   subtitle?: string
   isPending: boolean
   isError?: boolean
+  onSubtitleClick?: () => void
 }
 
 export const GenericTool = memo(function GenericTool({
@@ -40,6 +41,7 @@ export const GenericTool = memo(function GenericTool({
   title,
   subtitle,
   isPending,
+  onSubtitleClick,
 }: GenericToolProps) {
   const Icon = icon
 
@@ -54,6 +56,7 @@ export const GenericTool = memo(function GenericTool({
       completeLabel={title}
       isAnimating={isPending}
       detail={subtitle}
+      onDetailClick={onSubtitleClick}
     />
   )
 })

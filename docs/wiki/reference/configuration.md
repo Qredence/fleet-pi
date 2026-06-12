@@ -6,6 +6,16 @@ Fleet Pi is configured through environment variables and a project-local setting
 
 ## Environment Variables
 
+### Google Gemini (default chat provider)
+
+| Variable         | Default | Description                                                                                             |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY` | —       | **Required for default chat.** API key from [Google AI Studio](https://aistudio.google.com/app/apikey). |
+
+Pi's `google` provider maps to `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are for Better Auth login only — they do not power chat.
+
+The dev server loads repo-root `.env`, then `.env.local` (`.env.local` wins). Credentials saved from the Configurations UI are written to `.env.local`.
+
 ### AWS / Amazon Bedrock
 
 | Variable                   | Default     | Description                                                                                    |

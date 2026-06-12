@@ -18,6 +18,7 @@ export type EditToolDiffCardProps = {
   output?: Record<string, unknown>
   isCollapsible?: boolean
   approval?: ToolApproval
+  onFilePathClick?: (path: string) => void
 }
 
 export function EditToolDiffCard({
@@ -28,6 +29,7 @@ export function EditToolDiffCard({
   output,
   isCollapsible = false,
   approval,
+  onFilePathClick,
 }: EditToolDiffCardProps) {
   useToolComplete(state === "animating", step.duration, onComplete)
   const isPending = state === "animating"
@@ -165,7 +167,18 @@ export function EditToolDiffCard({
             </TextShimmer>
           ) : (
             <span className="truncate text-xs text-an-tool-color-muted">
-              {isWrite ? "Created" : "Edited"} {fileName}
+              {isWrite ? "Created" : "Edited"}{" "}
+              {step.filePath && onFilePathClick ? (
+                <button
+                  type="button"
+                  onClick={() => onFilePathClick(step.filePath ?? "")}
+                  className="truncate underline-offset-2 hover:text-an-tool-color hover:underline"
+                >
+                  {fileName}
+                </button>
+              ) : (
+                fileName
+              )}
             </span>
           )}
         </div>
@@ -248,11 +261,13 @@ export function EditToolDiffCard({
 export type EditToolProps = {
   part: any
   isCollapsible?: boolean
+  onFilePathClick?: (path: string) => void
 }
 
 export const EditTool = memo(function EditTool({
   part,
   isCollapsible = false,
+  onFilePathClick,
 }: EditToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
     | ToolApproval
@@ -270,6 +285,7 @@ export const EditTool = memo(function EditTool({
       output={part.output ?? part.result}
       isCollapsible={isCollapsible}
       approval={approval}
+      onFilePathClick={onFilePathClick}
     />
   )
 })

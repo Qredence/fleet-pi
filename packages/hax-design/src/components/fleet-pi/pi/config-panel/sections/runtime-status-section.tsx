@@ -1,5 +1,6 @@
 import { Activity, Loader2 } from "lucide-react"
 import { Badge } from "../../../../badge"
+import { RowSurface, SectionSurface } from "../../../primitives/surface"
 import { ConfigurationSection } from "../shared/fields"
 import type {
   ChatMode,
@@ -32,7 +33,11 @@ export function RuntimeStatusSection({
 
   return (
     <ConfigurationSection icon={Activity} label="Runtime">
-      <div className="space-y-2.5 rounded-[10px] border border-border/40 bg-background/30 p-3 shadow-lg backdrop-blur-md">
+      <SectionSurface
+        elevation="raised"
+        padding="compact"
+        className="space-y-2.5"
+      >
         <div className="flex min-w-0 items-start gap-2">
           <div className="rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/50 shadow-sm">
             <Activity className="h-3.5 w-3.5" />
@@ -49,7 +54,11 @@ export function RuntimeStatusSection({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
+          <RowSurface
+            tone="muted"
+            interactive="lift"
+            className="group flex-col"
+          >
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Core Request
@@ -88,9 +97,13 @@ export function RuntimeStatusSection({
             <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
               {activityLabel ?? "Idle and waiting for the next prompt."}
             </p>
-          </div>
+          </RowSurface>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
+          <RowSurface
+            tone="muted"
+            interactive="lift"
+            className="group flex-col"
+          >
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Prompts Queue
@@ -115,9 +128,13 @@ export function RuntimeStatusSection({
             <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-foreground/40 transition-colors group-hover:text-foreground/60">
               {queueDescription}
             </p>
-          </div>
+          </RowSurface>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
+          <RowSurface
+            tone="muted"
+            interactive="lift"
+            className="group flex-col"
+          >
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Plan Context
@@ -154,9 +171,13 @@ export function RuntimeStatusSection({
                     ? "Harness Turn: Sandbox active."
                     : "Autonomous coding execution active.")}
             </p>
-          </div>
+          </RowSurface>
 
-          <div className="group flex flex-col rounded-[8px] border border-border/20 bg-foreground/1.5 p-2 transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm">
+          <RowSurface
+            tone="muted"
+            interactive="lift"
+            className="group flex-col"
+          >
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] font-bold tracking-wide text-foreground/50 uppercase">
                 Settings Sync
@@ -181,9 +202,9 @@ export function RuntimeStatusSection({
                   ? `Active config loaded from ${settings.projectPath.replace(/^.*\/fleet-pi\//, "")}`
                   : "Resolving active project-scoped Pi properties..."}
             </p>
-          </div>
+          </RowSurface>
         </div>
-      </div>
+      </SectionSurface>
     </ConfigurationSection>
   )
 }

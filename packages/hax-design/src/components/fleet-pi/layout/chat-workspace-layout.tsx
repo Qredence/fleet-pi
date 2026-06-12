@@ -3,6 +3,8 @@ import {
   CHAT_HEADER_HEIGHT_PX,
   CHAT_HEADER_OFFSET_PX,
 } from "../../../lib/layout-constants"
+import { cn } from "../../../lib/utils"
+import { CHAT_HEADER_LAYER_CLASS } from "../styles/tokens"
 import type { CSSProperties, ReactNode } from "react"
 
 export function ChatWorkspaceLayout({
@@ -31,7 +33,10 @@ export function ChatWorkspaceLayout({
       style={layoutStyle}
     >
       <header
-        className="grid min-h-[calc(var(--chat-header-top)+var(--chat-header-height))] shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 pt-[var(--chat-header-top)]"
+        className={cn(
+          CHAT_HEADER_LAYER_CLASS,
+          "grid min-h-[calc(var(--chat-header-top)+var(--chat-header-height))] shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 px-3 pt-[var(--chat-header-top)] pb-3"
+        )}
         data-testid="chat-header"
       >
         <div className="justify-self-start">{headerLeft}</div>

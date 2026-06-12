@@ -1,6 +1,10 @@
-import { Boxes, Download, FolderTree } from "lucide-react"
+import { Boxes, Download, FolderTree, Package } from "lucide-react"
+import {
+  extractWorkspaceFilePathFromToolInput,
+  resolveWorkspacePanelTarget,
+} from "../../../lib/workspace-path-nav"
 import type { LucideIcon } from "lucide-react"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import type { CustomToolRendererProps } from "../../agent-elements/types"
 
 export const PI_TOOL_RENDERERS: Record<
@@ -110,6 +114,49 @@ function ResourceInstallToolRenderer({
   )
 }
 
+export function WorkspaceWriteToolRenderer({
+  input,
+  onOpenPath,
+  output,
+  status,
+}: CustomToolRendererProps & {
+  onOpenPath?: (path: string) => void
+}) {
+  const filePath = extractWorkspaceFilePathFromToolInput(input)
+  const target = filePath ? resolveWorkspacePanelTarget(filePath) : null
+  const fileName = filePath?.split("/").pop()
+
+  return (
+    <RuntimeToolCard
+      icon={Package}
+      status={status}
+      title="Workspace write"
+      summary={
+        status === "error"
+          ? "Failed to update agent-workspace"
+          : fileName
+            ? `Updated ${fileName}`
+            : "Updated agent-workspace file"
+      }
+      details={[
+        filePath && target && onOpenPath ? (
+          <button
+            key={filePath}
+            type="button"
+            onClick={() => onOpenPath(filePath)}
+            className="truncate text-left underline-offset-2 hover:text-foreground/70 hover:underline"
+          >
+            {filePath}
+          </button>
+        ) : filePath ? (
+          filePath
+        ) : null,
+        getString(getDetails(output).message),
+      ]}
+    />
+  )
+}
+
 function RuntimeToolCard({
   details,
   icon: Icon,
@@ -117,7 +164,7 @@ function RuntimeToolCard({
   summary,
   title,
 }: {
-  details: Array<string | null>
+  details: Array<ReactNode>
   icon: LucideIcon
   status: CustomToolRendererProps["status"]
   summary: string
@@ -153,14 +200,23 @@ function RuntimeToolCard({
           </div>
           <p className="text-[12px] leading-4 text-foreground/60">{summary}</p>
           <div className="space-y-1">
-            {details.filter(Boolean).map((detail) => (
-              <div
-                key={detail}
-                className="text-[11px] leading-4 text-foreground/45"
-              >
-                {detail}
-              </div>
-            ))}
+            {details.filter(Boolean).map((detail, index) =>
+              typeof detail === "string" ? (
+                <div
+                  key={detail}
+                  className="text-[11px] leading-4 text-foreground/45"
+                >
+                  {detail}
+                </div>
+              ) : (
+                <div
+                  key={index}
+                  className="text-[11px] leading-4 text-foreground/45"
+                >
+                  {detail}
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>

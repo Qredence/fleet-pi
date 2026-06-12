@@ -10,6 +10,7 @@ export type ToolRowBaseProps = {
   completeLabel: string
   isAnimating: boolean
   detail?: string
+  onDetailClick?: () => void
   trailingContent?: ReactNode
   expandable?: boolean
   expanded?: boolean
@@ -24,6 +25,7 @@ export function ToolRowBase({
   completeLabel,
   isAnimating,
   detail,
+  onDetailClick,
   trailingContent,
   expandable = false,
   expanded,
@@ -61,11 +63,20 @@ export function ToolRowBase({
             completeLabel
           )}
         </span>
-        {detail && (
-          <span className="min-w-0 flex-1 truncate font-normal text-an-foreground-muted/60">
-            {detail}
-          </span>
-        )}
+        {detail &&
+          (onDetailClick ? (
+            <button
+              type="button"
+              onClick={onDetailClick}
+              className="min-w-0 flex-1 truncate text-left font-normal text-an-foreground-muted/60 underline-offset-2 hover:text-an-foreground-muted hover:underline"
+            >
+              {detail}
+            </button>
+          ) : (
+            <span className="min-w-0 flex-1 truncate font-normal text-an-foreground-muted/60">
+              {detail}
+            </span>
+          ))}
         {trailingContent}
       </div>
       {expandable && (isComplete || isExpanded || isAnimating) && (
