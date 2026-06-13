@@ -119,7 +119,7 @@ See [`.env.example`](.env.example) for the full list.
 
 **`agent-workspace/`**
 
-Fleet Pi's durable adaptive layer: memory, plans, evals, artifacts, and chat-installed Pi resources. Human docs live in [`docs/`](docs/); agent-facing files live here. See [docs/agent-workspace.md](docs/agent-workspace.md).
+`agent-workspace/` is Fleet Pi's durable adaptive layer: memory, plans, evals, artifacts, and chat-installed Pi resources. Human docs live in [`docs/`](docs/); agent-facing files live here. See [docs/agent-workspace.md](docs/agent-workspace.md).
 
 **Project-local Pi resources**
 

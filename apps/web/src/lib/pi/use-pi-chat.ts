@@ -387,6 +387,7 @@ export function usePiChat(
       }
 
       if (event.type === "done") {
+        setStatus("ready")
         void refreshSessions()
       }
     },
@@ -503,8 +504,9 @@ export function usePiChat(
     abortRef.current?.abort()
     abortRef.current = null
     setStatus("ready")
+    setQueueSynced(EMPTY_QUEUE_STATE)
     setActivityLabelSynced(undefined)
-  }, [client, setActivityLabelSynced])
+  }, [client, setActivityLabelSynced, setQueueSynced])
 
   const startNewSession = useCallback(async () => {
     const result = await client.createSession()

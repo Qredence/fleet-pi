@@ -1,6 +1,7 @@
 import { Monitor, Moon, Palette, Sun } from "lucide-react"
 import { Button } from "../../../../button"
 import { cn } from "../../../../../lib/utils"
+import { SectionSurface } from "../../../primitives/surface"
 import { ConfigurationSection } from "../shared/fields"
 import type { ThemePreference } from "../../../../../lib/canvas-utils"
 import type { LucideIcon } from "lucide-react"
@@ -21,12 +22,7 @@ export function PersonalizationSection({
 
   return (
     <ConfigurationSection icon={Palette} label="Personalization">
-      <div
-        className={cn(
-          "space-y-3 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-md backdrop-blur-md transition-all duration-300",
-          haloColor
-        )}
-      >
+      <SectionSurface className={cn("space-y-3", haloColor)}>
         <div className="flex min-w-0 items-start gap-2.5">
           <div className="shrink-0 rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/50 shadow-sm">
             <Palette className="h-3.5 w-3.5 text-foreground/60" />
@@ -65,7 +61,7 @@ export function PersonalizationSection({
             onClick={() => onThemePreferenceChange("system")}
           />
         </div>
-      </div>
+      </SectionSurface>
     </ConfigurationSection>
   )
 }

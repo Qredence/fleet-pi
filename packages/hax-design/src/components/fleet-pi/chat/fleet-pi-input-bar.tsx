@@ -2,15 +2,15 @@ import { InputBar } from "../../agent-elements/input-bar"
 import { ModeSelector } from "../../agent-elements/input/mode-selector"
 import { ModelPicker } from "../../agent-elements/input/model-picker"
 import { CHAT_MODES } from "../../../lib/pi/chat-helpers"
+import { SUGGESTION_ITEM_CLASS, SUGGESTION_LIST_CLASS } from "../styles/tokens"
 import { ChatStopControl } from "./chat-stop-control"
 import type { ChatMode } from "../../../lib/pi/chat-protocol"
 import type { InputBarProps } from "../../agent-elements/input-bar"
 import type { ChatStatus } from "../../agent-elements/chat-types"
 import type { ModelOption } from "../../agent-elements/types"
 
-const FLEET_PI_SUGGESTION_CLASSNAME = "!px-0 flex-col items-start gap-1.5"
-export const FLEET_PI_SUGGESTION_ITEM_CLASSNAME =
-  "h-auto justify-start rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-foreground/65 shadow-sm transition-colors hover:border-border hover:bg-foreground/6 hover:text-foreground"
+export const FLEET_PI_SUGGESTION_ITEM_CLASSNAME = SUGGESTION_ITEM_CLASS
+const FLEET_PI_SUGGESTION_CLASSNAME = SUGGESTION_LIST_CLASS
 
 export function withFleetPiSuggestionStyles(
   suggestions: InputBarProps["suggestions"]

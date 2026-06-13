@@ -2,11 +2,27 @@
 
 ## Common Errors and Fixes
 
+### Gemini API key invalid → chat authentication failure
+
+**Symptom:** The chat stream returns an error event with `API_KEY_INVALID`, `API key not valid`, or HTTP 400 from `generativelanguage.googleapis.com`.
+
+**Cause:** Fleet Pi's default provider is Google Gemini (`google/gemini-3.5-flash` in `.pi/settings.json`). Pi reads credentials from `GEMINI_API_KEY`. The key may be missing, revoked, restricted, or the wrong credential type (OAuth secrets do not work for LLM calls).
+
+**Fix:**
+
+1. Create or retrieve a key at [Google AI Studio](https://aistudio.google.com/app/apikey). Valid keys typically start with `AIza`.
+2. Set `GEMINI_API_KEY` in repo-root `.env` or `.env.local` (no stray quotes or whitespace).
+3. Restart `pnpm dev` and hard-refresh the browser so a new Pi runtime picks up the key.
+4. Verify outside Fleet Pi: `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"` should return HTTP 200.
+5. Confirm provider status: `curl -s http://localhost:3000/api/chat/providers | jq '.providers[] | select(.id=="google-genai")'`.
+
+You can also save credentials from the chat UI **Configurations → Provider Credentials** (writes to `.env.local`).
+
 ### AWS credentials missing → Bedrock authentication failure
 
 **Symptom:** The chat stream returns an error event with a message like `UnrecognizedClientException` or `The security token included in the request is invalid`.
 
-**Cause:** Pi uses Amazon Bedrock to power the AI. Standard AWS credential resolution is used — environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`), a named profile (`AWS_PROFILE`), or an IAM role. If none are present, Bedrock calls fail immediately.
+**Cause:** When using Amazon Bedrock as the provider, standard AWS credential resolution applies — environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`), a named profile (`AWS_PROFILE`), or an IAM role. If none are present, Bedrock calls fail immediately.
 
 **Fix:**
 
@@ -36,7 +52,7 @@
 
 **Symptom:** API calls to the Pi backend fail with a circuit-breaker error after repeated failures.
 
-**Cause:** The server uses `opossum` to wrap calls to the Pi runtime. After a configurable number of consecutive failures the circuit opens and requests are rejected immediately without hitting Bedrock.
+**Cause:** The server uses `opossum` to wrap calls to the Pi runtime. After a configurable number of consecutive failures the circuit opens and requests are rejected immediately without hitting the upstream LLM provider.
 
 **Fix:** The circuit closes automatically after the timeout expires. To force an immediate reset, restart the dev server. Check server logs for the upstream error that triggered the open state.
 

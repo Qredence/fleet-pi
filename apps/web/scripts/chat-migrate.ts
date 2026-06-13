@@ -8,10 +8,13 @@ import {
 
 // Load environment variables from process.cwd() or parent directories
 const cwd = process.cwd()
-dotenv.config({ path: path.resolve(cwd, ".env.local") })
 dotenv.config({ path: path.resolve(cwd, ".env") })
-dotenv.config({ path: path.resolve(cwd, "../..", ".env.local") })
+dotenv.config({ path: path.resolve(cwd, ".env.local"), override: true })
 dotenv.config({ path: path.resolve(cwd, "../..", ".env") })
+dotenv.config({
+  path: path.resolve(cwd, "../..", ".env.local"),
+  override: true,
+})
 
 async function main() {
   const connectionString = process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL

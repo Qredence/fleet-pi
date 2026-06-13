@@ -9,6 +9,7 @@ import {
   Library,
   Monitor,
   Moon,
+  Package,
   Plus,
   Settings,
   Sparkles,
@@ -25,7 +26,7 @@ import {
   CommandSeparator,
 } from "../command"
 import type { ChatMode, ChatSessionInfo } from "../../lib/pi/chat-protocol"
-import type { ThemePreference } from "../../lib/canvas-utils"
+import type { RightPanel, ThemePreference } from "../../lib/canvas-utils"
 
 export type CommandPaletteProps = {
   open: boolean
@@ -35,9 +36,7 @@ export type CommandPaletteProps = {
   onNewSession: () => void
   onStop: () => void
   onResumeSession: (session: ChatSessionInfo) => void
-  onSetRightPanel: (
-    panel: "resources" | "workspace" | "configurations" | null
-  ) => void
+  onSetRightPanel: (panel: RightPanel) => void
   onThemeChange: (theme: ThemePreference) => void
   sessions: Array<ChatSessionInfo>
   isStreaming: boolean
@@ -153,6 +152,13 @@ export function ChatCommandPalette({
           >
             <Folder className="mr-2 size-4" />
             <span>Open Workspace</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => handleSelect(() => onSetRightPanel("artifacts"))}
+            keywords={["artifacts", "reports", "datasets", "panels"]}
+          >
+            <Package className="mr-2 size-4" />
+            <span>Open Artifacts</span>
           </CommandItem>
           <CommandItem
             onSelect={() =>

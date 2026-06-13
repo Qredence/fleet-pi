@@ -111,3 +111,33 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - In Plan mode, ask an ambiguous request and verify the InputBar Question bar appears, answer it, and confirm the same Pi turn continues.
 - After a plan, choose Execute and verify the app switches to Agent mode, full tools are available, and `[DONE:n]` progress updates the plan status.
 - Open the Pi resources browser and verify the starter skills, npm package resources, vendored extensions, `project-inventory.ts`, and `workspace-index.ts` appear. Verify the resources canvas docks to the right and resizes; on mobile, verify it opens as an overlay. Switch to the Workspace tab, verify `agent-workspace` plus representative seeded files appear, and click a Markdown file to verify the preview panel renders its content. Switch to Configurations and verify Pi settings load from `.pi/settings.json`, model/runtime/resource controls can become dirty and save, and Light/Dark/System theme control remains local. If both project-local and global `agent-elements` skills are installed, the resources diagnostics may include that expected name collision.
+
+## Learned User Preferences
+
+- Treat `@workspace/hax-design` as the sole UI source of truth; if a surface is missing, add it to hax-design rather than creating app-local components.
+- Keep floating pill-style header chrome; do not replace it with a unified full-width top bar unless explicitly requested.
+- When executing an attached implementation plan, do not edit the plan file; follow existing todos to completion.
+- Prefer `bg-sidebar` for inactive header pills and floating panel launcher buttons.
+- Use pill-shaped rounding (`rounded-full` / `rounded-[100px]`) for header controls and InputBar mode/model selectors.
+- Avoid inline `style` props in Fleet Pi UI; prefer Tailwind utilities, `cva`, co-located component CSS, or shared hax-design tokens.
+- Keep the inline right-panel launcher (`DiscreteTabs`) visible in the chat header when panels are open; do not relocate panel tabs into canvas or mobile panel headers.
+- Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` over duplicating long inline Tailwind class strings.
+- Avoid generic AI SaaS aesthetics (cream backgrounds, gradient heroes, card grids) and heavy IDE-style dense toolbars unless explicitly requested.
+- Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
+- Keep the chat header stacked above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`) so inline DiscreteTab tooltips are not clipped or covered by the transcript column.
+- Align header `DiscreteTabs` with chrome pill tokens (`DISCRETE_TAB_ACTIVE_CLASS` / `DISCRETE_TAB_INACTIVE_CLASS`); use compact default sizing (12px labels, 14px icons, minimal tab gap).
+
+## Learned Workspace Facts
+
+- GitHub releases: create an annotated `v*` tag on `main`, push to origin, wait for the release workflow CI, then polish notes via `gh release edit` (auto-generated notes are interim).
+- Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
+- OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`.
+- Files inside `packages/hax-design` must use relative imports; apps import via `@workspace/hax-design/*`.
+- Config-panel Problems warnings are commonly Tailwind CSS IntelliSense suggestions for v4 shorthand classes, not TypeScript or ESLint failures.
+- `PRODUCT.md`, `DESIGN.md`, and `packages/hax-design/ARCHITECTURE.md` are the canonical design context for Fleet Pi UI and hax-design structure.
+- Fleet Pi building blocks live under `fleet-pi/{layout,chat,pi,primitives,styles}/`; semantic tokens are in `fleet-pi/styles/tokens.ts`.
+- Pi's default `google` provider reads `GEMINI_API_KEY`; `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls.
+- Dev server loads repo-root `.env` then `.env.local` with override; Configurations Provider Credentials persist to `.env.local`.
+- Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API.
+- Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
+- Workspace and Artifacts share `selectedWorkspacePath`; `workspace-panel` clears selections outside each panel's `scopePath` so tab switches do not leak stale previews.

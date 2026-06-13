@@ -5,9 +5,17 @@ import { Select } from "../../../../select"
 import { Switch } from "../../../../switch"
 import { Badge } from "../../../../badge"
 import { cn } from "../../../../../lib/utils"
+import {
+  FieldLabel,
+  RowSurface,
+  SectionSurface,
+} from "../../../primitives/surface"
+import { fleetPiRowSurface } from "../../../styles/tokens"
 import { FIELD_CONTROL_CLASS } from "./constants"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
+
+export { FieldLabel }
 
 export function EditableSection({
   children,
@@ -27,12 +35,7 @@ export function EditableSection({
   title: string
 }) {
   return (
-    <div
-      className={cn(
-        "space-y-3.5 rounded-[10px] border border-border/30 bg-background/30 p-3.5 shadow-md backdrop-blur-md transition-all duration-300",
-        dirty && "border-primary/30 shadow-[0_0_12px_rgba(0,0,0,0.05)]"
-      )}
-    >
+    <SectionSurface dirty={dirty}>
       <div className="flex min-w-0 items-center gap-2.5 border-b border-border/10 pb-2.5">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-bold tracking-wide text-foreground/80">
@@ -100,24 +103,7 @@ export function EditableSection({
         </div>
       </div>
       <div className="space-y-3.5">{children}</div>
-    </div>
-  )
-}
-
-export function FieldLabel({
-  children,
-  label,
-}: {
-  children: ReactNode
-  label: string
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-[10px] font-bold tracking-wide text-foreground/45 uppercase">
-        {label}
-      </span>
-      {children}
-    </label>
+    </SectionSurface>
   )
 }
 
@@ -184,7 +170,16 @@ export function ToggleField({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex h-8.5 cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-border/30 bg-background/40 px-2.5 transition-all duration-200 hover:border-border/45 hover:bg-foreground/1.5">
+    <label
+      className={cn(
+        fleetPiRowSurface({
+          tone: "default",
+          padding: "md",
+          interactive: true,
+        }),
+        "h-8.5 cursor-pointer items-center justify-between gap-3 bg-background/40 hover:bg-foreground/1.5"
+      )}
+    >
       <span className="truncate text-[11px] font-semibold text-foreground/65">
         {label}
       </span>
@@ -238,7 +233,7 @@ export function ConfigurationRow({
   title: string
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-[8px] border border-border/60 bg-foreground/2 px-2.5 py-2">
+    <RowSurface tone="inset" padding="md" className="items-center gap-2">
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 truncate text-[12px] font-medium text-foreground/75">
@@ -252,6 +247,6 @@ export function ConfigurationRow({
           {description}
         </p>
       </div>
-    </div>
+    </RowSurface>
   )
 }

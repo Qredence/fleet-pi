@@ -1,10 +1,11 @@
-import { Folder, Library, Settings } from "lucide-react"
+import { Folder, Library, Package, Settings } from "lucide-react"
+import { ArtifactsPanelContent } from "../pi/artifacts-panel"
 import { ConfigurationsPanelContent } from "../pi/config-panel/index"
 import { ResourcesPanelContent } from "../pi/resources-panel"
 import { WorkspacePanelContent } from "../pi/workspace-panel"
 import type { ElementType, ReactNode } from "react"
 import type { ChatStatus } from "../../agent-elements/chat-types"
-import type { ThemePreference } from "../../../lib/canvas-utils"
+import type { RightPanel, ThemePreference } from "../../../lib/canvas-utils"
 import type {
   ChatMode,
   ChatPiSettingsUpdate,
@@ -19,7 +20,7 @@ import type {
 } from "../../../lib/pi/chat-protocol"
 import type { ChatModelOption } from "../../../lib/pi/chat-helpers"
 
-export type ActiveRightPanel = "resources" | "workspace" | "configurations"
+export type ActiveRightPanel = Exclude<RightPanel, null>
 
 export type RightPanelContentProps = {
   activityLabel?: string
@@ -50,6 +51,9 @@ export type RightPanelContentProps = {
   workspaceLoading: boolean
   workspaceTree: WorkspaceTreeResponse | null
   loadWorkspaceFile: (path: string) => Promise<WorkspaceFileResponse>
+  openWorkspacePath: (rawPath: string) => void
+  selectedWorkspacePath: string | null
+  setSelectedWorkspacePath: (path: string | null) => void
 }
 
 type RightPanelDefinition = {
@@ -94,6 +98,26 @@ export const RIGHT_PANEL_REGISTRY: Record<
         error={props.workspaceError}
         loadWorkspaceFile={props.loadWorkspaceFile}
         loading={props.workspaceLoading}
+        onSelectedPathChange={props.setSelectedWorkspacePath}
+        selectedPath={props.selectedWorkspacePath}
+        workspace={props.workspaceTree}
+      />
+    ),
+  },
+  artifacts: {
+    title: "Artifacts",
+    icon: Package,
+    dataTestid: "pi-artifacts-canvas",
+    mobileDataTestid: "pi-artifacts-mobile-panel",
+    getLoading: (props) => props.workspaceLoading,
+    getOnRefresh: (props) => props.refreshWorkspace,
+    render: (props) => (
+      <ArtifactsPanelContent
+        error={props.workspaceError}
+        loadWorkspaceFile={props.loadWorkspaceFile}
+        loading={props.workspaceLoading}
+        onSelectedPathChange={props.setSelectedWorkspacePath}
+        selectedPath={props.selectedWorkspacePath}
         workspace={props.workspaceTree}
       />
     ),

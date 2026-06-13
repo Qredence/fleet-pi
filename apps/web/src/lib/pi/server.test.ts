@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest"
+import * as server from "./server"
 
 // Test barrel exports to ensure all server functions are properly exported
 describe("server barrel exports", () => {
-  it("exports all required functions", async () => {
-    const server = await import("./server")
-
+  it("exports all required functions", () => {
     // Catalog functions
     expect(typeof server.loadChatModels).toBe("function")
     expect(typeof server.loadChatResources).toBe("function")

@@ -3,6 +3,7 @@ import { AgentChat } from "../../agent-elements/agent-chat"
 import { cn } from "../../agent-elements/utils/cn"
 import { GenerativeTextRenderer } from "../../openui/inline-renderer"
 import { PI_TOOL_RENDERERS } from "../pi/tool-renderers"
+import { FleetPiToolRenderer } from "./fleet-pi-tool-renderer"
 import {
   FleetPiInputBar,
   withFleetPiSuggestionStyles,
@@ -48,6 +49,7 @@ function StableInputBarSlot(props: InputBarProps) {
 const fleetPiAgentChatSlots = {
   TextRenderer: GenerativeTextRenderer,
   InputBar: StableInputBarSlot,
+  ToolRenderer: FleetPiToolRenderer,
 }
 
 export function FleetPiAgentChat({

@@ -74,6 +74,14 @@ export function getResourceGroups(
   ]
 }
 
+export function countWorkspaceFiles(nodes: Array<WorkspaceTreeNode>): number {
+  return nodes.reduce((count, node) => {
+    if (node.type === "file") return count + 1
+    if (!node.children?.length) return count
+    return count + countWorkspaceFiles(node.children)
+  }, 0)
+}
+
 export function findWorkspaceNode(
   nodes: Array<WorkspaceTreeNode>,
   path: string

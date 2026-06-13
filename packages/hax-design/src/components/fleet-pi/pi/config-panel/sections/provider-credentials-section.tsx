@@ -16,6 +16,7 @@ import { Badge } from "../../../../badge"
 import { Alert, AlertDescription } from "../../../../alert"
 import { cn } from "../../../../../lib/utils"
 import { FIELD_CONTROL_CLASS } from "../shared/constants"
+import { SectionSurface } from "../../../primitives/surface"
 import { ConfigurationSection } from "../shared/fields"
 import { PROVIDER_METADATA } from "../shared/provider-metadata"
 import type {
@@ -89,7 +90,7 @@ export function ProviderCredentialsSection({
 
   return (
     <ConfigurationSection icon={Key} label="Provider Credentials">
-      <div className="space-y-3.5 rounded-[10px] border border-border/40 bg-background/30 p-3.5 shadow-lg backdrop-blur-md">
+      <SectionSurface elevation="raised">
         <div className="flex min-w-0 items-start gap-2.5">
           <div className="shrink-0 rounded-md border border-border/20 bg-foreground/5 p-1 text-foreground/60 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
             <Lock className="h-3.5 w-3.5" />
@@ -319,7 +320,7 @@ export function ProviderCredentialsSection({
             })}
           </div>
         )}
-      </div>
+      </SectionSurface>
     </ConfigurationSection>
   )
 }

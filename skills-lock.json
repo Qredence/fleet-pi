@@ -12,6 +12,12 @@
       "skillPath": "skills/daytona/SKILL.md",
       "computedHash": "b4bee34e0ffb8c5cd0a70cefb3f92372c86db1d0ce311f2c0ad68bd0cce2b713"
     },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "d0cf58213e8581548a63a717d69a3b1c1eaed4c68d25887ca7b0698393b0530f"
+    },
     "openui": {
       "source": "thesysdev/openui",
       "sourceType": "github",
