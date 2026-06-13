@@ -56,6 +56,7 @@ describe("useChatShellState", () => {
       .mockImplementationOnce(() => [undefined, vi.fn()])
       .mockImplementationOnce(() => ["agent", setMode])
       .mockImplementationOnce(() => [null, vi.fn()])
+      .mockImplementationOnce(() => [null, vi.fn()])
       .mockImplementationOnce(() => [false, vi.fn()])
       .mockImplementationOnce(() => ["light", vi.fn()])
       .mockImplementationOnce(() => [320, vi.fn()])
@@ -95,6 +96,7 @@ describe("useChatShellState", () => {
     mockUseState
       .mockImplementationOnce(() => [undefined, vi.fn()])
       .mockImplementationOnce(() => ["harness", vi.fn()])
+      .mockImplementationOnce(() => [null, vi.fn()])
       .mockImplementationOnce(() => [null, vi.fn()])
       .mockImplementationOnce(() => [false, vi.fn()])
       .mockImplementationOnce(() => ["light", vi.fn()])

@@ -92,7 +92,7 @@ describe("adaptive workspace docs contract", () => {
       readRepoFile(".codex/workspace-bootstrap.zsh"),
     ])
 
-    expect(readme).toContain("docs/adaptive-workspace.md")
+    expect(readme).toContain("docs/agent-workspace.md")
     expect(readme).toContain(
       "`agent-workspace/` is Fleet Pi's durable adaptive layer"
     )
