@@ -116,6 +116,20 @@ describe("answerChatQuestion", () => {
     expect(getPlanState(runtime).executing).toBe(true)
   })
 
+  it("rejects stale non-plan questionnaire answers", async () => {
+    const { answerChatQuestion } = await import("./server-runtime")
+
+    expect(
+      answerChatQuestion({
+        toolCallId: "questionnaire-missing",
+        answer: { kind: "skip" },
+      })
+    ).toEqual({
+      ok: false,
+      message: "Question is no longer active.",
+    })
+  })
+
   it("does not reuse a conflicting sessionId when sessionFile points elsewhere", async () => {
     const sessionFile = createSessionFile(root, "session-c.jsonl")
     const conflictingFile = createSessionFile(root, "session-other.jsonl")
@@ -183,6 +197,82 @@ describe("answerChatQuestion", () => {
       steering: [],
       followUp: [],
     })
+  })
+
+  it("aborts only active streaming sessions", async () => {
+    const sessionFile = createSessionFile(root, "session-abort.jsonl")
+    const { abortActiveSession, retainPiRuntime } =
+      await import("./server-runtime")
+    const runtime = createMockRuntime("session-abort", sessionFile)
+
+    retainPiRuntime(runtime)
+
+    await expect(
+      abortActiveSession({
+        sessionFile,
+        sessionId: "session-abort",
+      })
+    ).resolves.toBe(false)
+    expect(runtime.session.abort).not.toHaveBeenCalled()
+
+    runtime.session.isStreaming = true
+
+    await expect(
+      abortActiveSession({
+        sessionFile,
+        sessionId: "session-abort",
+      })
+    ).resolves.toBe(true)
+    expect(runtime.session.abortBash).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abortRetry).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abortCompaction).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abort).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not queue prompts or aborts when no matching runtime is active", async () => {
+    const sessionFile = createSessionFile(root, "session-idle.jsonl")
+    const { abortActiveSession, queuePromptOnActiveSession, retainPiRuntime } =
+      await import("./server-runtime")
+    const runtime = createMockRuntime("session-idle", sessionFile)
+
+    retainPiRuntime(runtime)
+
+    await expect(
+      queuePromptOnActiveSession(
+        {
+          sessionFile,
+          sessionId: "session-idle",
+        },
+        "queued prompt",
+        "followUp"
+      )
+    ).resolves.toBeUndefined()
+    expect(runtime.session.prompt).not.toHaveBeenCalled()
+
+    await expect(
+      abortActiveSession({
+        sessionId: "missing-session",
+      })
+    ).resolves.toBe(false)
+  })
+
+  it("clears a pending disposal timer when retaining the same runtime again", async () => {
+    vi.useFakeTimers()
+    const sessionFile = createSessionFile(root, "session-retain.jsonl")
+    const runtime = createMockRuntime("session-retain", sessionFile)
+
+    try {
+      const { retainPiRuntime } = await import("./server-runtime")
+      const releaseRuntime = retainPiRuntime(runtime)
+
+      releaseRuntime()
+      retainPiRuntime(runtime)
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(runtime.dispose).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("does not queue a follow-up onto another user's active runtime", async () => {
@@ -301,6 +391,10 @@ function createMockRuntime(sessionId: string, sessionFile: string) {
   return {
     dispose: vi.fn(() => Promise.resolve()),
     session: {
+      abort: vi.fn(() => Promise.resolve()),
+      abortBash: vi.fn(),
+      abortCompaction: vi.fn(),
+      abortRetry: vi.fn(),
       getFollowUpMessages: vi.fn(() => []),
       getSteeringMessages: vi.fn(() => []),
       isStreaming: false,
