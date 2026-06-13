@@ -91,7 +91,7 @@ function DiscreteTabs<T extends string = string>({
 
       const currentIndex = tabs.findIndex((tab) => tab.id === activeTab)
       const resolvedIndex = currentIndex >= 0 ? currentIndex : 0
-      let nextIndex = resolvedIndex
+      let nextIndex: number
 
       switch (event.key) {
         case "ArrowRight":

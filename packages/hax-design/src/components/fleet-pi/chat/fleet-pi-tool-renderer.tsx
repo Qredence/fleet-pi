@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react"
+import { memo, useMemo } from "react"
 import { ToolRenderer } from "../../agent-elements/tools/tool-renderer"
 import { getToolStatus } from "../../agent-elements/utils/format-tool"
 import { GenericTool } from "../../agent-elements/tools/generic-tool"
@@ -33,18 +33,11 @@ export const FleetPiToolRenderer = memo(function FleetPiToolRenderer(
     [props.part.input, props.part.args]
   )
 
-  const openTargetPath = useCallback(
-    (path: string) => {
-      openWorkspacePath(path)
-    },
-    [openWorkspacePath]
-  )
-
   if (partType === "tool-Edit" || partType === "tool-Write") {
     return (
       <EditTool
         part={props.part}
-        onFilePathClick={target ? openTargetPath : undefined}
+        onFilePathClick={target ? openWorkspacePath : undefined}
       />
     )
   }
@@ -77,7 +70,7 @@ export const FleetPiToolRenderer = memo(function FleetPiToolRenderer(
         subtitle={meta.subtitle?.(props.part)}
         isPending={isPending}
         isError={isError}
-        onSubtitleClick={() => openTargetPath(target.path)}
+        onSubtitleClick={() => openWorkspacePath(target.path)}
       />
     )
   }
