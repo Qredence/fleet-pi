@@ -128,4 +128,84 @@ describe("createSessionManager", () => {
       repoRoot
     )
   })
+
+  it("creates a fresh session when no metadata is supplied", async () => {
+    const freshSessionManager = { kind: "fresh-without-metadata" }
+    SessionManager.create.mockReturnValue(freshSessionManager)
+
+    const { createSessionManager } = await import("./server-sessions")
+
+    const result = await createSessionManager({}, repoRoot, sessionDir)
+
+    expect(result).toEqual({
+      sessionManager: freshSessionManager,
+      sessionReset: false,
+    })
+    expect(SessionManager.create).toHaveBeenCalledWith(repoRoot, sessionDir)
+    expect(SessionManager.list).not.toHaveBeenCalled()
+    expect(SessionManager.open).not.toHaveBeenCalled()
+  })
+
+  it("creates a reset session when the requested session cannot be opened", async () => {
+    const freshSessionManager = { kind: "fresh-after-open-failure" }
+    SessionManager.open.mockReturnValue(undefined)
+    SessionManager.create.mockReturnValue(freshSessionManager)
+
+    const { createSessionManager } = await import("./server-sessions")
+
+    const result = await createSessionManager(
+      { sessionFile: sessionFileA },
+      repoRoot,
+      sessionDir
+    )
+
+    expect(result).toEqual({
+      sessionManager: freshSessionManager,
+      sessionReset: true,
+    })
+    expect(SessionManager.open).toHaveBeenCalledWith(
+      sessionFileA,
+      sessionDir,
+      repoRoot
+    )
+  })
+
+  it("rejects missing, outside, and unresolved session files", async () => {
+    const { isUsableSessionFile, resolveSessionFile } =
+      await import("./server-sessions")
+
+    await expect(
+      resolveSessionFile(
+        { sessionFile: join(sessionDir, "missing.jsonl") },
+        repoRoot,
+        sessionDir
+      )
+    ).resolves.toBeUndefined()
+    await expect(
+      resolveSessionFile(
+        { sessionFile: outsideSessionFile },
+        repoRoot,
+        sessionDir
+      )
+    ).resolves.toBeUndefined()
+    expect(isUsableSessionFile(sessionFileA, sessionDir)).toBe(true)
+    expect(isUsableSessionFile(outsideSessionFile, sessionDir)).toBe(false)
+    expect(
+      isUsableSessionFile(sessionFileA, join(repoRoot, "missing-dir"))
+    ).toBe(false)
+  })
+
+  it("returns session metadata from a session manager", async () => {
+    const { toSessionMetadata } = await import("./server-sessions")
+
+    expect(
+      toSessionMetadata({
+        getSessionFile: () => sessionFileA,
+        getSessionId: () => "session-a",
+      } as never)
+    ).toEqual({
+      sessionFile: sessionFileA,
+      sessionId: "session-a",
+    })
+  })
 })

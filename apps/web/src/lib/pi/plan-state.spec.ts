@@ -5,7 +5,10 @@ import {
   createEmptyPlanState,
   createPlanEvent,
   createPlanToolPart,
+  isPlanDecisionToolCall,
   resolvePlanDecision,
+  restorePlanState,
+  toChatPlanState,
   updatePlanExecutionProgress,
   updatePlanStateFromAssistantText,
 } from "./plan-state"
@@ -137,5 +140,135 @@ describe("plan state", () => {
         },
       },
     })
+  })
+
+  it("restores persisted state defensively", () => {
+    expect(restorePlanState(null)).toEqual(createEmptyPlanState())
+    expect(
+      restorePlanState({
+        enabled: 1,
+        executing: true,
+        pendingDecision: true,
+        pendingDecisionToolCallId: 123,
+        todos: [
+          { step: 3, text: "Keep me", completed: true },
+          { text: "Infer step" },
+          { step: Number.NaN, text: "" },
+          null,
+        ],
+      })
+    ).toEqual({
+      enabled: true,
+      executing: true,
+      pendingDecision: true,
+      pendingDecisionToolCallId: undefined,
+      todos: [
+        { step: 3, text: "Keep me", completed: true },
+        { step: 2, text: "Infer step", completed: false },
+      ],
+    })
+  })
+
+  it("keeps state unchanged when there is no active plan work", () => {
+    const disabled = createEmptyPlanState()
+
+    expect(
+      updatePlanStateFromAssistantText(disabled, "Plan:\n1. Test")
+    ).toEqual({
+      state: disabled,
+      changed: false,
+    })
+    expect(
+      updatePlanExecutionProgress(
+        { ...disabled, todos: [{ step: 1, text: "Test", completed: false }] },
+        "[DONE:1]"
+      )
+    ).toEqual({
+      state: {
+        ...disabled,
+        todos: [{ step: 1, text: "Test", completed: false }],
+      },
+      changed: false,
+    })
+    expect(createPlanToolPart("assistant-empty", disabled)).toBeUndefined()
+  })
+
+  it("handles execute, refine, and stay-in-plan decisions", () => {
+    const ready = {
+      enabled: true,
+      executing: false,
+      pendingDecision: true,
+      pendingDecisionToolCallId: "plan-mode-decision-assistant",
+      todos: [{ step: 1, text: "Already done", completed: true }],
+    }
+
+    expect(applyPlanModeSelection(ready, "agent", "execute")).toMatchObject({
+      enabled: false,
+      executing: false,
+      pendingDecision: false,
+    })
+
+    const refineWithText = resolvePlanDecision(ready, {
+      kind: "text",
+      text: "Make the test narrower",
+    })
+    expect(refineWithText.state).toMatchObject({
+      enabled: true,
+      executing: false,
+      pendingDecision: false,
+    })
+    expect(refineWithText.response).toMatchObject({
+      mode: "plan",
+      planAction: "refine",
+      message: "Make the test narrower",
+    })
+
+    const stay = resolvePlanDecision(ready, { kind: "skip" })
+    expect(stay.response).toEqual({ ok: true })
+    expect(stay.state.enabled).toBe(true)
+  })
+
+  it("formats approved, executing, and completed plan snapshots", () => {
+    const executing = {
+      enabled: false,
+      executing: true,
+      pendingDecision: false,
+      todos: [
+        { step: 1, text: "Done", completed: true },
+        { step: 2, text: "Remaining", completed: false },
+      ],
+    }
+    const completed = {
+      ...executing,
+      executing: false,
+      todos: executing.todos.map((todo) => ({ ...todo, completed: true })),
+    }
+
+    expect(toChatPlanState(executing)).toMatchObject({
+      mode: "agent",
+      message: "Plan progress 1/2",
+      completed: 1,
+      total: 2,
+    })
+    expect(createPlanToolPart("assistant-running", executing)).toMatchObject({
+      input: {
+        executing: true,
+        plan: {
+          title: "Executing plan",
+          status: "approved",
+          summary: expect.stringContaining("Progress: 1/2 completed."),
+        },
+      },
+    })
+    expect(createPlanToolPart("assistant-complete", completed)).toMatchObject({
+      input: {
+        plan: {
+          status: "completed",
+          summary: expect.stringContaining("All plan steps are complete."),
+        },
+      },
+    })
+    expect(isPlanDecisionToolCall("plan-mode-decision-assistant")).toBe(true)
+    expect(isPlanDecisionToolCall("tool-other")).toBe(false)
   })
 })

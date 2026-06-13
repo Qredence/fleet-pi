@@ -126,6 +126,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
 - Keep the chat header stacked above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`) so inline DiscreteTab tooltips are not clipped or covered by the transcript column.
 - Align header `DiscreteTabs` with chrome pill tokens (`DISCRETE_TAB_ACTIVE_CLASS` / `DISCRETE_TAB_INACTIVE_CLASS`); use compact default sizing (12px labels, 14px icons, minimal tab gap).
+- Put newly added test files in a dedicated test directory for the module or area, such as `__tests__/`, instead of scattering new colocated test files.
 
 ## Learned Workspace Facts
 

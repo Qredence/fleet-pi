@@ -7,6 +7,8 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "generate:openui-signatures": "tsx scripts/generate-openui-signatures.ts"
   },
   "dependencies": {
@@ -41,6 +43,7 @@
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^10.4.0",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.1",
