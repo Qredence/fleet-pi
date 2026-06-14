@@ -16,15 +16,21 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
+      include: [
+        "src/lib/pi/{chat-fetch,chat-message-helpers,chat-stream-state,command-policy,plan-mode,plan-parser,plan-questionnaire,plan-state,provenance-query,question-pending,resource-install-refresh,run-provenance,server-catalog,server-chat-stream,server-sessions,server-settings,server-shared,server-utils,use-chat-storage,workspace-resource-catalog}.ts",
+        "src/routes/api/chat/{provenance,run,runs}.ts",
+        "src/routes/api/workspace/{file,health,item,items,reindex,search,tree}.ts",
+      ],
       thresholds: {
-        lines: 50,
-        functions: 50,
-        branches: 50,
-        statements: 50,
+        lines: 80,
+        functions: 80,
+        branches: 65,
+        statements: 80,
       },
       exclude: [
         "node_modules/",
         "src/routeTree.gen.ts",
+        "src/**/*.{test,spec}.{ts,tsx}",
         "**/*.d.ts",
         "**/*.config.*",
         "**/tests/**",

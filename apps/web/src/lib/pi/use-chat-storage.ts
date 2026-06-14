@@ -78,7 +78,9 @@ export function getChatSessionScope(mode: ChatMode): ChatSessionScope {
 }
 
 function readStoredBrowserSessions(): StoredChatSessions {
-  if (typeof window === "undefined") return EMPTY_STORED_SESSIONS
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage)
+    return EMPTY_STORED_SESSIONS
 
   try {
     const raw = window.localStorage.getItem(CHAT_SESSION_BY_SCOPE_STORAGE_KEY)
@@ -98,7 +100,9 @@ function readStoredBrowserSessions(): StoredChatSessions {
 }
 
 function readLegacyStoredBrowserSessions(): StoredChatSessions {
-  if (typeof window === "undefined") return EMPTY_STORED_SESSIONS
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage)
+    return EMPTY_STORED_SESSIONS
   const raw = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
   if (!raw) return EMPTY_STORED_SESSIONS
 
@@ -118,7 +122,8 @@ function parseSessionMetadata(value: unknown): ChatSessionMetadata {
 }
 
 function storeBrowserSessions(sessions: StoredChatSessions) {
-  if (typeof window === "undefined") return
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage) return
 
   const hasSession = Object.values(sessions).some(
     (metadata) => metadata.sessionFile || metadata.sessionId
@@ -138,7 +143,8 @@ function storeBrowserSessions(sessions: StoredChatSessions) {
 }
 
 function readStoredMode(): ChatMode {
-  if (typeof window === "undefined") return "agent"
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage) return "agent"
 
   const raw = window.localStorage.getItem(CHAT_MODE_STORAGE_KEY)
   if (!raw) return "agent"
@@ -158,6 +164,7 @@ function parseLegacyModeString(raw: string) {
 }
 
 function storeMode(mode: ChatMode) {
-  if (typeof window === "undefined") return
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage) return
   window.localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode)
 }

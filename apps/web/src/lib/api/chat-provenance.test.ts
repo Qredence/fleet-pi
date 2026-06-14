@@ -426,4 +426,72 @@ describe("chat provenance APIs", () => {
       }),
     ])
   })
+
+  it("returns stable error payloads for missing provenance query parameters", async () => {
+    createProjectRoot()
+
+    const runsResponse = await chatRunsHandler(createRequest("/api/chat/runs"))
+    const runsBody = (await runsResponse.json()) as {
+      ok: boolean
+      code: string
+      message: string
+    }
+
+    expect(runsResponse.status).toBe(400)
+    expect(runsBody).toEqual({
+      ok: false,
+      code: "session-identifier-required",
+      message: "Provide sessionId or sessionFile to list runs.",
+    })
+
+    const runResponse = await chatRunHandler(createRequest("/api/chat/run"))
+    const runBody = (await runResponse.json()) as {
+      ok: boolean
+      code: string
+      message: string
+    }
+
+    expect(runResponse.status).toBe(400)
+    expect(runBody).toEqual({
+      ok: false,
+      code: "run-id-required",
+      message: "Provide a run id.",
+    })
+
+    const provenanceResponse = await chatProvenanceHandler(
+      createRequest("/api/chat/provenance")
+    )
+    const provenanceBody = (await provenanceResponse.json()) as {
+      ok: boolean
+      code: string
+      message: string
+    }
+
+    expect(provenanceResponse.status).toBe(400)
+    expect(provenanceBody).toEqual({
+      ok: false,
+      code: "canonical-path-required",
+      message: "Provide a canonical repo-relative path inside this project.",
+    })
+  })
+
+  it("returns not found for unknown run detail requests", async () => {
+    createProjectRoot()
+
+    const response = await chatRunHandler(
+      createRequest("/api/chat/run?id=missing-run")
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      code: string
+      message: string
+    }
+
+    expect(response.status).toBe(404)
+    expect(body).toEqual({
+      ok: false,
+      code: "run-not-found",
+      message: "Run was not found.",
+    })
+  })
 })

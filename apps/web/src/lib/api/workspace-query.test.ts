@@ -538,3 +538,41 @@ describe("workspace query APIs", () => {
     expect(fileBody.content).toContain("stable-token")
   })
 })
+
+describe("workspace file route errors", () => {
+  it("returns route-level file errors without breaking workspace tree reads", async () => {
+    createProjectRoot()
+
+    const missingPathResponse = await workspaceFileHandler(
+      createRequest("/api/workspace/file")
+    )
+    const missingPathBody = (await missingPathResponse.json()) as {
+      message: string
+    }
+
+    expect(missingPathResponse.status).toBe(400)
+    expect(missingPathBody.message).toContain("path")
+
+    const outsidePathResponse = await workspaceFileHandler(
+      createRequest("/api/workspace/file?path=/etc/hosts")
+    )
+    const outsidePathBody = (await outsidePathResponse.json()) as {
+      message: string
+    }
+
+    expect(outsidePathResponse.status).toBe(400)
+    expect(outsidePathBody.message).toContain("project-relative")
+
+    const treeResponse = await workspaceTreeHandler(
+      createRequest("/api/workspace/tree")
+    )
+    const treeBody = (await treeResponse.json()) as {
+      root: string
+      nodes: Array<{ path: string }>
+    }
+
+    expect(treeResponse.status).toBe(200)
+    expect(treeBody.root).toBe("agent-workspace")
+    expect(treeBody.nodes.length).toBeGreaterThan(0)
+  })
+})
