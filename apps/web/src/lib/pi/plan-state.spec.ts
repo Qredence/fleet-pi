@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import {
   applyPlanModeSelection,
   bindPendingPlanDecisionToolCallId,
-  applyPlanModeSelection,
   createEmptyPlanState,
   createPlanEvent,
   createPlanToolPart,
