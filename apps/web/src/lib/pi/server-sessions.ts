@@ -27,7 +27,8 @@ export type SessionManagerResult = {
 }
 
 export async function createNewChatSession(
-  context: AppRuntimeContext
+  context: AppRuntimeContext,
+  options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
   const services = await createSessionServices(context)
   const sessionManager = SessionManager.create(
@@ -35,7 +36,7 @@ export async function createNewChatSession(
     getSessionDir(context.projectRoot, services)
   )
   // Fire-and-forget: mirror sync must not delay session response.
-  void syncPiSessionMirrorSafely(sessionManager)
+  void syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -96,13 +97,28 @@ export async function hydrateChatSession(
 }
 
 export async function listChatSessions(
-  context: AppRuntimeContext
+  context: AppRuntimeContext,
+  options: { userId?: string } = {}
 ): Promise<Array<ChatSessionInfo>> {
   const services = await createSessionServices(context)
-  const sessions = await SessionManager.list(
+  let sessions = await SessionManager.list(
     context.projectRoot,
     getSessionDir(context.projectRoot, services)
   )
+
+  if (options.userId) {
+    const { fetchUserSessionIds } = await import("@/lib/db/pi-session-mirror")
+    const allowedIds = new Set(await fetchUserSessionIds(options.userId))
+    // We assume if allowedIds is empty but DB is connected, the user has 0 sessions synced.
+    // If mirror is disabled, fetchUserSessionIds returns [] and we can't easily distinguish.
+    // A robust approach checks if mirror is enabled first.
+    const { isPiSessionMirrorEnabled } =
+      await import("@/lib/db/pi-session-mirror")
+    if (isPiSessionMirrorEnabled()) {
+      sessions = sessions.filter((s) => allowedIds.has(s.id))
+    }
+  }
+
   return sessions.map((session) => ({
     path: session.path,
     id: session.id,

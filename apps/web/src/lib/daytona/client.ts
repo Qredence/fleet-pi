@@ -65,10 +65,10 @@ export interface VolumeMountConfig {
 }
 
 /**
- * Create a Daytona client using environment configuration.
+ * Create a Daytona client using environment configuration or an explicitly provided key.
  */
-export function createDaytonaClient(): Daytona {
-  return new Daytona(resolveDaytonaConfig(process.env))
+export function createDaytonaClient(explicitApiKey?: string): Daytona {
+  return new Daytona(resolveDaytonaConfig(process.env, explicitApiKey))
 }
 
 export function resolveDaytonaConfig(
@@ -77,9 +77,10 @@ export function resolveDaytonaConfig(
       NodeJS.ProcessEnv,
       "DAYTONA_API_KEY" | "DAYTONA_API_URL" | "DAYTONA_TARGET"
     >
-  >
+  >,
+  explicitApiKey?: string
 ): DaytonaConfig {
-  const apiKey = env.DAYTONA_API_KEY
+  const apiKey = explicitApiKey || env.DAYTONA_API_KEY
   const apiUrl = env.DAYTONA_API_URL?.trim()
   const target = env.DAYTONA_TARGET?.trim()
 

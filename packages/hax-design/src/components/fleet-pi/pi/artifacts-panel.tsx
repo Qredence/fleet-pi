@@ -12,6 +12,7 @@ export function ArtifactsPanelContent({
   loadWorkspaceFile,
   loading,
   onSelectedPathChange,
+  onRefresh,
   selectedPath,
   workspace,
 }: Pick<
@@ -20,6 +21,7 @@ export function ArtifactsPanelContent({
   | "loadWorkspaceFile"
   | "loading"
   | "onSelectedPathChange"
+  | "onRefresh"
   | "selectedPath"
   | "workspace"
 >) {
@@ -35,6 +37,7 @@ export function ArtifactsPanelContent({
       loadWorkspaceFile={loadWorkspaceFile}
       loading={loading}
       onSelectedPathChange={onSelectedPathChange}
+      onRefresh={onRefresh}
       previewEmptyDescription="Choose a report, dataset, trace, or diagram to preview."
       previewEmptyTitle="Select an artifact"
       scopeLabel="artifacts"

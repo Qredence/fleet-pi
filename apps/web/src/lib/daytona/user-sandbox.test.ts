@@ -89,6 +89,10 @@ describe("isDaytonaEnabled", () => {
     expect(isDaytonaEnabled(undefined)).toBe(false)
   })
 
+  it("returns true when DAYTONA_API_KEY is not set but client key is provided", () => {
+    expect(isDaytonaEnabled("user123", "client-key")).toBe(true)
+  })
+
   it("returns false when DAYTONA_API_KEY is not set", () => {
     expect(isDaytonaEnabled("user123")).toBe(false)
   })

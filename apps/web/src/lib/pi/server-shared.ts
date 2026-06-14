@@ -50,6 +50,12 @@ export function getSessionDir(
   repoRoot: string,
   services: AgentSessionServices
 ) {
+  if (process.env.VERCEL === "1") {
+    const sessionDir = "/tmp/.fleet/sessions"
+    mkdirSync(sessionDir, { recursive: true })
+    return sessionDir
+  }
+
   const configuredSessionDir = services.settingsManager.getSessionDir()
   const sessionDir = configuredSessionDir
     ? resolve(repoRoot, configuredSessionDir)

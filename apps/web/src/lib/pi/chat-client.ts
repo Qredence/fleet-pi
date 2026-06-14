@@ -148,9 +148,18 @@ export const chatClient: ChatClient = {
   },
 
   async streamMessage(request, onEvent, signal) {
+    const daytonaKey =
+      typeof window !== "undefined"
+        ? localStorage.getItem("daytonaApiKey")
+        : null
+    const headers = new Headers({ "Content-Type": "application/json" })
+    if (daytonaKey) {
+      headers.set("x-daytona-api-key", daytonaKey)
+    }
+
     const response = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(request),
       signal,
     })

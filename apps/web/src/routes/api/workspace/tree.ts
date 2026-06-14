@@ -6,12 +6,19 @@ import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 export async function workspaceTreeHandler(request: Request) {
   try {
+    const { auth } = await import("@/lib/auth/server")
+    await auth.api.getSession({ headers: request.headers })
+
     const context = await resolveWorkspaceContext(request)
     return Response.json(await loadAgentWorkspaceTree(context))
   } catch (error) {
     return Response.json(
       { message: getErrorMessage(error) },
-      { status: getResponseStatus(error) }
+      {
+        status: getErrorMessage(error).includes("daytona_credential_required")
+          ? 403
+          : getResponseStatus(error),
+      }
     )
   }
 }

@@ -6,6 +6,21 @@ CREATE TABLE IF NOT EXISTS fleet_pi_chat_migrations (
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Enable RLS on pi_sessions to enforce user ownership at the database level
+ALTER TABLE IF EXISTS pi_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_sessions' AND policyname = 'pi_sessions_user_isolation'
+  ) THEN
+    CREATE POLICY pi_sessions_user_isolation ON pi_sessions
+      FOR ALL
+      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS pi_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NULL,

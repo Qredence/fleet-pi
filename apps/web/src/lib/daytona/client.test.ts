@@ -13,6 +13,14 @@ describe("Daytona client", () => {
     })
   })
 
+  it("prioritizes explicit api key over env", () => {
+    expect(
+      resolveDaytonaConfig({ DAYTONA_API_KEY: "key" }, "explicit-key")
+    ).toEqual({
+      apiKey: "explicit-key",
+    })
+  })
+
   it("passes optional API URL and target when configured", () => {
     expect(
       resolveDaytonaConfig({

@@ -55,6 +55,26 @@ export const Route = createFileRoute("/api/chat")({
             typeof body.message === "string" ? body.message.trim() : ""
           const prompt = sanitizePii(rawPrompt)
 
+          if (authSession?.user && body.sessionId) {
+            const { verifySessionOwnership } =
+              await import("@/lib/db/pi-session-mirror")
+            const isOwner = await verifySessionOwnership(
+              body.sessionId,
+              authSession.user.id
+            )
+            if (!isOwner) {
+              return new Response(
+                JSON.stringify({
+                  message: "Forbidden: Session belongs to another user",
+                }),
+                {
+                  status: 403,
+                  headers: { "Content-Type": "application/json" },
+                }
+              )
+            }
+          }
+
           log.info(
             { mode: body.mode, hasMessage: Boolean(prompt) },
             "chat request received"
@@ -96,6 +116,7 @@ export const Route = createFileRoute("/api/chat")({
               const recorder = createRunProvenanceRecorder(runtimeContext, {
                 mode: body.mode,
                 planAction: body.planAction,
+                userId: body.userId,
               })
               const send = (event: ChatStreamEvent) => {
                 recorder.record(event)

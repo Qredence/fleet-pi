@@ -44,6 +44,7 @@ import type {
 type RecorderOptions = {
   mode?: ChatMode
   planAction?: ChatPlanAction
+  userId?: string
 }
 
 type SnapshotEntry = {
@@ -154,17 +155,19 @@ export function createRunProvenanceRecorder(
           })
         }
         const startedRun = { ...activeRun }
-        postgresQueue.enqueue((client) =>
-          insertPiRunStart(client, {
-            runId: startedRun.runId,
-            assistantMessageId: startedRun.runId,
-            sessionId: startedRun.sessionId,
-            sessionFile: startedRun.sessionFile,
-            cwd: context.projectRoot,
-            mode: options.mode,
-            planAction: options.planAction,
-            startedAt,
-          })
+        postgresQueue.enqueue(
+          (client) =>
+            insertPiRunStart(client, {
+              runId: startedRun.runId,
+              assistantMessageId: startedRun.runId,
+              sessionId: startedRun.sessionId,
+              sessionFile: startedRun.sessionFile,
+              cwd: context.projectRoot,
+              mode: options.mode,
+              planAction: options.planAction,
+              startedAt,
+            }),
+          options.userId
         )
       }
 
@@ -187,15 +190,17 @@ export function createRunProvenanceRecorder(
       const eventRunId = activeRun.runId
       const eventSequence = activeRun.sequence
       const eventSummary = summarizeStreamEvent(event)
-      postgresQueue.enqueue((client) =>
-        appendPiRunEvent(client, {
-          runId: eventRunId,
-          sequence: eventSequence,
-          eventType: event.type,
-          summary: eventSummary,
-          payload: event,
-          recordedAt,
-        })
+      postgresQueue.enqueue(
+        (client) =>
+          appendPiRunEvent(client, {
+            runId: eventRunId,
+            sequence: eventSequence,
+            eventType: event.type,
+            summary: eventSummary,
+            payload: event,
+            recordedAt,
+          }),
+        options.userId
       )
 
       if (event.type === "tool") {
@@ -296,20 +301,22 @@ export function createRunProvenanceRecorder(
     }
     const runId = activeRun.runId
     const sessionId = activeRun.sessionId
-    postgresQueue.enqueue((client) =>
-      upsertPiToolExecution(client, {
-        sessionId,
-        runId,
-        toolCallId: nextToolCall.toolCallId,
-        toolName: nextToolCall.toolName,
-        state: nextToolCall.state,
-        isError: nextToolCall.isError,
-        input: asRecord(part.input),
-        output: asRecordOrNull(part.output),
-        claimedPaths: nextToolCall.claimedPaths,
-        firstSequence: nextToolCall.firstSequence,
-        lastSequence: nextToolCall.lastSequence,
-      })
+    postgresQueue.enqueue(
+      (client) =>
+        upsertPiToolExecution(client, {
+          sessionId,
+          runId,
+          toolCallId: nextToolCall.toolCallId,
+          toolName: nextToolCall.toolName,
+          state: nextToolCall.state,
+          isError: nextToolCall.isError,
+          input: asRecord(part.input),
+          output: asRecordOrNull(part.output),
+          claimedPaths: nextToolCall.claimedPaths,
+          firstSequence: nextToolCall.firstSequence,
+          lastSequence: nextToolCall.lastSequence,
+        }),
+      options.userId
     )
   }
 
@@ -340,12 +347,14 @@ export function createRunProvenanceRecorder(
         mutations,
       })
     }
-    postgresQueue.enqueue((client) =>
-      replacePiFileMutations(client, {
-        runId: runToFinalize.runId,
-        recordedAt,
-        mutations,
-      })
+    postgresQueue.enqueue(
+      (client) =>
+        replacePiFileMutations(client, {
+          runId: runToFinalize.runId,
+          recordedAt,
+          mutations,
+        }),
+      options.userId
     )
     const completedAt = timestamp()
     if (activeConnection) {
@@ -357,14 +366,16 @@ export function createRunProvenanceRecorder(
         completedAt,
       })
     }
-    postgresQueue.enqueue((client) =>
-      finalizePiRun(client, {
-        runId: runToFinalize.runId,
-        status,
-        assistantPreview: message ? summarizeAssistantMessage(message) : null,
-        errorMessage: errorMessage ?? null,
-        completedAt,
-      })
+    postgresQueue.enqueue(
+      (client) =>
+        finalizePiRun(client, {
+          runId: runToFinalize.runId,
+          status,
+          assistantPreview: message ? summarizeAssistantMessage(message) : null,
+          errorMessage: errorMessage ?? null,
+          completedAt,
+        }),
+      options.userId
     )
   }
 }

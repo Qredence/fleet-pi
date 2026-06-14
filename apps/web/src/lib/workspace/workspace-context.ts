@@ -1,4 +1,3 @@
-import { createSandboxWorkspaceFS } from "./workspace-fs"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
@@ -25,7 +24,16 @@ export async function resolveWorkspaceContext(
     return context
   }
 
-  if (!isDaytonaEnabled(userId)) {
+  const clientDaytonaApiKey = request.headers.get("x-daytona-api-key")
+
+  if (process.env.VERCEL === "1" && !clientDaytonaApiKey) {
+    throw new Error("daytona_credential_required")
+  }
+
+  if (
+    !isDaytonaEnabled(userId, clientDaytonaApiKey || undefined) &&
+    !clientDaytonaApiKey
+  ) {
     return context
   }
 
@@ -36,10 +44,13 @@ export async function resolveWorkspaceContext(
   const handle = await getUserSandbox({
     userId,
     userEmail: user.email,
+    apiKey: clientDaytonaApiKey || undefined,
   })
   const sb = handle.sandbox
 
   await daytonaExecuteCommand(sb, `mkdir -p ${SANDBOX_WORKSPACE_ROOT}`)
+
+  const { createSandboxWorkspaceFS } = await import("./workspace-fs")
 
   context.workspaceFS = createSandboxWorkspaceFS({
     executeCommand: (cmd, cwd) => daytonaExecuteCommand(sb, cmd, cwd),

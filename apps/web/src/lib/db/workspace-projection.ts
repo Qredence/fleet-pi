@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
-import { basename, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import Database from "better-sqlite3"
 import {
   WORKSPACE_INDEX_CATEGORY_VALUES,
@@ -274,6 +274,16 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
 ] as const
 
 export function getWorkspaceProjectionDatabasePath(context: AppRuntimeContext) {
+  if (process.env.VERCEL === "1") {
+    if (context.workspaceRoot.startsWith("/var/task")) {
+      return join(
+        "/tmp",
+        "agent-workspace",
+        "indexes",
+        WORKSPACE_PROJECTION_DATABASE_FILENAME
+      )
+    }
+  }
   return join(
     context.workspaceRoot,
     "indexes",
@@ -285,7 +295,7 @@ export function openWorkspaceProjection(
   context: AppRuntimeContext
 ): WorkspaceProjectionConnection {
   const databasePath = getWorkspaceProjectionDatabasePath(context)
-  mkdirSync(join(context.workspaceRoot, "indexes"), { recursive: true })
+  mkdirSync(dirname(databasePath), { recursive: true })
 
   const created = !existsSync(databasePath)
   const db = new Database(databasePath)

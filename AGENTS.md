@@ -138,6 +138,9 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## Learned Workspace Facts
 
+- Ensure proper Row-Level Security (RLS) is configured in Neon so users can only access their own past sessions, chats, and messages.
+- Use Daytona to provision secure, isolated sandbox volumes for each user's Workspace sidepanel.
+
 - GitHub releases: create an annotated `v*` tag on `main`, push to origin, wait for the release workflow CI, then polish notes via `gh release edit` (auto-generated notes are interim).
 - Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
 - OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`.

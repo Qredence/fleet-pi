@@ -9,7 +9,14 @@ export async function fetchJson<T>(
   url: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(url, init)
+  const daytonaKey =
+    typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
+  const headers = new Headers(init?.headers)
+  if (daytonaKey) {
+    headers.set("x-daytona-api-key", daytonaKey)
+  }
+
+  const response = await fetch(url, { ...init, headers })
   if (!response.ok) {
     const body = await response.text()
     throw new Error(body || `Request failed (${response.status})`)
@@ -22,7 +29,14 @@ export async function fetchValidatedJson<T>(
   schema: ZodType<T>,
   init?: RequestInit
 ): Promise<T> {
-  const data = await fetchJson<unknown>(url, init)
+  const daytonaKey =
+    typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
+  const headers = new Headers(init?.headers)
+  if (daytonaKey) {
+    headers.set("x-daytona-api-key", daytonaKey)
+  }
+
+  const data = await fetchJson<unknown>(url, { ...init, headers })
   return parseWithSchema(schema, data, `Response from ${url}`)
 }
 

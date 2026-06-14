@@ -18,12 +18,12 @@ const SESSION_VOLUME_PREFIX = "fleet-pi-sessions-"
 const MANAGED_BY_LABEL = "fleet-pi"
 const WORKSPACE_MOUNT_PATH = "/home/daytona/fleet-pi/agent-workspace"
 const SESSION_MOUNT_PATH = "/home/daytona/fleet-pi/.fleet"
-const REPOSITORY_ROOT = "/home/daytona/fleet-pi"
 const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
 export interface UserSandboxConfig {
   userId: string
   userEmail?: string
+  apiKey?: string
   cpu?: number
   memory?: number
   disk?: number
@@ -40,8 +40,11 @@ export interface UserSandboxHandle {
 const userSandboxes = new Map<string, UserSandboxHandle>()
 const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 
-export function isDaytonaEnabled(userId?: string): boolean {
-  return Boolean(userId) && Boolean(process.env.DAYTONA_API_KEY)
+export function isDaytonaEnabled(
+  userId?: string,
+  clientApiKey?: string
+): boolean {
+  return Boolean(userId) && Boolean(clientApiKey || process.env.DAYTONA_API_KEY)
 }
 
 export function getSandboxName(userId: string): string {
@@ -84,7 +87,7 @@ async function resolveUserSandbox(
     userSandboxes.delete(config.userId)
   }
 
-  const client = createDaytonaClient()
+  const client = createDaytonaClient(config.apiKey)
   const volumeName = getVolumeName(config.userId)
   const volume = await getOrCreateVolume(client, volumeName)
 
@@ -216,17 +219,18 @@ async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
   const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
   const command = [
     "set -e;",
-    `if [ ! -d ${shellEscape(`${REPOSITORY_ROOT}/.git`)} ]; then`,
+    `if [ ! -d ${shellEscape(`${WORKSPACE_MOUNT_PATH}/.git`)} ]; then`,
     "if ! command -v git >/dev/null 2>&1; then",
     "apt-get update && apt-get install -y git ca-certificates;",
     "fi;",
     "tmpdir=$(mktemp -d);",
     `git clone --depth 1 ${shellEscape(repoUrl)} "$tmpdir";`,
-    `mkdir -p ${shellEscape(REPOSITORY_ROOT)};`,
-    `cp -a "$tmpdir"/. ${shellEscape(REPOSITORY_ROOT)}/;`,
+    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)};`,
+    `cp -a "$tmpdir"/. ${shellEscape(WORKSPACE_MOUNT_PATH)}/;`,
     'rm -rf "$tmpdir";',
     "fi;",
-    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)} ${shellEscape(SESSION_MOUNT_PATH)}`,
+    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)} ${shellEscape(SESSION_MOUNT_PATH)};`,
+    `cd ${shellEscape(WORKSPACE_MOUNT_PATH)} && pnpm exec tsx apps/web/src/lib/workspace/bootstrap-agent-workspace.ts;`,
   ].join(" ")
   const result = await executeCommand(sandbox, command)
   if (result.exitCode !== 0) {

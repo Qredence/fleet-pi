@@ -151,8 +151,9 @@ export async function syncPiSessionMirror(
   const session = extractPiSessionMirrorInput(sessionManager, options)
   if (!session) return
 
-  await withChatPostgresTransaction((client) =>
-    upsertPiSessionMirror(client, session)
+  await withChatPostgresTransaction(
+    (client) => upsertPiSessionMirror(client, session),
+    options.userId
   )
 }
 
@@ -227,6 +228,88 @@ export function mapSessionEntryToMirrorRow(
     costTotal: normalized.costTotal,
     rawEntry: entry,
     entryTimestamp: entry.timestamp,
+  }
+}
+
+export async function withUserContext<T>(
+  pool: InstanceType<typeof Pool>,
+  userId: string | undefined,
+  operation: (client: PostgresQueryClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect()
+  try {
+    if (userId) {
+      await client.query("SET LOCAL app.current_user_id = $1", [userId])
+    }
+    return await operation(client)
+  } finally {
+    if (userId) {
+      await client.query("RESET app.current_user_id")
+    }
+    client.release()
+  }
+}
+
+export async function fetchUserSessionIds(
+  userId: string
+): Promise<Array<string>> {
+  if (!isPiSessionMirrorEnabled()) return []
+
+  const pool = getChatPostgresPool()
+  if (!pool) return []
+
+  try {
+    return await withUserContext(pool, userId, async (client) => {
+      const result = await client.query<{ id: string }>(
+        "SELECT id FROM pi_sessions WHERE user_id = $1",
+        [userId]
+      )
+      return result.rows.map((row) => row.id)
+    })
+  } catch (error) {
+    logger.warn(
+      { error, userId },
+      "[pi-session-mirror] failed to fetch user session IDs"
+    )
+    return []
+  }
+}
+
+export async function verifySessionOwnership(
+  sessionId: string,
+  userId: string
+): Promise<boolean> {
+  if (!isPiSessionMirrorEnabled()) return true
+
+  const pool = getChatPostgresPool()
+  if (!pool) return true
+
+  try {
+    return await withUserContext(pool, userId, async (client) => {
+      const result = await client.query<{ user_id: string | null }>(
+        "SELECT user_id FROM pi_sessions WHERE id = $1",
+        [sessionId]
+      )
+
+      if (result.rows.length === 0) {
+        // Session not synced to mirror yet, or doesn't exist
+        return true
+      }
+
+      const sessionUserId = result.rows[0].user_id
+      // If the session has a user_id, it must match the requesting user
+      if (sessionUserId && sessionUserId !== userId) {
+        return false
+      }
+
+      return true
+    })
+  } catch (error) {
+    logger.warn(
+      { error, sessionId, userId },
+      "[pi-session-mirror] failed to verify session ownership"
+    )
+    return true // Default to allow on DB failure
   }
 }
 
@@ -529,10 +612,25 @@ export function createChatPostgresOperationQueue() {
   let pending: Promise<void> = Promise.resolve()
 
   const enqueue = (
-    operation: (client: PostgresQueryClient) => Promise<void>
+    operation: (client: PostgresQueryClient) => Promise<void>,
+    userId?: string
   ) => {
     pending = pending
-      .then(() => operation(pool))
+      .then(async () => {
+        if (userId) {
+          // Provide RLS context manually for enqueue since it doesn't use the explicit transaction wrapper
+          const client = await pool.connect()
+          try {
+            await client.query("SET LOCAL app.current_user_id = $1", [userId])
+            await operation(client)
+          } finally {
+            await client.query("RESET app.current_user_id")
+            client.release()
+          }
+        } else {
+          await operation(pool)
+        }
+      })
       .catch((error) => {
         logger.debug(
           { error },
@@ -553,7 +651,8 @@ export function createChatPostgresOperationQueue() {
 }
 
 async function withChatPostgresTransaction(
-  operation: (client: PostgresQueryClient) => Promise<void>
+  operation: (client: PostgresQueryClient) => Promise<void>,
+  userId?: string
 ) {
   const pool = getChatPostgresPool()
   if (!pool) return
@@ -561,6 +660,9 @@ async function withChatPostgresTransaction(
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
+    if (userId) {
+      await client.query("SET LOCAL app.current_user_id = $1", [userId])
+    }
     await operation(client)
     await client.query("COMMIT")
   } catch (error) {
