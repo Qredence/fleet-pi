@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
+    "build:vercel": "vite build && node scripts/build-vercel-output.mjs",
     "preview": "vite preview",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",

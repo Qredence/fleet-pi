@@ -6,9 +6,59 @@ import { Pool } from "@neondatabase/serverless"
 import Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 
+const PRODUCTION_AUTH_URL = "https://fleet-pi-web.vercel.app"
+const LOCAL_AUTH_URL = "http://localhost:3000"
+const LOCAL_TRUSTED_ORIGINS = [
+  LOCAL_AUTH_URL,
+  "http://localhost:3001",
+  "http://localhost:3002",
+]
+const VERCEL_AUTH_HOSTS = [
+  "fleet-pi-web.vercel.app",
+  "fleet-pi-web-qredence.vercel.app",
+  "fleet-pi-web-git-main-qredence.vercel.app",
+  "*.vercel.app",
+]
+
+function isVercelRuntime() {
+  return process.env.VERCEL === "1"
+}
+
+function readCsvEnv(name: string) {
+  return (process.env[name] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
+
+function requiredVercelEnv(name: string) {
+  const value = process.env[name]?.trim()
+  if (!value && isVercelRuntime()) {
+    throw new Error(`${name} is required for Better Auth on Vercel.`)
+  }
+  return value
+}
+
+function toHost(value: string) {
+  try {
+    return new URL(value).host
+  } catch {
+    return value.replace(/^https?:\/\//, "").split("/")[0]
+  }
+}
+
+function unique(values: Array<string | undefined>) {
+  return [...new Set(values.filter(Boolean) as Array<string>)]
+}
+
 function openAuthDatabase() {
-  const url = process.env.FLEET_PI_AUTH_DATABASE_URL
+  const url = process.env.FLEET_PI_AUTH_DATABASE_URL?.trim()
   if (url) return new Pool({ connectionString: url })
+  if (isVercelRuntime()) {
+    throw new Error(
+      "FLEET_PI_AUTH_DATABASE_URL is required for Better Auth on Vercel."
+    )
+  }
 
   const dbPath =
     process.env.AUTH_DATABASE_PATH ??
@@ -69,19 +119,48 @@ function migrateAuthSchema(db: InstanceType<typeof Database>) {
   `)
 }
 
+function resolveAuthBaseURL() {
+  const configuredBaseURL = process.env.BETTER_AUTH_URL?.trim()
+  if (!isVercelRuntime()) return configuredBaseURL ?? LOCAL_AUTH_URL
+
+  return {
+    allowedHosts: unique([
+      configuredBaseURL ? toHost(configuredBaseURL) : undefined,
+      ...VERCEL_AUTH_HOSTS,
+    ]),
+    protocol: "https" as const,
+    fallback: configuredBaseURL ?? PRODUCTION_AUTH_URL,
+  }
+}
+
+function resolveTrustedOrigins() {
+  const configuredOrigins = readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS")
+  if (configuredOrigins.length > 0) return configuredOrigins
+  if (!isVercelRuntime()) {
+    return unique([
+      process.env.BETTER_AUTH_URL?.trim(),
+      ...LOCAL_TRUSTED_ORIGINS,
+    ])
+  }
+
+  return [
+    PRODUCTION_AUTH_URL,
+    "https://fleet-pi-web-qredence.vercel.app",
+    "https://fleet-pi-web-git-main-qredence.vercel.app",
+    "https://*.vercel.app",
+  ]
+}
+
+const betterAuthSecret = requiredVercelEnv("BETTER_AUTH_SECRET")
+const authSecret =
+  betterAuthSecret ?? "fleet-pi-local-development-secret-change-in-production"
+
 export const auth = betterAuth({
   database: openAuthDatabase(),
   basePath: "/api/auth",
-  secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-  trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
-    ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
-    : [
-        process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-      ],
+  secret: authSecret,
+  baseURL: resolveAuthBaseURL(),
+  trustedOrigins: resolveTrustedOrigins(),
   account: {
     accountLinking: {
       enabled: true,

@@ -22,6 +22,7 @@
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 - Apply Neon chat mirror migrations with `pnpm chat:migrate` after setting `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`.
+- Validate the Vercel build output with `NITRO_PRESET=vercel pnpm --filter web build:vercel` when deployment routing changes.
 
 ## Public Docs & Community Health
 
@@ -37,6 +38,13 @@
 ## Devcontainer
 
 The repository includes a VS Code devcontainer configuration at `.devcontainer/devcontainer.json` with Node.js, pnpm, Git, and recommended editor extensions. Open the project in a devcontainer to get a fully pre-configured development environment. Port `3000` is forwarded automatically and `pnpm install` runs after container creation.
+
+## Vercel Deployment
+
+- The `fleet-pi-web` Vercel project builds from `apps/web`; keep Vercel-specific settings in `apps/web/vercel.json`.
+- Vercel builds run `NITRO_PRESET=vercel pnpm build:vercel`; TanStack Start emits `dist/`, then `apps/web/scripts/build-vercel-output.mjs` packages it into `.vercel/output`.
+- Better Auth on Vercel requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, and `FLEET_PI_AUTH_DATABASE_URL`; the auth database must be Neon/Postgres, not the local SQLite fallback.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
 
 ## Codex Local Environment
 
