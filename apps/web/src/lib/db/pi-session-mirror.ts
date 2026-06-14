@@ -239,7 +239,9 @@ export async function withUserContext<T>(
   const client = await pool.connect()
   try {
     if (userId) {
-      await client.query("SET LOCAL app.current_user_id = $1", [userId])
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [
+        userId,
+      ])
     }
     return await operation(client)
   } finally {
@@ -621,7 +623,10 @@ export function createChatPostgresOperationQueue() {
           // Provide RLS context manually for enqueue since it doesn't use the explicit transaction wrapper
           const client = await pool.connect()
           try {
-            await client.query("SET LOCAL app.current_user_id = $1", [userId])
+            await client.query(
+              "SELECT set_config('app.current_user_id', $1, true)",
+              [userId]
+            )
             await operation(client)
           } finally {
             await client.query("RESET app.current_user_id")
@@ -661,7 +666,9 @@ async function withChatPostgresTransaction(
   try {
     await client.query("BEGIN")
     if (userId) {
-      await client.query("SET LOCAL app.current_user_id = $1", [userId])
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [
+        userId,
+      ])
     }
     await operation(client)
     await client.query("COMMIT")
