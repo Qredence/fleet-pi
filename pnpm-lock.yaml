@@ -62,8 +62,8 @@ importers:
         specifier: ^0.8.0
         version: 0.8.0(prettier@3.8.3)
       syncpack:
-        specifier: ^14.3.1
-        version: 14.3.1
+        specifier: ^15.3.1
+        version: 15.3.1
       turbo:
         specifier: ^2.9.14
         version: 2.9.16
@@ -578,6 +578,10 @@ packages:
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/code-frame@7.29.7':
+    resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/compat-data@7.29.3':
     resolution: {integrity: sha512-LIVqM46zQWZhj17qA8wb4nW/ixr2y1Nw+r1etiAWgRM6U1IqP+LNhL1yg440jYZR72jCWcWbLWzIosH+uP1fqg==}
     engines: {node: '>=6.9.0'}
@@ -648,6 +652,10 @@ packages:
     resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/helper-validator-identifier@7.29.7':
+    resolution: {integrity: sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/helper-validator-option@7.27.1':
     resolution: {integrity: sha512-YvjJow9FxbhFFKDSuFnVCe2WxXk1zWc22fFePVNEaWJEu8IrZVlda6N0uHwzZrUM1il7NC9Mlp4MaJYbYd9JSg==}
     engines: {node: '>=6.9.0'}
@@ -693,6 +701,10 @@ packages:
 
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
@@ -6187,6 +6199,11 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
+  srvx@0.11.16:
+    resolution: {integrity: sha512-bp07zRuycfTY43IjAvvTFnmnJi8ikW0VFiHwOhhYcVW/L4xQ1XY4PAd4Nuum1rsA17C39zL7x+CDhrn5AL32Rw==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
   stable-hash-x@0.2.0:
     resolution: {integrity: sha512-o3yWv49B/o4QZk5ZcsALc6t0+eCelPc44zZsLtCQnZPDwFpDYSWcDnrv2TtMmMbQ7uKo3J0HTURCqckw23czNQ==}
     engines: {node: '>=12.0.0'}
@@ -6295,48 +6312,48 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  syncpack-darwin-arm64@14.3.1:
-    resolution: {integrity: sha512-WtHbqXCEDSRzdqTIroYqYSMW/0yQ8dYvpucQ6SKsbVE86K5wjFd37TOIDFM5NLudCYASJpy4FXv7G/HxHAyRLw==}
+  syncpack-darwin-arm64@15.3.1:
+    resolution: {integrity: sha512-XvbaowC/fw+B7diOtoYjEtSWJVMEbJ7ZH72/TZIe73NwYwY7KFRMVefwxcJE29G+my4vaPmttf2Lbnri8pD6Jw==}
     cpu: [arm64]
     os: [darwin]
 
-  syncpack-darwin-x64@14.3.1:
-    resolution: {integrity: sha512-K+Zx1TN67vllDLrouc6YISOhhWm7RxrRE7087ea36T85WNq4JvI+M3UBJoxRjaJ+0v3wBA2YmBzEHzJg8skAww==}
+  syncpack-darwin-x64@15.3.1:
+    resolution: {integrity: sha512-KX5+fcHzaGugppyPV3se8iKoFYE5Jde3ZxN80dJKNejluP29rGmOQ1JNaVjy40nZInPNLKQ8LS0TMRtxIgh8ew==}
     cpu: [x64]
     os: [darwin]
 
-  syncpack-linux-arm64-musl@14.3.1:
-    resolution: {integrity: sha512-gZTLgIS0irmZx2HjZqco9YsbYe6sz/5Lce/yKmTBdCaHCpurb+TZA97nu5FxXSAA0HKs3Nzi8CDjNzv+yAQUXw==}
+  syncpack-linux-arm64-musl@15.3.1:
+    resolution: {integrity: sha512-YslfJ1UndTwL000p0JTP/r8uwXJ4LfYeFBqAfRhLuWoJz8CO+yWyUl4VNdFNitSR1OOB/J7gc4q3jOsxh7kTOg==}
     cpu: [arm64]
     os: [linux]
 
-  syncpack-linux-arm64@14.3.1:
-    resolution: {integrity: sha512-+5fXNoKz2ZqQszplZGp6J9ZKL6JW1hr3BMjEkklYz+jufX9rH/MWY0hcRCfHJSuvcTUrsYo/koqU/UnBiANjGg==}
+  syncpack-linux-arm64@15.3.1:
+    resolution: {integrity: sha512-5saJ4LnizTppqVLt49MKagTixDpuR+5MFweGCkoEAm4SikLqNfzkiEnHqVsjY3+BkCVtXf6DcR1OX6hwswNJ0A==}
     cpu: [arm64]
     os: [linux]
 
-  syncpack-linux-x64-musl@14.3.1:
-    resolution: {integrity: sha512-NK+1Qm762bbXDYqAz2+++NlJ9jONX+3Hrulp4XpytFEIGABiy8wIzouBpxZkppf30+1mxt4o8LMtZ8P54/ObNA==}
+  syncpack-linux-x64-musl@15.3.1:
+    resolution: {integrity: sha512-/mnWa3FmzJRsDLuqx6rzQIawV5ly1MFyUPxcZlaLX3FbxBryrVXJZZXGd0yJ9UTEKgE5UfRRQlS+ayeXvJbNew==}
     cpu: [x64]
     os: [linux]
 
-  syncpack-linux-x64@14.3.1:
-    resolution: {integrity: sha512-v1Y4D0oB2uIx+Npy1eD384adOSKvrjtu3VodjcQ/2aK4rTjVZl3k4eOA5py4I4Qdt6+zC6n+t5KrGuiaiBlbWQ==}
+  syncpack-linux-x64@15.3.1:
+    resolution: {integrity: sha512-bk8keNTteQxXpKDc+Y3r3fE7IZn4cU61gq7ka4gPcBNvvMHOk8Pg71/qQEwN3zBtzAj6yF1Fyzb0NYK9Wo6EPQ==}
     cpu: [x64]
     os: [linux]
 
-  syncpack-windows-arm64@14.3.1:
-    resolution: {integrity: sha512-xf+i8B5dDc3AIG8ZFF215gLQF0PKXQC6I8skmEfGy36oFh3VTAJKBjgEg6P8R3FC9/kRzkWFcDZmNLkbKN6YmA==}
+  syncpack-windows-arm64@15.3.1:
+    resolution: {integrity: sha512-GIKQtpNl1Ox2gwBDlEXgL1rneMwUMG0E3eB+EjDKdh4kOJtO0DYduTgg10dmFk/i1ynKGvFtgvhN3VZAr75jgA==}
     cpu: [arm64]
     os: [win32]
 
-  syncpack-windows-x64@14.3.1:
-    resolution: {integrity: sha512-gjbWwc05RcekcrLHOi5gq0JKvhoIMNqbUnAvPZLu46/+HrYuuJiUqruoj6y/GbCuvoQ880E820GF1pQFW9xNXA==}
+  syncpack-windows-x64@15.3.1:
+    resolution: {integrity: sha512-4Kl7gCFzaEF7IoHa3vcEHRPx1um8pnzEqidRyQProIJBROG4srgkyQkmwJUXbWzWJhAq2Ic0vtDUvzIXF2U/Dg==}
     cpu: [x64]
     os: [win32]
 
-  syncpack@14.3.1:
-    resolution: {integrity: sha512-TCqOY6Z7TH5yHV3saI6sHb5XRsZ8m2DaI4FQMonKT7UoCKL2WBiI54PLEFDSv1F2sL1BZA5e1opprf190ohirg==}
+  syncpack@15.3.1:
+    resolution: {integrity: sha512-0Z+/rwbskj+m5qW8caVbd59OwwXBcxRiDFk82Cb4tKGLPXmZn7Vjo7BnfxHwZqS51Ff+5TFgH5/iyXd24+G6YA==}
     engines: {node: '>=14.17.0'}
     hasBin: true
 
@@ -7533,6 +7550,12 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
+  '@babel/code-frame@7.29.7':
+    dependencies:
+      '@babel/helper-validator-identifier': 7.29.7
+      js-tokens: 4.0.0
+      picocolors: 1.1.1
+
   '@babel/compat-data@7.29.3': {}
 
   '@babel/core@7.29.0':
@@ -7639,6 +7662,8 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.28.5': {}
 
+  '@babel/helper-validator-identifier@7.29.7': {}
+
   '@babel/helper-validator-option@7.27.1': {}
 
   '@babel/helpers@7.29.2':
@@ -7691,6 +7716,8 @@ snapshots:
       - supports-color
 
   '@babel/runtime@7.29.2': {}
+
+  '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -9573,8 +9600,8 @@ snapshots:
 
   '@testing-library/dom@10.4.1':
     dependencies:
-      '@babel/code-frame': 7.29.0
-      '@babel/runtime': 7.29.2
+      '@babel/code-frame': 7.29.7
+      '@babel/runtime': 7.29.7
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -11385,7 +11412,7 @@ snapshots:
   h3@2.0.1-rc.20(crossws@0.4.5(srvx@0.11.15)):
     dependencies:
       rou3: 0.8.1
-      srvx: 0.11.15
+      srvx: 0.11.16
     optionalDependencies:
       crossws: 0.4.5(srvx@0.11.15)
 
@@ -13512,6 +13539,8 @@ snapshots:
 
   srvx@0.11.15: {}
 
+  srvx@0.11.16: {}
+
   stable-hash-x@0.2.0: {}
 
   stackback@0.0.2: {}
@@ -13624,40 +13653,40 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  syncpack-darwin-arm64@14.3.1:
+  syncpack-darwin-arm64@15.3.1:
     optional: true
 
-  syncpack-darwin-x64@14.3.1:
+  syncpack-darwin-x64@15.3.1:
     optional: true
 
-  syncpack-linux-arm64-musl@14.3.1:
+  syncpack-linux-arm64-musl@15.3.1:
     optional: true
 
-  syncpack-linux-arm64@14.3.1:
+  syncpack-linux-arm64@15.3.1:
     optional: true
 
-  syncpack-linux-x64-musl@14.3.1:
+  syncpack-linux-x64-musl@15.3.1:
     optional: true
 
-  syncpack-linux-x64@14.3.1:
+  syncpack-linux-x64@15.3.1:
     optional: true
 
-  syncpack-windows-arm64@14.3.1:
+  syncpack-windows-arm64@15.3.1:
     optional: true
 
-  syncpack-windows-x64@14.3.1:
+  syncpack-windows-x64@15.3.1:
     optional: true
 
-  syncpack@14.3.1:
+  syncpack@15.3.1:
     optionalDependencies:
-      syncpack-darwin-arm64: 14.3.1
-      syncpack-darwin-x64: 14.3.1
-      syncpack-linux-arm64: 14.3.1
-      syncpack-linux-arm64-musl: 14.3.1
-      syncpack-linux-x64: 14.3.1
-      syncpack-linux-x64-musl: 14.3.1
-      syncpack-windows-arm64: 14.3.1
-      syncpack-windows-x64: 14.3.1
+      syncpack-darwin-arm64: 15.3.1
+      syncpack-darwin-x64: 15.3.1
+      syncpack-linux-arm64: 15.3.1
+      syncpack-linux-arm64-musl: 15.3.1
+      syncpack-linux-x64: 15.3.1
+      syncpack-linux-x64-musl: 15.3.1
+      syncpack-windows-arm64: 15.3.1
+      syncpack-windows-x64: 15.3.1
 
   tagged-tag@1.0.0: {}
 
