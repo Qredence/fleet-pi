@@ -2,23 +2,23 @@
 
 Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 
-## Memory snippet extraction is static
+## Memory snippet extraction is static (Resolved & Active)
 
-- Issue: `extractMemorySnippets` in `workspace-memory-index.ts` always picks the first 4 bullet-list lines from each canonical memory file and surfaces the first 3 per file in startup context (max 15 snippets). Selection is order-based, not prompt-aware.
+- Issue: `extractMemorySnippets` in `.pi/extensions/lib/workspace-memory-index.ts` has historically picked the first 4 bullet-list lines from each canonical memory file and surfaced the first 3 per file in startup context (max 15 snippets). Selection was order-based, not prompt-aware.
 - Affected area: `.pi/extensions/lib/workspace-memory-index.ts`, `.pi/extensions/workspace-context.ts`, startup context quality.
 - Symptoms: Every turn receives the same 15 snippets regardless of what the user is asking. Facts buried below the first 4 bullets in any file are never surfaced. New memory added at the end of a section may be invisible to recall.
-- Current status: A prompt-aware retrieval plan using `workspace_index` search scoring is actively being implemented as part of the memory-recall improvement plan.
-- Workaround: Place the most broadly useful, frequently relevant facts at the top of each section in canonical memory files so they are likely to be in the first 4 bullets.
-- Follow-up: Implement keyword-scored retrieval in `workspace-memory-index.ts` and validate with a `memory-recall.md` autocontext eval.
+- Current status: **Fully resolved, implemented, and active in production!** Clean, robust prompt-aware keyword-based retrieval is directly written and fully operational inside `.pi/extensions/lib/workspace-memory-index.ts` and `.pi/extensions/workspace-context.ts`.
+- Workaround: No workaround needed anymore. Every user prompt triggers dynamic term-extraction, stop-word filtering, snippet keyword-matching, stable-sorting, and context injection.
+- Follow-up: Verify using the test prompts in `agent-workspace/evals/memory-recall.md` on successive turns.
 
 ## Canonical memory enrichment is in progress
 
 - Issue: The canonical project memory files existed as seeded stubs, so Fleet Pi had a memory contract but little durable recall content.
 - Affected area: `agent-workspace/memory/project/*`, workspace startup context, and memory recall behavior.
 - Symptoms: Startup context could report memory file status but had few useful facts to inject.
-- Current status: Memory files are actively being enriched as part of the memory-recall improvement plan. All five canonical files now have substantive content.
+- Current status: Enriched successfully. All five canonical files now contain substantive, detailed content with 4+ sections.
 - Workaround: If recall is insufficient, inspect `agent-workspace/memory/project/*` directly and synthesize missing durable facts into the narrowest canonical file.
-- Follow-up: Add prompt-aware memory retrieval and a memory-recall eval to detect regressions.
+- Follow-up: Done! Dynamic retrieval now leverages these rich memory files dynamically on every turn.
 
 ## Self-improvement loop is not fully closed
 
@@ -62,5 +62,5 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Affected area: `pi-autocontext` package, `autocontext_scenarios`, `autocontext_queue` tools.
 - Symptoms: Cannot list registered scenarios or queue background evaluation tasks.
 - Current status: The `autocontext_judge` tool is separately blocked by the Anthropic auth issue. Formal scenario registration is unavailable.
-- Workaround: Use `autocontext_judge` directly (when auth is resolved) with the rubric from `agent-workspace/evals/memory-recall.md`. Document the scenario spec as a plain Markdown artifact instead.
+- Workaround: Use `autocontext_judge` directly (when auth is resolved) with the rubric from `agent-workspace/evals/memory-recall-scenario-spec.md`. Document the scenario spec as a plain Markdown artifact instead.
 - Follow-up: Update `pi-autocontext` package or pin `zod-to-json-schema` to a version that includes `parsers/any.js`.
