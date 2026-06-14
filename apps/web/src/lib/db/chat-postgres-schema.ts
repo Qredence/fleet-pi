@@ -168,6 +168,28 @@ ON pi_file_mutations(run_id, canonical_path);
 CREATE INDEX IF NOT EXISTS pi_file_mutations_path_idx
 ON pi_file_mutations(canonical_path, recorded_at, run_id);
 
+CREATE TABLE IF NOT EXISTS pi_user_providers (
+  user_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  encrypted_key TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, provider_id)
+);
+
+ALTER TABLE IF EXISTS pi_user_providers ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_user_providers' AND policyname = 'pi_user_providers_isolation'
+  ) THEN
+    CREATE POLICY pi_user_providers_isolation ON pi_user_providers
+      FOR ALL
+      USING (user_id = current_setting('app.current_user_id', true));
+  END IF;
+END $$;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fleet_pi_app') THEN
@@ -177,7 +199,8 @@ BEGIN
       pi_runs,
       pi_run_events,
       pi_tool_executions,
-      pi_file_mutations
+      pi_file_mutations,
+      pi_user_providers
     TO fleet_pi_app;
   END IF;
 END $$;

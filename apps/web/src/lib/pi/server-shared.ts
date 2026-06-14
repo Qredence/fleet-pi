@@ -8,9 +8,11 @@ import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
 } from "../workspace/bootstrap-agent-workspace"
+import { KNOWN_PROVIDERS } from "../../routes/api/chat/providers"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../workspace/bootstrap-agent-workspace"
+
 
 export const DEFAULT_MODEL = "gemini-3.5-flash"
 
@@ -36,6 +38,13 @@ export async function createSessionServices(
   context: AppRuntimeContext,
   overrides?: Parameters<typeof createAgentSessionServices>[0]
 ) {
+  if (process.env.VERCEL === "1") {
+    // Strictly enforce BYOK on Vercel by scrubbing global LLM env vars
+    for (const provider of KNOWN_PROVIDERS) {
+      delete process.env[provider.envVarName]
+    }
+  }
+
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
   const services = await createAgentSessionServices({
     cwd: context.projectRoot,

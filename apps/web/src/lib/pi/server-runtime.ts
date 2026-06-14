@@ -238,6 +238,37 @@ export async function createPiRuntime(
       modelSelection
     )
 
+    if (process.env.VERCEL === "1" && metadata.userId) {
+      const { withChatPostgresTransaction } =
+        await import("@/lib/db/pi-session-mirror")
+      const { decryptString } = await import("@/lib/auth/crypto")
+
+      if (!process.env.BETTER_AUTH_SECRET) {
+        throw new Error(
+          "BETTER_AUTH_SECRET is missing, cannot decrypt user LLM keys"
+        )
+      }
+
+      await withChatPostgresTransaction(async (client: any) => {
+        const res = await client.query(
+          "SELECT provider_id, encrypted_key FROM pi_user_providers WHERE user_id = $1",
+          [metadata.userId]
+        )
+        for (const row of res.rows) {
+          const decrypted = decryptString(
+            row.encrypted_key,
+            process.env.BETTER_AUTH_SECRET!
+          )
+          if (decrypted) {
+            runtimeServices.authStorage.setRuntimeApiKey(
+              row.provider_id,
+              decrypted
+            )
+          }
+        }
+      }, metadata.userId)
+    }
+
     let customTools: Array<ToolDefinition> | undefined
     if (isDaytonaEnabled(metadata.userId)) {
       const handle = await getUserSandbox({

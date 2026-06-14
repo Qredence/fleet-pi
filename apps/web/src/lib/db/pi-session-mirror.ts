@@ -655,7 +655,7 @@ export function createChatPostgresOperationQueue() {
   }
 }
 
-async function withChatPostgresTransaction(
+export async function withChatPostgresTransaction(
   operation: (client: PostgresQueryClient) => Promise<void>,
   userId?: string
 ) {
