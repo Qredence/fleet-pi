@@ -36,7 +36,7 @@ const config = defineConfig({
   ],
   ssr: {
     external: [
-      "@daytonaio/sdk",
+      "@daytona/sdk",
       "@daytona/api-client",
       "@daytona/toolbox-api-client",
     ],

@@ -5,13 +5,13 @@
  * using DAYTONA_API_KEY and DAYTONA_API_URL from environment.
  */
 
-import { Daytona, DaytonaError } from "@daytonaio/sdk"
+import { Daytona, DaytonaError } from "@daytona/sdk"
 import type {
   CreateSandboxBaseParams,
   DaytonaConfig,
   Sandbox,
   VolumeMount,
-} from "@daytonaio/sdk"
+} from "@daytona/sdk"
 
 const DEFAULT_RESOURCES = {
   cpu: 1,

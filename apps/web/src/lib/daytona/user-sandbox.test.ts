@@ -19,7 +19,7 @@ import {
   startSandbox,
   stopSandbox,
 } from "./client"
-import type { Daytona, Sandbox } from "@daytonaio/sdk"
+import type { Daytona, Sandbox } from "@daytona/sdk"
 import type * as DaytonaClientModule from "./client"
 
 vi.mock("./client", async (importOriginal) => {

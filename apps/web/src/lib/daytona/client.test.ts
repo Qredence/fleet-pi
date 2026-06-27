@@ -4,7 +4,7 @@ import {
   createVolumeMount,
   resolveDaytonaConfig,
 } from "./client"
-import type { Daytona, Sandbox } from "@daytonaio/sdk"
+import type { Daytona, Sandbox } from "@daytona/sdk"
 
 describe("Daytona client", () => {
   it("uses SDK defaults when optional Daytona environment is omitted", () => {
