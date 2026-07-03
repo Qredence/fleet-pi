@@ -268,7 +268,7 @@ export function ProviderCredentialsSection({
 
                   <div
                     className={cn(
-                      "grid transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      "grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
                       isEditing
                         ? "grid-rows-[1fr] opacity-100"
                         : "grid-rows-[0fr] opacity-0"
