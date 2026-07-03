@@ -8,371 +8,371 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root"
-import { Route as LoginRouteImport } from "./routes/login"
-import { Route as IndexRouteImport } from "./routes/index"
-import { Route as ApiHealthRouteImport } from "./routes/api/health"
-import { Route as ApiChatRouteImport } from "./routes/api/chat"
-import { Route as ApiWorkspaceTreeRouteImport } from "./routes/api/workspace/tree"
-import { Route as ApiWorkspaceSearchRouteImport } from "./routes/api/workspace/search"
-import { Route as ApiWorkspaceReindexRouteImport } from "./routes/api/workspace/reindex"
-import { Route as ApiWorkspaceItemsRouteImport } from "./routes/api/workspace/items"
-import { Route as ApiWorkspaceItemRouteImport } from "./routes/api/workspace/item"
-import { Route as ApiWorkspaceHealthRouteImport } from "./routes/api/workspace/health"
-import { Route as ApiWorkspaceFileRouteImport } from "./routes/api/workspace/file"
-import { Route as ApiWebhooksDaytonaRouteImport } from "./routes/api/webhooks/daytona"
-import { Route as ApiSandboxSettingsRouteImport } from "./routes/api/sandbox/settings"
-import { Route as ApiSandboxPreviewRouteImport } from "./routes/api/sandbox/preview"
-import { Route as ApiChatSettingsRouteImport } from "./routes/api/chat/settings"
-import { Route as ApiChatSessionsRouteImport } from "./routes/api/chat/sessions"
-import { Route as ApiChatSessionRouteImport } from "./routes/api/chat/session"
-import { Route as ApiChatRunsRouteImport } from "./routes/api/chat/runs"
-import { Route as ApiChatRunRouteImport } from "./routes/api/chat/run"
-import { Route as ApiChatResumeRouteImport } from "./routes/api/chat/resume"
-import { Route as ApiChatResourcesRouteImport } from "./routes/api/chat/resources"
-import { Route as ApiChatQuestionRouteImport } from "./routes/api/chat/question"
-import { Route as ApiChatProvidersRouteImport } from "./routes/api/chat/providers"
-import { Route as ApiChatProvenanceRouteImport } from "./routes/api/chat/provenance"
-import { Route as ApiChatNewRouteImport } from "./routes/api/chat/new"
-import { Route as ApiChatModelsRouteImport } from "./routes/api/chat/models"
-import { Route as ApiChatAbortRouteImport } from "./routes/api/chat/abort"
-import { Route as ApiAuthSessionRouteImport } from "./routes/api/auth/session"
-import { Route as ApiAuthSplatRouteImport } from "./routes/api/auth/$"
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiWorkspaceTreeRouteImport } from './routes/api/workspace/tree'
+import { Route as ApiWorkspaceSearchRouteImport } from './routes/api/workspace/search'
+import { Route as ApiWorkspaceReindexRouteImport } from './routes/api/workspace/reindex'
+import { Route as ApiWorkspaceItemsRouteImport } from './routes/api/workspace/items'
+import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/item'
+import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
+import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
+import { Route as ApiWebhooksDaytonaRouteImport } from './routes/api/webhooks/daytona'
+import { Route as ApiSandboxSettingsRouteImport } from './routes/api/sandbox/settings'
+import { Route as ApiSandboxPreviewRouteImport } from './routes/api/sandbox/preview'
+import { Route as ApiChatSettingsRouteImport } from './routes/api/chat/settings'
+import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
+import { Route as ApiChatSessionRouteImport } from './routes/api/chat/session'
+import { Route as ApiChatRunsRouteImport } from './routes/api/chat/runs'
+import { Route as ApiChatRunRouteImport } from './routes/api/chat/run'
+import { Route as ApiChatResumeRouteImport } from './routes/api/chat/resume'
+import { Route as ApiChatResourcesRouteImport } from './routes/api/chat/resources'
+import { Route as ApiChatQuestionRouteImport } from './routes/api/chat/question'
+import { Route as ApiChatProvidersRouteImport } from './routes/api/chat/providers'
+import { Route as ApiChatProvenanceRouteImport } from './routes/api/chat/provenance'
+import { Route as ApiChatNewRouteImport } from './routes/api/chat/new'
+import { Route as ApiChatModelsRouteImport } from './routes/api/chat/models'
+import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
+import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const LoginRoute = LoginRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: "/api/health",
-  path: "/api/health",
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
-  id: "/api/chat",
-  path: "/api/chat",
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceTreeRoute = ApiWorkspaceTreeRouteImport.update({
-  id: "/api/workspace/tree",
-  path: "/api/workspace/tree",
+  id: '/api/workspace/tree',
+  path: '/api/workspace/tree',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceSearchRoute = ApiWorkspaceSearchRouteImport.update({
-  id: "/api/workspace/search",
-  path: "/api/workspace/search",
+  id: '/api/workspace/search',
+  path: '/api/workspace/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceReindexRoute = ApiWorkspaceReindexRouteImport.update({
-  id: "/api/workspace/reindex",
-  path: "/api/workspace/reindex",
+  id: '/api/workspace/reindex',
+  path: '/api/workspace/reindex',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceItemsRoute = ApiWorkspaceItemsRouteImport.update({
-  id: "/api/workspace/items",
-  path: "/api/workspace/items",
+  id: '/api/workspace/items',
+  path: '/api/workspace/items',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceItemRoute = ApiWorkspaceItemRouteImport.update({
-  id: "/api/workspace/item",
-  path: "/api/workspace/item",
+  id: '/api/workspace/item',
+  path: '/api/workspace/item',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceHealthRoute = ApiWorkspaceHealthRouteImport.update({
-  id: "/api/workspace/health",
-  path: "/api/workspace/health",
+  id: '/api/workspace/health',
+  path: '/api/workspace/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
-  id: "/api/workspace/file",
-  path: "/api/workspace/file",
+  id: '/api/workspace/file',
+  path: '/api/workspace/file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWebhooksDaytonaRoute = ApiWebhooksDaytonaRouteImport.update({
-  id: "/api/webhooks/daytona",
-  path: "/api/webhooks/daytona",
+  id: '/api/webhooks/daytona',
+  path: '/api/webhooks/daytona',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSandboxSettingsRoute = ApiSandboxSettingsRouteImport.update({
-  id: "/api/sandbox/settings",
-  path: "/api/sandbox/settings",
+  id: '/api/sandbox/settings',
+  path: '/api/sandbox/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSandboxPreviewRoute = ApiSandboxPreviewRouteImport.update({
-  id: "/api/sandbox/preview",
-  path: "/api/sandbox/preview",
+  id: '/api/sandbox/preview',
+  path: '/api/sandbox/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatSettingsRoute = ApiChatSettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatSessionsRoute = ApiChatSessionsRouteImport.update({
-  id: "/sessions",
-  path: "/sessions",
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatSessionRoute = ApiChatSessionRouteImport.update({
-  id: "/session",
-  path: "/session",
+  id: '/session',
+  path: '/session',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatRunsRoute = ApiChatRunsRouteImport.update({
-  id: "/runs",
-  path: "/runs",
+  id: '/runs',
+  path: '/runs',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatRunRoute = ApiChatRunRouteImport.update({
-  id: "/run",
-  path: "/run",
+  id: '/run',
+  path: '/run',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatResumeRoute = ApiChatResumeRouteImport.update({
-  id: "/resume",
-  path: "/resume",
+  id: '/resume',
+  path: '/resume',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatResourcesRoute = ApiChatResourcesRouteImport.update({
-  id: "/resources",
-  path: "/resources",
+  id: '/resources',
+  path: '/resources',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatQuestionRoute = ApiChatQuestionRouteImport.update({
-  id: "/question",
-  path: "/question",
+  id: '/question',
+  path: '/question',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatProvidersRoute = ApiChatProvidersRouteImport.update({
-  id: "/providers",
-  path: "/providers",
+  id: '/providers',
+  path: '/providers',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatProvenanceRoute = ApiChatProvenanceRouteImport.update({
-  id: "/provenance",
-  path: "/provenance",
+  id: '/provenance',
+  path: '/provenance',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatNewRoute = ApiChatNewRouteImport.update({
-  id: "/new",
-  path: "/new",
+  id: '/new',
+  path: '/new',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatModelsRoute = ApiChatModelsRouteImport.update({
-  id: "/models",
-  path: "/models",
+  id: '/models',
+  path: '/models',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiChatAbortRoute = ApiChatAbortRouteImport.update({
-  id: "/abort",
-  path: "/abort",
+  id: '/abort',
+  path: '/abort',
   getParentRoute: () => ApiChatRoute,
 } as any)
 const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
-  id: "/api/auth/session",
-  path: "/api/auth/session",
+  id: '/api/auth/session',
+  path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: "/api/auth/$",
-  path: "/api/auth/$",
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute
-  "/login": typeof LoginRoute
-  "/api/chat": typeof ApiChatRouteWithChildren
-  "/api/health": typeof ApiHealthRoute
-  "/api/auth/$": typeof ApiAuthSplatRoute
-  "/api/auth/session": typeof ApiAuthSessionRoute
-  "/api/chat/abort": typeof ApiChatAbortRoute
-  "/api/chat/models": typeof ApiChatModelsRoute
-  "/api/chat/new": typeof ApiChatNewRoute
-  "/api/chat/provenance": typeof ApiChatProvenanceRoute
-  "/api/chat/providers": typeof ApiChatProvidersRoute
-  "/api/chat/question": typeof ApiChatQuestionRoute
-  "/api/chat/resources": typeof ApiChatResourcesRoute
-  "/api/chat/resume": typeof ApiChatResumeRoute
-  "/api/chat/run": typeof ApiChatRunRoute
-  "/api/chat/runs": typeof ApiChatRunsRoute
-  "/api/chat/session": typeof ApiChatSessionRoute
-  "/api/chat/sessions": typeof ApiChatSessionsRoute
-  "/api/chat/settings": typeof ApiChatSettingsRoute
-  "/api/sandbox/preview": typeof ApiSandboxPreviewRoute
-  "/api/sandbox/settings": typeof ApiSandboxSettingsRoute
-  "/api/webhooks/daytona": typeof ApiWebhooksDaytonaRoute
-  "/api/workspace/file": typeof ApiWorkspaceFileRoute
-  "/api/workspace/health": typeof ApiWorkspaceHealthRoute
-  "/api/workspace/item": typeof ApiWorkspaceItemRoute
-  "/api/workspace/items": typeof ApiWorkspaceItemsRoute
-  "/api/workspace/reindex": typeof ApiWorkspaceReindexRoute
-  "/api/workspace/search": typeof ApiWorkspaceSearchRoute
-  "/api/workspace/tree": typeof ApiWorkspaceTreeRoute
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
+  '/api/chat/providers': typeof ApiChatProvidersRoute
+  '/api/chat/question': typeof ApiChatQuestionRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute
-  "/login": typeof LoginRoute
-  "/api/chat": typeof ApiChatRouteWithChildren
-  "/api/health": typeof ApiHealthRoute
-  "/api/auth/$": typeof ApiAuthSplatRoute
-  "/api/auth/session": typeof ApiAuthSessionRoute
-  "/api/chat/abort": typeof ApiChatAbortRoute
-  "/api/chat/models": typeof ApiChatModelsRoute
-  "/api/chat/new": typeof ApiChatNewRoute
-  "/api/chat/provenance": typeof ApiChatProvenanceRoute
-  "/api/chat/providers": typeof ApiChatProvidersRoute
-  "/api/chat/question": typeof ApiChatQuestionRoute
-  "/api/chat/resources": typeof ApiChatResourcesRoute
-  "/api/chat/resume": typeof ApiChatResumeRoute
-  "/api/chat/run": typeof ApiChatRunRoute
-  "/api/chat/runs": typeof ApiChatRunsRoute
-  "/api/chat/session": typeof ApiChatSessionRoute
-  "/api/chat/sessions": typeof ApiChatSessionsRoute
-  "/api/chat/settings": typeof ApiChatSettingsRoute
-  "/api/sandbox/preview": typeof ApiSandboxPreviewRoute
-  "/api/sandbox/settings": typeof ApiSandboxSettingsRoute
-  "/api/webhooks/daytona": typeof ApiWebhooksDaytonaRoute
-  "/api/workspace/file": typeof ApiWorkspaceFileRoute
-  "/api/workspace/health": typeof ApiWorkspaceHealthRoute
-  "/api/workspace/item": typeof ApiWorkspaceItemRoute
-  "/api/workspace/items": typeof ApiWorkspaceItemsRoute
-  "/api/workspace/reindex": typeof ApiWorkspaceReindexRoute
-  "/api/workspace/search": typeof ApiWorkspaceSearchRoute
-  "/api/workspace/tree": typeof ApiWorkspaceTreeRoute
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
+  '/api/chat/providers': typeof ApiChatProvidersRoute
+  '/api/chat/question': typeof ApiChatQuestionRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  "/": typeof IndexRoute
-  "/login": typeof LoginRoute
-  "/api/chat": typeof ApiChatRouteWithChildren
-  "/api/health": typeof ApiHealthRoute
-  "/api/auth/$": typeof ApiAuthSplatRoute
-  "/api/auth/session": typeof ApiAuthSessionRoute
-  "/api/chat/abort": typeof ApiChatAbortRoute
-  "/api/chat/models": typeof ApiChatModelsRoute
-  "/api/chat/new": typeof ApiChatNewRoute
-  "/api/chat/provenance": typeof ApiChatProvenanceRoute
-  "/api/chat/providers": typeof ApiChatProvidersRoute
-  "/api/chat/question": typeof ApiChatQuestionRoute
-  "/api/chat/resources": typeof ApiChatResourcesRoute
-  "/api/chat/resume": typeof ApiChatResumeRoute
-  "/api/chat/run": typeof ApiChatRunRoute
-  "/api/chat/runs": typeof ApiChatRunsRoute
-  "/api/chat/session": typeof ApiChatSessionRoute
-  "/api/chat/sessions": typeof ApiChatSessionsRoute
-  "/api/chat/settings": typeof ApiChatSettingsRoute
-  "/api/sandbox/preview": typeof ApiSandboxPreviewRoute
-  "/api/sandbox/settings": typeof ApiSandboxSettingsRoute
-  "/api/webhooks/daytona": typeof ApiWebhooksDaytonaRoute
-  "/api/workspace/file": typeof ApiWorkspaceFileRoute
-  "/api/workspace/health": typeof ApiWorkspaceHealthRoute
-  "/api/workspace/item": typeof ApiWorkspaceItemRoute
-  "/api/workspace/items": typeof ApiWorkspaceItemsRoute
-  "/api/workspace/reindex": typeof ApiWorkspaceReindexRoute
-  "/api/workspace/search": typeof ApiWorkspaceSearchRoute
-  "/api/workspace/tree": typeof ApiWorkspaceTreeRoute
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/new': typeof ApiChatNewRoute
+  '/api/chat/provenance': typeof ApiChatProvenanceRoute
+  '/api/chat/providers': typeof ApiChatProvidersRoute
+  '/api/chat/question': typeof ApiChatQuestionRoute
+  '/api/chat/resources': typeof ApiChatResourcesRoute
+  '/api/chat/resume': typeof ApiChatResumeRoute
+  '/api/chat/run': typeof ApiChatRunRoute
+  '/api/chat/runs': typeof ApiChatRunsRoute
+  '/api/chat/session': typeof ApiChatSessionRoute
+  '/api/chat/sessions': typeof ApiChatSessionsRoute
+  '/api/chat/settings': typeof ApiChatSettingsRoute
+  '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
+  '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
+  '/api/workspace/file': typeof ApiWorkspaceFileRoute
+  '/api/workspace/health': typeof ApiWorkspaceHealthRoute
+  '/api/workspace/item': typeof ApiWorkspaceItemRoute
+  '/api/workspace/items': typeof ApiWorkspaceItemsRoute
+  '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
+  '/api/workspace/search': typeof ApiWorkspaceSearchRoute
+  '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/login"
-    | "/api/chat"
-    | "/api/health"
-    | "/api/auth/$"
-    | "/api/auth/session"
-    | "/api/chat/abort"
-    | "/api/chat/models"
-    | "/api/chat/new"
-    | "/api/chat/provenance"
-    | "/api/chat/providers"
-    | "/api/chat/question"
-    | "/api/chat/resources"
-    | "/api/chat/resume"
-    | "/api/chat/run"
-    | "/api/chat/runs"
-    | "/api/chat/session"
-    | "/api/chat/sessions"
-    | "/api/chat/settings"
-    | "/api/sandbox/preview"
-    | "/api/sandbox/settings"
-    | "/api/webhooks/daytona"
-    | "/api/workspace/file"
-    | "/api/workspace/health"
-    | "/api/workspace/item"
-    | "/api/workspace/items"
-    | "/api/workspace/reindex"
-    | "/api/workspace/search"
-    | "/api/workspace/tree"
+    | '/'
+    | '/login'
+    | '/api/chat'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/auth/session'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/provenance'
+    | '/api/chat/providers'
+    | '/api/chat/question'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
+    | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
+    | '/api/webhooks/daytona'
+    | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
+    | '/api/workspace/tree'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/login"
-    | "/api/chat"
-    | "/api/health"
-    | "/api/auth/$"
-    | "/api/auth/session"
-    | "/api/chat/abort"
-    | "/api/chat/models"
-    | "/api/chat/new"
-    | "/api/chat/provenance"
-    | "/api/chat/providers"
-    | "/api/chat/question"
-    | "/api/chat/resources"
-    | "/api/chat/resume"
-    | "/api/chat/run"
-    | "/api/chat/runs"
-    | "/api/chat/session"
-    | "/api/chat/sessions"
-    | "/api/chat/settings"
-    | "/api/sandbox/preview"
-    | "/api/sandbox/settings"
-    | "/api/webhooks/daytona"
-    | "/api/workspace/file"
-    | "/api/workspace/health"
-    | "/api/workspace/item"
-    | "/api/workspace/items"
-    | "/api/workspace/reindex"
-    | "/api/workspace/search"
-    | "/api/workspace/tree"
+    | '/'
+    | '/login'
+    | '/api/chat'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/auth/session'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/provenance'
+    | '/api/chat/providers'
+    | '/api/chat/question'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
+    | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
+    | '/api/webhooks/daytona'
+    | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
+    | '/api/workspace/tree'
   id:
-    | "__root__"
-    | "/"
-    | "/login"
-    | "/api/chat"
-    | "/api/health"
-    | "/api/auth/$"
-    | "/api/auth/session"
-    | "/api/chat/abort"
-    | "/api/chat/models"
-    | "/api/chat/new"
-    | "/api/chat/provenance"
-    | "/api/chat/providers"
-    | "/api/chat/question"
-    | "/api/chat/resources"
-    | "/api/chat/resume"
-    | "/api/chat/run"
-    | "/api/chat/runs"
-    | "/api/chat/session"
-    | "/api/chat/sessions"
-    | "/api/chat/settings"
-    | "/api/sandbox/preview"
-    | "/api/sandbox/settings"
-    | "/api/webhooks/daytona"
-    | "/api/workspace/file"
-    | "/api/workspace/health"
-    | "/api/workspace/item"
-    | "/api/workspace/items"
-    | "/api/workspace/reindex"
-    | "/api/workspace/search"
-    | "/api/workspace/tree"
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/api/chat'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/auth/session'
+    | '/api/chat/abort'
+    | '/api/chat/models'
+    | '/api/chat/new'
+    | '/api/chat/provenance'
+    | '/api/chat/providers'
+    | '/api/chat/question'
+    | '/api/chat/resources'
+    | '/api/chat/resume'
+    | '/api/chat/run'
+    | '/api/chat/runs'
+    | '/api/chat/session'
+    | '/api/chat/sessions'
+    | '/api/chat/settings'
+    | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
+    | '/api/webhooks/daytona'
+    | '/api/workspace/file'
+    | '/api/workspace/health'
+    | '/api/workspace/item'
+    | '/api/workspace/items'
+    | '/api/workspace/reindex'
+    | '/api/workspace/search'
+    | '/api/workspace/tree'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -394,208 +394,208 @@ export interface RootRouteChildren {
   ApiWorkspaceTreeRoute: typeof ApiWorkspaceTreeRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/login": {
-      id: "/login"
-      path: "/login"
-      fullPath: "/login"
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/": {
-      id: "/"
-      path: "/"
-      fullPath: "/"
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/health": {
-      id: "/api/health"
-      path: "/api/health"
-      fullPath: "/api/health"
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/chat": {
-      id: "/api/chat"
-      path: "/api/chat"
-      fullPath: "/api/chat"
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/tree": {
-      id: "/api/workspace/tree"
-      path: "/api/workspace/tree"
-      fullPath: "/api/workspace/tree"
+    '/api/workspace/tree': {
+      id: '/api/workspace/tree'
+      path: '/api/workspace/tree'
+      fullPath: '/api/workspace/tree'
       preLoaderRoute: typeof ApiWorkspaceTreeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/search": {
-      id: "/api/workspace/search"
-      path: "/api/workspace/search"
-      fullPath: "/api/workspace/search"
+    '/api/workspace/search': {
+      id: '/api/workspace/search'
+      path: '/api/workspace/search'
+      fullPath: '/api/workspace/search'
       preLoaderRoute: typeof ApiWorkspaceSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/reindex": {
-      id: "/api/workspace/reindex"
-      path: "/api/workspace/reindex"
-      fullPath: "/api/workspace/reindex"
+    '/api/workspace/reindex': {
+      id: '/api/workspace/reindex'
+      path: '/api/workspace/reindex'
+      fullPath: '/api/workspace/reindex'
       preLoaderRoute: typeof ApiWorkspaceReindexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/items": {
-      id: "/api/workspace/items"
-      path: "/api/workspace/items"
-      fullPath: "/api/workspace/items"
+    '/api/workspace/items': {
+      id: '/api/workspace/items'
+      path: '/api/workspace/items'
+      fullPath: '/api/workspace/items'
       preLoaderRoute: typeof ApiWorkspaceItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/item": {
-      id: "/api/workspace/item"
-      path: "/api/workspace/item"
-      fullPath: "/api/workspace/item"
+    '/api/workspace/item': {
+      id: '/api/workspace/item'
+      path: '/api/workspace/item'
+      fullPath: '/api/workspace/item'
       preLoaderRoute: typeof ApiWorkspaceItemRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/health": {
-      id: "/api/workspace/health"
-      path: "/api/workspace/health"
-      fullPath: "/api/workspace/health"
+    '/api/workspace/health': {
+      id: '/api/workspace/health'
+      path: '/api/workspace/health'
+      fullPath: '/api/workspace/health'
       preLoaderRoute: typeof ApiWorkspaceHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/workspace/file": {
-      id: "/api/workspace/file"
-      path: "/api/workspace/file"
-      fullPath: "/api/workspace/file"
+    '/api/workspace/file': {
+      id: '/api/workspace/file'
+      path: '/api/workspace/file'
+      fullPath: '/api/workspace/file'
       preLoaderRoute: typeof ApiWorkspaceFileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/webhooks/daytona": {
-      id: "/api/webhooks/daytona"
-      path: "/api/webhooks/daytona"
-      fullPath: "/api/webhooks/daytona"
+    '/api/webhooks/daytona': {
+      id: '/api/webhooks/daytona'
+      path: '/api/webhooks/daytona'
+      fullPath: '/api/webhooks/daytona'
       preLoaderRoute: typeof ApiWebhooksDaytonaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/sandbox/settings": {
-      id: "/api/sandbox/settings"
-      path: "/api/sandbox/settings"
-      fullPath: "/api/sandbox/settings"
+    '/api/sandbox/settings': {
+      id: '/api/sandbox/settings'
+      path: '/api/sandbox/settings'
+      fullPath: '/api/sandbox/settings'
       preLoaderRoute: typeof ApiSandboxSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/sandbox/preview": {
-      id: "/api/sandbox/preview"
-      path: "/api/sandbox/preview"
-      fullPath: "/api/sandbox/preview"
+    '/api/sandbox/preview': {
+      id: '/api/sandbox/preview'
+      path: '/api/sandbox/preview'
+      fullPath: '/api/sandbox/preview'
       preLoaderRoute: typeof ApiSandboxPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/chat/settings": {
-      id: "/api/chat/settings"
-      path: "/settings"
-      fullPath: "/api/chat/settings"
+    '/api/chat/settings': {
+      id: '/api/chat/settings'
+      path: '/settings'
+      fullPath: '/api/chat/settings'
       preLoaderRoute: typeof ApiChatSettingsRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/sessions": {
-      id: "/api/chat/sessions"
-      path: "/sessions"
-      fullPath: "/api/chat/sessions"
+    '/api/chat/sessions': {
+      id: '/api/chat/sessions'
+      path: '/sessions'
+      fullPath: '/api/chat/sessions'
       preLoaderRoute: typeof ApiChatSessionsRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/session": {
-      id: "/api/chat/session"
-      path: "/session"
-      fullPath: "/api/chat/session"
+    '/api/chat/session': {
+      id: '/api/chat/session'
+      path: '/session'
+      fullPath: '/api/chat/session'
       preLoaderRoute: typeof ApiChatSessionRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/runs": {
-      id: "/api/chat/runs"
-      path: "/runs"
-      fullPath: "/api/chat/runs"
+    '/api/chat/runs': {
+      id: '/api/chat/runs'
+      path: '/runs'
+      fullPath: '/api/chat/runs'
       preLoaderRoute: typeof ApiChatRunsRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/run": {
-      id: "/api/chat/run"
-      path: "/run"
-      fullPath: "/api/chat/run"
+    '/api/chat/run': {
+      id: '/api/chat/run'
+      path: '/run'
+      fullPath: '/api/chat/run'
       preLoaderRoute: typeof ApiChatRunRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/resume": {
-      id: "/api/chat/resume"
-      path: "/resume"
-      fullPath: "/api/chat/resume"
+    '/api/chat/resume': {
+      id: '/api/chat/resume'
+      path: '/resume'
+      fullPath: '/api/chat/resume'
       preLoaderRoute: typeof ApiChatResumeRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/resources": {
-      id: "/api/chat/resources"
-      path: "/resources"
-      fullPath: "/api/chat/resources"
+    '/api/chat/resources': {
+      id: '/api/chat/resources'
+      path: '/resources'
+      fullPath: '/api/chat/resources'
       preLoaderRoute: typeof ApiChatResourcesRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/question": {
-      id: "/api/chat/question"
-      path: "/question"
-      fullPath: "/api/chat/question"
+    '/api/chat/question': {
+      id: '/api/chat/question'
+      path: '/question'
+      fullPath: '/api/chat/question'
       preLoaderRoute: typeof ApiChatQuestionRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/providers": {
-      id: "/api/chat/providers"
-      path: "/providers"
-      fullPath: "/api/chat/providers"
+    '/api/chat/providers': {
+      id: '/api/chat/providers'
+      path: '/providers'
+      fullPath: '/api/chat/providers'
       preLoaderRoute: typeof ApiChatProvidersRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/provenance": {
-      id: "/api/chat/provenance"
-      path: "/provenance"
-      fullPath: "/api/chat/provenance"
+    '/api/chat/provenance': {
+      id: '/api/chat/provenance'
+      path: '/provenance'
+      fullPath: '/api/chat/provenance'
       preLoaderRoute: typeof ApiChatProvenanceRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/new": {
-      id: "/api/chat/new"
-      path: "/new"
-      fullPath: "/api/chat/new"
+    '/api/chat/new': {
+      id: '/api/chat/new'
+      path: '/new'
+      fullPath: '/api/chat/new'
       preLoaderRoute: typeof ApiChatNewRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/models": {
-      id: "/api/chat/models"
-      path: "/models"
-      fullPath: "/api/chat/models"
+    '/api/chat/models': {
+      id: '/api/chat/models'
+      path: '/models'
+      fullPath: '/api/chat/models'
       preLoaderRoute: typeof ApiChatModelsRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/chat/abort": {
-      id: "/api/chat/abort"
-      path: "/abort"
-      fullPath: "/api/chat/abort"
+    '/api/chat/abort': {
+      id: '/api/chat/abort'
+      path: '/abort'
+      fullPath: '/api/chat/abort'
       preLoaderRoute: typeof ApiChatAbortRouteImport
       parentRoute: typeof ApiChatRoute
     }
-    "/api/auth/session": {
-      id: "/api/auth/session"
-      path: "/api/auth/session"
-      fullPath: "/api/auth/session"
+    '/api/auth/session': {
+      id: '/api/auth/session'
+      path: '/api/auth/session'
+      fullPath: '/api/auth/session'
       preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/api/auth/$": {
-      id: "/api/auth/$"
-      path: "/api/auth/$"
-      fullPath: "/api/auth/$"
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -659,9 +659,9 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx"
-import type { createStart } from "@tanstack/react-start"
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>

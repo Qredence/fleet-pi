@@ -65,3 +65,4 @@ tempo/dist/
 package-lock.json
 # Local-only Pi skill symlinks pointing at gitignored skill dirs
 .pi/skills/impeccable
+tempo/.tempo/

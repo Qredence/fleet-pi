@@ -14,3 +14,4 @@ web-build
 *.log
 logs
 .DS_Store
+.tempo
