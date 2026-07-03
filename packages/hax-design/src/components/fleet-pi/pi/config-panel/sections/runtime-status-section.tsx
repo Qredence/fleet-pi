@@ -227,7 +227,7 @@ export function RuntimeStatusSection({
                 </Badge>
               )}
             </div>
-            <p className="mt-2 line-clamp-2 font-mono text-[9px] text-[10px] leading-snug tracking-tight text-foreground/40 transition-colors group-hover:text-foreground/60">
+            <p className="mt-2 line-clamp-2 font-mono text-[9px] leading-snug tracking-tight text-foreground/40 transition-colors group-hover:text-foreground/60">
               {settingsError
                 ? settingsError.message
                 : settings
