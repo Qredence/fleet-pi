@@ -103,7 +103,7 @@ function ThemeSegment({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "group h-7 min-w-0 flex-1 cursor-pointer justify-center gap-1.5 rounded-[6px] border-transparent bg-transparent px-2 text-[10.5px] shadow-none transition-all duration-250 hover:bg-transparent",
+        "group h-7 min-w-0 flex-1 cursor-pointer justify-center gap-1.5 rounded-[6px] border-transparent bg-transparent px-2 text-[10.5px] shadow-none transition-all duration-300 hover:bg-transparent",
         active ? activeColor : "text-foreground/40 hover:text-foreground/75"
       )}
     >
