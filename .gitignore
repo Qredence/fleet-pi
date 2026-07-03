@@ -61,5 +61,7 @@ tempo/dist/
 .tempo/
 # Track build-essential .tempo/ source files in the tempo app
 !tempo/.tempo/
+# npm lockfile — pnpm is the package manager; do not commit npm lockfiles
+package-lock.json
 # Local-only Pi skill symlinks pointing at gitignored skill dirs
 .pi/skills/impeccable
