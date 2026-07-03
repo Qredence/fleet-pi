@@ -1,10 +1,18 @@
 //  @ts-check
 
 import { tanstackConfig } from "@tanstack/eslint-config"
+import tseslint from "typescript-eslint"
 
 export default [
+  {
+    ignores: ["**/.vercel/**"],
+  },
   ...tanstackConfig,
   {
+    files: ["**/*.{ts,tsx}"],
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
     rules: {
       complexity: ["error", 85],
       "max-lines": ["error", 1200],

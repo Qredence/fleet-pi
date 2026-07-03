@@ -9,7 +9,7 @@
     },
     {
       "label": "Ignore tag-based versions",
-      "dependencies": ["nitro"],
+      "dependencies": ["nitro", "tempo-sdk"],
       "isIgnored": true
     }
   ]
