@@ -1,6 +1,8 @@
-.tempo
 app-devserver.json
 app-devserver.log
+# Track only build-essential .tempo/ source files; ignore runtime state
+.tempo/*.json
+.tempo/page-screenshots/
 node_modules
 .next
 .expo

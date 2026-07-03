@@ -55,10 +55,11 @@ agent-workspace/memory/research/qredence-fleet-rlm.md
 .agents/skills/impeccable/
 .cursor/hooks/
 .impeccable/
-tempo/.tempo/
 tempo/node_modules/
 tempo/dist/
 # Local Tempo dev-server state
 .tempo/
+# Track build-essential .tempo/ source files in the tempo app
+!tempo/.tempo/
 # Local-only Pi skill symlinks pointing at gitignored skill dirs
 .pi/skills/impeccable
