@@ -17,7 +17,8 @@ BEGIN
   ) THEN
     CREATE POLICY pi_sessions_user_isolation ON pi_sessions
       FOR ALL
-      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
+      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true))
+      WITH CHECK (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
   END IF;
 END $$;
 
@@ -186,7 +187,8 @@ BEGIN
   ) THEN
     CREATE POLICY pi_user_providers_isolation ON pi_user_providers
       FOR ALL
-      USING (user_id = current_setting('app.current_user_id', true));
+      USING (user_id = current_setting('app.current_user_id', true))
+      WITH CHECK (user_id = current_setting('app.current_user_id', true));
   END IF;
 END $$;
 
@@ -211,6 +213,13 @@ BEGIN
           WHERE pi_sessions.id = pi_session_entries.session_id
             AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
         )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_session_entries.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
       );
   END IF;
 END $$;
@@ -224,6 +233,13 @@ BEGIN
     CREATE POLICY pi_runs_user_isolation ON pi_runs
       FOR ALL
       USING (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_runs.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
         EXISTS (
           SELECT 1 FROM pi_sessions
           WHERE pi_sessions.id = pi_runs.session_id
@@ -248,6 +264,14 @@ BEGIN
           WHERE pi_runs.id = pi_run_events.run_id
             AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
         )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_run_events.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
       );
   END IF;
 END $$;
@@ -266,6 +290,13 @@ BEGIN
           WHERE pi_sessions.id = pi_tool_executions.session_id
             AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
         )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_tool_executions.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
       );
   END IF;
 END $$;
@@ -279,6 +310,14 @@ BEGIN
     CREATE POLICY pi_file_mutations_user_isolation ON pi_file_mutations
       FOR ALL
       USING (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_file_mutations.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
         EXISTS (
           SELECT 1 FROM pi_runs
           JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id

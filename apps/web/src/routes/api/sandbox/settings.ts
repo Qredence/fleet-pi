@@ -15,9 +15,13 @@ export const Route = createFileRoute("/api/sandbox/settings")({
     handlers: {
       GET: async ({ request }) => {
         try {
-          await auth.api
+          const session = await auth.api
             .getSession({ headers: request.headers })
             .catch(() => null)
+
+          if (!session) {
+            return Response.json({ message: "Unauthorized" }, { status: 401 })
+          }
 
           if (process.env.VERCEL === "1") {
             return Response.json({
@@ -41,12 +45,16 @@ export const Route = createFileRoute("/api/sandbox/settings")({
       },
       POST: async ({ request }) => {
         try {
-          const rawBody = await request.json()
-          const body = SandboxSettingsUpdateSchema.parse(rawBody)
-
-          await auth.api
+          const session = await auth.api
             .getSession({ headers: request.headers })
             .catch(() => null)
+
+          if (!session) {
+            return Response.json({ message: "Unauthorized" }, { status: 401 })
+          }
+
+          const rawBody = await request.json()
+          const body = SandboxSettingsUpdateSchema.parse(rawBody)
 
           if (process.env.VERCEL === "1") {
             return Response.json(

@@ -64,7 +64,7 @@ test.describe("Settings Dialog E2E Tests", () => {
       settingsDialog.getByRole("heading", { name: "Appearance", exact: true })
     ).toBeVisible()
     await expect(
-      settingsDialog.getByText("Interface Customization")
+      settingsDialog.getByText("Customize the look and feel of the interface.")
     ).toBeVisible()
 
     // Test Tab 2: Sandbox Provider
