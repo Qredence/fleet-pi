@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FleetPiAgentChat } from "@workspace/hax-design/components/fleet-pi/chat/fleet-pi-agent-chat"
 import { ChatCommandPalette } from "@workspace/hax-design/components/fleet-pi/chat-command-palette"
 import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
@@ -11,6 +11,7 @@ import { RightPanelShell } from "@workspace/hax-design/components/fleet-pi/layou
 import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
 import { RightPanelLauncherFromContext } from "@workspace/hax-design/components/fleet-pi/pi/right-panel-launcher"
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
+import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
 import { queueLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
 import type {
   ChatPiSettingsUpdate,
@@ -73,6 +74,7 @@ function normalizeSlashCommandName(name: string) {
 function ChatWorkspaceShell() {
   const navigate = useNavigate()
   const user = useOptionalUser()
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const { data: providersData, isLoading: isLoadingProviders } =
     useChatProviders()
   const { mutateAsync: onUpdateProvider, isPending: isUpdatingProvider } =
@@ -305,6 +307,7 @@ function ChatWorkspaceShell() {
                 void navigate({ to: "/" })
               }}
               onSignIn={() => void navigate({ to: "/login" })}
+              onOpenSettings={() => setSettingsDialogOpen(true)}
             />
           }
           headerCenter={
@@ -361,6 +364,10 @@ function ChatWorkspaceShell() {
             />
           </UiErrorBoundary>
         </ChatWorkspaceLayout>
+        <SettingsDialog
+          open={settingsDialogOpen}
+          onOpenChange={setSettingsDialogOpen}
+        />
       </RightPanelProvider>
     </>
   )

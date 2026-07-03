@@ -30,6 +30,12 @@ export const KNOWN_PROVIDERS = [
   { id: "mistral", name: "Mistral", envVarName: "MISTRAL_API_KEY" },
   { id: "groq", name: "Groq", envVarName: "GROQ_API_KEY" },
   { id: "ollama", name: "Ollama", envVarName: "OLLAMA_BASE_URL" },
+  { id: "daytona", name: "Daytona", envVarName: "DAYTONA_API_KEY" },
+  {
+    id: "daytona-target",
+    name: "Daytona Target",
+    envVarName: "DAYTONA_TARGET",
+  },
 ]
 
 async function getProviderConfigStatus(

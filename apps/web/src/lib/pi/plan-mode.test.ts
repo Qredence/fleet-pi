@@ -10,7 +10,10 @@ describe("plan-mode utilities", () => {
   it("allows read-only commands", () => {
     assert.equal(isSafeCommand("rg plan-mode apps/web"), true)
     assert.equal(isSafeCommand("sed -n '1,20p' apps/web/package.json"), true)
-    assert.equal(isSafeCommand("git diff -- apps/web/src/routes/index.tsx"), true)
+    assert.equal(
+      isSafeCommand("git diff -- apps/web/src/routes/index.tsx"),
+      true
+    )
     assert.equal(isSafeCommand("pnpm list --filter web"), true)
   })
 
@@ -30,11 +33,7 @@ describe("plan-mode utilities", () => {
 
     assert.deepEqual(
       todos.map((todo) => todo.text),
-      [
-        "Current chat route",
-        "Mode selector",
-        "Typecheck",
-      ],
+      ["Current chat route", "Mode selector", "Typecheck"]
     )
   })
 

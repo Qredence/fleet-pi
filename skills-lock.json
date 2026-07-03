@@ -4,25 +4,26 @@
     "agent-elements": {
       "source": "21st-dev/agent-elements",
       "sourceType": "github",
+      "skillPath": "skills/agent-elements/SKILL.md",
       "computedHash": "899ff281733653460fc7c0864daaa602fb9d32b176f3653178791fae657d9277"
     },
     "daytona": {
       "source": "daytona/skills",
       "sourceType": "github",
       "skillPath": "skills/daytona/SKILL.md",
-      "computedHash": "d4c0da50085f7a145edb4c3cbc384e5f3deb5ede24be5cfa2ad83b332d71ff57"
+      "computedHash": "3de5279040cb8bbe632937b444576be34178d6358f4a3ba83691cc768cf5b382"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "d0cf58213e8581548a63a717d69a3b1c1eaed4c68d25887ca7b0698393b0530f"
+      "computedHash": "1e310d65fb286f8bd22c193f48e4aef8dc6c8b9caa6816eecca582b8faa5a096"
     },
     "openui": {
       "source": "thesysdev/openui",
       "sourceType": "github",
       "skillPath": "skills/openui/SKILL.md",
-      "computedHash": "094ca9fb2701f1b4e879e59c74033aaefcc295ecb1ae1c7fd9717b8c23a1b78a"
+      "computedHash": "f7a52713a59e68ac5fc4b470d5b36419ebcfe651d2f87ac3c46f8e898c54feeb"
     }
   }
 }

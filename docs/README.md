@@ -7,8 +7,6 @@ Start here if you want the human-facing documentation for Fleet Pi.
 1. Read [Quick Start](quickstart.md) to run the app locally.
 2. Read [Agent Workspace](agent-workspace.md) to understand the durable
    `agent-workspace/` model.
-3. Use [Codex Usage](codex.md) only if you want the advanced Codex worktree
-   path.
 
 ## Guides
 
@@ -17,7 +15,6 @@ Start here if you want the human-facing documentation for Fleet Pi.
   why it exists
 - [Adaptive Workspace Contract](adaptive-workspace.md) — canonical durable
   state and projection rules
-- [Codex Usage](codex.md) — advanced Codex local-environment setup
 
 ## Operating and Extending
 

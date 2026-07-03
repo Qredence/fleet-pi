@@ -21,6 +21,7 @@ import { Route as ApiWorkspaceItemRouteImport } from './routes/api/workspace/ite
 import { Route as ApiWorkspaceHealthRouteImport } from './routes/api/workspace/health'
 import { Route as ApiWorkspaceFileRouteImport } from './routes/api/workspace/file'
 import { Route as ApiWebhooksDaytonaRouteImport } from './routes/api/webhooks/daytona'
+import { Route as ApiSandboxSettingsRouteImport } from './routes/api/sandbox/settings'
 import { Route as ApiSandboxPreviewRouteImport } from './routes/api/sandbox/preview'
 import { Route as ApiChatSettingsRouteImport } from './routes/api/chat/settings'
 import { Route as ApiChatSessionsRouteImport } from './routes/api/chat/sessions'
@@ -96,6 +97,11 @@ const ApiWorkspaceFileRoute = ApiWorkspaceFileRouteImport.update({
 const ApiWebhooksDaytonaRoute = ApiWebhooksDaytonaRouteImport.update({
   id: '/api/webhooks/daytona',
   path: '/api/webhooks/daytona',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSandboxSettingsRoute = ApiSandboxSettingsRouteImport.update({
+  id: '/api/sandbox/settings',
+  path: '/api/sandbox/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSandboxPreviewRoute = ApiSandboxPreviewRouteImport.update({
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
   '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
   '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/api/chat/sessions': typeof ApiChatSessionsRoute
   '/api/chat/settings': typeof ApiChatSettingsRoute
   '/api/sandbox/preview': typeof ApiSandboxPreviewRoute
+  '/api/sandbox/settings': typeof ApiSandboxSettingsRoute
   '/api/webhooks/daytona': typeof ApiWebhooksDaytonaRoute
   '/api/workspace/file': typeof ApiWorkspaceFileRoute
   '/api/workspace/health': typeof ApiWorkspaceHealthRoute
@@ -293,6 +302,7 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/chat/settings'
     | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
     | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/chat/settings'
     | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
     | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/api/chat/sessions'
     | '/api/chat/settings'
     | '/api/sandbox/preview'
+    | '/api/sandbox/settings'
     | '/api/webhooks/daytona'
     | '/api/workspace/file'
     | '/api/workspace/health'
@@ -371,6 +383,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiSandboxPreviewRoute: typeof ApiSandboxPreviewRoute
+  ApiSandboxSettingsRoute: typeof ApiSandboxSettingsRoute
   ApiWebhooksDaytonaRoute: typeof ApiWebhooksDaytonaRoute
   ApiWorkspaceFileRoute: typeof ApiWorkspaceFileRoute
   ApiWorkspaceHealthRoute: typeof ApiWorkspaceHealthRoute
@@ -465,6 +478,13 @@ declare module '@tanstack/react-router' {
       path: '/api/webhooks/daytona'
       fullPath: '/api/webhooks/daytona'
       preLoaderRoute: typeof ApiWebhooksDaytonaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sandbox/settings': {
+      id: '/api/sandbox/settings'
+      path: '/api/sandbox/settings'
+      fullPath: '/api/sandbox/settings'
+      preLoaderRoute: typeof ApiSandboxSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sandbox/preview': {
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiSandboxPreviewRoute: ApiSandboxPreviewRoute,
+  ApiSandboxSettingsRoute: ApiSandboxSettingsRoute,
   ApiWebhooksDaytonaRoute: ApiWebhooksDaytonaRoute,
   ApiWorkspaceFileRoute: ApiWorkspaceFileRoute,
   ApiWorkspaceHealthRoute: ApiWorkspaceHealthRoute,

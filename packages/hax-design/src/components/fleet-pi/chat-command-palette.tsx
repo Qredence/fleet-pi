@@ -11,7 +11,6 @@ import {
   Moon,
   Package,
   Plus,
-  Settings,
   Sparkles,
   Square,
   Sun,
@@ -159,15 +158,6 @@ export function ChatCommandPalette({
           >
             <Package className="mr-2 size-4" />
             <span>Open Artifacts</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() =>
-              handleSelect(() => onSetRightPanel("configurations"))
-            }
-            keywords={["config", "settings", "panels", "theme"]}
-          >
-            <Settings className="mr-2 size-4" />
-            <span>Open Configurations</span>
           </CommandItem>
         </CommandGroup>
 

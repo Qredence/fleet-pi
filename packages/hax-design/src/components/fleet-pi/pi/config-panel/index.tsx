@@ -310,6 +310,11 @@ export function ConfigurationsPanelContent({
 
   return (
     <div className="space-y-3" data-testid="configurations-tab">
+      <PersonalizationSection
+        onThemePreferenceChange={onThemePreferenceChange}
+        themePreference={themePreference}
+      />
+
       <RuntimeStatusSection
         activityLabel={activityLabel}
         mode={mode}
@@ -487,11 +492,6 @@ export function ConfigurationsPanelContent({
         resourceSummary={resourceSummary}
         saving={savingSection === "resources"}
         settingsLoading={settingsLoading}
-      />
-
-      <PersonalizationSection
-        onThemePreferenceChange={onThemePreferenceChange}
-        themePreference={themePreference}
       />
 
       <ConfigurationSection icon={Bot} label="Runtime Models">

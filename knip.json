@@ -30,6 +30,23 @@
     },
     "packages/hax-design": {
       "entry": ["src/**/*.tsx", "src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "tempo": {
+      "entry": [
+        "designs/canvases/home/index.canvas.tsx",
+        "designs/canvases/template-canvas/index.canvas.tsx",
+        "designs/canvases/template-canvas/Storyboard1.tsx"
+      ],
+      "project": ["**/*.{ts,tsx}", "!.tempo/**"],
+      "ignore": ["**/.tempo/**"],
+      "ignoreDependencies": [
+        "@tailwindcss/vite",
+        "@vitejs/plugin-react",
+        "tailwindcss",
+        "tempo-sdk",
+        "vite",
+        "vite-tsconfig-paths"
+      ]
     }
   }
 }

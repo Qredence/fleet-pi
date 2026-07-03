@@ -53,7 +53,7 @@ curl http://localhost:3000/api/health
 
 In the chat UI, try `read package.json` and confirm a **Read** tool card appears.
 
-**Need more detail?** See [docs/quickstart.md](docs/quickstart.md) for standalone vs Codex paths, provider setup, and smoke checks.
+**Need more detail?** See [docs/quickstart.md](docs/quickstart.md) for provider setup and smoke checks.
 
 ## Features
 
@@ -87,15 +87,7 @@ Browser chat UI  →  /api/chat  →  Pi AgentSession  →  repo-scoped tools
 
 ### Standalone (recommended)
 
-Run Fleet Pi as a normal local web app. No Codex desktop app required — just Node, pnpm, and working LLM provider credentials.
-
-### Pi / Codex
-
-Use the shared Codex environment and worktree bootstrap when you want Fleet Pi inside a Codex workflow:
-
-- [`.codex/environments/environment.toml`](.codex/environments/environment.toml)
-- [`.codex/workspace-bootstrap.zsh`](.codex/workspace-bootstrap.zsh)
-- [docs/codex.md](docs/codex.md)
+Run Fleet Pi as a normal local web app — just Node, pnpm, and working LLM provider credentials.
 
 ## Optional integrations
 
@@ -132,7 +124,6 @@ Committed resources under `.pi/` surface in the resources browser. Chat-driven i
 | [docs/README.md](docs/README.md)                   | Docs hub and reading order         |
 | [docs/quickstart.md](docs/quickstart.md)           | Setup, providers, and verification |
 | [docs/agent-workspace.md](docs/agent-workspace.md) | Durable workspace model            |
-| [docs/codex.md](docs/codex.md)                     | Advanced Codex / worktree path     |
 | [docs/architecture.md](docs/architecture.md)       | Generated architecture reference   |
 | [docs/api.md](docs/api.md)                         | Generated API reference            |
 | [RELEASE_NOTES_v0.5.0.md](RELEASE_NOTES_v0.5.0.md) | Latest release highlights          |

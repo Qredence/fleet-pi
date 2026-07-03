@@ -13,7 +13,6 @@ import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../workspace/bootstrap-agent-workspace"
 
-
 export const DEFAULT_MODEL = "gemini-3.5-flash"
 
 type ModelDefaultSettingsLike = {

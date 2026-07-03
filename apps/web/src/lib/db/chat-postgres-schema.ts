@@ -1,4 +1,4 @@
-export const CHAT_POSTGRES_MIGRATION_ID = "20260522_pi_session_mirror"
+export const CHAT_POSTGRES_MIGRATION_ID = "20260614_pi_session_mirror_all_rls"
 
 export const CHAT_POSTGRES_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS fleet_pi_chat_migrations (
@@ -17,7 +17,8 @@ BEGIN
   ) THEN
     CREATE POLICY pi_sessions_user_isolation ON pi_sessions
       FOR ALL
-      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
+      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true))
+      WITH CHECK (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
   END IF;
 END $$;
 
@@ -186,7 +187,144 @@ BEGIN
   ) THEN
     CREATE POLICY pi_user_providers_isolation ON pi_user_providers
       FOR ALL
-      USING (user_id = current_setting('app.current_user_id', true));
+      USING (user_id = current_setting('app.current_user_id', true))
+      WITH CHECK (user_id = current_setting('app.current_user_id', true));
+  END IF;
+END $$;
+
+-- Enable Row Level Security on all other user data tables
+ALTER TABLE IF EXISTS pi_session_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS pi_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS pi_run_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS pi_tool_executions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS pi_file_mutations ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_session_entries' AND policyname = 'pi_session_entries_user_isolation'
+  ) THEN
+    CREATE POLICY pi_session_entries_user_isolation ON pi_session_entries
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_session_entries.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_session_entries.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      );
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_runs' AND policyname = 'pi_runs_user_isolation'
+  ) THEN
+    CREATE POLICY pi_runs_user_isolation ON pi_runs
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_runs.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_runs.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      );
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_run_events' AND policyname = 'pi_run_events_user_isolation'
+  ) THEN
+    CREATE POLICY pi_run_events_user_isolation ON pi_run_events
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_run_events.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_run_events.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      );
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_tool_executions' AND policyname = 'pi_tool_executions_user_isolation'
+  ) THEN
+    CREATE POLICY pi_tool_executions_user_isolation ON pi_tool_executions
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_tool_executions.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_sessions
+          WHERE pi_sessions.id = pi_tool_executions.session_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      );
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_file_mutations' AND policyname = 'pi_file_mutations_user_isolation'
+  ) THEN
+    CREATE POLICY pi_file_mutations_user_isolation ON pi_file_mutations
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_file_mutations.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM pi_runs
+          JOIN pi_sessions ON pi_sessions.id = pi_runs.session_id
+          WHERE pi_runs.id = pi_file_mutations.run_id
+            AND (pi_sessions.user_id IS NULL OR pi_sessions.user_id = current_setting('app.current_user_id', true))
+        )
+      );
   END IF;
 END $$;
 

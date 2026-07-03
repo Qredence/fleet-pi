@@ -48,6 +48,9 @@ export function ProviderCredentialsSection({
 
   const filteredProviders = useMemo(() => {
     return providers.filter((p) => {
+      // Exclude sandbox providers
+      if (p.id === "daytona" || p.id === "daytona-target") return false
+
       const matchesSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.envVarName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -107,7 +110,7 @@ export function ProviderCredentialsSection({
         </div>
 
         {!isLoading && providers.length > 0 && (
-          <div className="flex flex-col gap-1.5 rounded-lg border border-border/15 bg-foreground/1.5 p-2 shadow-inner">
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border/15 bg-foreground/1.5 p-1.5 shadow-inner">
             <div className="relative flex items-center">
               <Search className="pointer-events-none absolute left-2.5 h-3 w-3 text-foreground/30" />
               <Input
@@ -118,7 +121,18 @@ export function ProviderCredentialsSection({
                 className="h-7 w-full rounded-[6px] border-border/30 bg-background/40 pr-2 pl-7 text-[11px] transition-all duration-150 placeholder:text-foreground/20 focus-visible:border-border/60 focus-visible:ring-1 focus-visible:ring-foreground/10"
               />
             </div>
-            <div className="flex gap-1">
+            <div className="relative z-0 flex overflow-hidden rounded-[6px] border border-border/10 bg-foreground/5 p-0.5">
+              <div
+                className={cn(
+                  "absolute top-0.5 bottom-0.5 z-[-1] w-[calc(33.333%-3px)] rounded-[4px] border border-border/15 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                  statusFilter === "all" &&
+                    "left-0.5 shadow-[0_0_4px_rgba(0,0,0,0.02)]",
+                  statusFilter === "active" &&
+                    "left-[calc(33.333%+1px)] shadow-[0_0_4px_rgba(16,185,129,0.05)]",
+                  statusFilter === "missing" &&
+                    "left-[calc(66.666%+1px)] shadow-[0_0_4px_rgba(239,68,68,0.05)]"
+                )}
+              />
               {(["all", "active", "missing"] as const).map((filter) => {
                 const count = providers.filter((p) => {
                   if (filter === "all") return true
@@ -131,14 +145,23 @@ export function ProviderCredentialsSection({
                     key={filter}
                     onClick={() => setStatusFilter(filter)}
                     className={cn(
-                      "flex-1 cursor-pointer rounded-[5px] border py-1 text-[10px] font-medium capitalize transition-all duration-200",
+                      "z-10 flex-1 cursor-pointer rounded-[4px] bg-transparent py-1.5 text-[10px] font-medium capitalize transition-all duration-200 hover:bg-transparent",
                       statusFilter === filter
-                        ? "border-border/30 bg-foreground/5 font-semibold text-foreground/80 shadow-sm"
-                        : "border-transparent text-foreground/45 hover:bg-foreground/1 hover:text-foreground/75"
+                        ? "font-semibold text-foreground"
+                        : "text-foreground/45 hover:text-foreground/75"
                     )}
                   >
                     {filter}{" "}
-                    <span className="font-normal opacity-55">({count})</span>
+                    <span
+                      className={cn(
+                        "text-[9px] font-normal opacity-55 transition-colors",
+                        statusFilter === filter
+                          ? "text-foreground/60"
+                          : "text-foreground/45"
+                      )}
+                    >
+                      ({count})
+                    </span>
                   </button>
                 )
               })}
@@ -174,25 +197,25 @@ export function ProviderCredentialsSection({
                 <div
                   key={p.id}
                   className={cn(
-                    "flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/2 hover:shadow-sm",
+                    "group flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/2 hover:shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
                     isEditing &&
-                      "translate-y-0 border-border/50 bg-foreground/1.5 shadow-md sm:col-span-2",
+                      "translate-y-0 border-border/50 bg-foreground/1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sm:col-span-2",
                     p.isConfigured &&
                       !isEditing &&
-                      "border-primary/30 shadow-[0_0_8px_rgba(0,0,0,0.05)]"
+                      "border-primary/20 shadow-[0_1px_3px_rgba(0,0,0,0.01)]"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <div
                         className={cn(
-                          "flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-[8px] border border-border/20 bg-background/50 transition-all duration-300",
+                          "flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-[8px] border border-border/20 bg-background/50 transition-all duration-300 group-hover:scale-105",
                           p.isConfigured && "border-primary/20 bg-primary/5"
                         )}
                       >
                         <IconComponent
                           className={cn(
-                            "h-4 w-4",
+                            "h-4 w-4 transition-transform duration-300 group-hover:rotate-12",
                             p.isConfigured
                               ? "text-primary"
                               : "text-foreground/35"
@@ -243,78 +266,90 @@ export function ProviderCredentialsSection({
                     </div>
                   </div>
 
-                  {isEditing && (
-                    <div className="mt-3 flex flex-col gap-2.5 border-t border-border/15 pt-2.5">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[9.5px] font-bold tracking-wide text-foreground/45 uppercase">
-                          {p.name} API Key / Config Value
-                        </label>
-                        <div className="relative flex items-center">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder={meta.placeholder}
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            className={cn(
-                              FIELD_CONTROL_CLASS,
-                              "w-full border-border/40 bg-background/50 pr-8 text-[11px] focus:border-border/80 focus-visible:ring-foreground/5 focus-visible:ring-offset-0"
-                            )}
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 cursor-pointer text-foreground/35 transition-colors duration-150 hover:text-foreground/60"
-                            onClick={() => setShowPassword(!showPassword)}
+                  <div
+                    className={cn(
+                      "grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      isEditing
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0"
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="mt-3 flex flex-col gap-2.5 border-t border-border/15 pt-2.5">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9.5px] font-bold tracking-wide text-foreground/45 uppercase">
+                            {p.name} API Key / Config Value
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-2.5 text-foreground/30">
+                              <Lock className="h-3.5 w-3.5" />
+                            </div>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder={meta.placeholder}
+                              value={apiKey}
+                              onChange={(e) => setApiKey(e.target.value)}
+                              className={cn(
+                                FIELD_CONTROL_CLASS,
+                                "w-full border-border/40 bg-background/50 pr-8 pl-8.5 text-[11px] transition-all duration-150 focus:border-border/80 focus-visible:ring-foreground/5 focus-visible:ring-offset-0"
+                              )}
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-2.5 cursor-pointer text-foreground/35 transition-all duration-200 hover:scale-110 hover:text-foreground/75 active:scale-95"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-3.5 w-3.5" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <Alert variant="default" className="px-3 py-2.5">
+                          <Info className="h-4 w-4 text-foreground/50" />
+                          <AlertDescription className="mt-0 text-[10px] leading-relaxed text-foreground/60">
+                            {meta.help}
+                          </AlertDescription>
+                        </Alert>
+
+                        <div className="mt-1 flex items-center justify-end gap-1.5 border-t border-border/10 pt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 cursor-pointer rounded-[6px] px-2.5 text-[10px] text-foreground/40 hover:text-foreground/75"
+                            onClick={() => {
+                              setEditingProvider(null)
+                              setApiKey("")
+                              setShowPassword(false)
+                            }}
                           >
-                            {showPassword ? (
-                              <EyeOff className="h-3.5 w-3.5" />
-                            ) : (
-                              <Eye className="h-3.5 w-3.5" />
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            className={cn(
+                              "h-7 cursor-pointer rounded-[6px] bg-foreground px-3 text-[10px] font-bold text-background transition-all duration-150 hover:bg-foreground/90 disabled:opacity-50",
+                              "shadow-sm active:scale-95"
                             )}
-                          </button>
+                            disabled={isPending || !apiKey.trim()}
+                            onClick={() => handleSave(p.id)}
+                          >
+                            {isPending ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Saving
+                              </span>
+                            ) : (
+                              "Save Key"
+                            )}
+                          </Button>
                         </div>
                       </div>
-
-                      <Alert variant="default" className="px-3 py-2.5">
-                        <Info className="h-4 w-4" />
-                        <AlertDescription className="mt-0 text-[10px] leading-relaxed text-foreground/60">
-                          {meta.help}
-                        </AlertDescription>
-                      </Alert>
-
-                      <div className="mt-1 flex items-center justify-end gap-1.5 border-t border-border/10 pt-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 cursor-pointer rounded-[6px] px-2.5 text-[10px] text-foreground/40 hover:text-foreground/75"
-                          onClick={() => {
-                            setEditingProvider(null)
-                            setApiKey("")
-                            setShowPassword(false)
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          className={cn(
-                            "h-7 cursor-pointer rounded-[6px] bg-foreground px-3 text-[10px] font-bold text-background transition-all duration-150 hover:bg-foreground/90 disabled:opacity-50",
-                            "shadow-sm active:scale-95"
-                          )}
-                          disabled={isPending || !apiKey.trim()}
-                          onClick={() => handleSave(p.id)}
-                        >
-                          {isPending ? (
-                            <span className="flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Saving
-                            </span>
-                          ) : (
-                            "Save Key"
-                          )}
-                        </Button>
-                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}
