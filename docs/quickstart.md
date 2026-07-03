@@ -2,10 +2,7 @@
 
 If you want the overall docs map first, start with [docs/README.md](README.md).
 
-Fleet Pi supports two setup paths:
-
-- `Standalone` for running the local web app with Pi-backed chat
-- `Pi / Codex` for the advanced shared Codex environment and worktree flow
+Fleet Pi runs as a standalone local web app with Pi-backed chat.
 
 ## Standalone
 
@@ -101,26 +98,6 @@ It means:
 - you run Fleet Pi locally as a normal pnpm web app
 - the bundled Pi runtime powers chat and tool execution
 - the backend expects a working LLM provider (Gemini by default via `GEMINI_API_KEY`)
-- you do not need the Codex desktop app or the advanced Codex worktree flow
-
-## Pi / Codex
-
-Use this path if you want Fleet Pi's shared Codex local environment.
-
-- Environment definition: [`.codex/environments/environment.toml`](../.codex/environments/environment.toml)
-- Bootstrap script: [`.codex/workspace-bootstrap.zsh`](../.codex/workspace-bootstrap.zsh)
-- Advanced setup guide: [docs/codex.md](codex.md)
-
-The current bootstrap is intentionally small and only installs dependencies for
-a fresh worktree:
-
-```zsh
-# from repo root
-pnpm install --frozen-lockfile
-```
-
-For the accepted workspace contract and projection boundary, see
-[docs/adaptive-workspace.md](adaptive-workspace.md).
 
 ## Useful commands
 
@@ -138,4 +115,3 @@ pnpm e2e
 - [Agent Workspace](agent-workspace.md) for the durable workspace model
 - [Adaptive Workspace Contract](adaptive-workspace.md) for the canonical
   storage boundary
-- [Codex Usage](codex.md) for the advanced Codex worktree path

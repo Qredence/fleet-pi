@@ -1,6 +1,6 @@
-import { Folder, Library, Package, Settings } from "lucide-react"
+import { Folder, Library, Package } from "lucide-react"
 import { ArtifactsPanelContent } from "../pi/artifacts-panel"
-import { ConfigurationsPanelContent } from "../pi/config-panel/index"
+
 import { ResourcesPanelContent } from "../pi/resources-panel"
 import { WorkspacePanelContent } from "../pi/workspace-panel"
 import type { ElementType, ReactNode } from "react"
@@ -121,36 +121,6 @@ export const RIGHT_PANEL_REGISTRY: Record<
         onSelectedPathChange={props.setSelectedWorkspacePath}
         selectedPath={props.selectedWorkspacePath}
         workspace={props.workspaceTree}
-      />
-    ),
-  },
-  configurations: {
-    title: "Configurations",
-    icon: Settings,
-    dataTestid: "pi-config-canvas",
-    mobileDataTestid: "pi-config-mobile-panel",
-    getLoading: () => false,
-    getOnRefresh: () => undefined,
-    render: (props) => (
-      <ConfigurationsPanelContent
-        activityLabel={props.activityLabel}
-        isLoadingProviders={props.isLoadingProviders}
-        isUpdatingProvider={props.isUpdatingProvider}
-        mode={props.mode}
-        models={props.models}
-        onThemePreferenceChange={props.onThemePreferenceChange}
-        onUpdateProvider={props.onUpdateProvider}
-        planLabel={props.planLabel}
-        providers={props.providers}
-        queue={props.queue}
-        resources={props.resources}
-        saveSettings={props.saveSettings}
-        selectedModelKey={props.selectedModelKey}
-        settings={props.settings}
-        settingsError={props.settingsError}
-        settingsLoading={props.settingsLoading}
-        status={props.status}
-        themePreference={props.themePreference}
       />
     ),
   },

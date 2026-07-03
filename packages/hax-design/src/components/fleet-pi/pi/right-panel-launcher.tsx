@@ -1,4 +1,4 @@
-import { Folder, Library, Package, Settings, X } from "lucide-react"
+import { Folder, Library, Package, X } from "lucide-react"
 import { useEffect, useId, useMemo, useRef } from "react"
 import { DiscreteTabs } from "../primitives/discrete-tab"
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
@@ -78,11 +78,6 @@ export function RightPanelLauncher({
         ariaLabel: "Workspace artifacts",
         badge: totalArtifacts,
         icon: Package,
-      },
-      {
-        id: "configurations" as const,
-        title: "Configurations",
-        icon: Settings,
       },
     ],
     [totalArtifacts, totalResources]

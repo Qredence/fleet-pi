@@ -5,6 +5,7 @@ import {
   LogIn,
   LogOut,
   Plus,
+  Settings,
 } from "lucide-react"
 import { Popover } from "../../agent-elements/input/popover"
 import { ChromePillButton } from "../primitives/chrome-pill"
@@ -47,10 +48,12 @@ export function AccountMenu({
   user,
   onSignOut,
   onSignIn,
+  onOpenSettings,
 }: {
   user: AccountMenuUser | null
   onSignOut: () => Promise<void> | void
   onSignIn: () => void
+  onOpenSettings?: () => void
 }) {
   const menuItemClass =
     "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6"
@@ -84,6 +87,16 @@ export function AccountMenu({
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Documentation</span>
           </a>
+          {onOpenSettings && (
+            <button
+              type="button"
+              className={menuItemClass}
+              onClick={onOpenSettings}
+            >
+              <Settings className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Settings</span>
+            </button>
+          )}
           <button
             type="button"
             className={menuItemClass}
@@ -108,6 +121,16 @@ export function AccountMenu({
             <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
             <span className="truncate">Documentation</span>
           </a>
+          {onOpenSettings && (
+            <button
+              type="button"
+              className={menuItemClass}
+              onClick={onOpenSettings}
+            >
+              <Settings className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Settings</span>
+            </button>
+          )}
         </>
       )}
     </Popover>

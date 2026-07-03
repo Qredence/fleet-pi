@@ -102,7 +102,7 @@ export function EditableSection({
           </Button>
         </div>
       </div>
-      <div className="space-y-3.5">{children}</div>
+      <div className="flex flex-col gap-3.5">{children}</div>
     </SectionSurface>
   )
 }
@@ -218,7 +218,7 @@ export function ConfigurationSection({
         <Icon className="size-3" />
         <span>{label}</span>
       </div>
-      <div className="space-y-1">{children}</div>
+      <div className="flex flex-col gap-1">{children}</div>
     </div>
   )
 }

@@ -84,12 +84,10 @@ describe("adaptive workspace docs contract", () => {
     )
   })
 
-  it("keeps setup docs and the Codex bootstrap path aligned", async () => {
-    const [readme, quickstart, codex, bootstrap] = await Promise.all([
+  it("keeps setup docs aligned on agent-workspace canonical state", async () => {
+    const [readme, quickstart] = await Promise.all([
       readRepoFile("README.md"),
       readRepoFile("docs/quickstart.md"),
-      readRepoFile("docs/codex.md"),
-      readRepoFile(".codex/workspace-bootstrap.zsh"),
     ])
 
     expect(readme).toContain("docs/agent-workspace.md")
@@ -99,9 +97,5 @@ describe("adaptive workspace docs contract", () => {
     expect(quickstart).toContain(
       "`agent-workspace/` is the canonical durable adaptive state"
     )
-    expect(codex).toContain("bootstrap-only")
-    expect(codex).toContain("`agent-workspace/`")
-    expect(bootstrap).toContain("pnpm install --frozen-lockfile")
-    expect(bootstrap).not.toContain("pnpm dev")
   })
 })

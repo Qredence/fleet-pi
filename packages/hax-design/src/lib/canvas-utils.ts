@@ -7,12 +7,7 @@ const RESOURCE_CANVAS_MIN_WIDTH = 320
 
 export type ThemePreference = "light" | "dark" | "system"
 
-export type RightPanel =
-  | "resources"
-  | "workspace"
-  | "artifacts"
-  | "configurations"
-  | null
+export type RightPanel = "resources" | "workspace" | "artifacts" | null
 
 export function getResourceCanvasInitialWidth() {
   if (typeof window === "undefined") return RESOURCE_CANVAS_MIN_WIDTH

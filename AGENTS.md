@@ -30,7 +30,6 @@
 - `docs/README.md` is the docs hub and the recommended entrypoint for the human-facing docs set.
 - `docs/quickstart.md` is the primary onboarding doc for setup and local verification.
 - `docs/agent-workspace.md` explains how `agent-workspace/` acts as Fleet Pi's durable adaptive layer.
-- `docs/codex.md` is the advanced setup path for Codex worktrees, not the default setup guide.
 - `docs/api.md`, `docs/project-structure.md`, and `docs/architecture.md` are secondary reference docs. If they drift, fix the generator or its source inputs rather than hand-waving around stale output.
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and the issue templates are part of the public repository surface and should stay aligned with actual maintainer workflow.
 - When doc-generation sources change, run `pnpm generate:docs`. When command examples or AGENTS instructions change, run `pnpm validate-agents-md`.
@@ -45,14 +44,6 @@ The repository includes a VS Code devcontainer configuration at `.devcontainer/d
 - Vercel builds run `NITRO_PRESET=vercel pnpm build:vercel`; TanStack Start emits `dist/`, then `apps/web/scripts/build-vercel-output.mjs` packages it into `.vercel/output`.
 - Better Auth on Vercel requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, and `FLEET_PI_AUTH_DATABASE_URL`; the auth database must be Neon/Postgres, not the local SQLite fallback.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
-
-## Codex Local Environment
-
-- Fleet Pi now ships a shared Codex local environment at `.codex/environments/environment.toml`.
-- The worktree bootstrap entrypoint is `.codex/workspace-bootstrap.zsh`.
-- Keep the Codex setup script bootstrap-only: install dependencies for a fresh worktree, but do not add long-running processes or rely on shell state persisting after setup.
-- The current bootstrap runs `pnpm install --frozen-lockfile` from the repo root and assumes `node` plus `pnpm` are already available on the machine.
-- Prefer keeping secrets and provider credentials in Codex settings or normal shell environment configuration rather than exporting them from the setup script.
 
 ## Pre-commit Hooks
 

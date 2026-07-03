@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 
 import { defineConfig } from "vite"
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import { tempoVitePlugin } from "tempo-sdk"
 import viteReact from "@vitejs/plugin-react"
 import viteTsConfigPaths from "vite-tsconfig-paths"
 import tailwindcss from "@tailwindcss/vite"
@@ -24,6 +25,7 @@ const config = defineConfig({
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
+    tempoVitePlugin(),
     tailwindcss(),
     tanstackStart(),
     viteReact(),

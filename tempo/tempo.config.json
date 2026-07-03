@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "install": "pnpm install --no-frozen-lockfile",
+    "start": "pnpm dev"
+  },
+  "apps": [
+    {
+      "appStart": "pnpm --filter web exec vite dev --port=${PORT} --strictPort"
+    }
+  ]
+}
