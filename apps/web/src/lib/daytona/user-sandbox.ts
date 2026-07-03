@@ -10,7 +10,7 @@ import {
   stopSandbox,
 } from "./client"
 import { findLatestSnapshot } from "./snapshot-config"
-import type { Daytona, Sandbox } from "@daytonaio/sdk"
+import type { Daytona, Sandbox } from "@daytona/sdk"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"

@@ -1,6 +1,6 @@
 import { dirname } from "node:path"
 import { downloadFile, executeCommand, listFiles, uploadFile } from "./client"
-import type { Sandbox } from "@daytonaio/sdk"
+import type { Sandbox } from "@daytona/sdk"
 import type {
   BashOperations,
   EditOperations,

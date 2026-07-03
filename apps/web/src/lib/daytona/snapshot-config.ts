@@ -1,5 +1,5 @@
 import { createDaytonaClient } from "./client"
-import type { Daytona } from "@daytonaio/sdk"
+import type { Daytona } from "@daytona/sdk"
 
 const SNAPSHOT_PREFIX = "fleet-pi-v"
 
