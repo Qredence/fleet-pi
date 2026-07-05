@@ -9,7 +9,7 @@ describe("buildOpenUIPrompt", () => {
     expect(prompt).toContain("```openui")
     expect(prompt).toContain("Root(")
     expect(prompt).toContain("Button(")
-    expect(prompt).toContain("Do not emit Query, Mutation, OpenUrl")
+    expect(prompt).toContain("Reactive State ($variables)")
   })
 
   it("keeps plan mode markdown-first", () => {

@@ -60,4 +60,25 @@ chart = BarChart("Coverage", "OpenUI checks", "area", [{dataKey: "value/%", labe
     expect(html).toContain("--color-value__")
     expect(getChartColorVarName("value/%")).toBe("--color-value__")
   })
+
+  it("renders interactive inputs, selects, switches and modals with reactive bindings", () => {
+    const html = renderOpenUI(`
+$query = "fleet"
+$timeframe = "7"
+$showAdvanced = false
+$modalOpen = false
+
+root = Root([form, modal])
+form = Card("Controls", Stack([search, row]))
+search = Input("searchQuery", $query, "Search term...")
+row = Stack([timeframeSelect, toggle], "row")
+timeframeSelect = Select("timeframe", $timeframe, [SelectItem("7", "7 Days"), SelectItem("30", "30 Days")])
+toggle = Switch("advanced", $showAdvanced, "Show advanced details")
+modal = Modal("detailsModal", $modalOpen, "Advanced Details", [Text("Modal contents")])
+`)
+
+    expect(html).toContain("Controls")
+    expect(html).toContain("Search term...")
+    expect(html).toContain("Show advanced details")
+  })
 })
