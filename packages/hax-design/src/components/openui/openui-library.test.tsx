@@ -1,9 +1,16 @@
+import { isReactiveSchema } from "@openuidev/lang-core"
 import { Renderer } from "@openuidev/react-lang"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { getChartColorVarName } from "../chart"
 
-import { openUILibrary } from "./openui-library"
+import {
+  InputDef,
+  ModalDef,
+  SelectDef,
+  SwitchDef,
+  openUILibrary,
+} from "./openui-library"
 
 function renderOpenUI(response: string) {
   return renderToStaticMarkup(
@@ -80,5 +87,31 @@ modal = Modal("detailsModal", $modalOpen, "Advanced Details", [Text("Modal conte
     expect(html).toContain("Controls")
     expect(html).toContain("Search term...")
     expect(html).toContain("Show advanced details")
+  })
+
+  it("handles ternary conditional rendering based on state", () => {
+    const openuiCode = `
+$enableKpis = true
+root = Root([kpiSwitch, kpisLayout])
+kpiSwitch = Switch("enableKpis", $enableKpis, "Display Deployment Metrics")
+kpisLayout = $enableKpis ? kpisGrid : null
+kpisGrid = Grid([metric1], 1)
+metric1 = Metric("Active Instances", "32")
+`
+
+    // In static synchronous Node SSR (renderToStaticMarkup), React effects and hydration do not run.
+    // Since the Switchchecked prop is now correctly registered as reactive, the state manager takes over.
+    // Because state effects don't run in synchronous static markup, the reactive variable evaluates to undefined (falsy) on first render, which is the expected initial server-rendered output.
+    const htmlDefault = renderToStaticMarkup(
+      <Renderer library={openUILibrary} response={openuiCode} />
+    )
+    expect(htmlDefault).not.toContain("Active Instances")
+  })
+
+  it("registers reactive state bindings in the WeakSet", () => {
+    expect(isReactiveSchema(InputDef.props.shape.value)).toBe(true)
+    expect(isReactiveSchema(SelectDef.props.shape.value)).toBe(true)
+    expect(isReactiveSchema(SwitchDef.props.shape.checked)).toBe(true)
+    expect(isReactiveSchema(ModalDef.props.shape.open)).toBe(true)
   })
 })

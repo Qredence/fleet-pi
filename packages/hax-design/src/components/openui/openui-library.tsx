@@ -196,13 +196,14 @@ export const InputDef = defineComponent({
   description: "An interactive, state-bound text input.",
   props: z.object({
     name: z.string().describe("Form field name for state tracking"),
-    value: reactive(z.string()).describe("Bound state variable"),
+    value: reactive(z.string().describe("Bound state variable")),
     placeholder: z.string().optional(),
     type: z.enum(["text", "email", "number", "password", "search"]).optional(),
     disabled: z.boolean().optional().default(false),
   }),
   component: ({ props: { name, value, placeholder, type, disabled } }) => {
     const field = useStateField(name, value)
+
     return (
       <Input
         value={field.value}
@@ -613,7 +614,7 @@ export const SelectDef = defineComponent({
   description: "An interactive dropdown selector with reactive state binding.",
   props: z.object({
     name: z.string().describe("Form field name for state tracking"),
-    value: reactive(z.string()).describe("Bound state variable"),
+    value: reactive(z.string().describe("Bound state variable")),
     children: childrenProp.describe("SelectItem options"),
     placeholder: z
       .string()
@@ -671,7 +672,7 @@ export const SwitchDef = defineComponent({
   description: "A toggle switch component bound to a boolean reactive state.",
   props: z.object({
     name: z.string().describe("Form field name for state tracking"),
-    checked: reactive(z.boolean()).describe("Bound boolean state variable"),
+    checked: reactive(z.boolean().describe("Bound boolean state variable")),
     label: z.string().optional().describe("Label shown next to the switch"),
     disabled: z.boolean().optional().default(false),
   }),
@@ -697,8 +698,10 @@ export const ModalDef = defineComponent({
   description: "An overlay dialog container bound to a boolean reactive state.",
   props: z.object({
     name: z.string().describe("Unique modal name for state tracking"),
-    open: reactive(z.boolean()).describe(
-      "Bound boolean state variable controlling visibility"
+    open: reactive(
+      z
+        .boolean()
+        .describe("Bound boolean state variable controlling visibility")
     ),
     title: z.string().describe("Modal header title"),
     content: childrenProp.describe("Modal body content"),
