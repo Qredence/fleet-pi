@@ -6,6 +6,7 @@ import {
   createSessionServices,
   resolveDefaultModelSelection,
 } from "./server-shared"
+import { hotReloadActiveRuntimes } from "./server-runtime"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
@@ -53,6 +54,9 @@ export async function updateChatSettings(
 
   await mkdir(dirname(settingsPath), { recursive: true })
   await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
+
+  // Hot-reload any active runtimes in memory
+  await hotReloadActiveRuntimes(parsedUpdate)
 
   return loadChatSettings(context)
 }

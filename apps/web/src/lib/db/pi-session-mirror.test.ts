@@ -389,4 +389,33 @@ describe("Pi session mirror repository", () => {
       "[pi-session-mirror] sync failed (non-fatal)"
     )
   })
+
+  it("throws fatal error on mirror sync failures on Vercel", async () => {
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
+    process.env.VERCEL = "1"
+    const errorSpy = vi
+      .spyOn(logger, "error")
+      .mockImplementation(() => undefined)
+
+    try {
+      await expect(
+        syncPiSessionMirrorSafely({
+          getHeader() {
+            throw new Error("boom vercel")
+          },
+        } as never)
+      ).rejects.toThrow(
+        "Fatal session mirror synchronization failure on Vercel: boom vercel"
+      )
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        {
+          error: expect.objectContaining({ message: "boom vercel" }),
+        },
+        "[pi-session-mirror] fatal sync failure on Vercel"
+      )
+    } finally {
+      delete process.env.VERCEL
+    }
+  })
 })

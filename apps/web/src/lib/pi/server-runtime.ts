@@ -21,14 +21,15 @@ import {
   resolveQuestionnaireAnswer,
 } from "./plan-mode"
 import {
-  createBedrockCircuitBreaker,
-  createBedrockFallbackError,
+  createSessionCircuitBreaker,
+  createSessionFallbackError,
 } from "./circuit-breaker"
 import { applyModelSelection, resolveModelSelection } from "./server-catalog"
 import {
   collectDiagnostics,
   createSessionServices,
   getSessionDir,
+  resolveDefaultModelSelection,
   safeRealpath,
 } from "./server-shared"
 import { createSessionManager, isUsableSessionFile } from "./server-sessions"
@@ -40,6 +41,7 @@ import type {
 import type {
   ChatMode,
   ChatModelSelection,
+  ChatPiSettingsUpdate,
   ChatPlanAction,
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
@@ -91,18 +93,18 @@ type ActiveSessionRecord = {
 
 const runtimeRecords = new Map<string, ActiveSessionRecord>()
 
-async function invokeBedrockAgentSession(
+async function invokeAgentSessionCreation(
   params: Parameters<typeof createAgentSessionFromServices>[0]
 ) {
   return createAgentSessionFromServices(params)
 }
 
-const bedrockCircuitBreaker = createBedrockCircuitBreaker(
-  invokeBedrockAgentSession
+const sessionCircuitBreaker = createSessionCircuitBreaker(
+  invokeAgentSessionCreation
 )
 
-bedrockCircuitBreaker.fallback(() => {
-  throw createBedrockFallbackError()
+sessionCircuitBreaker.fallback(() => {
+  throw createSessionFallbackError()
 })
 
 export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
@@ -277,7 +279,7 @@ export async function createPiRuntime(
       ] as Array<ToolDefinition>
     }
 
-    const result = await bedrockCircuitBreaker.fire({
+    const result = await sessionCircuitBreaker.fire({
       services: runtimeServices,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
@@ -446,6 +448,26 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
     },
     Math.max(0, RUNTIME_TTL_MS)
   )
+}
+
+export async function hotReloadActiveRuntimes(_update: ChatPiSettingsUpdate) {
+  for (const record of runtimeRecords.values()) {
+    const { runtime } = record
+    if (typeof (runtime.services.settingsManager as any).load === "function") {
+      await (runtime.services.settingsManager as any).load()
+    }
+    const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
+      runtime.services.settingsManager
+    )
+    const defaultThinkingLevel =
+      runtime.services.settingsManager.getDefaultThinkingLevel()
+
+    await applyModelSelection(runtime, {
+      provider: defaultProvider,
+      id: defaultModel,
+      thinkingLevel: defaultThinkingLevel,
+    })
+  }
 }
 
 function hasOtherRuntimeForUser(userId: string) {

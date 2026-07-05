@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest"
 import CircuitBreaker from "opossum"
 import {
-  BEDROCK_CIRCUIT_BREAKER_OPTIONS,
-  createBedrockCircuitBreaker,
-  createBedrockFallbackError,
+  SESSION_CIRCUIT_BREAKER_OPTIONS,
+  createSessionCircuitBreaker,
+  createSessionFallbackError,
 } from "./circuit-breaker"
 
 describe("circuit-breaker configuration", () => {
   it("exports configured options with required thresholds", () => {
-    expect(BEDROCK_CIRCUIT_BREAKER_OPTIONS.errorThresholdPercentage).toBe(50)
-    expect(BEDROCK_CIRCUIT_BREAKER_OPTIONS.resetTimeout).toBe(30_000)
-    expect(BEDROCK_CIRCUIT_BREAKER_OPTIONS.volumeThreshold).toBe(5)
-    expect(BEDROCK_CIRCUIT_BREAKER_OPTIONS.timeout).toBe(30_000)
-    expect(BEDROCK_CIRCUIT_BREAKER_OPTIONS.name).toBe("bedrock-api")
+    expect(SESSION_CIRCUIT_BREAKER_OPTIONS.errorThresholdPercentage).toBe(50)
+    expect(SESSION_CIRCUIT_BREAKER_OPTIONS.resetTimeout).toBe(30_000)
+    expect(SESSION_CIRCUIT_BREAKER_OPTIONS.volumeThreshold).toBe(5)
+    expect(SESSION_CIRCUIT_BREAKER_OPTIONS.timeout).toBe(30_000)
+    expect(SESSION_CIRCUIT_BREAKER_OPTIONS.name).toBe("session-creation-api")
   })
 
   it("creates a CircuitBreaker instance with correct options", () => {
     const fn = () => Promise.resolve("ok")
-    const breaker = createBedrockCircuitBreaker(fn)
+    const breaker = createSessionCircuitBreaker(fn)
     expect(breaker).toBeInstanceOf(CircuitBreaker)
-    expect(breaker.name).toBe("bedrock-api")
+    expect(breaker.name).toBe("session-creation-api")
     expect(breaker.volumeThreshold).toBe(5)
   })
 })
@@ -29,7 +29,7 @@ describe("circuit-breaker tripping behavior", () => {
     let callCount = 0
     const failingFn = () => {
       callCount++
-      return Promise.reject(new Error("Bedrock failure"))
+      return Promise.reject(new Error("Session creation failure"))
     }
 
     // Use a custom breaker with low thresholds for fast testing
@@ -66,7 +66,7 @@ describe("circuit-breaker tripping behavior", () => {
   it("emits an open event when the circuit trips", async () => {
     let openEventFired = false
     const failingFn = () => {
-      return Promise.reject(new Error("Bedrock failure"))
+      return Promise.reject(new Error("Session creation failure"))
     }
 
     const breaker = new CircuitBreaker(failingFn, {
@@ -97,21 +97,21 @@ describe("circuit-breaker tripping behavior", () => {
 describe("circuit-breaker fallback behavior", () => {
   it("returns fallback error when circuit is manually opened", async () => {
     const fn = () => Promise.resolve("should not reach")
-    const breaker = createBedrockCircuitBreaker(fn)
+    const breaker = createSessionCircuitBreaker(fn)
     breaker.fallback(() => {
-      throw createBedrockFallbackError()
+      throw createSessionFallbackError()
     })
 
     breaker.open()
 
     await expect(breaker.fire()).rejects.toThrow(
-      "Bedrock API is temporarily unavailable"
+      "Session creation is temporarily unavailable"
     )
   })
 
   it("returns fallback error after the circuit auto-trips", async () => {
     const failingFn = () => {
-      return Promise.reject(new Error("Bedrock failure"))
+      return Promise.reject(new Error("Session creation failure"))
     }
 
     const breaker = new CircuitBreaker(failingFn, {
@@ -123,7 +123,7 @@ describe("circuit-breaker fallback behavior", () => {
     })
 
     breaker.fallback(() => {
-      throw createBedrockFallbackError()
+      throw createSessionFallbackError()
     })
 
     for (let i = 0; i < 4; i++) {
@@ -136,13 +136,15 @@ describe("circuit-breaker fallback behavior", () => {
 
     expect(breaker.opened).toBe(true)
     await expect(breaker.fire()).rejects.toThrow(
-      "Bedrock API is temporarily unavailable"
+      "Session creation is temporarily unavailable"
     )
   })
 
   it("fallback preserves the error message format", () => {
-    const error = createBedrockFallbackError()
-    expect(error.message).toContain("Bedrock API is temporarily unavailable")
+    const error = createSessionFallbackError()
+    expect(error.message).toContain(
+      "Session creation is temporarily unavailable"
+    )
     expect(error.message).toContain("repeated failures")
     expect(error.message).toContain("try again later")
   })

@@ -175,14 +175,87 @@ export function resolveDefaultModelSelection(
   }
 }
 
-async function loadBestEffortWorkspaceHealth(context: AppRuntimeContext) {
-  if (!context.workspaceBootstrap) {
-    context.workspaceBootstrap = bootstrapAgentWorkspace(context).catch(
-      (error) => createWorkspaceHealthFailure(context, error)
-    )
+interface BootstrapRetryState {
+  attempts: number
+  lastAttemptTime: number
+  nextRetryDelay: number
+  lastResult?: WorkspaceHealthResponse
+}
+
+const bootstrapRetryStates = new WeakMap<
+  AppRuntimeContext,
+  BootstrapRetryState
+>()
+
+async function loadBestEffortWorkspaceHealth(
+  context: AppRuntimeContext
+): Promise<WorkspaceHealthResponse> {
+  const now = Date.now()
+  let state = bootstrapRetryStates.get(context)
+
+  if (!state) {
+    state = {
+      attempts: 0,
+      lastAttemptTime: 0,
+      nextRetryDelay: 1000, // 1 second initial delay
+    }
+    bootstrapRetryStates.set(context, state)
   }
 
-  return context.workspaceBootstrap
+  // If there is an active promise already, await it
+  if (context.workspaceBootstrap) {
+    try {
+      const result = await context.workspaceBootstrap
+      if (result.status === "ok" && result.workspace.available) {
+        // Success! Reset retry state
+        state.attempts = 0
+        state.nextRetryDelay = 1000
+        state.lastResult = result
+        return result
+      }
+      // If it resolved to a failed/degraded state, fall through to the retry check
+      state.lastResult = result
+    } catch (error) {
+      const failure = createWorkspaceHealthFailure(context, error)
+      state.lastResult = failure
+    }
+  }
+
+  // If we have a failure, check if we are still within the backoff window
+  if (state.lastResult) {
+    const timeSinceLastAttempt = now - state.lastAttemptTime
+    if (timeSinceLastAttempt < state.nextRetryDelay) {
+      // Inside backoff window - return the cached failure to avoid spamming
+      return state.lastResult
+    }
+  }
+
+  // We are allowed to (re)try!
+  state.attempts++
+  state.lastAttemptTime = now
+  // Calculate next delay: initial delay * 2^(attempts-1), capped at 30 seconds
+  if (state.attempts > 1) {
+    state.nextRetryDelay = Math.min(state.nextRetryDelay * 2, 30000)
+  }
+
+  const promise = bootstrapAgentWorkspace(context)
+    .then((result) => {
+      if (result.status === "ok" && result.workspace.available) {
+        // Reset state on successful bootstrap execution completion
+        state.attempts = 0
+        state.nextRetryDelay = 1000
+      }
+      state.lastResult = result
+      return result
+    })
+    .catch((error) => {
+      const failure = createWorkspaceHealthFailure(context, error)
+      state.lastResult = failure
+      return failure
+    })
+
+  context.workspaceBootstrap = promise
+  return promise
 }
 
 function attachWorkspaceBootstrap(

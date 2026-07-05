@@ -106,7 +106,7 @@ The factory is invoked by `pi-coding-agent` with `cwd`, `agentDir`, `sessionMana
    ```
 2. Resolves the model and thinking level via `resolveModelSelection()`.
 3. If Daytona is enabled, builds `customTools` — sandbox-scoped versions of `bash`, `read`, `write`, `edit`, `grep`, `find`, `ls`.
-4. Fires through the **Bedrock circuit breaker** (`bedrockCircuitBreaker.fire(...)`) which wraps `createAgentSessionFromServices`.
+4. Fires through the **session creation circuit breaker** (`sessionCircuitBreaker.fire(...)`) which wraps `createAgentSessionFromServices`.
 
 ### Tool allowlist
 
