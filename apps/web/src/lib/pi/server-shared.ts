@@ -9,6 +9,8 @@ import {
   createWorkspaceHealthFailure,
 } from "../workspace/bootstrap-agent-workspace"
 import { KNOWN_PROVIDERS } from "../../routes/api/chat/providers"
+import { mirrorMetrics } from "../db/pi-session-mirror"
+import { CHAT_TOOL_ALLOWLIST } from "./plan-mode"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../workspace/bootstrap-agent-workspace"
@@ -112,6 +114,53 @@ export function collectDiagnostics(
   }
   for (const diagnostic of services.resourceLoader.getExtensions().errors) {
     diagnostics.add(`${diagnostic.path}: ${diagnostic.error}`)
+  }
+
+  // Tool allowlist drift detection
+  const extensionsResult = services.resourceLoader.getExtensions()
+  const registeredTools = new Set<string>()
+  for (const extension of extensionsResult.extensions) {
+    for (const toolName of extension.tools.keys()) {
+      registeredTools.add(toolName)
+    }
+  }
+
+  const allowlistSet = new Set(CHAT_TOOL_ALLOWLIST)
+
+  // 1. Unlisted tools: registered by dynamic extensions but not in CHAT_TOOL_ALLOWLIST
+  for (const tool of registeredTools) {
+    if (!allowlistSet.has(tool)) {
+      diagnostics.add(
+        `[Tool Drift] Registered tool "${tool}" is not present in CHAT_TOOL_ALLOWLIST.`
+      )
+    }
+  }
+
+  // 2. Unregistered tools: present in CHAT_TOOL_ALLOWLIST but not registered by any extension and not a built-in tool
+  const BUILT_IN_TOOLS = new Set([
+    "read",
+    "write",
+    "edit",
+    "bash",
+    "grep",
+    "find",
+    "ls",
+  ])
+  for (const tool of allowlistSet) {
+    if (!BUILT_IN_TOOLS.has(tool) && !registeredTools.has(tool)) {
+      diagnostics.add(
+        `[Tool Drift] Allowed tool "${tool}" is not registered by any loaded extension.`
+      )
+    }
+  }
+
+  if (mirrorMetrics.failures > 0) {
+    const lastError = mirrorMetrics.lastFailureReason
+      ? `. Last error: ${mirrorMetrics.lastFailureReason}`
+      : ""
+    diagnostics.add(
+      `[Mirror Health] Database synchronization has failed ${mirrorMetrics.failures} times${lastError}`
+    )
   }
 
   return [...diagnostics]

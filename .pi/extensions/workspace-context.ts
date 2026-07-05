@@ -5,6 +5,7 @@ import {
   formatProjectMemoryForStartupContext,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
+import { keepLastCustomType } from "./lib/context-filter"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
@@ -55,26 +56,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
   })
 
   pi.on("context", (event) => {
-    const messages = event.messages
-    let lastWorkspaceContextIndex = -1
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i] as { customType?: string }
-      if (msg.customType === CUSTOM_TYPE) {
-        lastWorkspaceContextIndex = i
-        break
-      }
-    }
-
-    if (lastWorkspaceContextIndex === -1) return undefined
-
-    const filtered = messages.filter((msg, i) => {
-      if (i === lastWorkspaceContextIndex) return true
-      const custom = msg as { customType?: string }
-      return custom.customType !== CUSTOM_TYPE
-    })
-
-    if (filtered.length === messages.length) return undefined
-    return { messages: filtered }
+    return keepLastCustomType(event.messages, CUSTOM_TYPE)
   })
 }
 

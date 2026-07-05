@@ -12,7 +12,7 @@
     "extensions/resource-install",
     "extensions/daytona-sandbox",
     "extensions/vendor/filechanges",
-    "extensions/vendor/subagents",
+    "extensions/plan-mode",
     "../agent-workspace/pi/extensions/enabled"
   ],
   "defaultProvider": "google",

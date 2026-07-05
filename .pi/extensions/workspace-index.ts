@@ -46,7 +46,6 @@ const PI_EXTENSION_ENTRIES = [
   fileEntry(".pi/extensions/web-fetch.ts"),
   fileEntry(".pi/extensions/bedrock-bearer-auth.ts"),
   fileEntry(".pi/extensions/vendor/filechanges/index.ts"),
-  fileEntry(".pi/extensions/vendor/subagents/index.ts"),
 ]
 
 const RUNTIME_TOOLS = [

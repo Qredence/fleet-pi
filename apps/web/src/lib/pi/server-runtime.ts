@@ -15,7 +15,6 @@ import {
   answerPlanDecision,
   applyPlanMode,
   clearPlanModeSession,
-  createPlanModeExtension,
   createPlanToolPart,
   getPlanState,
   isPlanDecisionToolCall,
@@ -52,15 +51,7 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
-import {
-  createSandboxBashOperations,
-  createSandboxEditOperations,
-  createSandboxFindOperations,
-  createSandboxGrepOperations,
-  createSandboxLsOperations,
-  createSandboxReadOperations,
-  createSandboxWriteOperations,
-} from "@/lib/daytona/sandbox-operations"
+import { createSandboxOperations } from "@/lib/daytona/sandbox-operations"
 import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
 import { executeCommand as daytonaExecuteCommand } from "@/lib/daytona/client"
 import {
@@ -229,9 +220,6 @@ export async function createPiRuntime(
     const runtimeServices = await createSessionServices(context, {
       cwd,
       agentDir: runtimeAgentDir,
-      resourceLoaderOptions: {
-        extensionFactories: [createPlanModeExtension()],
-      },
     })
     const { model, thinkingLevel } = resolveModelSelection(
       runtimeServices,
@@ -277,28 +265,15 @@ export async function createPiRuntime(
       })
       const sandboxCwd = "/home/daytona/fleet-pi"
       const s = handle.sandbox
+      const ops = createSandboxOperations(s)
       customTools = [
-        createBashToolDefinition(sandboxCwd, {
-          operations: createSandboxBashOperations(s),
-        }),
-        createReadToolDefinition(sandboxCwd, {
-          operations: createSandboxReadOperations(s),
-        }),
-        createWriteToolDefinition(sandboxCwd, {
-          operations: createSandboxWriteOperations(s),
-        }),
-        createEditToolDefinition(sandboxCwd, {
-          operations: createSandboxEditOperations(s),
-        }),
-        createGrepToolDefinition(sandboxCwd, {
-          operations: createSandboxGrepOperations(s),
-        }),
-        createFindToolDefinition(sandboxCwd, {
-          operations: createSandboxFindOperations(s),
-        }),
-        createLsToolDefinition(sandboxCwd, {
-          operations: createSandboxLsOperations(s),
-        }),
+        createBashToolDefinition(sandboxCwd, { operations: ops.bash }),
+        createReadToolDefinition(sandboxCwd, { operations: ops.read }),
+        createWriteToolDefinition(sandboxCwd, { operations: ops.write }),
+        createEditToolDefinition(sandboxCwd, { operations: ops.edit }),
+        createGrepToolDefinition(sandboxCwd, { operations: ops.grep }),
+        createFindToolDefinition(sandboxCwd, { operations: ops.find }),
+        createLsToolDefinition(sandboxCwd, { operations: ops.ls }),
       ] as Array<ToolDefinition>
     }
 

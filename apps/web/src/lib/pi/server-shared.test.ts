@@ -80,6 +80,56 @@ describe("createSessionServices", () => {
       defaultModel: "gemini-3.5-flash",
     })
   })
+
+  it("detects tool allowlist drift", async () => {
+    const { collectDiagnostics } = await import("./server-shared")
+    const mockServices = {
+      diagnostics: [],
+      modelRegistry: { getError: () => undefined },
+      settingsManager: { drainErrors: () => [] },
+      resourceLoader: {
+        getSkills: () => ({ diagnostics: [] }),
+        getPrompts: () => ({ diagnostics: [] }),
+        getThemes: () => ({ diagnostics: [] }),
+        getExtensions: () => ({
+          errors: [],
+          extensions: [
+            {
+              path: "/some/path/unlisted-extension.ts",
+              tools: new Map([["unlisted_tool", {} as any]]),
+            },
+          ],
+        }),
+      },
+    } as any
+
+    const diagnostics = collectDiagnostics(mockServices)
+    expect(diagnostics).toContain(
+      '[Tool Drift] Registered tool "unlisted_tool" is not present in CHAT_TOOL_ALLOWLIST.'
+    )
+    expect(diagnostics).toContain(
+      '[Tool Drift] Allowed tool "subagent" is not registered by any loaded extension.'
+    )
+  })
+
+  it("detects database sync mirror health warnings", async () => {
+    const { collectDiagnostics } = await import("./server-shared")
+    const { mirrorMetrics } = await import("../db/pi-session-mirror")
+
+    mirrorMetrics.failures = 2
+    mirrorMetrics.lastFailureReason = "Connection timed out"
+
+    try {
+      const mockServices = createMockSessionServices()
+      const diagnostics = collectDiagnostics(mockServices as any)
+      expect(diagnostics).toContain(
+        "[Mirror Health] Database synchronization has failed 2 times. Last error: Connection timed out"
+      )
+    } finally {
+      mirrorMetrics.failures = 0
+      mirrorMetrics.lastFailureReason = undefined
+    }
+  })
 })
 
 function createProjectRoot(roots: Set<string>) {
@@ -108,7 +158,7 @@ function createMockSessionServices() {
       getSkills: () => ({ diagnostics: [] }),
       getPrompts: () => ({ diagnostics: [] }),
       getThemes: () => ({ diagnostics: [] }),
-      getExtensions: () => ({ errors: [] }),
+      getExtensions: () => ({ errors: [], extensions: [] }),
     },
   }
 }

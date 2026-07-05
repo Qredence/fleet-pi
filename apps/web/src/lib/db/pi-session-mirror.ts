@@ -157,13 +157,31 @@ export async function syncPiSessionMirror(
   )
 }
 
+export interface MirrorMetrics {
+  attempts: number
+  successes: number
+  failures: number
+  lastFailureReason?: string
+}
+
+export const mirrorMetrics: MirrorMetrics = {
+  attempts: 0,
+  successes: 0,
+  failures: 0,
+}
+
 export async function syncPiSessionMirrorSafely(
   sessionManager: SessionManager,
   options: { userId?: string } = {}
 ) {
+  mirrorMetrics.attempts++
   try {
     await syncPiSessionMirror(sessionManager, options)
+    mirrorMetrics.successes++
   } catch (error) {
+    mirrorMetrics.failures++
+    const reason = error instanceof Error ? error.message : String(error)
+    mirrorMetrics.lastFailureReason = reason
     logger.warn({ error }, "[pi-session-mirror] sync failed (non-fatal)")
   }
 }
