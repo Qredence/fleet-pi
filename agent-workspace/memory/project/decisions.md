@@ -55,3 +55,48 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Rationale: In-memory retention avoids re-initializing the runtime on every message; the TTL prevents unbounded memory growth.
 - Consequences: Sessions beyond the TTL must fall back to creating a fresh runtime from the Pi session file. Invalid, outside, or missing session files must start a new project-scoped session rather than returning an error.
 - Source: `apps/web/src/lib/pi/server-runtime.ts`, `AGENTS.md` (AI Integration section).
+
+## Settings loaded from .pi/settings.json support hot-reload
+
+- Decision: Allow active, in-memory Pi runtimes to hot-reload settings updates immediately when `.pi/settings.json` is modified.
+- Status: Active.
+- Context: Users modifying their model, provider, or thinking defaults via the Configurations tab/Settings Dialog should see those changes applied instantly on subsequent turns without re-initializing the runtime or losing session state.
+- Rationale: Live reloading reduces friction and provides a seamless, responsive settings experience.
+- Consequences: Every setting update writes to `.pi/settings.json` and invokes `hotReloadActiveRuntimes` to reload settingsManagers and reapply model/provider selections to all active runtimes in memory.
+- Source: `apps/web/src/lib/pi/server-settings.ts`, `apps/web/src/lib/pi/server-runtime.ts`.
+
+## Daytona Sandbox handles isolated, secure executions
+
+- Decision: Use Daytona sandbox providers to mount and run secure, isolated workspaces for tool execution (Bash, Read, Write, Edit, Grep, Find, Ls).
+- Status: Active.
+- Context: Fleet Pi needs to support multi-tenant, cloud-isolated workspace environments where untrusted user code or agent modifications can run safely.
+- Rationale: Standard local system commands present security risks in multi-tenant or cloud deployments; Daytona provides secure virtualization.
+- Consequences: When Daytona is enabled for a user, standard tool definitions are replaced with custom sandbox-operations that execute commands inside a secure microVM sandbox.
+- Source: `apps/web/src/lib/daytona/sandbox-operations.ts`, `apps/web/src/lib/pi/server-runtime.ts`.
+
+## Enable Row Level Security (RLS) for multi-tenant Postgres sessions
+
+- Decision: Secure session storage at the database level using Postgres Row Level Security (RLS) on all `pi_sessions` and related records.
+- Status: Active.
+- Context: When using the Neon Postgres mirroring layer, users must only have access to their own past sessions and messages.
+- Rationale: Application-level filters are prone to omission or bypass; database-level RLS provides a stronger isolation boundary for mirrored chat data.
+- Consequences: The migration SQL now creates each mirrored table before enabling RLS or defining policies, so fresh databases receive the same isolation guarantees as existing ones. Database transactions set `app.current_user_id` via `set_config('app.current_user_id', ..., true)` at execution time.
+- Source: `apps/web/src/lib/db/chat-postgres-schema.ts`, `apps/web/src/lib/db/pi-session-mirror.ts`.
+
+## Remove Codex legacy tooling in favor of standalone path
+
+- Decision: Delete Codex environment files, workspace-bootstrap zsh scripts, and docs in order to commit fully to the clean, standalone Pi-native workspace design.
+- Status: Active.
+- Context: Legacy hybrid setups (Codex + Pi) introduced structural drift and cognitive overhead.
+- Rationale: Removing unused or redundant configurations reduces workspace noise and focuses all agents on the canonical, standalone Pi-native flow.
+- Consequences: Deleted `.codex/`, `.claude/skills/`, and `docs/codex.md`. Updated root `README.md` to point entirely to the standalone setup.
+- Source: `package.json`, `docs/quickstart.md`, `README.md`.
+
+## Circuit breaker and exponential backoff for workspace bootstrap
+
+- Decision: Implement a self-healing retry mechanism with exponential backoff and cached failures for agent workspace bootstrap failures.
+- Status: Active.
+- Context: If workspace bootstrap fails (e.g., due to temporary filesystem, docker, or database unavailability), subsequent immediate turns must not repeatedly retry and hammer the system.
+- Rationale: Exponential backoff stabilizes the server and prevents cascading failures or thread depletion.
+- Consequences: Bootstrap failures are cached within a dynamic backoff window (capped at 30 seconds). Immediate subsequent calls return the cached failure instead of re-executing. On successful execution, the backoff state resets.
+- Source: `apps/web/src/lib/pi/server-shared.ts`, `apps/web/src/lib/pi/circuit-breaker.ts`.
