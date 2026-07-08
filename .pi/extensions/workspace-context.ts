@@ -5,7 +5,6 @@ import {
   formatProjectMemoryForStartupContext,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
-import { keepLastCustomType } from "./lib/context-filter"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
@@ -55,8 +54,86 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     }
   })
 
-  pi.on("context", (event) => {
-    return keepLastCustomType(event.messages, CUSTOM_TYPE)
+  pi.on("context", async (event, ctx) => {
+    const messages = event.messages
+
+    let lastUserPrompt = ""
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index]
+      if (message.role === "user" && typeof message.content === "string") {
+        lastUserPrompt = message.content
+        break
+      }
+      if (message.role === "user" && Array.isArray(message.content)) {
+        const textParts = message.content
+          .filter((part) => part && typeof part === "object" && "text" in part)
+          .map((part) => (part as { text: string }).text)
+        if (textParts.length > 0) {
+          lastUserPrompt = textParts.join("\n")
+          break
+        }
+      }
+    }
+
+    let lastWorkspaceContextIndex = -1
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index] as { customType?: string }
+      if (message.customType === CUSTOM_TYPE) {
+        lastWorkspaceContextIndex = index
+        break
+      }
+    }
+
+    if (lastWorkspaceContextIndex === -1) return undefined
+
+    const cwd = ctx.sessionManager.getCwd()
+    const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
+
+    const workspaceAgents = await readWorkspaceAgents(cwd)
+    if (workspaceAgents) {
+      parts.push(workspaceAgents)
+    } else {
+      const identity = await readIdentity(cwd)
+      if (identity) parts.push(`Agent: ${identity}`)
+
+      parts.push(
+        "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
+      )
+      parts.push(
+        "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
+      )
+      parts.push(
+        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed (single quick URL reads). For research: use web_search, code_search, fetch_content (Harness+Agent), or get_search_content from pi-web-access."
+      )
+      parts.push(
+        "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
+      )
+      parts.push(
+        "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
+      )
+    }
+
+    const activePlan = await readActivePlan(cwd)
+    if (activePlan) parts.push(`Active plan: ${activePlan}`)
+
+    const memoryIndex = await readProjectMemoryIndex(cwd)
+    parts.push(
+      formatProjectMemoryForStartupContext(memoryIndex, lastUserPrompt)
+    )
+
+    const updatedMessages = [...messages]
+    updatedMessages[lastWorkspaceContextIndex] = {
+      ...updatedMessages[lastWorkspaceContextIndex],
+      content: parts.join("\n"),
+    } as (typeof messages)[number]
+
+    const filteredMessages = updatedMessages.filter((message, index) => {
+      if (index === lastWorkspaceContextIndex) return true
+      const customMessage = message as { customType?: string }
+      return customMessage.customType !== CUSTOM_TYPE
+    }) as typeof messages
+
+    return { messages: filteredMessages }
   })
 }
 

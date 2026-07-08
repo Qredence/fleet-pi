@@ -70,7 +70,8 @@ export async function readProjectMemoryIndex(
 }
 
 export function formatProjectMemoryForStartupContext(
-  index: ProjectMemoryIndex
+  index: ProjectMemoryIndex,
+  promptText?: string
 ) {
   const lines = [
     "Project memory index:",
@@ -89,7 +90,9 @@ export function formatProjectMemoryForStartupContext(
     )
   }
 
-  const snippetLines = formatMemorySnippets(index.canonical)
+  const snippetLines = promptText
+    ? selectScoredSnippets(index.canonical, promptText, 10)
+    : formatMemorySnippets(index.canonical)
   if (snippetLines.length > 0) {
     lines.push("Project memory recall snippets:", ...snippetLines)
   }
@@ -247,7 +250,6 @@ function extractMemorySnippets(content: string) {
       return true
     })
     .map((line) => truncateSnippet(line.slice(2).trim()))
-    .slice(0, 4)
 }
 
 function truncateSnippet(value: string) {
@@ -261,4 +263,279 @@ function titleFromFilename(path: string) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
+}
+
+const STOP_WORDS = new Set([
+  "a",
+  "about",
+  "above",
+  "after",
+  "again",
+  "against",
+  "all",
+  "am",
+  "an",
+  "and",
+  "any",
+  "are",
+  "aren't",
+  "as",
+  "at",
+  "be",
+  "because",
+  "been",
+  "before",
+  "being",
+  "below",
+  "between",
+  "both",
+  "but",
+  "by",
+  "can't",
+  "cannot",
+  "could",
+  "couldn't",
+  "did",
+  "didn't",
+  "do",
+  "does",
+  "doesn't",
+  "doing",
+  "don't",
+  "down",
+  "during",
+  "each",
+  "few",
+  "for",
+  "from",
+  "further",
+  "had",
+  "hadn't",
+  "has",
+  "hasn't",
+  "have",
+  "haven't",
+  "having",
+  "he",
+  "he'd",
+  "he'll",
+  "he's",
+  "her",
+  "here",
+  "here's",
+  "hers",
+  "herself",
+  "him",
+  "himself",
+  "his",
+  "how",
+  "how's",
+  "i",
+  "i'd",
+  "i'll",
+  "i'm",
+  "i've",
+  "if",
+  "in",
+  "into",
+  "is",
+  "isn't",
+  "it",
+  "it's",
+  "its",
+  "itself",
+  "let's",
+  "me",
+  "more",
+  "most",
+  "mustn't",
+  "my",
+  "myself",
+  "no",
+  "nor",
+  "not",
+  "of",
+  "off",
+  "on",
+  "once",
+  "only",
+  "or",
+  "other",
+  "ought",
+  "our",
+  "ours",
+  "ourselves",
+  "out",
+  "over",
+  "own",
+  "same",
+  "shan't",
+  "she",
+  "she'd",
+  "she'll",
+  "she's",
+  "should",
+  "shouldn't",
+  "so",
+  "some",
+  "such",
+  "than",
+  "that",
+  "that's",
+  "the",
+  "their",
+  "theirs",
+  "them",
+  "themselves",
+  "then",
+  "there",
+  "there's",
+  "these",
+  "they",
+  "they'd",
+  "they'll",
+  "they're",
+  "they've",
+  "this",
+  "those",
+  "through",
+  "to",
+  "too",
+  "under",
+  "until",
+  "up",
+  "very",
+  "was",
+  "wasn't",
+  "we",
+  "we'd",
+  "we'll",
+  "we're",
+  "we've",
+  "were",
+  "weren't",
+  "what",
+  "what's",
+  "when",
+  "when's",
+  "where",
+  "where's",
+  "which",
+  "while",
+  "who",
+  "who's",
+  "whom",
+  "why",
+  "why's",
+  "with",
+  "won't",
+  "would",
+  "wouldn't",
+  "you",
+  "you'd",
+  "you'll",
+  "you're",
+  "you've",
+  "your",
+  "yours",
+  "yourself",
+  "yourselves",
+])
+
+export function extractPromptTerms(prompt: string): Set<string> {
+  const terms = new Set<string>()
+  const words = prompt
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .split(/\s+/)
+
+  for (const word of words) {
+    const trimmed = word.trim()
+    if (trimmed && trimmed.length > 1 && !STOP_WORDS.has(trimmed)) {
+      terms.add(trimmed)
+    }
+  }
+
+  return terms
+}
+
+export function selectScoredSnippets(
+  files: Array<ProjectMemoryFile>,
+  promptText: string,
+  limit = 10
+): Array<string> {
+  const terms = extractPromptTerms(promptText)
+  if (terms.size === 0) {
+    return files.flatMap((file) =>
+      file.snippets.slice(0, 2).map((snippet) => `- ${file.key}: ${snippet}`)
+    )
+  }
+
+  type ScoredSnippet = {
+    fileKey: string
+    snippet: string
+    score: number
+    index: number
+  }
+
+  const scored: Array<ScoredSnippet> = []
+  let globalIndex = 0
+
+  for (const file of files) {
+    for (const snippet of file.snippets) {
+      const snippetLower = snippet.toLowerCase()
+      let score = 0
+      for (const term of terms) {
+        if (snippetLower.includes(term)) {
+          score += 1
+        }
+      }
+      scored.push({
+        fileKey: file.key,
+        snippet,
+        score,
+        index: globalIndex++,
+      })
+    }
+  }
+
+  const sorted = scored
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      return a.index - b.index
+    })
+
+  if (sorted.length < limit) {
+    const matchedSet = new Set(sorted.map((item) => item.snippet))
+    for (const file of files) {
+      for (const snippet of file.snippets) {
+        if (!matchedSet.has(snippet)) {
+          sorted.push({
+            fileKey: file.key,
+            snippet,
+            score: 0,
+            index: globalIndex++,
+          })
+          matchedSet.add(snippet)
+          if (sorted.length >= limit) break
+        }
+      }
+      if (sorted.length >= limit) break
+    }
+  }
+
+  const formatted: Array<string> = []
+  const seen = new Set<string>()
+
+  for (const item of sorted) {
+    const key = `${item.fileKey}:${item.snippet}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      formatted.push(`- ${item.fileKey}: ${item.snippet}`)
+      if (formatted.length >= limit) break
+    }
+  }
+
+  return formatted
 }
