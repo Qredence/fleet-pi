@@ -12,3 +12,5 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 FLEET_PI_AUTH_DATABASE_URL="$FLEET_PI_AUTH_MIGRATION_DATABASE_URL" \
   npx @better-auth/cli@latest migrate --config "$REPO_ROOT/apps/web/src/lib/auth/server.ts" --yes
+
+pnpm --filter web exec tsx scripts/auth-post-migrate.ts
