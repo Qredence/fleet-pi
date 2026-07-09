@@ -48,6 +48,7 @@ export function identifyAnalyticsUser(user: {
   email?: string | null
   name?: string | null
 }) {
+  initAnalytics()
   if (!initialized) return
   posthog.identify(user.id, {
     email: user.email ?? undefined,
@@ -57,11 +58,13 @@ export function identifyAnalyticsUser(user: {
 
 /** Clear the identity on sign-out so the next user starts fresh. */
 export function resetAnalytics() {
+  initAnalytics()
   if (!initialized) return
   posthog.reset()
 }
 
 function capture(event: string, properties?: Record<string, unknown>) {
+  initAnalytics()
   if (!initialized) return
   posthog.capture(event, properties)
 }
