@@ -1,4 +1,4 @@
-import {  useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Cpu, HardDrive, Paintbrush, Settings } from "lucide-react"
 
@@ -54,7 +54,7 @@ import {
   summarizeProviders,
   summarizeResources,
 } from "./config-panel/shared/settings-mappers"
-import type {ReactNode} from "react";
+import type { ReactNode } from "react"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
@@ -506,7 +506,7 @@ export function SettingsDialog({
           Customize your settings here.
         </DialogDescription>
 
-        <SidebarProvider className="h-full items-start">
+        <SidebarProvider className="h-full min-h-0">
           {/* Left Sidebar */}
           <Sidebar
             collapsible="none"
@@ -554,7 +554,7 @@ export function SettingsDialog({
           </Sidebar>
 
           {/* Main Content Pane */}
-          <main className="flex h-full flex-1 flex-col overflow-hidden bg-background">
+          <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
             <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/10 bg-background px-6">
               <div className="flex flex-1 items-center justify-between">
                 <Breadcrumb>
@@ -604,7 +604,7 @@ export function SettingsDialog({
               </MobileTabButton>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="p-6">
                 {activeTab === "appearance" && (
                   <div className="flex flex-col gap-6">

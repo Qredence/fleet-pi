@@ -15,6 +15,7 @@ import {
   answerPlanDecision,
   applyPlanMode,
   clearPlanModeSession,
+  createPlanModeExtension,
   createPlanToolPart,
   getPlanState,
   isPlanDecisionToolCall,
@@ -24,15 +25,23 @@ import {
   createSessionCircuitBreaker,
   createSessionFallbackError,
 } from "./circuit-breaker"
-import { applyModelSelection, resolveModelSelection } from "./server-catalog"
+import { applyModelSelection, resolveModelSelection } from "./runtime"
 import {
   collectDiagnostics,
   createSessionServices,
   getSessionDir,
-  resolveDefaultModelSelection,
   safeRealpath,
 } from "./server-shared"
+import {
+  deleteActiveSessionRecord,
+  getActiveSessionRecords,
+  hasOtherActiveSessionForUser,
+  setActiveSessionRecord,
+} from "./runtime/active-sessions"
+import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
+import { applyRuntimeAuth } from "./runtime/session-factory"
 import { createSessionManager, isUsableSessionFile } from "./server-sessions"
+import type { ActiveSessionRecord } from "./runtime/active-sessions"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
@@ -41,7 +50,6 @@ import type {
 import type {
   ChatMode,
   ChatModelSelection,
-  ChatPiSettingsUpdate,
   ChatPlanAction,
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
@@ -82,16 +90,7 @@ type ChatRuntimeMetadata = ChatSessionMetadata & {
   userEmail?: string
 }
 
-type ActiveSessionRecord = {
-  runtime: AgentSessionRuntime
-  sessionFile?: string
-  sessionId: string
-  userId?: string
-  lastUsedAt: number
-  disposeTimer?: ReturnType<typeof setTimeout>
-}
-
-const runtimeRecords = new Map<string, ActiveSessionRecord>()
+const runtimeRecords = getActiveSessionRecords()
 
 async function invokeAgentSessionCreation(
   params: Parameters<typeof createAgentSessionFromServices>[0]
@@ -158,10 +157,15 @@ export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
-  if (isDaytonaEnabled(metadata.userId) && !context.workspaceFS) {
+  const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
+  if (
+    isDaytonaEnabled(metadata.userId, daytonaApiKey) &&
+    !context.workspaceFS
+  ) {
     const handle = await getUserSandbox({
       userId: metadata.userId!,
       userEmail: metadata.userEmail,
+      apiKey: daytonaApiKey,
     })
     const sb = handle.sandbox
     const sandboxWorkspaceRoot = "/home/daytona/fleet-pi/agent-workspace"
@@ -222,48 +226,26 @@ export async function createPiRuntime(
     const runtimeServices = await createSessionServices(context, {
       cwd,
       agentDir: runtimeAgentDir,
+      resourceLoaderOptions: {
+        extensionFactories: [createPlanModeExtension()],
+      },
     })
     const { model, thinkingLevel } = resolveModelSelection(
       runtimeServices,
       modelSelection
     )
 
-    if (process.env.VERCEL === "1" && metadata.userId) {
-      const { withChatPostgresTransaction } =
-        await import("@/lib/db/pi-session-mirror")
-      const { decryptString } = await import("@/lib/auth/crypto")
-
-      if (!process.env.BETTER_AUTH_SECRET) {
-        throw new Error(
-          "BETTER_AUTH_SECRET is missing, cannot decrypt user LLM keys"
-        )
-      }
-
-      await withChatPostgresTransaction(async (client: any) => {
-        const res = await client.query(
-          "SELECT provider_id, encrypted_key FROM pi_user_providers WHERE user_id = $1",
-          [metadata.userId]
-        )
-        for (const row of res.rows) {
-          const decrypted = decryptString(
-            row.encrypted_key,
-            process.env.BETTER_AUTH_SECRET!
-          )
-          if (decrypted) {
-            runtimeServices.authStorage.setRuntimeApiKey(
-              row.provider_id,
-              decrypted
-            )
-          }
-        }
-      }, metadata.userId)
-    }
+    await applyRuntimeAuth(runtimeServices, { userId: metadata.userId })
 
     let customTools: Array<ToolDefinition> | undefined
-    if (isDaytonaEnabled(metadata.userId)) {
+    const runtimeDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
+      metadata.userId
+    )
+    if (isDaytonaEnabled(metadata.userId, runtimeDaytonaApiKey)) {
       const handle = await getUserSandbox({
         userId: metadata.userId!,
         userEmail: metadata.userEmail,
+        apiKey: runtimeDaytonaApiKey,
       })
       const sandboxCwd = "/home/daytona/fleet-pi"
       const s = handle.sandbox
@@ -401,7 +383,7 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   record.lastUsedAt = Date.now()
   if (userId) record.userId = userId
   trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
-  runtimeRecords.set(session.sessionId, record)
+  setActiveSessionRecord(session.sessionId, record)
   return record
 }
 
@@ -439,42 +421,18 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
       }
 
       clearPlanModeSession(record.sessionId)
-      runtimeRecords.delete(record.sessionId)
+      deleteActiveSessionRecord(record.sessionId)
       untrackDaytonaToolSession(record.sessionId, record.sessionFile)
-      if (record.userId && !hasOtherRuntimeForUser(record.userId)) {
+      if (
+        record.userId &&
+        !hasOtherActiveSessionForUser(record.userId, record.sessionId)
+      ) {
         void releaseUserSandbox(record.userId)
       }
       void current.runtime.dispose()
     },
     Math.max(0, RUNTIME_TTL_MS)
   )
-}
-
-export async function hotReloadActiveRuntimes(_update: ChatPiSettingsUpdate) {
-  for (const record of runtimeRecords.values()) {
-    const { runtime } = record
-    if (typeof (runtime.services.settingsManager as any).load === "function") {
-      await (runtime.services.settingsManager as any).load()
-    }
-    const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
-      runtime.services.settingsManager
-    )
-    const defaultThinkingLevel =
-      runtime.services.settingsManager.getDefaultThinkingLevel()
-
-    await applyModelSelection(runtime, {
-      provider: defaultProvider,
-      id: defaultModel,
-      thinkingLevel: defaultThinkingLevel,
-    })
-  }
-}
-
-function hasOtherRuntimeForUser(userId: string) {
-  for (const active of runtimeRecords.values()) {
-    if (active.userId === userId) return true
-  }
-  return false
 }
 
 function matchesPendingPlanDecisionToolCall(

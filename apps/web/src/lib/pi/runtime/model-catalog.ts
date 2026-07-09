@@ -1,31 +1,17 @@
-import { basename, dirname, extname } from "node:path"
-import { collectResourceExpectationDiagnostics } from "./resource-expectations"
-import {
-  collectDiagnostics,
-  createSessionServices,
-  resolveDefaultModelSelection,
-} from "./server-shared"
-import {
-  applyWorkspaceResourceMetadata,
-  loadWorkspaceResourceCatalog,
-  mergeResourceInfo,
-  readWorkspacePiSettings,
-} from "./workspace-resource-catalog"
+import { isModelPatternEnabled } from "@workspace/hax-design/lib/pi/model-patterns"
+import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
+import { createSessionServices } from "./session-factory"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
-  PromptTemplate,
-  Skill,
 } from "@earendil-works/pi-coding-agent"
 import type { Model } from "@earendil-works/pi-ai"
 import type {
   ChatModelInfo,
   ChatModelSelection,
   ChatModelsResponse,
-  ChatResourcesResponse,
   ChatThinkingLevel,
 } from "@workspace/hax-design/lib/pi/chat-protocol"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "off",
@@ -37,19 +23,23 @@ const THINKING_LEVELS = new Set<ChatThinkingLevel>([
 ])
 
 export async function loadChatModels(
-  context: AppRuntimeContext
+  context: Parameters<typeof createSessionServices>[0]
 ): Promise<ChatModelsResponse> {
   const services = await createSessionServices(context)
   const available = services.modelRegistry.getAvailable()
   const availableKeys = new Set(available.map(modelKey))
   const all = services.modelRegistry.getAll()
-  const models = (available.length > 0 ? available : all).map((model) =>
-    toChatModelInfo(
-      model,
-      available.length === 0 || availableKeys.has(modelKey(model)),
-      services.settingsManager.getDefaultThinkingLevel()
+  const enabledPatterns = services.settingsManager.getEnabledModels()
+  const sourceModels = available.length > 0 ? available : all
+  const models = sourceModels
+    .map((model) =>
+      toChatModelInfo(
+        model,
+        available.length === 0 || availableKeys.has(modelKey(model)),
+        services.settingsManager.getDefaultThinkingLevel()
+      )
     )
-  )
+    .filter((model) => isChatModelEnabled(model, enabledPatterns))
   const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
     services.settingsManager
   )
@@ -93,78 +83,6 @@ export async function loadChatModels(
     defaultModel,
     defaultThinkingLevel,
     diagnostics: collectDiagnostics(services),
-  }
-}
-
-export async function loadChatResources(
-  context: AppRuntimeContext
-): Promise<ChatResourcesResponse> {
-  const services = await createSessionServices(context)
-  const workspaceSettings = await readWorkspacePiSettings(context.projectRoot)
-  const skills = services.resourceLoader.getSkills()
-  const prompts = services.resourceLoader.getPrompts()
-  const extensions = services.resourceLoader.getExtensions()
-  const themes = services.resourceLoader.getThemes()
-  const agentsFiles = services.resourceLoader.getAgentsFiles()
-  const workspaceResources = await loadWorkspaceResourceCatalog(context)
-
-  const response: ChatResourcesResponse = {
-    packages: workspaceResources.packages,
-    skills: mergeResourceInfo(
-      context.projectRoot,
-      skills.skills.map((skill) =>
-        applyWorkspaceResourceMetadata(
-          context.projectRoot,
-          workspaceSettings,
-          skillToResourceInfo(skill)
-        )
-      ),
-      workspaceResources.skills
-    ),
-    prompts: mergeResourceInfo(
-      context.projectRoot,
-      prompts.prompts.map((prompt) =>
-        applyWorkspaceResourceMetadata(
-          context.projectRoot,
-          workspaceSettings,
-          promptToResourceInfo(prompt)
-        )
-      ),
-      workspaceResources.prompts
-    ),
-    extensions: mergeResourceInfo(
-      context.projectRoot,
-      extensions.extensions.map((extension) =>
-        applyWorkspaceResourceMetadata(context.projectRoot, workspaceSettings, {
-          name: extensionNameFromPath(extension.path),
-          path: extension.resolvedPath,
-          source: getSource(extension),
-        })
-      ),
-      workspaceResources.extensions
-    ),
-    themes: themes.themes.map((theme) => {
-      const resource = theme as unknown as Record<string, unknown>
-      return {
-        name: stringValue(resource.name) ?? stringValue(resource.id) ?? "Theme",
-        path: stringValue(resource.filePath) ?? stringValue(resource.path),
-      }
-    }),
-    agentsFiles: agentsFiles.agentsFiles.map((file) => ({
-      name: basename(file.path),
-      path: file.path,
-    })),
-    diagnostics: collectDiagnostics(services),
-  }
-
-  return {
-    ...response,
-    diagnostics: [
-      ...new Set([
-        ...response.diagnostics,
-        ...collectResourceExpectationDiagnostics(response),
-      ]),
-    ],
   }
 }
 
@@ -315,43 +233,18 @@ function toChatModelInfo(
   }
 }
 
-function skillToResourceInfo(skill: Skill) {
-  return {
-    name: skill.name,
-    description: skill.description,
-    path: skill.filePath,
-    source: getSource(skill),
-  }
-}
-
-function promptToResourceInfo(prompt: PromptTemplate) {
-  return {
-    name: prompt.name,
-    description: prompt.description,
-    path: prompt.filePath,
-    source: getSource(prompt),
-    argumentHint: prompt.argumentHint,
-  }
-}
-
-function extensionNameFromPath(path: string | undefined) {
-  if (!path) return "Resource"
-
-  const fileName = basename(path)
-  if (fileName.toLowerCase() === "index.ts") {
-    return basename(dirname(path))
-  }
-
-  const extension = extname(fileName)
-  return extension ? fileName.slice(0, -extension.length) : fileName
-}
-
-function getSource(resource: { sourceInfo?: unknown }) {
-  const sourceInfo = resource.sourceInfo
-  if (!sourceInfo || typeof sourceInfo !== "object") return undefined
-  return stringValue((sourceInfo as Record<string, unknown>).source)
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" && value.length > 0 ? value : undefined
+function isChatModelEnabled(
+  model: ChatModelInfo,
+  patterns: Array<string> | undefined
+) {
+  return isModelPatternEnabled(
+    {
+      id: model.id,
+      name: model.name,
+      key: model.key,
+      provider: model.provider,
+      modelId: model.id,
+    },
+    patterns
+  )
 }

@@ -1,9 +1,18 @@
-import { describe, expect, it, vi } from "vitest"
-import { hotReloadActiveRuntimes, retainPiRuntime } from "../server-runtime"
-import { applyModelSelection } from "../server-catalog"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { hotReloadActiveRuntimes, retainPiRuntime } from "../server"
 
-vi.mock("../server-catalog", () => ({
+const mocks = vi.hoisted(() => ({
+  applyRuntimeAuth: vi.fn(),
   applyModelSelection: vi.fn(),
+}))
+
+vi.mock("../runtime/session-factory", () => ({
+  applyRuntimeAuth: mocks.applyRuntimeAuth,
+  createSessionServices: vi.fn(),
+}))
+
+vi.mock("../runtime/model-catalog", () => ({
+  applyModelSelection: mocks.applyModelSelection,
   resolveModelSelection: vi.fn(() => ({
     model: { provider: "google", id: "gemini-3.5-flash-new" },
     thinkingLevel: "high",
@@ -11,10 +20,15 @@ vi.mock("../server-catalog", () => ({
 }))
 
 describe("settings hot-reload runtime mechanism", () => {
-  it("should reload active runtimes and apply the updated model selections in place", async () => {
-    const mockLoad = vi.fn()
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("reloads settings, resources, model defaults, and BYOK for active runtimes", async () => {
+    const mockReload = vi.fn(async () => undefined)
+    const mockResourceReload = vi.fn(async () => undefined)
     const mockSettingsManager = {
-      load: mockLoad,
+      reload: mockReload,
       getDefaultProvider: () => "google",
       getDefaultModel: () => "gemini-3.5-flash-new",
       getDefaultThinkingLevel: () => "high",
@@ -26,28 +40,36 @@ describe("settings hot-reload runtime mechanism", () => {
       },
       services: {
         settingsManager: mockSettingsManager,
+        resourceLoader: { reload: mockResourceReload },
       },
     } as any
 
-    // Register active runtime
-    const release = retainPiRuntime(mockRuntime)
+    const release = retainPiRuntime(mockRuntime, "user-1")
 
     try {
       await hotReloadActiveRuntimes({
+        packages: ["npm:pi-web-access"],
         defaultProvider: "google",
         defaultModel: "gemini-3.5-flash-new",
         defaultThinkingLevel: "high",
       })
 
-      // Assert that settings manager load is invoked to fetch latest settings from disk
-      expect(mockLoad).toHaveBeenCalled()
-
-      // Assert that applyModelSelection was invoked with the loaded defaults
-      expect(applyModelSelection).toHaveBeenCalledWith(mockRuntime, {
+      expect(mockResourceReload).toHaveBeenCalled()
+      expect(mockReload).toHaveBeenCalled()
+      expect(mockReload.mock.invocationCallOrder[0]).toBeLessThan(
+        mockResourceReload.mock.invocationCallOrder[0]
+      )
+      expect(mocks.applyModelSelection).toHaveBeenCalledWith(mockRuntime, {
         provider: "google",
         id: "gemini-3.5-flash-new",
         thinkingLevel: "high",
       })
+      expect(mocks.applyRuntimeAuth).toHaveBeenCalledWith(
+        mockRuntime.services,
+        {
+          userId: "user-1",
+        }
+      )
     } finally {
       release()
     }

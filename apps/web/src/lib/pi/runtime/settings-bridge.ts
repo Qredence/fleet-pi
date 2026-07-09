@@ -1,12 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
-import {
-  collectDiagnostics,
-  createSessionServices,
-  resolveDefaultModelSelection,
-} from "./server-shared"
-import { hotReloadActiveRuntimes } from "./server-runtime"
+import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
+import { hotReloadActiveRuntimes } from "./hot-reload"
+import { createSessionServices } from "./session-factory"
+import { RESOURCE_SETTING_KEYS } from "./types"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
@@ -16,13 +15,6 @@ import type {
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const SETTINGS_PATH = ".pi/settings.json"
-const RESOURCE_SETTING_KEYS = [
-  "packages",
-  "extensions",
-  "skills",
-  "prompts",
-  "themes",
-] as const
 
 export async function loadChatSettings(
   context: AppRuntimeContext
@@ -39,7 +31,10 @@ export async function loadChatSettings(
     effective: toEffectiveSettings(services.settingsManager),
     project,
     projectPath: SETTINGS_PATH,
-    updateImpact: impactForSettings(project),
+    updateImpact: {
+      newSessionRecommended: false,
+      resourceReloadRequired: false,
+    },
   }
 }
 
@@ -55,10 +50,13 @@ export async function updateChatSettings(
   await mkdir(dirname(settingsPath), { recursive: true })
   await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
 
-  // Hot-reload any active runtimes in memory
   await hotReloadActiveRuntimes(parsedUpdate)
 
-  return loadChatSettings(context)
+  const response = await loadChatSettings(context)
+  return {
+    ...response,
+    updateImpact: impactForSettings(parsedUpdate),
+  }
 }
 
 export async function readProjectSettingsFile(projectRoot: string) {
@@ -110,8 +108,17 @@ export function mergeProjectSettings(
   return next
 }
 
+export function impactForSettings(settings: ChatPiSettingsUpdate) {
+  return {
+    newSessionRecommended: Object.keys(settings).length > 0,
+    resourceReloadRequired: RESOURCE_SETTING_KEYS.some(
+      (key) => settings[key] !== undefined
+    ),
+  }
+}
+
 function toEffectiveSettings(
-  settingsManager: SettingsManagerLike
+  settingsManager: AgentSessionServices["settingsManager"]
 ): ChatPiSettings {
   const compaction = settingsManager.getCompactionSettings()
   const retry = settingsManager.getRetrySettings()
@@ -187,15 +194,6 @@ function toEditableProjectSettings(
   }
 
   return project
-}
-
-function impactForSettings(settings: ChatPiSettingsUpdate) {
-  return {
-    newSessionRecommended: Object.keys(settings).length > 0,
-    resourceReloadRequired: RESOURCE_SETTING_KEYS.some(
-      (key) => settings[key] !== undefined
-    ),
-  }
 }
 
 function readProjectSettingsFromServices(settings: unknown) {
@@ -285,23 +283,4 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 
 function normalizeTransport(value: string): ChatTransport {
   return value === "sse" || value === "websocket" ? value : "auto"
-}
-
-type SettingsManagerLike = {
-  getCompactionSettings: () => ChatPiSettings["compaction"]
-  getDefaultModel: () => string | undefined
-  getDefaultProvider: () => string | undefined
-  getDefaultThinkingLevel: () => ChatPiSettings["defaultThinkingLevel"]
-  getEnableSkillCommands: () => boolean
-  getEnabledModels: () => Array<string> | undefined
-  getExtensionPaths: () => Array<string>
-  getFollowUpMode: () => ChatPiSettings["followUpMode"]
-  getPackages: () => ChatPiSettings["packages"]
-  getProjectSettings: () => unknown
-  getPromptTemplatePaths: () => Array<string>
-  getRetrySettings: () => ChatPiSettings["retry"]
-  getSkillPaths: () => Array<string>
-  getSteeringMode: () => ChatPiSettings["steeringMode"]
-  getThemePaths: () => Array<string>
-  getTransport: () => string
 }

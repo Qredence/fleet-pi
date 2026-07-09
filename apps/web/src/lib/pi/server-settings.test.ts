@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { mergeProjectSettings } from "./server-settings"
+import { mergeProjectSettings } from "./runtime"
 
 describe("project Pi settings merge", () => {
   it("preserves unknown fields and nested siblings", () => {

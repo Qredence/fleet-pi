@@ -1,5 +1,10 @@
-import { THINKING_LEVELS } from "./constants"
-import type { ChatThinkingLevel } from "../../../../../lib/pi/chat-protocol"
+import {
+  hasGlobCharacters,
+  isModelPatternEnabled,
+  modelMatchesPattern,
+  modelPattern,
+  stripThinkingLevel,
+} from "../../../../../lib/pi/model-patterns"
 import type { ConfigModelInfo } from "./types"
 
 export function customModelKey(provider: string, model: string) {
@@ -10,9 +15,15 @@ export function isModelEnabled(
   model: ConfigModelInfo,
   patterns: Array<string> | undefined
 ) {
-  if (patterns === undefined) return true
-  if (patterns.length === 0) return false
-  return patterns.some((pattern) => modelMatchesPattern(model, pattern))
+  return isModelPatternEnabled(
+    {
+      id: model.id,
+      name: model.name,
+      provider: model.provider,
+      modelId: model.modelId,
+    },
+    patterns
+  )
 }
 
 export function nextEnabledModelPatterns({
@@ -127,57 +138,15 @@ export function ensureModelPattern(
   return addUnique(patterns, modelPattern(provider, modelId))
 }
 
-export function modelMatchesPattern(model: ConfigModelInfo, pattern: string) {
-  const normalizedPattern = stripThinkingLevel(pattern.trim()).toLowerCase()
-  const candidates = [
-    model.id,
-    model.modelId,
-    model.name,
-    modelPatternFor(model),
-  ].map((value) => value.toLowerCase())
-
-  if (!hasGlobCharacters(normalizedPattern)) {
-    return candidates.includes(normalizedPattern)
-  }
-
-  const matcher = new RegExp(
-    `^${normalizedPattern
-      .split("")
-      .map((character) =>
-        character === "*"
-          ? ".*"
-          : character === "?"
-            ? "."
-            : escapeRegExp(character)
-      )
-      .join("")}$`
-  )
-  return candidates.some((candidate) => matcher.test(candidate))
+export {
+  modelMatchesPattern,
+  modelPattern,
+  stripThinkingLevel,
+  hasGlobCharacters,
 }
 
 export function modelPatternFor(model: ConfigModelInfo) {
   return modelPattern(model.provider, model.modelId)
-}
-
-export function modelPattern(provider: string, modelId: string) {
-  return `${provider}/${modelId}`
-}
-
-export function stripThinkingLevel(pattern: string) {
-  const separatorIndex = pattern.lastIndexOf(":")
-  if (separatorIndex === -1) return pattern
-  const suffix = pattern.slice(separatorIndex + 1)
-  return THINKING_LEVELS.includes(suffix as ChatThinkingLevel)
-    ? pattern.slice(0, separatorIndex)
-    : pattern
-}
-
-export function hasGlobCharacters(pattern: string) {
-  return pattern.includes("*") || pattern.includes("?")
-}
-
-export function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 function addUnique(values: Array<string>, value: string) {
