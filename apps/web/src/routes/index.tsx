@@ -21,6 +21,10 @@ import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
 import {
+  identifyAnalyticsUser,
+  resetAnalytics,
+} from "@/lib/analytics/posthog"
+import {
   useChatModels,
   useChatProviders,
   useChatResources,
@@ -75,6 +79,10 @@ function ChatWorkspaceShell() {
   const navigate = useNavigate()
   const user = useOptionalUser()
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+
+  useEffect(() => {
+    if (user) identifyAnalyticsUser(user)
+  }, [user])
   const { data: providersData, isLoading: isLoadingProviders } =
     useChatProviders()
   const { mutateAsync: onUpdateProvider, isPending: isUpdatingProvider } =
@@ -304,6 +312,7 @@ function ChatWorkspaceShell() {
               user={user}
               onSignOut={async () => {
                 await signOut()
+                resetAnalytics()
                 void navigate({ to: "/" })
               }}
               onSignIn={() => void navigate({ to: "/login" })}
