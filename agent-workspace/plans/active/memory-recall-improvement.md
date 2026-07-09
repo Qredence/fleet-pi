@@ -3,7 +3,7 @@
 **Status:** In progress  
 **Mode:** Harness / Agent  
 **Started:** 2026-05-22  
-**Last Updated:** 2026-06-13
+**Last Updated:** 2026-07-07
 
 ---
 
@@ -58,11 +58,10 @@ _Note on Step 6:_ Blocked by unhandled `Cannot find module './parsers/any.js'` e
 | Updated known-issues        | `agent-workspace/memory/project/known-issues.md`                   |
 | Active Retrieval engine     | `.pi/extensions/lib/workspace-memory-index.ts`                     |
 | Active Context extension    | `.pi/extensions/workspace-context.ts`                              |
-| Staged Backup patches       | `agent-workspace/scratch/patches/workspace-memory-index.ts`        |
-| Staged Backup context patch | `agent-workspace/scratch/patches/workspace-context.ts`             |
-| Apply helper script         | `agent-workspace/scratch/patches/apply.sh`                         |
 | Eval rubric                 | `agent-workspace/evals/memory-recall.md`                           |
 | Scenario spec               | `agent-workspace/artifacts/reports/memory-recall-scenario-spec.md` |
+
+The temporary scratch patch copies used during the earlier design phase were retired once the live `.pi/extensions/*` implementation and regression tests became the source of truth.
 
 ---
 
