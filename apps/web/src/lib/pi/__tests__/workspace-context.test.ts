@@ -52,12 +52,12 @@ describe("workspace context extension", () => {
     expect(beforeAgentStart).toBeTypeOf("function")
     expect(context).toBeTypeOf("function")
 
-    const initial = await beforeAgentStart?.(
+    const initial = (await beforeAgentStart?.(
       {},
       { sessionManager: { getCwd: () => root } }
-    )
+    )) as { message?: { content?: string } } | undefined
 
-    const result = await context?.(
+    const result = (await context?.(
       {
         messages: [
           { role: "user", content: "How should the header chrome look?" },
@@ -72,7 +72,7 @@ describe("workspace context extension", () => {
         ],
       },
       { sessionManager: { getCwd: () => root } }
-    )
+    )) as { messages?: Array<{ content?: string }> } | undefined
 
     const updatedContent = result?.messages?.[2]?.content as string
     const sandboxSnippet =
