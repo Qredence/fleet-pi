@@ -17,7 +17,7 @@ const BASE_RULES = [
   'Arguments are positional. For example, write `Card("Title", child)` rather than `Card(title: "Title", content: child)`.',
   "Use Markdown for prose, explanations, and code unless a visual card, table, metric, chart, or action row would be clearer.",
   "Prefer compact UI blocks that fit inside a chat message.",
-  'Reactive State ($variables): Declare reactive variables with `$name = defaultValue`. Bind them to inputs such as `Input("search", $search)` or `Select("timeframe", $timeframe, [SelectItem("7", "7 Days")])`. Updating the input automatically recalculates all dependent expressions.',
+  'Reactive State ($variables): Declare reactive variables with `$name = defaultValue`. Bind them to inputs such as `Input("search", $search)` or `Select("timeframe", $timeframe, [{ value: "7", label: "7 Days" }])`. Updating the input automatically recalculates all dependent expressions.',
   "Built-in Functions: Use @-prefixed functions for data transformation: `@Count(array)`, `@Sum(numbers[])`, `@Avg(numbers[])`, `@Filter(array, field, op, value)`. Bare names without @ are not supported.",
   'Action Compositions: Chained actions can be defined inside `Action([...])`. For example: `Button("Submit", Action([@Run(myMutation), @Set($success, true), @Reset($inp)]))`. Steps execute sequentially; failure in any step aborts the rest.',
 ]
@@ -50,7 +50,10 @@ root = Root([form])
 form = Card("Dashboard Controls", Stack([search, row, submit]))
 search = Input("search", $searchQuery, "Search records...")
 row = Stack([timeframeSelect, advancedToggle], "row")
-timeframeSelect = Select("timeframe", $timeframe, [SelectItem("7", "Last 7 Days"), SelectItem("30", "Last 30 Days")])
+timeframeSelect = Select("timeframe", $timeframe, [
+  { value: "7", label: "Last 7 Days" },
+  { value: "30", label: "Last 30 Days" },
+])
 advancedToggle = Switch("advanced", $advanced, "Show advanced diagnostics")
 
 submit = Button("Apply Filters", Action([@Set($searchQuery, ""), @ToAssistant("Applying search filters")]))

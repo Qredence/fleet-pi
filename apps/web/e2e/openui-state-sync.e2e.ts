@@ -1,14 +1,10 @@
-import * as path from "node:path"
 import { expect, test } from "@playwright/test"
 import type { Route } from "@playwright/test"
-
-const ARTIFACTS_DIR =
-  "/Users/zocho/.gemini/antigravity/brain/006efbf1-0b74-41ab-83bd-74f0d40641fa"
 
 test.describe("OpenUI State Sync E2E Verification", () => {
   test("should load the DevOps dashboard and toggle the metrics visibility reactively", async ({
     page,
-  }) => {
+  }, testInfo) => {
     // 1. Mock the models, sessions, and resources list endpoints so the app loads cleanly
     await page.route("**/api/chat/models", async (route) => {
       await route.fulfill({
@@ -137,10 +133,7 @@ metric2 = Metric("Last Success Rate", "99.4%")
     await expect(metric2).toBeVisible()
 
     // 7. Save initial screenshot (Switch ON)
-    const onScreenshotPath = path.join(
-      ARTIFACTS_DIR,
-      "openui_switch_on_initial.png"
-    )
+    const onScreenshotPath = testInfo.outputPath("openui_switch_on_initial.png")
     await page.screenshot({ path: onScreenshotPath })
     console.log(`Saved screenshot: ${onScreenshotPath}`)
 
@@ -154,8 +147,7 @@ metric2 = Metric("Last Success Rate", "99.4%")
     await expect(metric2).not.toBeVisible()
 
     // 10. Save toggled screenshot (Switch OFF)
-    const offScreenshotPath = path.join(
-      ARTIFACTS_DIR,
+    const offScreenshotPath = testInfo.outputPath(
       "openui_switch_off_toggled.png"
     )
     await page.screenshot({ path: offScreenshotPath })

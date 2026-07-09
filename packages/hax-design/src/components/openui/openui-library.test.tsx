@@ -79,7 +79,10 @@ root = Root([form, modal])
 form = Card("Controls", Stack([search, row]))
 search = Input("searchQuery", $query, "Search term...")
 row = Stack([timeframeSelect, toggle], "row")
-timeframeSelect = Select("timeframe", $timeframe, [SelectItem("7", "7 Days"), SelectItem("30", "30 Days")])
+timeframeSelect = Select("timeframe", $timeframe, [
+  { value: "7", label: "7 Days" },
+  { value: "30", label: "30 Days" },
+])
 toggle = Switch("advanced", $showAdvanced, "Show advanced details")
 modal = Modal("detailsModal", $modalOpen, "Advanced Details", [Text("Modal contents")])
 `)
@@ -100,7 +103,7 @@ metric1 = Metric("Active Instances", "32")
 `
 
     // In static synchronous Node SSR (renderToStaticMarkup), React effects and hydration do not run.
-    // Since the Switchchecked prop is now correctly registered as reactive, the state manager takes over.
+    // Since the Switch checked prop is now correctly registered as reactive, the state manager takes over.
     // Because state effects don't run in synchronous static markup, the reactive variable evaluates to undefined (falsy) on first render, which is the expected initial server-rendered output.
     const htmlDefault = renderToStaticMarkup(
       <Renderer library={openUILibrary} response={openuiCode} />
@@ -111,6 +114,7 @@ metric1 = Metric("Active Instances", "32")
   it("registers reactive state bindings in the WeakSet", () => {
     expect(isReactiveSchema(InputDef.props.shape.value)).toBe(true)
     expect(isReactiveSchema(SelectDef.props.shape.value)).toBe(true)
+    expect(isReactiveSchema(SelectDef.props.shape.options)).toBe(false)
     expect(isReactiveSchema(SwitchDef.props.shape.checked)).toBe(true)
     expect(isReactiveSchema(ModalDef.props.shape.open)).toBe(true)
   })

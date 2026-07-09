@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   createLibrary,
   defineComponent,
@@ -597,64 +596,28 @@ export const GridDef = defineComponent({
   },
 })
 
-export const SelectItemDef = defineComponent({
-  name: "SelectItem",
-  description: "An option item inside a Select component.",
-  props: z.object({
-    value: z.string().describe("Option value"),
-    label: z.string().describe("Visible label"),
-  }),
-  component: ({ props: { value, label } }) => {
-    return <option value={value}>{label}</option>
-  },
-})
-
 export const SelectDef = defineComponent({
   name: "Select",
   description: "An interactive dropdown selector with reactive state binding.",
   props: z.object({
     name: z.string().describe("Form field name for state tracking"),
     value: reactive(z.string().describe("Bound state variable")),
-    children: childrenProp.describe("SelectItem options"),
+    options: z
+      .array(
+        z.object({
+          value: z.string().describe("Option value"),
+          label: z.string().describe("Visible label"),
+          disabled: z.boolean().optional(),
+        })
+      )
+      .describe("Select options"),
     placeholder: z
       .string()
       .optional()
       .describe("Placeholder when no value selected"),
   }),
-  component: ({
-    props: { name, value, children, placeholder },
-    renderNode,
-  }) => {
+  component: ({ props: { name, value, options, placeholder } }) => {
     const field = useStateField(name, value)
-
-    const rendered = children
-      ? Array.isArray(children)
-        ? children.map((c) => renderNode(c))
-        : [renderNode(children)]
-      : []
-
-    const options: Array<{ value: string; label: string }> = []
-
-    const processChild = (child: React.ReactNode) => {
-      if (!child) return
-      if (Array.isArray(child)) {
-        child.forEach(processChild)
-        return
-      }
-      if (React.isValidElement(child)) {
-        const innerProps = (child.props as any)?.props || child.props
-        if (innerProps && ("value" in innerProps || "label" in innerProps)) {
-          options.push({
-            value: String(innerProps.value ?? ""),
-            label: String(innerProps.label ?? innerProps.value ?? ""),
-          })
-        } else if (child.props && (child.props as any).children) {
-          React.Children.forEach((child.props as any).children, processChild)
-        }
-      }
-    }
-
-    rendered.forEach(processChild)
 
     return (
       <Select
@@ -747,7 +710,6 @@ export const openUILibrary = createLibrary({
     CodeBlockDef,
     TableDef,
     BarChartDef,
-    SelectItemDef,
     SelectDef,
     SwitchDef,
     ModalDef,

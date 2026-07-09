@@ -80,12 +80,8 @@ export const openUIPromptSpec = {
       "signature": "BarChart(title: string, description?: string, xAxisKey: string, series: {dataKey: string, label: string}[], data: Record<string, string | number>[])",
       "description": "A bar chart for visualizing comparisons or trends using explicitly provided data points."
     },
-    "SelectItem": {
-      "signature": "SelectItem(value: string, label: string)",
-      "description": "An option item inside a Select component."
-    },
     "Select": {
-      "signature": "Select(name: string, value: string, children?: any, placeholder?: string)",
+      "signature": "Select(name: string, value: string, options: {value: string, label: string, disabled?: boolean}[], placeholder?: string)",
       "description": "An interactive dropdown selector with reactive state binding."
     },
     "Switch": {
