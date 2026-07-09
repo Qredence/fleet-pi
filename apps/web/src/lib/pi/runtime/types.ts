@@ -9,12 +9,6 @@ export const RESOURCE_SETTING_KEYS = [
   "enableSkillCommands",
 ] as const
 
-export type PiRuntimeAuthConfig = {
-  gateway?: { apiKey?: string }
-  customEnv?: Record<string, string>
-  runtimeApiKeys?: Record<string, string>
-}
-
 export type ApplyRuntimeAuthOptions = {
   userId?: string
 }

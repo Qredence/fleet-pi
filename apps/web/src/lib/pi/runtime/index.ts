@@ -25,4 +25,4 @@ export {
   resolveUserProviderSecret,
 } from "./user-provider-secrets"
 export { DEFAULT_MODEL, RESOURCE_SETTING_KEYS } from "./types"
-export type { ApplyRuntimeAuthOptions, PiRuntimeAuthConfig } from "./types"
+export type { ApplyRuntimeAuthOptions } from "./types"
