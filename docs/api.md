@@ -294,7 +294,7 @@ Persist a provider API key locally (`.env.local`) or encrypted per-user BYOK on 
   {
     "success": true,
     "providers": <array>,
-    "reloadRequired": true
+    "reloadRequired": false
   }
   ```
 - **400** — Unknown provider
