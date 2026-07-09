@@ -123,6 +123,8 @@ async function loadBestEffortWorkspaceHealth(
       if (result.status === "ok" && result.workspace.available) {
         state.attempts = 0
         state.nextRetryDelay = 1000
+      } else {
+        state.lastAttemptTime = Date.now()
       }
       state.lastResult = result
       return result
@@ -130,6 +132,7 @@ async function loadBestEffortWorkspaceHealth(
     .catch((error) => {
       const failure = createWorkspaceHealthFailure(context, error)
       state.lastResult = failure
+      state.lastAttemptTime = Date.now()
       return failure
     })
 
