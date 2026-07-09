@@ -123,7 +123,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` over duplicating long inline Tailwind class strings.
 - Avoid generic AI SaaS aesthetics (cream backgrounds, gradient heroes, card grids) and heavy IDE-style dense toolbars unless explicitly requested.
 - Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
-- Make Settings dialog main content vertically scrollable.
+- Make Settings dialog main content vertically scrollable; use single-column layout for LLM Provider credential cards.
 - Use Playwright `testInfo.outputPath()` for E2E screenshots and artifacts instead of hardcoded machine-specific paths.
 - Put newly added test files in a dedicated test directory for the module or area, such as `__tests__/`, instead of scattering new colocated test files.
 
@@ -139,4 +139,5 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Pi provider catalog and metadata live in `packages/hax-design/src/lib/pi/provider-catalog.ts`; canonical Google provider id is `google` (not `google-genai`) and reads `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls. Dev server loads repo-root `.env` then `.env.local` with override; Configurations Provider Credentials persist to `.env.local`.
 - Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API; Workspace and Artifacts share `selectedWorkspacePath` and `workspace-panel` clears selections outside each panel's `scopePath`.
 - Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
-- `.vercelignore` excludes `agent-workspace/`, `.fleet/`, `.pi/`, `dist/`, and `node_modules` so Vercel CLI uploads stay under the 100 MB limit.
+- `.vercelignore` excludes `agent-workspace/`, `.fleet/`, `.pi/`, `dist/`, and `node_modules` (apps/web must not import from `.pi/` on Vercel—colocate server helpers like `context-filter` under `apps/web/src/lib/pi/`). Feature-branch previews need `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` scoped to Preview, not Production-only or a single branch alias.
+- Pi `enabledModels: []` means deny-all models; shared glob matching lives in `packages/hax-design/src/lib/pi/model-patterns.ts`.
