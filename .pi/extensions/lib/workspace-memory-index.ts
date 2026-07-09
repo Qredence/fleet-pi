@@ -446,7 +446,7 @@ export function extractPromptTerms(prompt: string): Set<string> {
   const terms = new Set<string>()
   const words = prompt
     .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
+    .replace(/[^\w\s'-]/g, "")
     .split(/\s+/)
 
   for (const word of words) {
