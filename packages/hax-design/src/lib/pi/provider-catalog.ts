@@ -38,8 +38,8 @@ export const PI_PROVIDER_CATALOG = [
     envVarName: "AWS_ACCESS_KEY_ID",
     ui: {
       icon: Server,
-      placeholder: "Bedrock region (e.g. us-east-1)",
-      help: "Amazon Bedrock reads AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION from your local shell or AWS configuration file.",
+      placeholder: "AKIA... (AWS access key id)",
+      help: "Amazon Bedrock uses standard AWS credentials (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY) plus AWS_REGION. This field sets AWS_ACCESS_KEY_ID in .env.local.",
     },
   },
   {
