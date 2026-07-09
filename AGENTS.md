@@ -43,6 +43,8 @@ The repository includes a VS Code devcontainer configuration at `.devcontainer/d
 - The `fleet-pi-web` Vercel project builds from `apps/web`; keep Vercel-specific settings in `apps/web/vercel.json`.
 - Vercel builds run `NITRO_PRESET=vercel pnpm build:vercel`; TanStack Start emits `dist/`, then `apps/web/scripts/build-vercel-output.mjs` packages it into `.vercel/output`.
 - Better Auth on Vercel requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, and `FLEET_PI_AUTH_DATABASE_URL`; the auth database must be Neon/Postgres, not the local SQLite fallback.
+- BYOK provider credentials and Pi session mirroring on Vercel also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
+- `PATCH /api/chat/settings` requires authentication on Vercel; settings hot-reload applies only to the signed-in user's active sessions.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
 
 ## Pre-commit Hooks

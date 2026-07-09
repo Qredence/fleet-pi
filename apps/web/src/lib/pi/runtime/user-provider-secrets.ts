@@ -2,46 +2,21 @@ import {
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
 } from "@workspace/hax-design/lib/pi/provider-catalog"
+import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
 export async function loadLlmProviderSecrets(
   userId: string | undefined
 ): Promise<Map<string, string>> {
-  const secrets = new Map<string, string>()
-
   if (process.env.VERCEL === "1") {
-    if (!userId) return secrets
-
-    const { withChatPostgresTransaction } =
-      await import("@/lib/db/pi-session-mirror")
-    const { decryptString } = await import("@/lib/auth/crypto")
-
-    if (!process.env.BETTER_AUTH_SECRET) {
-      throw new Error(
-        "BETTER_AUTH_SECRET is missing, cannot decrypt user LLM keys"
-      )
-    }
-
-    await withChatPostgresTransaction(async (client: any) => {
-      const res = await client.query(
-        "SELECT provider_id, encrypted_key FROM pi_user_providers WHERE user_id = $1",
-        [userId]
-      )
-      for (const row of res.rows) {
-        if (!LLM_PROVIDER_ENV_SCRUB_IDS.includes(row.provider_id)) continue
-        const decrypted = decryptString(
-          row.encrypted_key,
-          process.env.BETTER_AUTH_SECRET!
-        )
-        if (decrypted) {
-          secrets.set(row.provider_id, decrypted)
-        }
-      }
-    }, userId)
-
-    return secrets
+    if (!userId) return new Map()
+    return loadDecryptedUserProviderSecrets(userId, {
+      providerFilter: (providerId) =>
+        LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId),
+    })
   }
 
+  const secrets = new Map<string, string>()
   for (const providerId of LLM_PROVIDER_ENV_SCRUB_IDS) {
     const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
     if (!provider) continue
@@ -49,7 +24,6 @@ export async function loadLlmProviderSecrets(
       secrets.set(providerId, process.env[provider.envVarName]!)
     }
   }
-
   return secrets
 }
 
@@ -60,43 +34,15 @@ export async function resolveUserProviderSecret(
   const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
   if (!provider) return undefined
 
-  if (
-    LLM_PROVIDER_ENV_SCRUB_IDS.includes(
-      providerId
-    )
-  ) {
+  if (LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId)) {
     return (await loadLlmProviderSecrets(userId)).get(providerId)
   }
 
   if (process.env.VERCEL === "1") {
     if (!userId) return undefined
-
-    const { withChatPostgresTransaction } =
-      await import("@/lib/db/pi-session-mirror")
-    const { decryptString } = await import("@/lib/auth/crypto")
-
-    if (!process.env.BETTER_AUTH_SECRET) {
-      throw new Error(
-        "BETTER_AUTH_SECRET is missing, cannot decrypt user provider keys"
-      )
-    }
-
-    let resolved: string | undefined
-    await withChatPostgresTransaction(async (client: any) => {
-      const res = await client.query(
-        "SELECT encrypted_key FROM pi_user_providers WHERE user_id = $1 AND provider_id = $2",
-        [userId, providerId]
-      )
-      const row = res.rows[0]
-      if (!row?.encrypted_key) return
-
-      const decrypted = decryptString(
-        row.encrypted_key,
-        process.env.BETTER_AUTH_SECRET!
-      )
-      if (decrypted) resolved = decrypted
-    }, userId)
-    return resolved
+    return (await loadDecryptedUserProviderSecrets(userId, { providerId })).get(
+      providerId
+    )
   }
 
   if (isEnvVarConfigured(provider.envVarName)) {

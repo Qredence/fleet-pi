@@ -2,7 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
-import { hotReloadActiveRuntimes } from "./hot-reload"
+import {
+  hotReloadActiveRuntimes,
+  hotReloadActiveRuntimesForUser,
+} from "./hot-reload"
 import { createSessionServices } from "./session-factory"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -40,17 +43,37 @@ export async function loadChatSettings(
 
 export async function updateChatSettings(
   context: AppRuntimeContext,
-  update: ChatPiSettingsUpdate
+  update: ChatPiSettingsUpdate,
+  options?: { userId?: string }
 ): Promise<ChatSettingsResponse> {
   const parsedUpdate = ChatPiSettingsUpdateSchema.parse(update)
   const settingsPath = projectSettingsPath(context.projectRoot)
   const current = await readProjectSettingsFile(context.projectRoot)
   const next = mergeProjectSettings(current, parsedUpdate)
 
-  await mkdir(dirname(settingsPath), { recursive: true })
-  await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
+  if (process.env.VERCEL !== "1") {
+    await mkdir(dirname(settingsPath), { recursive: true })
+    await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
+  } else {
+    try {
+      await mkdir(dirname(settingsPath), { recursive: true })
+      await writeFile(
+        settingsPath,
+        `${JSON.stringify(next, null, 2)}\n`,
+        "utf8"
+      )
+    } catch (error) {
+      if (!isNodeError(error) || error.code !== "EROFS") {
+        throw error
+      }
+    }
+  }
 
-  await hotReloadActiveRuntimes(parsedUpdate)
+  if (options?.userId) {
+    await hotReloadActiveRuntimesForUser(options.userId, parsedUpdate)
+  } else if (process.env.VERCEL !== "1") {
+    await hotReloadActiveRuntimes(parsedUpdate)
+  }
 
   const response = await loadChatSettings(context)
   return {

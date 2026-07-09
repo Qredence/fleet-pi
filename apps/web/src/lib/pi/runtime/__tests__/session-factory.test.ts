@@ -36,6 +36,7 @@ describe("session factory", () => {
   const originalVercel = process.env.VERCEL
   const originalGeminiKey = process.env.GEMINI_API_KEY
   const originalAuthSecret = process.env.BETTER_AUTH_SECRET
+  const originalChatDb = process.env.FLEET_PI_CHAT_DATABASE_URL
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -65,12 +66,14 @@ describe("session factory", () => {
     process.env.VERCEL = originalVercel
     process.env.GEMINI_API_KEY = originalGeminiKey
     process.env.BETTER_AUTH_SECRET = originalAuthSecret
+    process.env.FLEET_PI_CHAT_DATABASE_URL = originalChatDb
     vi.resetModules()
   })
 
   it("injects BYOK runtime keys for Vercel users", async () => {
     process.env.VERCEL = "1"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
     const { applyRuntimeAuth } = await import("../session-factory")
     const removeRuntimeApiKey = vi.fn()
     const services = {

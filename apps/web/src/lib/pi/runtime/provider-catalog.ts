@@ -1,8 +1,8 @@
 import { KNOWN_PROVIDERS } from "@workspace/hax-design/lib/pi/provider-catalog"
 import type { ChatProviderInfo } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+import { listConfiguredProviderIds } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
-import { withChatPostgresTransaction } from "@/lib/db/pi-session-mirror"
 
 export async function getProviderConfigStatus(options?: {
   userId?: string
@@ -25,16 +25,7 @@ async function getVercelProviderConfigStatus(userId?: string) {
     }))
   }
 
-  const configuredProviderIds = new Set<string>()
-  await withChatPostgresTransaction(async (client: any) => {
-    const res = await client.query(
-      "SELECT provider_id FROM pi_user_providers WHERE user_id = $1",
-      [userId]
-    )
-    for (const row of res.rows) {
-      configuredProviderIds.add(row.provider_id)
-    }
-  }, userId)
+  const configuredProviderIds = await listConfiguredProviderIds(userId)
 
   return KNOWN_PROVIDERS.map((provider) => ({
     id: provider.id,

@@ -185,11 +185,9 @@ export async function syncPiSessionMirrorSafely(
     if (process.env.VERCEL === "1") {
       logger.error(
         { error },
-        "[pi-session-mirror] fatal sync failure on Vercel"
+        "[pi-session-mirror] sync failure on Vercel (non-fatal)"
       )
-      throw new Error(
-        `Fatal session mirror synchronization failure on Vercel: ${reason}`
-      )
+      return
     }
     logger.warn({ error }, "[pi-session-mirror] sync failed (non-fatal)")
   }

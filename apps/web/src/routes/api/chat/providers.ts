@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/pi/server"
 import { updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
 import { encryptString } from "@/lib/auth/crypto"
-import { withChatPostgresTransaction } from "@/lib/db/pi-session-mirror"
+import { upsertUserProviderEncryptedKey } from "@/lib/db/user-providers"
 import {
   getProviderConfigStatus,
   hotReloadActiveRuntimesForUser,
@@ -75,17 +75,11 @@ export const Route = createFileRoute("/api/chat/providers")({
               body.apiKey,
               process.env.BETTER_AUTH_SECRET
             )
-            await withChatPostgresTransaction(async (client: any) => {
-              await client.query(
-                `
-                INSERT INTO pi_user_providers (user_id, provider_id, encrypted_key, updated_at)
-                VALUES ($1, $2, $3, now())
-                ON CONFLICT (user_id, provider_id)
-                DO UPDATE SET encrypted_key = EXCLUDED.encrypted_key, updated_at = EXCLUDED.updated_at
-              `,
-                [userId, provider.id, encryptedKey]
-              )
-            }, userId)
+            await upsertUserProviderEncryptedKey(
+              userId,
+              provider.id,
+              encryptedKey
+            )
           } else {
             const context = resolveAppRuntimeContext()
             await updateEnvVar(

@@ -36,6 +36,7 @@ vi.mock("../session-factory", () => ({
 
 vi.mock("../hot-reload", () => ({
   hotReloadActiveRuntimes: mocks.hotReloadActiveRuntimes,
+  hotReloadActiveRuntimesForUser: mocks.hotReloadActiveRuntimes,
 }))
 
 const roots = new Set<string>()
