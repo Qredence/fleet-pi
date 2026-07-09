@@ -6,22 +6,6 @@ CREATE TABLE IF NOT EXISTS fleet_pi_chat_migrations (
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Enable RLS on pi_sessions to enforce user ownership at the database level
-ALTER TABLE IF EXISTS pi_sessions ENABLE ROW LEVEL SECURITY;
-
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE tablename = 'pi_sessions' AND policyname = 'pi_sessions_user_isolation'
-  ) THEN
-    CREATE POLICY pi_sessions_user_isolation ON pi_sessions
-      FOR ALL
-      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true))
-      WITH CHECK (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
-  END IF;
-END $$;
-
 CREATE TABLE IF NOT EXISTS pi_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NULL,
@@ -44,6 +28,22 @@ ON pi_sessions(user_id, updated_at DESC);
 
 CREATE INDEX IF NOT EXISTS pi_sessions_cwd_updated_idx
 ON pi_sessions(cwd, updated_at DESC);
+
+-- Enable RLS on pi_sessions to enforce user ownership at the database level
+ALTER TABLE IF EXISTS pi_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'pi_sessions' AND policyname = 'pi_sessions_user_isolation'
+  ) THEN
+    CREATE POLICY pi_sessions_user_isolation ON pi_sessions
+      FOR ALL
+      USING (user_id IS NULL OR user_id = current_setting('app.current_user_id', true))
+      WITH CHECK (user_id IS NULL OR user_id = current_setting('app.current_user_id', true));
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS pi_session_entries (
   session_id TEXT NOT NULL REFERENCES pi_sessions(id) ON DELETE CASCADE,
@@ -191,6 +191,17 @@ BEGIN
       WITH CHECK (user_id = current_setting('app.current_user_id', true));
   END IF;
 END $$;
+
+-- Remap legacy google-genai BYOK rows to Pi's canonical google provider id
+UPDATE pi_user_providers a
+SET provider_id = 'google'
+WHERE a.provider_id = 'google-genai'
+  AND NOT EXISTS (
+    SELECT 1 FROM pi_user_providers b
+    WHERE b.user_id = a.user_id AND b.provider_id = 'google'
+  );
+
+DELETE FROM pi_user_providers WHERE provider_id = 'google-genai';
 
 -- Enable Row Level Security on all other user data tables
 ALTER TABLE IF EXISTS pi_session_entries ENABLE ROW LEVEL SECURITY;

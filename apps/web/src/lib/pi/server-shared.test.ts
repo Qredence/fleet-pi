@@ -80,6 +80,91 @@ describe("createSessionServices", () => {
       defaultModel: "gemini-3.5-flash",
     })
   })
+
+  it("detects tool allowlist drift", async () => {
+    const { collectDiagnostics } = await import("./server-shared")
+    const mockServices = {
+      diagnostics: [],
+      modelRegistry: { getError: () => undefined },
+      settingsManager: { drainErrors: () => [] },
+      resourceLoader: {
+        getSkills: () => ({ diagnostics: [] }),
+        getPrompts: () => ({ diagnostics: [] }),
+        getThemes: () => ({ diagnostics: [] }),
+        getExtensions: () => ({
+          errors: [],
+          extensions: [
+            {
+              path: "/some/path/unlisted-extension.ts",
+              tools: new Map([["unlisted_tool", {} as any]]),
+            },
+          ],
+        }),
+      },
+    } as any
+
+    const diagnostics = collectDiagnostics(mockServices)
+    expect(diagnostics).toContain(
+      '[Tool Drift] Registered tool "unlisted_tool" is not present in CHAT_TOOL_ALLOWLIST.'
+    )
+    expect(diagnostics).toContain(
+      '[Tool Drift] Allowed tool "subagent" is not registered by any loaded extension.'
+    )
+  })
+
+  it("detects database sync mirror health warnings", async () => {
+    const { collectDiagnostics } = await import("./server-shared")
+    const { mirrorMetrics } = await import("../db/pi-session-mirror")
+
+    mirrorMetrics.failures = 2
+    mirrorMetrics.lastFailureReason = "Connection timed out"
+
+    try {
+      const mockServices = createMockSessionServices()
+      const diagnostics = collectDiagnostics(mockServices as any)
+      expect(diagnostics).toContain(
+        "[Mirror Health] Database synchronization has failed 2 times. Last error: Connection timed out"
+      )
+    } finally {
+      mirrorMetrics.failures = 0
+      mirrorMetrics.lastFailureReason = undefined
+    }
+  })
+
+  it("implements self-healing retry with exponential backoff on bootstrap failure", async () => {
+    const projectRoot = createProjectRoot(roots)
+    const agentWorkspacePath = join(projectRoot, "agent-workspace")
+
+    // 1. Block workspace to force bootstrap failure/degradation
+    writeFileSync(agentWorkspacePath, "blocked")
+    const { createSessionServices } = await import("./server-shared")
+    const context = contextFor(projectRoot)
+
+    let nowTime = 1000000000000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => nowTime)
+
+    // First attempt - fails and records failure
+    const services1 = await createSessionServices(context)
+    expect(services1.workspaceBootstrap?.status).toBe("degraded")
+
+    // 2. Call again immediately at the same timestamp (within 1s backoff window)
+    // We unblock the workspace first to see if it would have succeeded if it tried
+    rmSync(agentWorkspacePath)
+
+    const services2 = await createSessionServices(context)
+    // Even though it is now unblocked, it should return the cached failure because we're inside the backoff window
+    expect(services2.workspaceBootstrap?.status).toBe("degraded")
+
+    // 3. Move time forward past the 1s backoff window (e.g. 1500ms)
+    nowTime += 1500
+
+    // Now it should retry, and since it is unblocked, it should succeed!
+    const services3 = await createSessionServices(context)
+    expect(services3.workspaceBootstrap?.status).toBe("ok")
+    expect(existsSync(join(agentWorkspacePath, "manifest.json"))).toBe(true)
+
+    dateSpy.mockRestore()
+  })
 })
 
 function createProjectRoot(roots: Set<string>) {
@@ -108,7 +193,7 @@ function createMockSessionServices() {
       getSkills: () => ({ diagnostics: [] }),
       getPrompts: () => ({ diagnostics: [] }),
       getThemes: () => ({ diagnostics: [] }),
-      getExtensions: () => ({ errors: [] }),
+      getExtensions: () => ({ errors: [], extensions: [] }),
     },
   }
 }

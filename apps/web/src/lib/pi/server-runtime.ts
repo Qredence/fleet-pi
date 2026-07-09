@@ -22,17 +22,26 @@ import {
   resolveQuestionnaireAnswer,
 } from "./plan-mode"
 import {
-  createBedrockCircuitBreaker,
-  createBedrockFallbackError,
+  createSessionCircuitBreaker,
+  createSessionFallbackError,
 } from "./circuit-breaker"
-import { applyModelSelection, resolveModelSelection } from "./server-catalog"
+import { applyModelSelection, resolveModelSelection } from "./runtime"
 import {
   collectDiagnostics,
   createSessionServices,
   getSessionDir,
   safeRealpath,
 } from "./server-shared"
+import {
+  deleteActiveSessionRecord,
+  getActiveSessionRecords,
+  hasOtherActiveSessionForUser,
+  setActiveSessionRecord,
+} from "./runtime/active-sessions"
+import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
+import { applyRuntimeAuth } from "./runtime/session-factory"
 import { createSessionManager, isUsableSessionFile } from "./server-sessions"
+import type { ActiveSessionRecord } from "./runtime/active-sessions"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
@@ -52,15 +61,7 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
-import {
-  createSandboxBashOperations,
-  createSandboxEditOperations,
-  createSandboxFindOperations,
-  createSandboxGrepOperations,
-  createSandboxLsOperations,
-  createSandboxReadOperations,
-  createSandboxWriteOperations,
-} from "@/lib/daytona/sandbox-operations"
+import { createSandboxOperations } from "@/lib/daytona/sandbox-operations"
 import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
 import { executeCommand as daytonaExecuteCommand } from "@/lib/daytona/client"
 import {
@@ -89,29 +90,20 @@ type ChatRuntimeMetadata = ChatSessionMetadata & {
   userEmail?: string
 }
 
-type ActiveSessionRecord = {
-  runtime: AgentSessionRuntime
-  sessionFile?: string
-  sessionId: string
-  userId?: string
-  lastUsedAt: number
-  disposeTimer?: ReturnType<typeof setTimeout>
-}
+const runtimeRecords = getActiveSessionRecords()
 
-const runtimeRecords = new Map<string, ActiveSessionRecord>()
-
-async function invokeBedrockAgentSession(
+async function invokeAgentSessionCreation(
   params: Parameters<typeof createAgentSessionFromServices>[0]
 ) {
   return createAgentSessionFromServices(params)
 }
 
-const bedrockCircuitBreaker = createBedrockCircuitBreaker(
-  invokeBedrockAgentSession
+const sessionCircuitBreaker = createSessionCircuitBreaker(
+  invokeAgentSessionCreation
 )
 
-bedrockCircuitBreaker.fallback(() => {
-  throw createBedrockFallbackError()
+sessionCircuitBreaker.fallback(() => {
+  throw createSessionFallbackError()
 })
 
 export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
@@ -165,10 +157,15 @@ export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
-  if (isDaytonaEnabled(metadata.userId) && !context.workspaceFS) {
+  const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
+  if (
+    isDaytonaEnabled(metadata.userId, daytonaApiKey) &&
+    !context.workspaceFS
+  ) {
     const handle = await getUserSandbox({
       userId: metadata.userId!,
       userEmail: metadata.userEmail,
+      apiKey: daytonaApiKey,
     })
     const sb = handle.sandbox
     const sandboxWorkspaceRoot = "/home/daytona/fleet-pi/agent-workspace"
@@ -238,71 +235,33 @@ export async function createPiRuntime(
       modelSelection
     )
 
-    if (process.env.VERCEL === "1" && metadata.userId) {
-      const { withChatPostgresTransaction } =
-        await import("@/lib/db/pi-session-mirror")
-      const { decryptString } = await import("@/lib/auth/crypto")
-
-      if (!process.env.BETTER_AUTH_SECRET) {
-        throw new Error(
-          "BETTER_AUTH_SECRET is missing, cannot decrypt user LLM keys"
-        )
-      }
-
-      await withChatPostgresTransaction(async (client: any) => {
-        const res = await client.query(
-          "SELECT provider_id, encrypted_key FROM pi_user_providers WHERE user_id = $1",
-          [metadata.userId]
-        )
-        for (const row of res.rows) {
-          const decrypted = decryptString(
-            row.encrypted_key,
-            process.env.BETTER_AUTH_SECRET!
-          )
-          if (decrypted) {
-            runtimeServices.authStorage.setRuntimeApiKey(
-              row.provider_id,
-              decrypted
-            )
-          }
-        }
-      }, metadata.userId)
-    }
+    await applyRuntimeAuth(runtimeServices, { userId: metadata.userId })
 
     let customTools: Array<ToolDefinition> | undefined
-    if (isDaytonaEnabled(metadata.userId)) {
+    const runtimeDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
+      metadata.userId
+    )
+    if (isDaytonaEnabled(metadata.userId, runtimeDaytonaApiKey)) {
       const handle = await getUserSandbox({
         userId: metadata.userId!,
         userEmail: metadata.userEmail,
+        apiKey: runtimeDaytonaApiKey,
       })
       const sandboxCwd = "/home/daytona/fleet-pi"
       const s = handle.sandbox
+      const ops = createSandboxOperations(s)
       customTools = [
-        createBashToolDefinition(sandboxCwd, {
-          operations: createSandboxBashOperations(s),
-        }),
-        createReadToolDefinition(sandboxCwd, {
-          operations: createSandboxReadOperations(s),
-        }),
-        createWriteToolDefinition(sandboxCwd, {
-          operations: createSandboxWriteOperations(s),
-        }),
-        createEditToolDefinition(sandboxCwd, {
-          operations: createSandboxEditOperations(s),
-        }),
-        createGrepToolDefinition(sandboxCwd, {
-          operations: createSandboxGrepOperations(s),
-        }),
-        createFindToolDefinition(sandboxCwd, {
-          operations: createSandboxFindOperations(s),
-        }),
-        createLsToolDefinition(sandboxCwd, {
-          operations: createSandboxLsOperations(s),
-        }),
+        createBashToolDefinition(sandboxCwd, { operations: ops.bash }),
+        createReadToolDefinition(sandboxCwd, { operations: ops.read }),
+        createWriteToolDefinition(sandboxCwd, { operations: ops.write }),
+        createEditToolDefinition(sandboxCwd, { operations: ops.edit }),
+        createGrepToolDefinition(sandboxCwd, { operations: ops.grep }),
+        createFindToolDefinition(sandboxCwd, { operations: ops.find }),
+        createLsToolDefinition(sandboxCwd, { operations: ops.ls }),
       ] as Array<ToolDefinition>
     }
 
-    const result = await bedrockCircuitBreaker.fire({
+    const result = await sessionCircuitBreaker.fire({
       services: runtimeServices,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
@@ -424,7 +383,7 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   record.lastUsedAt = Date.now()
   if (userId) record.userId = userId
   trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
-  runtimeRecords.set(session.sessionId, record)
+  setActiveSessionRecord(session.sessionId, record)
   return record
 }
 
@@ -462,22 +421,18 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
       }
 
       clearPlanModeSession(record.sessionId)
-      runtimeRecords.delete(record.sessionId)
+      deleteActiveSessionRecord(record.sessionId)
       untrackDaytonaToolSession(record.sessionId, record.sessionFile)
-      if (record.userId && !hasOtherRuntimeForUser(record.userId)) {
+      if (
+        record.userId &&
+        !hasOtherActiveSessionForUser(record.userId, record.sessionId)
+      ) {
         void releaseUserSandbox(record.userId)
       }
       void current.runtime.dispose()
     },
     Math.max(0, RUNTIME_TTL_MS)
   )
-}
-
-function hasOtherRuntimeForUser(userId: string) {
-  for (const active of runtimeRecords.values()) {
-    if (active.userId === userId) return true
-  }
-  return false
 }
 
 function matchesPendingPlanDecisionToolCall(

@@ -19,6 +19,7 @@ import { FIELD_CONTROL_CLASS } from "../shared/constants"
 import { SectionSurface } from "../../../primitives/surface"
 import { ConfigurationSection } from "../shared/fields"
 import { PROVIDER_METADATA } from "../shared/provider-metadata"
+import { CREDENTIAL_UI_PROVIDERS } from "../../../../../lib/pi/provider-catalog"
 import type {
   ChatProviderInfo,
   ChatProviderUpdateRequest,
@@ -46,11 +47,14 @@ export function ProviderCredentialsSection({
     "all" | "active" | "missing"
   >("all")
 
+  const credentialProviderIds = useMemo(
+    () => new Set(CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)),
+    []
+  )
+
   const filteredProviders = useMemo(() => {
     return providers.filter((p) => {
-      // Exclude sandbox providers
-      if (p.id === "daytona" || p.id === "daytona-target") return false
-
+      if (!credentialProviderIds.has(p.id)) return false
       const matchesSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.envVarName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -62,7 +66,7 @@ export function ProviderCredentialsSection({
 
       return matchesSearch && matchesStatus
     })
-  }, [providers, searchQuery, statusFilter])
+  }, [providers, searchQuery, statusFilter, credentialProviderIds])
 
   const handleSave = async (providerId: string) => {
     if (!apiKey.trim() || !onUpdateProvider) return
@@ -79,7 +83,7 @@ export function ProviderCredentialsSection({
           }
         )
       } else {
-        toast.success("Provider credentials updated successfully")
+        toast.success("Provider credentials applied to your active sessions.")
       }
       setEditingProvider(null)
       setApiKey("")
@@ -183,7 +187,7 @@ export function ProviderCredentialsSection({
             No matching providers found.
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2">
             {filteredProviders.map((p) => {
               const isEditing = editingProvider === p.id
               const meta = PROVIDER_METADATA[p.id] ?? {
@@ -199,7 +203,7 @@ export function ProviderCredentialsSection({
                   className={cn(
                     "group flex flex-col rounded-[10px] border border-border/30 bg-background/30 p-2.5 transition-all duration-300 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/2 hover:shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
                     isEditing &&
-                      "translate-y-0 border-border/50 bg-foreground/1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sm:col-span-2",
+                      "translate-y-0 border-border/50 bg-foreground/1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
                     p.isConfigured &&
                       !isEditing &&
                       "border-primary/20 shadow-[0_1px_3px_rgba(0,0,0,0.01)]"

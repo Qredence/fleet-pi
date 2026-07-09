@@ -4,9 +4,11 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import workspaceIndexExtension from "../../../../../.pi/extensions/workspace-index"
 import {
+  extractPromptTerms,
   formatProjectMemoryForStartupContext,
   formatProjectMemoryForWorkspaceIndex,
   readProjectMemoryIndex,
+  selectScoredSnippets,
 } from "../../../../../.pi/extensions/lib/workspace-memory-index"
 
 const PROJECT_MEMORY_DIR = "agent-workspace/memory/project"
@@ -105,6 +107,85 @@ describe("workspace memory index", () => {
     expect(startup).toContain("find/grep across agent-workspace/memory/project")
     expect(workspaceIndex).toContain("Orphaned project memory")
     expect(workspaceIndex).toContain("memory-harness-test.md")
+  })
+
+  it("extracts all bullet snippets instead of capping at four", async () => {
+    const root = await createTempWorkspace()
+    await writeMemoryFile(
+      root,
+      "architecture.md",
+      [
+        "# Architecture",
+        "",
+        "## Facts",
+        "",
+        "- Value: one",
+        "- Value: two",
+        "- Value: three",
+        "- Value: four",
+        "- Value: five",
+      ].join("\n")
+    )
+
+    const index = await readProjectMemoryIndex(root)
+    const architecture = index.canonical.find(
+      (file) => file.key === "architecture"
+    )
+
+    expect(architecture?.snippets).toEqual([
+      "Value: one",
+      "Value: two",
+      "Value: three",
+      "Value: four",
+      "Value: five",
+    ])
+  })
+
+  it("scores snippets by prompt relevance and keeps deterministic fallbacks", async () => {
+    const root = await createTempWorkspace()
+    await writeMemoryFile(
+      root,
+      "architecture.md",
+      [
+        "# Architecture",
+        "",
+        "## Runtime",
+        "",
+        "- Value: Sandbox startup latency depends on Daytona volume initialization",
+        "- Value: Runtime TTL defaults to ten minutes",
+      ].join("\n")
+    )
+    await writeMemoryFile(
+      root,
+      "preferences.md",
+      [
+        "# Preferences",
+        "",
+        "## UX",
+        "",
+        "- Preference: Keep pill-shaped header chrome",
+      ].join("\n")
+    )
+
+    const index = await readProjectMemoryIndex(root)
+    const scored = selectScoredSnippets(
+      index.canonical,
+      "How do we reduce sandbox startup latency?"
+    )
+    const fallback = formatProjectMemoryForStartupContext(index, "to be and or")
+
+    expect(
+      extractPromptTerms("How do we reduce sandbox startup latency?")
+    ).toEqual(new Set(["reduce", "sandbox", "startup", "latency"]))
+    expect(scored[0]).toBe(
+      "- architecture: Value: Sandbox startup latency depends on Daytona volume initialization"
+    )
+    expect(fallback).toContain(
+      "- architecture: Value: Sandbox startup latency depends on Daytona volume initialization"
+    )
+    expect(fallback).toContain(
+      "- preferences: Preference: Keep pill-shaped header chrome"
+    )
   })
 
   it("reports project memory and runtime tools through workspace_index", async () => {

@@ -11,12 +11,30 @@ type WorkspaceResourceCatalog = {
 }
 
 const WORKSPACE_PI_ROOT = "agent-workspace/pi"
+
+type WorkspacePiSettings = Record<string, unknown>
+
 const SETTINGS_PATH = ".pi/settings.json"
 const WORKSPACE_EXTENSION_ROOT = `${WORKSPACE_PI_ROOT}/extensions/enabled`
 const WORKSPACE_PROMPT_ROOT = `${WORKSPACE_PI_ROOT}/prompts`
 const WORKSPACE_SKILL_ROOT = `${WORKSPACE_PI_ROOT}/skills`
 
-type WorkspacePiSettings = Record<string, unknown>
+export async function loadWorkspaceResourceOverlay(
+  context: AppRuntimeContext
+): Promise<WorkspaceResourceCatalog> {
+  const settings = await readWorkspacePiSettings(context.projectRoot)
+  return {
+    extensions: await readExtensionFiles(
+      context,
+      settings,
+      "agent-workspace/pi/extensions/staged",
+      "staged"
+    ),
+    packages: await readPackages(context, settings),
+    prompts: [],
+    skills: [],
+  }
+}
 
 export async function loadWorkspaceResourceCatalog(
   context: AppRuntimeContext
@@ -186,13 +204,7 @@ async function readPackages(
     "packages"
   )
   const entries = await readDirectoryEntries(packagesRoot)
-  const activePackages = new Set(
-    Array.isArray(settings.packages)
-      ? settings.packages.filter(
-          (entry): entry is string => typeof entry === "string"
-        )
-      : []
-  )
+  const activePackages = packageSettingSources(settings.packages)
 
   return entries
     .filter((entry) => entry.isDirectory())
@@ -207,6 +219,27 @@ async function readPackages(
         workspacePath,
       })
     })
+}
+
+function packageSettingSources(packages: unknown) {
+  const sources = new Set<string>()
+  if (!Array.isArray(packages)) return sources
+
+  for (const entry of packages) {
+    if (typeof entry === "string") {
+      sources.add(entry)
+      continue
+    }
+    if (isRecord(entry) && typeof entry.source === "string") {
+      sources.add(entry.source)
+    }
+  }
+
+  return sources
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 async function readDirectoryEntries(directory: string) {

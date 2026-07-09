@@ -55,3 +55,57 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Rationale: In-memory retention avoids re-initializing the runtime on every message; the TTL prevents unbounded memory growth.
 - Consequences: Sessions beyond the TTL must fall back to creating a fresh runtime from the Pi session file. Invalid, outside, or missing session files must start a new project-scoped session rather than returning an error.
 - Source: `apps/web/src/lib/pi/server-runtime.ts`, `AGENTS.md` (AI Integration section).
+
+## Settings loaded from .pi/settings.json support hot-reload
+
+- Decision: Allow active, in-memory Pi runtimes to hot-reload settings updates immediately when `.pi/settings.json` is modified.
+- Status: Active.
+- Context: Users modifying their model, provider, or thinking defaults via the Configurations tab/Settings Dialog should see those changes applied instantly on subsequent turns without re-initializing the runtime or losing session state.
+- Rationale: Live reloading reduces friction and provides a seamless, responsive settings experience.
+- Consequences: Every setting update writes to `.pi/settings.json` and invokes `hotReloadActiveRuntimes` to reload `settingsManager` first, conditionally reload `resourceLoader` when resource keys change, reapply model/provider selections, and re-inject BYOK keys for all active in-memory runtimes in the deployment. Provider credential saves use `hotReloadActiveRuntimesForUser` to scope BYOK refresh to the authenticated user's active sessions. Daytona infra keys are resolved from BYOK/headers separately from Pi LLM env scrubbing.
+- Source: `apps/web/src/lib/pi/runtime/settings-bridge.ts`, `apps/web/src/lib/pi/runtime/hot-reload.ts`.
+
+## Pi runtime facade; no AI SDK harness migration
+
+- Decision: Centralize Fleet Pi's Pi SDK integration in `apps/web/src/lib/pi/runtime/` while keeping direct `@earendil-works/pi-coding-agent` usage. Do not migrate the chat engine to `@ai-sdk/harness-pi` / `HarnessAgent`.
+- Status: Active.
+- Context: Fleet Pi needs Pi-native settings, model registry, resource loader, and auth storage behavior without losing plan-mode extensions, Daytona tool injection, per-tenant BYOK, or in-memory runtime TTL semantics.
+- Rationale: A thin runtime facade mirrors AI SDK 7 harness configuration surfaces without adopting harness dependencies that lack Fleet Pi's web-native features.
+- Consequences: UI provider metadata stays in `packages/hax-design/src/lib/pi/provider-catalog.ts`; runtime credential resolution and hot reload live in `apps/web/src/lib/pi/runtime/`. AI SDK harness remains an optional future path for isolated sandbox agents only.
+- Source: `apps/web/src/lib/pi/runtime/`, `packages/hax-design/src/lib/pi/provider-catalog.ts`.
+
+## Daytona Sandbox handles isolated, secure executions
+
+- Decision: Use Daytona sandbox providers to mount and run secure, isolated workspaces for tool execution (Bash, Read, Write, Edit, Grep, Find, Ls).
+- Status: Active.
+- Context: Fleet Pi needs to support multi-tenant, cloud-isolated workspace environments where untrusted user code or agent modifications can run safely.
+- Rationale: Standard local system commands present security risks in multi-tenant or cloud deployments; Daytona provides secure virtualization.
+- Consequences: When Daytona is enabled for a user, standard tool definitions are replaced with custom sandbox-operations that execute commands inside a secure microVM sandbox.
+- Source: `apps/web/src/lib/daytona/sandbox-operations.ts`, `apps/web/src/lib/pi/server-runtime.ts`.
+
+## Enable Row Level Security (RLS) for multi-tenant Postgres sessions
+
+- Decision: Secure session storage at the database level using Postgres Row Level Security (RLS) on all `pi_sessions` and related records.
+- Status: Active.
+- Context: When using the Neon Postgres mirroring layer, users must only have access to their own past sessions and messages.
+- Rationale: Application-level filters are prone to omission or bypass; database-level RLS provides a stronger isolation boundary for mirrored chat data.
+- Consequences: The migration SQL now creates each mirrored table before enabling RLS or defining policies, so fresh databases receive the same isolation guarantees as existing ones. Database transactions set `app.current_user_id` via `set_config('app.current_user_id', ..., true)` at execution time.
+- Source: `apps/web/src/lib/db/chat-postgres-schema.ts`, `apps/web/src/lib/db/pi-session-mirror.ts`.
+
+## Remove Codex legacy tooling in favor of standalone path
+
+- Decision: Delete Codex environment files, workspace-bootstrap zsh scripts, and docs in order to commit fully to the clean, standalone Pi-native workspace design.
+- Status: Active.
+- Context: Legacy hybrid setups (Codex + Pi) introduced structural drift and cognitive overhead.
+- Rationale: Removing unused or redundant configurations reduces workspace noise and focuses all agents on the canonical, standalone Pi-native flow.
+- Consequences: Deleted `.codex/`, `.claude/skills/`, and `docs/codex.md`. Updated root `README.md` to point entirely to the standalone setup.
+- Source: `package.json`, `docs/quickstart.md`, `README.md`.
+
+## Circuit breaker and exponential backoff for workspace bootstrap
+
+- Decision: Implement a self-healing retry mechanism with exponential backoff and cached failures for agent workspace bootstrap failures.
+- Status: Active.
+- Context: If workspace bootstrap fails (e.g., due to temporary filesystem, docker, or database unavailability), subsequent immediate turns must not repeatedly retry and hammer the system.
+- Rationale: Exponential backoff stabilizes the server and prevents cascading failures or thread depletion.
+- Consequences: Bootstrap failures are cached within a dynamic backoff window (capped at 30 seconds). Immediate subsequent calls return the cached failure instead of re-executing. On successful execution, the backoff state resets.
+- Source: `apps/web/src/lib/pi/server-shared.ts`, `apps/web/src/lib/pi/circuit-breaker.ts`.

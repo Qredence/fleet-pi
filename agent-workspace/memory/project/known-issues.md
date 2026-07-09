@@ -2,23 +2,23 @@
 
 Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 
-## Memory snippet extraction is static (Resolved & Active)
+## Memory snippet extraction was static (Resolved)
 
 - Issue: `extractMemorySnippets` in `.pi/extensions/lib/workspace-memory-index.ts` has historically picked the first 4 bullet-list lines from each canonical memory file and surfaced the first 3 per file in startup context (max 15 snippets). Selection was order-based, not prompt-aware.
 - Affected area: `.pi/extensions/lib/workspace-memory-index.ts`, `.pi/extensions/workspace-context.ts`, startup context quality.
-- Symptoms: Every turn receives the same 15 snippets regardless of what the user is asking. Facts buried below the first 4 bullets in any file are never surfaced. New memory added at the end of a section may be invisible to recall.
-- Current status: **Fully resolved, implemented, and active in production!** Clean, robust prompt-aware keyword-based retrieval is directly written and fully operational inside `.pi/extensions/lib/workspace-memory-index.ts` and `.pi/extensions/workspace-context.ts`.
-- Workaround: No workaround needed anymore. Every user prompt triggers dynamic term-extraction, stop-word filtering, snippet keyword-matching, stable-sorting, and context injection.
-- Follow-up: Verify using the test prompts in `agent-workspace/evals/memory-recall.md` on successive turns.
+- Symptoms: Every turn received the same startup snippets regardless of what the user was asking. Facts buried below the first 4 bullets in any file were never surfaced. New memory added at the end of a section could be invisible to recall.
+- Current status: **Resolved.** The live workspace memory index now extracts all canonical snippets, scores them against the latest user prompt, and rewrites the retained `workspace-context` message with relevant results plus deterministic fallback snippets.
+- Workaround: No workaround needed. Prompt-aware recall now runs as part of normal workspace context injection.
+- Follow-up: Keep `apps/web/src/lib/pi/workspace-memory-index.spec.ts` and `apps/web/src/lib/pi/__tests__/workspace-context.test.ts` passing whenever startup context logic changes.
 
-## Canonical memory enrichment is in progress
+## Canonical memory enrichment is in progress (Resolved)
 
 - Issue: The canonical project memory files existed as seeded stubs, so Fleet Pi had a memory contract but little durable recall content.
 - Affected area: `agent-workspace/memory/project/*`, workspace startup context, and memory recall behavior.
 - Symptoms: Startup context could report memory file status but had few useful facts to inject.
-- Current status: Enriched successfully. All five canonical files now contain substantive, detailed content with 4+ sections.
-- Workaround: If recall is insufficient, inspect `agent-workspace/memory/project/*` directly and synthesize missing durable facts into the narrowest canonical file.
-- Follow-up: Done! Dynamic retrieval now leverages these rich memory files dynamically on every turn.
+- Current status: **Fully resolved!** All five canonical files have been enriched with deep, accurate, source-linked facts covering architecture, decisions, preferences, questions, and issues.
+- Workaround: No workaround needed. Prompt-aware retrieval now accesses these rich details on every turn.
+- Follow-up: Done! Prompt-aware retrieval now leverages these rich memory files dynamically on every turn.
 
 ## Self-improvement loop is not fully closed
 
@@ -38,14 +38,23 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: Use `.pi/settings.json` and normal package workflows for advanced package cases until Fleet Pi grows a package manager surface.
 - Follow-up: Add package listing, pinning, activation policy, and package diagnostics.
 
-## Reasoning controls are only partially surfaced
+## Reasoning controls are only partially surfaced (Partially Resolved)
 
 - Issue: Fleet Pi exposes model and thinking level, but richer Pi reasoning/session settings are not yet surfaced as first-class UI/API controls.
 - Affected area: settings schema, Configurations panel, Pi runtime creation, and run provenance.
 - Symptoms: Mode/task-specific reasoning presets and branch/compaction summary controls require code/config changes instead of UI-driven management.
-- Current status: Default provider/model/thinking settings are available through `.pi/settings.json`.
-- Workaround: Adjust supported `.pi/settings.json` fields manually or through existing configuration controls.
-- Follow-up: Add support for thinking budgets, branch summaries, and reasoning presets by mode/task.
+- Current status: **Partially resolved!** The Configurations panel / Settings Dialog (`settings-dialog.tsx`) now fully exposes and edits provider, model, thinking, retry, compaction, and transport settings inside `.pi/settings.json`, with live hot-reload support.
+- Workaround: Adjust supported `.pi/settings.json` fields manually, via the Configurations tab/Settings Dialog, or through existing configuration controls.
+- Follow-up: Extend the settings schema to support fine-grained thinking budgets and reasoning profiles.
+
+## Daytona sandbox FUSE volume may be empty on first mount
+
+- Issue: When provisioning a fresh Daytona sandbox, the mounted project workspace FUSE volume may be uninitialized or empty initially, leading to missing workspace files in sandbox sessions.
+- Affected area: `apps/web/src/lib/pi/server-runtime.ts` (sandbox workspace filesystem setup).
+- Symptoms: The workspace directory inside the sandbox is missing or fails to resolve during the first runtime creation.
+- Current status: **Mitigated.** We explicitly execute a self-healing setup command (`mkdir -p /home/daytona/fleet-pi/agent-workspace`) during runtime creation to guarantee the workspace path exists in the sandbox before initialization.
+- Workaround: Self-healing mkdir during first runtime creation.
+- Follow-up: Integrate a full volume check/seeding script if needed.
 
 ## autocontext_judge requires Anthropic API key, not Bedrock
 

@@ -17,7 +17,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       include: [
-        "src/lib/pi/{chat-fetch,chat-message-helpers,chat-stream-state,command-policy,plan-mode,plan-parser,plan-questionnaire,plan-state,provenance-query,question-pending,resource-install-refresh,run-provenance,server-catalog,server-chat-stream,server-runtime,server-sessions,server-settings,server-shared,server-utils,use-chat-storage,workspace-resource-catalog}.ts",
+        "src/lib/pi/{chat-fetch,chat-message-helpers,chat-stream-state,command-policy,plan-mode,plan-parser,plan-questionnaire,plan-state,provenance-query,question-pending,resource-install-refresh,run-provenance,runtime/**,server-chat-stream,server-runtime,server-sessions,server-shared,server-utils,use-chat-storage,workspace-resource-catalog}.ts",
         "src/routes/api/chat/{provenance,run,runs}.ts",
         "src/routes/api/workspace/{file,health,item,items,reindex,search,tree}.ts",
       ],

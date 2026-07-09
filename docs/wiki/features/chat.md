@@ -94,7 +94,7 @@ The server delivers the answer to the waiting Pi runtime without starting a new 
 
 ## Memory recall
 
-Before each turn, the server selects relevant files from `agent-workspace/memory/project/` (architecture, decisions, preferences, open-questions, known-issues) and injects their contents into the Pi context. Selection is prompt-aware — the files whose content most closely matches the current message are included. This keeps context focused without flooding every turn with all memory.
+Before each turn, Fleet Pi builds a memory index from the canonical files under `agent-workspace/memory/project/` (architecture, decisions, preferences, open-questions, known-issues). The retained `workspace-context` message is then rewritten from the latest user prompt: all canonical bullet snippets are scored by prompt-term overlap, the highest-signal matches are placed first, and deterministic fallback snippets fill any remaining slots. This keeps context focused without flooding every turn with the full memory corpus.
 
 ## Key source files
 

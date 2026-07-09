@@ -33,12 +33,12 @@ export const openUIPromptSpec = {
       "description": "Short body text for cards, captions, and summaries."
     },
     "Button": {
-      "signature": "Button(label: string, message?: string, variant?: \"default\" | \"destructive\" | \"outline\" | \"secondary\" | \"ghost\" | \"link\")",
-      "description": "A safe conversational button. Clicking sends the message back to the assistant."
+      "signature": "Button(label: string, action?: any, variant?: \"default\" | \"destructive\" | \"outline\" | \"secondary\" | \"ghost\" | \"link\")",
+      "description": "A button that triggers interactive actions or conversational updates."
     },
     "Input": {
-      "signature": "Input(placeholder?: string, type?: \"text\" | \"email\" | \"number\" | \"password\" | \"search\", disabled?: boolean)",
-      "description": "A display-only text input for lightweight form mockups."
+      "signature": "Input(name: string, value: $binding<string>, placeholder?: string, type?: \"text\" | \"email\" | \"number\" | \"password\" | \"search\", disabled?: boolean)",
+      "description": "An interactive, state-bound text input."
     },
     "Card": {
       "signature": "Card(title: string, content?: any, tone?: \"default\" | \"info\" | \"success\" | \"warning\" | \"danger\", width?: \"compact\" | \"normal\" | \"wide\" | \"full\")",
@@ -79,6 +79,18 @@ export const openUIPromptSpec = {
     "BarChart": {
       "signature": "BarChart(title: string, description?: string, xAxisKey: string, series: {dataKey: string, label: string}[], data: Record<string, string | number>[])",
       "description": "A bar chart for visualizing comparisons or trends using explicitly provided data points."
+    },
+    "Select": {
+      "signature": "Select(name: string, value: $binding<string>, options: {value: string, label: string, disabled?: boolean}[], placeholder?: string)",
+      "description": "An interactive dropdown selector with reactive state binding."
+    },
+    "Switch": {
+      "signature": "Switch(name: string, checked: $binding<boolean>, label?: string, disabled?: boolean)",
+      "description": "A toggle switch component bound to a boolean reactive state."
+    },
+    "Modal": {
+      "signature": "Modal(name: string, open: $binding<boolean>, title: string, content?: any)",
+      "description": "An overlay dialog container bound to a boolean reactive state."
     }
   }
 } as PromptSpec

@@ -17,6 +17,9 @@ const BASE_RULES = [
   'Arguments are positional. For example, write `Card("Title", child)` rather than `Card(title: "Title", content: child)`.',
   "Use Markdown for prose, explanations, and code unless a visual card, table, metric, chart, or action row would be clearer.",
   "Prefer compact UI blocks that fit inside a chat message.",
+  'Reactive State ($variables): Declare reactive variables with `$name = defaultValue`. Bind them to inputs such as `Input("search", $search)` or `Select("timeframe", $timeframe, [{ value: "7", label: "7 Days" }])`. Updating the input automatically recalculates all dependent expressions.',
+  "Built-in Functions: Use @-prefixed functions for data transformation: `@Count(array)`, `@Sum(numbers[])`, `@Avg(numbers[])`, `@Filter(array, field, op, value)`. Bare names without @ are not supported.",
+  'Action Compositions: Chained actions can be defined inside `Action([...])`. For example: `Button("Submit", Action([@Run(myMutation), @Set($success, true), @Reset($inp)]))`. Steps execute sequentially; failure in any step aborts the rest.',
 ]
 
 const PLAN_RULES = [
@@ -25,9 +28,8 @@ const PLAN_RULES = [
 ]
 
 const AGENT_RULES = [
-  "Use OpenUI for dashboards, structured comparisons, progress/status summaries, result cards, metrics, and safe conversational buttons.",
-  "Buttons may send a conversational message back to the assistant; do not use them for destructive actions.",
-  "Do not emit Query, Mutation, OpenUrl, or arbitrary tool/network actions.",
+  "Use OpenUI for dashboards, structured comparisons, progress/status summaries, result cards, metrics, and interactive forms.",
+  "Buttons may trigger conversational messages or complex action compositions; do not use them for destructive actions.",
 ]
 
 const EXAMPLES = [
@@ -38,14 +40,23 @@ summary = Card("OpenUI status", Stack([ok, next]))
 ok = Badge("Renderer wired", "success")
 next = Text("Next: validate streamed fenced blocks.", "muted")
 \`\`\``,
-  `A conversational action row:
+  `An interactive settings form with reactive bindings and actions:
 \`\`\`openui
-root = Root([card])
-card = Card("Continue?", Stack([body, actions]))
-body = Text("I can explain the implementation or run validation next.")
-actions = Group([explain, validate])
-explain = Button("Explain implementation", "Tell me how this OpenUI integration works", "outline")
-validate = Button("Run validation", "Run the OpenUI validation checks", "default")
+$timeframe = "7"
+$advanced = false
+$searchQuery = ""
+
+root = Root([form])
+form = Card("Dashboard Controls", Stack([search, row, submit]))
+search = Input("search", $searchQuery, "Search records...")
+row = Stack([timeframeSelect, advancedToggle], "row")
+timeframeSelect = Select("timeframe", $timeframe, [
+  { value: "7", label: "Last 7 Days" },
+  { value: "30", label: "Last 30 Days" },
+])
+advancedToggle = Switch("advanced", $advanced, "Show advanced diagnostics")
+
+submit = Button("Apply Filters", Action([@Set($searchQuery, ""), @ToAssistant("Applying search filters")]))
 \`\`\``,
 ]
 
@@ -60,5 +71,8 @@ export function buildOpenUIPrompt(mode: OpenUIPromptMode) {
     preamble: OPENUI_PREAMBLE,
     additionalRules,
     examples: EXAMPLES,
+    bindings: true,
+    toolCalls: mode === "agent" || mode === "plan-execution",
+    editMode: false,
   })
 }

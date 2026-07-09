@@ -2,6 +2,8 @@ import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 
+import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
+
 const SANDBOX_WORKSPACE_ROOT = "/home/daytona/fleet-pi/agent-workspace"
 
 export async function resolveWorkspaceContext(
@@ -9,14 +11,10 @@ export async function resolveWorkspaceContext(
 ): Promise<AppRuntimeContext> {
   const context = resolveAppRuntimeContext()
 
-  if (!process.env.DAYTONA_API_KEY) {
-    return context
-  }
-
   const { auth } = await import("@/lib/auth/server")
-  const session = await auth.api
-    .getSession({ headers: request.headers })
-    .catch(() => null)
+  const session = await Promise.resolve(
+    auth.api.getSession({ headers: request.headers })
+  ).catch(() => null)
   const user = session?.user
   const userId = user?.id
 
@@ -25,14 +23,18 @@ export async function resolveWorkspaceContext(
   }
 
   const clientDaytonaApiKey = request.headers.get("x-daytona-api-key")
+  const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
+    userId,
+    clientDaytonaApiKey || undefined
+  )
 
-  if (process.env.VERCEL === "1" && !clientDaytonaApiKey) {
+  if (process.env.VERCEL === "1" && !resolvedDaytonaApiKey) {
     throw new Error("daytona_credential_required")
   }
 
   if (
-    !isDaytonaEnabled(userId, clientDaytonaApiKey || undefined) &&
-    !clientDaytonaApiKey
+    !resolvedDaytonaApiKey ||
+    !isDaytonaEnabled(userId, resolvedDaytonaApiKey)
   ) {
     return context
   }
@@ -44,7 +46,7 @@ export async function resolveWorkspaceContext(
   const handle = await getUserSandbox({
     userId,
     userEmail: user.email,
-    apiKey: clientDaytonaApiKey || undefined,
+    apiKey: resolvedDaytonaApiKey,
   })
   const sb = handle.sandbox
 

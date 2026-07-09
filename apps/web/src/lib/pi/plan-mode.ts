@@ -1,4 +1,5 @@
 import { buildOpenUIPrompt } from "@workspace/hax-design/components/openui/openui-prompt"
+import { keepLastCustomType } from "./context-filter"
 import { evaluatePlanCommand } from "./command-policy"
 import {
   registerPlanQuestionnaireTool,
@@ -511,30 +512,11 @@ function filterModeContextMessages(
   messages: Array<AgentMessage>,
   activeContextType: string
 ) {
-  const lastActiveIndex = messages.reduce(
-    (lastIndex, message, index) =>
-      getCustomType(message) === activeContextType ? index : lastIndex,
-    -1
+  return keepLastCustomType(
+    messages,
+    activeContextType,
+    MODE_CONTEXT_CUSTOM_TYPES
   )
-  if (lastActiveIndex === -1) return undefined
-
-  const filtered = messages.filter((message, index) => {
-    const customType = getCustomType(message)
-    if (!customType || !MODE_CONTEXT_CUSTOM_TYPES.has(customType)) return true
-    return customType === activeContextType && index === lastActiveIndex
-  })
-
-  if (filtered.length === messages.length) return undefined
-  return { messages: filtered }
-}
-
-function getCustomType(message: unknown) {
-  return typeof message === "object" &&
-    message !== null &&
-    "customType" in message &&
-    typeof message.customType === "string"
-    ? message.customType
-    : undefined
 }
 
 function isAssistantMessage(message: unknown): message is AssistantMessage {

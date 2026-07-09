@@ -1,5 +1,17 @@
-export { loadChatModels, loadChatResources } from "./server-catalog"
-export { loadChatSettings, updateChatSettings } from "./server-settings"
+export {
+  applyModelSelection,
+  getProviderConfigStatus,
+  hotReloadActiveRuntimes,
+  hotReloadActiveRuntimesForUser,
+  impactForSettings,
+  loadChatModels,
+  loadChatResources,
+  loadChatSettings,
+  mergeProjectSettings,
+  readProjectSettingsFile,
+  resolveModelSelection,
+  updateChatSettings,
+} from "./runtime"
 export {
   abortActiveSession,
   answerChatQuestion,

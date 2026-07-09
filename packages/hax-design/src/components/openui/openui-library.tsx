@@ -1,6 +1,8 @@
 import {
   createLibrary,
   defineComponent,
+  reactive,
+  useStateField,
   useTriggerAction,
 } from "@openuidev/react-lang"
 import {
@@ -29,9 +31,12 @@ import {
   ChartTooltipContent,
   getChartColorVarName,
 } from "../chart"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog"
 import { Input } from "../input"
 import { Progress, ProgressLabel, ProgressValue } from "../progress"
+import { Select } from "../select"
 import { Separator } from "../separator"
+import { Switch } from "../switch"
 import {
   Table,
   TableBody,
@@ -95,28 +100,39 @@ const childrenProp = z
 export const ButtonDef = defineComponent({
   name: "Button",
   description:
-    "A safe conversational button. Clicking sends the message back to the assistant.",
+    "A button that triggers interactive actions or conversational updates.",
   props: z.object({
     label: z.string().describe("Visible button label"),
-    message: z
-      .string()
+    action: z
+      .any()
       .optional()
-      .describe("Assistant message to send when clicked. Defaults to label."),
+      .describe(
+        "Message string, action, or action composition to run on click. Defaults to label."
+      ),
     variant: z
       .enum(["default", "destructive", "outline", "secondary", "ghost", "link"])
       .optional()
       .default("default")
       .describe("Visual style"),
   }),
-  component: ({ props: { label, message, variant } }) => {
+  component: ({ props: { label, action, variant } }) => {
     const triggerAction = useTriggerAction()
 
+    const handleClick = () => {
+      if (!action) {
+        void triggerAction(label)
+        return
+      }
+
+      if (typeof action === "string") {
+        void triggerAction(action)
+      } else {
+        void triggerAction(label, undefined, action)
+      }
+    }
+
     return (
-      <Button
-        type="button"
-        variant={variant}
-        onClick={() => void triggerAction(message ?? label)}
-      >
+      <Button type="button" variant={variant} onClick={handleClick}>
         {label}
       </Button>
     )
@@ -176,14 +192,26 @@ export const BadgeDef = defineComponent({
 
 export const InputDef = defineComponent({
   name: "Input",
-  description: "A display-only text input for lightweight form mockups.",
+  description: "An interactive, state-bound text input.",
   props: z.object({
+    name: z.string().describe("Form field name for state tracking"),
+    value: reactive(z.string().describe("Bound state variable")),
     placeholder: z.string().optional(),
     type: z.enum(["text", "email", "number", "password", "search"]).optional(),
     disabled: z.boolean().optional().default(false),
   }),
-  component: ({ props: { placeholder, type, disabled } }) => {
-    return <Input disabled={disabled} placeholder={placeholder} type={type} />
+  component: ({ props: { name, value, placeholder, type, disabled } }) => {
+    const field = useStateField(name, value)
+
+    return (
+      <Input
+        value={field.value}
+        onChange={(e) => field.setValue(e.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        type={type}
+      />
+    )
   },
 })
 
@@ -568,6 +596,99 @@ export const GridDef = defineComponent({
   },
 })
 
+export const SelectDef = defineComponent({
+  name: "Select",
+  description: "An interactive dropdown selector with reactive state binding.",
+  props: z.object({
+    name: z.string().describe("Form field name for state tracking"),
+    value: reactive(z.string().describe("Bound state variable")),
+    options: z
+      .array(
+        z.object({
+          value: z.string().describe("Option value"),
+          label: z.string().describe("Visible label"),
+          disabled: z.boolean().optional(),
+        })
+      )
+      .describe("Select options"),
+    placeholder: z
+      .string()
+      .optional()
+      .describe("Placeholder when no value selected"),
+  }),
+  component: ({ props: { name, value, options, placeholder } }) => {
+    const field = useStateField(name, value)
+
+    return (
+      <Select
+        options={options}
+        value={field.value}
+        onValueChange={(nextValue) => field.setValue(nextValue)}
+        placeholder={placeholder}
+      />
+    )
+  },
+})
+
+export const SwitchDef = defineComponent({
+  name: "Switch",
+  description: "A toggle switch component bound to a boolean reactive state.",
+  props: z.object({
+    name: z.string().describe("Form field name for state tracking"),
+    checked: reactive(z.boolean().describe("Bound boolean state variable")),
+    label: z.string().optional().describe("Label shown next to the switch"),
+    disabled: z.boolean().optional().default(false),
+  }),
+  component: ({ props: { name, checked, label, disabled } }) => {
+    const field = useStateField(name, checked)
+    const isChecked = Boolean(field.value)
+
+    return (
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={isChecked}
+          onCheckedChange={(nextChecked) => field.setValue(nextChecked)}
+          disabled={disabled}
+        />
+        {label && <span className="text-sm font-medium">{label}</span>}
+      </div>
+    )
+  },
+})
+
+export const ModalDef = defineComponent({
+  name: "Modal",
+  description: "An overlay dialog container bound to a boolean reactive state.",
+  props: z.object({
+    name: z.string().describe("Unique modal name for state tracking"),
+    open: reactive(
+      z
+        .boolean()
+        .describe("Bound boolean state variable controlling visibility")
+    ),
+    title: z.string().describe("Modal header title"),
+    content: childrenProp.describe("Modal body content"),
+  }),
+  component: ({ props: { name, open, title, content }, renderNode }) => {
+    const field = useStateField(name, open)
+    const isOpen = Boolean(field.value)
+
+    return (
+      <Dialog
+        open={isOpen}
+        onOpenChange={(nextOpen) => field.setValue(nextOpen)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">{renderNode(content)}</div>
+        </DialogContent>
+      </Dialog>
+    )
+  },
+})
+
 export const openUILibrary = createLibrary({
   components: [
     RootDef,
@@ -589,5 +710,8 @@ export const openUILibrary = createLibrary({
     CodeBlockDef,
     TableDef,
     BarChartDef,
+    SelectDef,
+    SwitchDef,
+    ModalDef,
   ],
 })

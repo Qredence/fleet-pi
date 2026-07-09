@@ -14,7 +14,7 @@
 2. Set `GEMINI_API_KEY` in repo-root `.env` or `.env.local` (no stray quotes or whitespace).
 3. Restart `pnpm dev` and hard-refresh the browser so a new Pi runtime picks up the key.
 4. Verify outside Fleet Pi: `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"` should return HTTP 200.
-5. Confirm provider status: `curl -s http://localhost:3000/api/chat/providers | jq '.providers[] | select(.id=="google-genai")'`.
+5. Confirm provider status: `curl -s http://localhost:3000/api/chat/providers | jq '.providers[] | select(.id=="google")'`.
 
 You can also save credentials from the chat UI **Configurations → Provider Credentials** (writes to `.env.local`).
 

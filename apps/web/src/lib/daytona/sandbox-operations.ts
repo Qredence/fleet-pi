@@ -168,6 +168,28 @@ export function createSandboxLsOperations(sandbox: Sandbox): LsOperations {
   }
 }
 
+export interface ToolOperations {
+  bash: BashOperations
+  read: ReadOperations
+  write: WriteOperations
+  edit: EditOperations
+  grep: GrepOperations
+  find: FindOperations
+  ls: LsOperations
+}
+
+export function createSandboxOperations(sandbox: Sandbox): ToolOperations {
+  return {
+    bash: createSandboxBashOperations(sandbox),
+    read: createSandboxReadOperations(sandbox),
+    write: createSandboxWriteOperations(sandbox),
+    edit: createSandboxEditOperations(sandbox),
+    grep: createSandboxGrepOperations(sandbox),
+    find: createSandboxFindOperations(sandbox),
+    ls: createSandboxLsOperations(sandbox),
+  }
+}
+
 function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`
 }

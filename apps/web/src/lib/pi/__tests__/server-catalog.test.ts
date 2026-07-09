@@ -4,7 +4,7 @@ import {
   loadChatModels,
   loadChatResources,
   resolveModelSelection,
-} from "../server-catalog"
+} from "../runtime"
 
 const mocks = vi.hoisted(() => ({
   applyWorkspaceResourceMetadata: vi.fn(
@@ -15,9 +15,9 @@ const mocks = vi.hoisted(() => ({
     "resource expectation diagnostic",
   ]),
   createSessionServices: vi.fn(),
-  loadWorkspaceResourceCatalog: vi.fn(() => ({
+  loadWorkspaceResourceOverlay: vi.fn(() => ({
     packages: [{ name: "pi-web-access", path: "agent-workspace/pi/packages" }],
-    skills: [{ name: "workspace-skill", path: "agent-workspace/pi/skills/ws" }],
+    skills: [],
     prompts: [],
     extensions: [],
   })),
@@ -40,15 +40,18 @@ vi.mock("../resource-expectations", () => ({
     mocks.collectResourceExpectationDiagnostics,
 }))
 
-vi.mock("../server-shared", () => ({
-  collectDiagnostics: mocks.collectDiagnostics,
+vi.mock("../runtime/session-factory", () => ({
   createSessionServices: mocks.createSessionServices,
+}))
+
+vi.mock("../runtime/diagnostics", () => ({
+  collectDiagnostics: mocks.collectDiagnostics,
   resolveDefaultModelSelection: mocks.resolveDefaultModelSelection,
 }))
 
 vi.mock("../workspace-resource-catalog", () => ({
   applyWorkspaceResourceMetadata: mocks.applyWorkspaceResourceMetadata,
-  loadWorkspaceResourceCatalog: mocks.loadWorkspaceResourceCatalog,
+  loadWorkspaceResourceOverlay: mocks.loadWorkspaceResourceOverlay,
   mergeResourceInfo: mocks.mergeResourceInfo,
   readWorkspacePiSettings: mocks.readWorkspacePiSettings,
 }))
@@ -70,10 +73,12 @@ function createServices({
   all,
   available = all,
   defaultThinkingLevel = "medium",
+  enabledModels,
 }: {
   all?: Array<FakeModel>
   available?: Array<FakeModel>
   defaultThinkingLevel?: string
+  enabledModels?: Array<string>
 } = {}) {
   const models = all ?? [createModel("google", "gemini-3.5-flash")]
   const availableModels = available ?? models
@@ -134,8 +139,13 @@ function createServices({
       })),
     },
     settingsManager: {
+      getDefaultProvider: vi.fn(() => "google"),
+      getDefaultModel: vi.fn(() => "gemini-3.5-flash"),
       getDefaultThinkingLevel: vi.fn(() => defaultThinkingLevel),
+      getEnabledModels: vi.fn(() => enabledModels),
+      getEnableSkillCommands: vi.fn(() => true),
     },
+    diagnostics: [],
   }
 }
 
@@ -261,7 +271,29 @@ describe("server catalog", () => {
     expect(runtime.session.setThinkingLevel).toHaveBeenCalledWith("low")
   })
 
-  it("merges runtime and workspace resource catalogs with expectation diagnostics", async () => {
+  it("filters models using enabledModels glob patterns", async () => {
+    const services = createServices({
+      all: [
+        createModel("google", "gemini-3.5-flash"),
+        createModel("openai", "gpt-5"),
+      ],
+      available: [
+        createModel("google", "gemini-3.5-flash"),
+        createModel("openai", "gpt-5"),
+      ],
+      enabledModels: ["google/*"],
+    })
+    mocks.createSessionServices.mockResolvedValue(services)
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.models).toHaveLength(1)
+    expect(response.models[0]).toMatchObject({
+      key: "google/gemini-3.5-flash",
+    })
+  })
+
+  it("merges runtime resources with workspace overlay and expectation diagnostics", async () => {
     mocks.createSessionServices.mockResolvedValue(createServices())
 
     const response = await loadChatResources({ projectRoot: "/repo" } as never)
@@ -271,7 +303,6 @@ describe("server catalog", () => {
     ])
     expect(response.skills).toEqual([
       expect.objectContaining({ name: "starter-skill" }),
-      expect.objectContaining({ name: "workspace-skill" }),
     ])
     expect(response.extensions).toEqual([
       expect.objectContaining({ name: "project-inventory", source: "project" }),

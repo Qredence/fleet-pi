@@ -77,6 +77,7 @@ describe("resolveWorkspaceContext", () => {
     expect(mockGetUserSandbox).toHaveBeenCalledWith({
       userEmail: "user@example.test",
       userId: "user-1",
+      apiKey: "daytona-test-key",
     })
     expect(mockExecuteCommand).toHaveBeenCalledWith(
       sandbox,
