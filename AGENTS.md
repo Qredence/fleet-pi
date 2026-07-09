@@ -71,23 +71,24 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - The primary provider is Google via Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.
-- Shared browser-safe chat protocol types and Zod schemas live in `packages/hax-design/src/lib/pi/chat-protocol.ts` and `chat-protocol.zod.ts`; server-only Pi setup, session validation, event normalization, model discovery, and transcript hydration live in `apps/web/src/lib/pi/server.ts`.
+- Shared browser-safe chat protocol types and Zod schemas live in `packages/hax-design/src/lib/pi/chat-protocol.ts` and `chat-protocol.zod.ts`; server-only Pi integration is centralized in `apps/web/src/lib/pi/runtime/` (session factory, settings bridge, model/resource/provider catalogs, hot reload) with `apps/web/src/lib/pi/server.ts` as the route-facing barrel.
 - The browser chat client consumes newline-delimited JSON events from `/api/chat`.
 - `/api/chat` is session-based: the client sends a single `message` plus optional Pi `sessionFile`/`sessionId` metadata, and the server resumes or creates a persistent Pi session.
-- Supporting chat endpoints are `/api/chat/models`, `/api/chat/resources`, `/api/chat/session`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/resume`, `/api/chat/abort`, `/api/chat/question`, `/api/workspace/tree`, and `/api/workspace/file`.
+- Supporting chat endpoints are `/api/chat/models`, `/api/chat/resources`, `/api/chat/settings`, `/api/chat/providers`, `/api/chat/session`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/resume`, `/api/chat/abort`, `/api/chat/question`, `/api/workspace/tree`, and `/api/workspace/file`.
 - The server keeps live Pi `AgentSessionRuntime` instances in memory for a short TTL (`FLEET_PI_RUNTIME_TTL_MS`, default 10 minutes) so aborts and queued follow-ups operate on the same runtime. Invalid, outside, or missing session files must still start a fresh project-scoped session for the active runtime context.
 - The web chat enables Pi's built-in `read`, `write`, `edit`, and `bash` tools scoped to the active `projectRoot`. File paths and bash cwd must remain project-scoped. Tool execution is direct in v1; there is no approval gate.
 - Pi tool execution events are normalized into existing agent-elements tool parts (`tool-Read`, `tool-Write`, `tool-Edit`, `tool-Bash`) for rendering.
 - The chat InputBar includes an Agent/Plan mode selector. Agent mode enables the normal coding tools plus approved external Pi tools; Plan mode enables read-only `read`, `bash`, `grep`, `find`, `ls`, `questionnaire`, `project_inventory`, `workspace_index`, and safe Autocontext status tools only.
 - Plan mode is implemented in `apps/web/src/lib/pi/plan-mode.ts` as a web-native Pi extension. It injects read-only planning instructions, blocks unsafe bash commands, extracts numbered `Plan:` steps, persists plan state in the Pi session, and uses `tool-Question` parts plus `/api/chat/question` for InputBar question prompts and plan execute/refine/stay decisions.
 - The Pi resources browser in `apps/web/src/routes/index.tsx` fetches `/api/chat/resources` and surfaces discovered skills, prompts, extensions, themes, context files, and diagnostics. It opens as a resizable right-side canvas that opens at 70% viewport width and clamps resizing to that maximum; mobile open state is a compact overlay. The canvas also has a read-only `Workspace` tab backed by `/api/workspace/tree` and `/api/workspace/file`, plus a UI-first `Configurations` tab.
-- The `Configurations` tab edits project-scoped Pi settings through `/api/chat/settings` and persists supported overrides to `.pi/settings.json`: default provider/model/thinking level, `enabledModels`, compaction, retry, steering/follow-up mode, transport, packages, resource paths, and skill slash commands. Provider credentials still belong in normal environment/Pi auth storage. Theme personalization remains local: use `fleet-pi-theme-preference` plus the root `.dark` class for Light/Dark/System.
+- The `Configurations` tab edits project-scoped Pi settings through `/api/chat/settings` and persists supported overrides to `.pi/settings.json`: default provider/model/thinking level, `enabledModels`, compaction, retry, steering/follow-up mode, transport, packages (string or object form with per-package filters), resource paths, and skill slash commands. Provider credentials are managed through `/api/chat/providers` and still belong in environment/Pi auth storage locally or encrypted Postgres BYOK on Vercel.
 - `apps/web/src/lib/workspace/server.ts` owns the `agent-workspace/` layout, creates seeded Markdown stubs without overwriting existing files, returns a sorted read-only filesystem tree, and safely previews file contents for paths inside the active `workspaceRoot`.
 - Fleet Pi's repo-local agent home is `agent-workspace/`: durable skills, tool context, memory, plans, evals, artifacts, and extension orientation should be discoverable there. Chat-installed Pi runtime resources live under `agent-workspace/pi/{skills,prompts,extensions,packages}`. Root `.pi/settings.json` remains the Pi compatibility bridge and should point at workspace-native resource paths.
 - Use `resource_install` for chat-driven Pi resource installs. Skills/prompts become usable after reload/new session; executable extensions and package bundles are staged unless the user explicitly asks to activate them. In v1, "plugins" means Pi resource packages/bundles, not Codex or Claude plugin bundles.
 - Canonical durable project memory lives in `agent-workspace/memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md`. Normal "remember this" requests should update the narrowest canonical file; ad hoc project-memory files are only for explicit user requests, temporary harness tests, or raw material that will later be synthesized.
 - Pi sessions are persistent JSONL sessions. Browser mode stores only Pi session metadata in localStorage and hydrates visible messages from the Pi session file after refresh.
 - When `FLEET_PI_CHAT_DATABASE_URL` is set, Fleet Pi mirrors full Pi session entries, run events, tool executions, and file mutations into Neon Postgres tables prefixed with `pi_`. Pi JSONL remains the source of truth; mirror failures must not break chat streaming.
+- Settings saves hot-reload every in-memory Pi runtime in the deployment because `.pi/settings.json` is project-scoped; BYOK provider credential saves hot-reload only the authenticated user's active runtimes via `hotReloadActiveRuntimesForUser`.
 - Model choices should come from Pi `ModelRegistry`/`SettingsManager`, not a hard-coded UI list. Project-local Pi resources under `.pi/skills`, `.pi/prompts`, and `.pi/extensions` are loaded through `DefaultResourceLoader` and surfaced through `/api/chat/resources`.
 - Project-local Pi skills currently include `.pi/skills/fleet-pi-orientation`, `.pi/skills/chat-runtime-debugging`, `.pi/skills/agent-ui-workflows`, and the `.pi/skills/agent-elements` symlink to `.agents/skills/agent-elements`.
 - `.pi/settings.json` loads project Pi packages `npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, and `npm:pi-web-access`, plus vendored extension directories under `.pi/extensions/vendor`.
@@ -116,31 +117,26 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Treat `@workspace/hax-design` as the sole UI source of truth; if a surface is missing, add it to hax-design rather than creating app-local components.
 - Keep floating pill-style header chrome; do not replace it with a unified full-width top bar unless explicitly requested.
 - When executing an attached implementation plan, do not edit the plan file; follow existing todos to completion.
-- Prefer `bg-sidebar` for inactive header pills and floating panel launcher buttons.
-- Use pill-shaped rounding (`rounded-full` / `rounded-[100px]`) for header controls and InputBar mode/model selectors.
+- Prefer `bg-sidebar` for inactive header pills and floating panel launcher buttons; use pill-shaped rounding (`rounded-full` / `rounded-[100px]`) for header controls and InputBar mode/model selectors.
 - Avoid inline `style` props in Fleet Pi UI; prefer Tailwind utilities, `cva`, co-located component CSS, or shared hax-design tokens.
-- Keep the inline right-panel launcher (`DiscreteTabs`) visible in the chat header when panels are open; do not relocate panel tabs into canvas or mobile panel headers.
+- Keep inline `DiscreteTabs` in the chat header when panels are open; stack the header above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`) and align tabs with chrome pill tokens (`DISCRETE_TAB_ACTIVE_CLASS` / `DISCRETE_TAB_INACTIVE_CLASS`) at compact sizing (12px labels, 14px icons).
 - Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` over duplicating long inline Tailwind class strings.
 - Avoid generic AI SaaS aesthetics (cream backgrounds, gradient heroes, card grids) and heavy IDE-style dense toolbars unless explicitly requested.
 - Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
-- Keep the chat header stacked above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`) so inline DiscreteTab tooltips are not clipped or covered by the transcript column.
-- Align header `DiscreteTabs` with chrome pill tokens (`DISCRETE_TAB_ACTIVE_CLASS` / `DISCRETE_TAB_INACTIVE_CLASS`); use compact default sizing (12px labels, 14px icons, minimal tab gap).
+- Make Settings dialog main content vertically scrollable.
+- Use Playwright `testInfo.outputPath()` for E2E screenshots and artifacts instead of hardcoded machine-specific paths.
 - Put newly added test files in a dedicated test directory for the module or area, such as `__tests__/`, instead of scattering new colocated test files.
 
 ## Learned Workspace Facts
 
 - Ensure proper Row-Level Security (RLS) is configured in Neon so users can only access their own past sessions, chats, and messages.
 - Use Daytona to provision secure, isolated sandbox volumes for each user's Workspace sidepanel.
-
 - GitHub releases: create an annotated `v*` tag on `main`, push to origin, wait for the release workflow CI, then polish notes via `gh release edit` (auto-generated notes are interim).
 - Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
-- OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`.
-- Files inside `packages/hax-design` must use relative imports; apps import via `@workspace/hax-design/*`.
+- OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`; files inside `packages/hax-design` must use relative imports and apps import via `@workspace/hax-design/*`.
 - Config-panel Problems warnings are commonly Tailwind CSS IntelliSense suggestions for v4 shorthand classes, not TypeScript or ESLint failures.
-- `PRODUCT.md`, `DESIGN.md`, and `packages/hax-design/ARCHITECTURE.md` are the canonical design context for Fleet Pi UI and hax-design structure.
-- Fleet Pi building blocks live under `fleet-pi/{layout,chat,pi,primitives,styles}/`; semantic tokens are in `fleet-pi/styles/tokens.ts`.
-- Pi's default `google` provider reads `GEMINI_API_KEY`; `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls.
-- Dev server loads repo-root `.env` then `.env.local` with override; Configurations Provider Credentials persist to `.env.local`.
-- Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API.
+- `PRODUCT.md`, `DESIGN.md`, `packages/hax-design/ARCHITECTURE.md`, and Fleet Pi building blocks under `fleet-pi/{layout,chat,pi,primitives,styles}/` are canonical UI design context; semantic tokens live in `fleet-pi/styles/tokens.ts`.
+- Pi provider catalog and metadata live in `packages/hax-design/src/lib/pi/provider-catalog.ts`; canonical Google provider id is `google` (not `google-genai`) and reads `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls. Dev server loads repo-root `.env` then `.env.local` with override; Configurations Provider Credentials persist to `.env.local`.
+- Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API; Workspace and Artifacts share `selectedWorkspacePath` and `workspace-panel` clears selections outside each panel's `scopePath`.
 - Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
-- Workspace and Artifacts share `selectedWorkspacePath`; `workspace-panel` clears selections outside each panel's `scopePath` so tab switches do not leak stale previews.
+- `.vercelignore` excludes `agent-workspace/`, `.fleet/`, `.pi/`, `dist/`, and `node_modules` so Vercel CLI uploads stay under the 100 MB limit.

@@ -62,8 +62,17 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Status: Active.
 - Context: Users modifying their model, provider, or thinking defaults via the Configurations tab/Settings Dialog should see those changes applied instantly on subsequent turns without re-initializing the runtime or losing session state.
 - Rationale: Live reloading reduces friction and provides a seamless, responsive settings experience.
-- Consequences: Every setting update writes to `.pi/settings.json` and invokes `hotReloadActiveRuntimes` to reload settingsManagers and reapply model/provider selections to all active runtimes in memory.
-- Source: `apps/web/src/lib/pi/server-settings.ts`, `apps/web/src/lib/pi/server-runtime.ts`.
+- Consequences: Every setting update writes to `.pi/settings.json` and invokes `hotReloadActiveRuntimes` to reload `settingsManager` first, conditionally reload `resourceLoader` when resource keys change, reapply model/provider selections, and re-inject BYOK keys for all active in-memory runtimes in the deployment. Provider credential saves use `hotReloadActiveRuntimesForUser` to scope BYOK refresh to the authenticated user's active sessions. Daytona infra keys are resolved from BYOK/headers separately from Pi LLM env scrubbing.
+- Source: `apps/web/src/lib/pi/runtime/settings-bridge.ts`, `apps/web/src/lib/pi/runtime/hot-reload.ts`.
+
+## Pi runtime facade; no AI SDK harness migration
+
+- Decision: Centralize Fleet Pi's Pi SDK integration in `apps/web/src/lib/pi/runtime/` while keeping direct `@earendil-works/pi-coding-agent` usage. Do not migrate the chat engine to `@ai-sdk/harness-pi` / `HarnessAgent`.
+- Status: Active.
+- Context: Fleet Pi needs Pi-native settings, model registry, resource loader, and auth storage behavior without losing plan-mode extensions, Daytona tool injection, per-tenant BYOK, or in-memory runtime TTL semantics.
+- Rationale: A thin runtime facade mirrors AI SDK 7 harness configuration surfaces without adopting harness dependencies that lack Fleet Pi's web-native features.
+- Consequences: UI provider metadata stays in `packages/hax-design/src/lib/pi/provider-catalog.ts`; runtime credential resolution and hot reload live in `apps/web/src/lib/pi/runtime/`. AI SDK harness remains an optional future path for isolated sandbox agents only.
+- Source: `apps/web/src/lib/pi/runtime/`, `packages/hax-design/src/lib/pi/provider-catalog.ts`.
 
 ## Daytona Sandbox handles isolated, secure executions
 
