@@ -1,5 +1,5 @@
 import { buildOpenUIPrompt } from "@workspace/hax-design/components/openui/openui-prompt"
-import { keepLastCustomType } from "../../../../../.pi/extensions/lib/context-filter"
+import { keepLastCustomType } from "./context-filter"
 import { evaluatePlanCommand } from "./command-policy"
 import {
   registerPlanQuestionnaireTool,
