@@ -37,7 +37,7 @@ export const openUIPromptSpec = {
       "description": "A button that triggers interactive actions or conversational updates."
     },
     "Input": {
-      "signature": "Input(name: string, value: string, placeholder?: string, type?: \"text\" | \"email\" | \"number\" | \"password\" | \"search\", disabled?: boolean)",
+      "signature": "Input(name: string, value: $binding<string>, placeholder?: string, type?: \"text\" | \"email\" | \"number\" | \"password\" | \"search\", disabled?: boolean)",
       "description": "An interactive, state-bound text input."
     },
     "Card": {
@@ -81,15 +81,15 @@ export const openUIPromptSpec = {
       "description": "A bar chart for visualizing comparisons or trends using explicitly provided data points."
     },
     "Select": {
-      "signature": "Select(name: string, value: string, options: {value: string, label: string, disabled?: boolean}[], placeholder?: string)",
+      "signature": "Select(name: string, value: $binding<string>, options: {value: string, label: string, disabled?: boolean}[], placeholder?: string)",
       "description": "An interactive dropdown selector with reactive state binding."
     },
     "Switch": {
-      "signature": "Switch(name: string, checked: boolean, label?: string, disabled?: boolean)",
+      "signature": "Switch(name: string, checked: $binding<boolean>, label?: string, disabled?: boolean)",
       "description": "A toggle switch component bound to a boolean reactive state."
     },
     "Modal": {
-      "signature": "Modal(name: string, open: boolean, title: string, content?: any)",
+      "signature": "Modal(name: string, open: $binding<boolean>, title: string, content?: any)",
       "description": "An overlay dialog container bound to a boolean reactive state."
     }
   }
