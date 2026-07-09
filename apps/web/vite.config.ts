@@ -21,6 +21,9 @@ if (!process.env.FLEET_PI_REPO_ROOT) {
 }
 
 const config = defineConfig({
+  // Env files live at the monorepo root, so load VITE_-prefixed client vars
+  // (e.g. VITE_PUBLIC_POSTHOG_KEY) from there instead of apps/web.
+  envDir: repoRoot,
   plugins: [
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],

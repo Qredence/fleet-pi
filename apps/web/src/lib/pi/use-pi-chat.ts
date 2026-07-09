@@ -20,6 +20,10 @@ import type {
   ChatStreamEvent,
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { ChatClient } from "./chat-client"
+import {
+  captureChatSessionStarted,
+  captureConversationSaved,
+} from "@/lib/analytics/posthog"
 
 export type SendMessageInput = {
   text: string
@@ -457,6 +461,13 @@ export function usePiChat(
       setActivityLabelSynced(undefined)
       setStatus("submitted")
 
+      if (messagesRef.current.length === 0) {
+        captureChatSessionStarted({
+          promptLength: trimmed.length,
+          sessionId: sessionMetadataRef.current.sessionId,
+        })
+      }
+
       const userMessage = createTextMessage("user", trimmed)
       setMessagesSynced((current) => [...current, userMessage])
       const assistantIdRef = { current: null as string | null }
@@ -476,6 +487,10 @@ export function usePiChat(
         )
 
         setStatus("ready")
+        captureConversationSaved({
+          messageCount: messagesRef.current.length,
+          sessionId: sessionMetadataRef.current.sessionId,
+        })
       } catch (err) {
         if (controller.signal.aborted) return
         const nextError = err instanceof Error ? err : new Error(String(err))

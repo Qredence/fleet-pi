@@ -4,12 +4,14 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "@workspace/hax-design/components/sonner"
 import { NotFoundPage } from "@workspace/hax-design/components/fleet-pi/not-found-page"
 
 import appCss from "@workspace/hax-design/globals.css?url"
 import { getQueryClient } from "@/lib/query-client"
+import { initAnalytics } from "@/lib/analytics/posthog"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -32,14 +34,22 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: () => (
-    <QueryClientProvider client={getQueryClient()}>
-      <Outlet />
-    </QueryClientProvider>
-  ),
+  component: RootComponent,
   notFoundComponent: () => <NotFoundPage />,
   shellComponent: RootDocument,
 })
+
+function RootComponent() {
+  useEffect(() => {
+    initAnalytics()
+  }, [])
+
+  return (
+    <QueryClientProvider client={getQueryClient()}>
+      <Outlet />
+    </QueryClientProvider>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
