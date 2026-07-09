@@ -332,8 +332,14 @@ export function answerChatQuestion(
 }
 
 function findRuntimeRecord(metadata: ChatRuntimeMetadata) {
-  const matchesUser = (active: ActiveSessionRecord) =>
-    metadata.userId === undefined || active.userId === metadata.userId
+  const matchesUser = (active: ActiveSessionRecord) => {
+    if (process.env.VERCEL === "1") {
+      if (!metadata.userId) return false
+      return active.userId === metadata.userId
+    }
+
+    return metadata.userId === undefined || active.userId === metadata.userId
+  }
 
   if (metadata.sessionFile) {
     const requested = safeRealpath(metadata.sessionFile)

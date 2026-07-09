@@ -9,7 +9,10 @@ import type {
   TurnStartContext,
 } from "@/lib/pi/server-chat-stream"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { auth } from "@/lib/auth/server"
+import {
+  enforceChatSessionOwnership,
+  requireVercelChatAuth,
+} from "@/lib/auth/chat-api-auth"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 import { createRequestLogger } from "@/lib/logger"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
@@ -41,9 +44,11 @@ export const Route = createFileRoute("/api/chat")({
 
         try {
           const runtimeContext = resolveAppRuntimeContext()
-          const authSession = await auth.api
-            .getSession({ headers: request.headers })
-            .catch(() => null)
+          const authGate = await requireVercelChatAuth(request)
+          if (!authGate.ok) {
+            return authGate.response
+          }
+          const authSession = authGate.authSession
           const body = ChatRequestSchema.parse(
             await request.json()
           ) as ChatRequest
@@ -55,24 +60,12 @@ export const Route = createFileRoute("/api/chat")({
             typeof body.message === "string" ? body.message.trim() : ""
           const prompt = sanitizePii(rawPrompt)
 
-          if (authSession?.user && body.sessionId) {
-            const { verifySessionOwnership } =
-              await import("@/lib/db/pi-session-mirror")
-            const isOwner = await verifySessionOwnership(
-              body.sessionId,
-              authSession.user.id
-            )
-            if (!isOwner) {
-              return new Response(
-                JSON.stringify({
-                  message: "Forbidden: Session belongs to another user",
-                }),
-                {
-                  status: 403,
-                  headers: { "Content-Type": "application/json" },
-                }
-              )
-            }
+          const ownership = await enforceChatSessionOwnership({
+            sessionId: body.sessionId,
+            userId: authSession?.user.id,
+          })
+          if (!ownership.ok) {
+            return ownership.response
           }
 
           log.info(

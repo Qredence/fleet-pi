@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { Pool } from "@neondatabase/serverless"
 import { logger } from "../logger"
+import { resolveSessionOwnershipFromRow } from "./session-ownership"
 import type {
   SessionEntry,
   SessionHeader,
@@ -311,6 +312,8 @@ export async function verifySessionOwnership(
   const pool = getChatPostgresPool()
   if (!pool) return true
 
+  const failClosedOnError = process.env.VERCEL === "1"
+
   try {
     return await withUserContext(pool, userId, async (client) => {
       const result = await client.query<{ user_id: string | null }>(
@@ -318,25 +321,14 @@ export async function verifySessionOwnership(
         [sessionId]
       )
 
-      if (result.rows.length === 0) {
-        // Session not synced to mirror yet, or doesn't exist
-        return true
-      }
-
-      const sessionUserId = result.rows[0].user_id
-      // If the session has a user_id, it must match the requesting user
-      if (sessionUserId && sessionUserId !== userId) {
-        return false
-      }
-
-      return true
+      return resolveSessionOwnershipFromRow(result.rows[0], userId)
     })
   } catch (error) {
     logger.warn(
       { error, sessionId, userId },
       "[pi-session-mirror] failed to verify session ownership"
     )
-    return true // Default to allow on DB failure
+    return failClosedOnError ? false : true
   }
 }
 
