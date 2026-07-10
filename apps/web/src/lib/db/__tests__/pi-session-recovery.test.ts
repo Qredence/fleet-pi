@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -40,8 +40,7 @@ describe("recoverOwnedSessionFile", () => {
   const originalChatUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
 
   beforeEach(() => {
-    sessionDir = join(tmpdir(), `fleet-pi-recovery-${Date.now()}`)
-    mkdirSync(sessionDir, { recursive: true })
+    sessionDir = mkdtempSync(join(tmpdir(), "fleet-pi-recovery-"))
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://example"
     poolQuery.mockReset()
     withUserContext.mockClear()
