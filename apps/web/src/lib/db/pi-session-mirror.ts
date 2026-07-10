@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto"
 import { Pool } from "@neondatabase/serverless"
+import { shouldFailClosedOnMirrorError } from "../deployment"
 import { logger } from "../logger"
-import { resolveSessionOwnershipFromRow } from "./session-ownership"
+import {
+  isSessionAccessAllowed,
+  isSessionOwnershipStatus,
+} from "./session-ownership"
 import type {
   SessionEntry,
   SessionHeader,
@@ -183,7 +187,7 @@ export async function syncPiSessionMirrorSafely(
     mirrorMetrics.failures++
     const reason = error instanceof Error ? error.message : String(error)
     mirrorMetrics.lastFailureReason = reason
-    if (process.env.VERCEL === "1") {
+    if (shouldFailClosedOnMirrorError()) {
       logger.error(
         { error },
         "[pi-session-mirror] sync failure on Vercel (non-fatal)"
@@ -303,6 +307,39 @@ export async function fetchUserSessionIds(
   }
 }
 
+export async function lookupSessionOwnershipStatus(
+  sessionId: string,
+  userId: string
+): Promise<string | undefined> {
+  const pool = getChatPostgresPool()
+  if (!pool) return undefined
+
+  const result = await pool.query<{ status: string }>(
+    "SELECT fleet_pi_check_session_owner($1, $2) AS status",
+    [sessionId, userId]
+  )
+
+  return result.rows[0]?.status
+}
+
+export async function lookupSessionIdBySessionFile(
+  sessionFile: string
+): Promise<string | undefined> {
+  const pool = getChatPostgresPool()
+  if (!pool) return undefined
+
+  const result = await pool.query<{ session_id: string | null }>(
+    "SELECT fleet_pi_lookup_session_id_by_file($1) AS session_id",
+    [sessionFile]
+  )
+
+  return result.rows[0]?.session_id ?? undefined
+}
+
+/**
+ * Mirror-backed ownership check. When mirror is disabled (local dev), allows access.
+ * Uses SECURITY DEFINER SQL functions so RLS cannot hide foreign-owned rows.
+ */
 export async function verifySessionOwnership(
   sessionId: string,
   userId: string
@@ -312,17 +349,19 @@ export async function verifySessionOwnership(
   const pool = getChatPostgresPool()
   if (!pool) return true
 
-  const failClosedOnError = process.env.VERCEL === "1"
+  const failClosedOnError = shouldFailClosedOnMirrorError()
 
   try {
-    return await withUserContext(pool, userId, async (client) => {
-      const result = await client.query<{ user_id: string | null }>(
-        "SELECT user_id FROM pi_sessions WHERE id = $1",
-        [sessionId]
+    const status = await lookupSessionOwnershipStatus(sessionId, userId)
+    if (!status || !isSessionOwnershipStatus(status)) {
+      logger.warn(
+        { sessionId, userId, status },
+        "[pi-session-mirror] unexpected session ownership status"
       )
+      return failClosedOnError ? false : true
+    }
 
-      return resolveSessionOwnershipFromRow(result.rows[0], userId)
-    })
+    return isSessionAccessAllowed(status)
   } catch (error) {
     logger.warn(
       { error, sessionId, userId },

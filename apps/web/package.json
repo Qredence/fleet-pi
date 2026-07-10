@@ -32,7 +32,6 @@
     "@tanstack/react-start": "^1.168.26",
     "@tanstack/router-plugin": "^1.168.18",
     "@types/better-sqlite3": "^7.6.13",
-    "@vercel/analytics": "^2.0.1",
     "@workspace/hax-design": "workspace:*",
     "better-auth": "^1.6.21",
     "better-sqlite3": "^12.11.1",

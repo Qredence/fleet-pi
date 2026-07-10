@@ -44,7 +44,7 @@ The repository includes a VS Code devcontainer configuration at `.devcontainer/d
 - Vercel builds run `NITRO_PRESET=vercel pnpm build:vercel`; TanStack Start emits `dist/`, then `apps/web/scripts/build-vercel-output.mjs` packages it into `.vercel/output`.
 - Better Auth on Vercel requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, and `FLEET_PI_AUTH_DATABASE_URL`; the auth database must be Neon/Postgres, not the local SQLite fallback.
 - BYOK provider credentials and Pi session mirroring on Vercel also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
-- `PATCH /api/chat/settings` requires authentication on Vercel; settings hot-reload applies only to the signed-in user's active sessions.
+- `PATCH /api/chat/settings` requires authentication on Vercel; settings hot-reload applies only to the signed-in user's active sessions. Vercel Preview deployments need `BETTER_AUTH_SECRET`, `FLEET_PI_AUTH_DATABASE_URL`, and `FLEET_PI_CHAT_DATABASE_URL` scoped to Preview (not only feature-branch aliases). Run `pnpm chat:migrate` with `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` after schema or ownership-probe changes.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
 
 ## Pre-commit Hooks
@@ -131,14 +131,14 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## Learned Workspace Facts
 
-- Ensure proper Row-Level Security (RLS) is configured in Neon so users can only access their own past sessions, chats, and messages.
+- Neon user-scoped RLS applies to `pi_*` mirror tables via `app.current_user_id`; Better Auth tables (`user`, `session`, `account`, `verification`) must not use RLS—`pnpm --filter web auth:migrate` chains `auth-post-migrate.ts` to disable RLS and grant `fleet_pi_app` DML.
 - Use Daytona to provision secure, isolated sandbox volumes for each user's Workspace sidepanel.
-- GitHub releases: create an annotated `v*` tag on `main`, push to origin, wait for the release workflow CI, then polish notes via `gh release edit` (auto-generated notes are interim).
+- On Vercel (`VERCEL=1`), session-scoped chat endpoints require Better Auth: `/api/chat`, `/api/chat/session`, `/api/chat/resume`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, and `PATCH /api/chat/settings`. Local dev keeps anonymous chat on routes that do not mutate shared session state. Mirror ownership uses `fleet_pi_check_session_owner` (SECURITY DEFINER) so RLS cannot hide foreign-owned rows; run `pnpm chat:migrate` after deploy when the ownership probe migration changes.
 - Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
 - OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`; files inside `packages/hax-design` must use relative imports and apps import via `@workspace/hax-design/*`.
-- Config-panel Problems warnings are commonly Tailwind CSS IntelliSense suggestions for v4 shorthand classes, not TypeScript or ESLint failures.
+- Pi settings, appearance, and LLM provider credentials live in the Settings dialog (Account menu); the right panel is Workspace, Pi Resources, and Artifacts only.
 - `PRODUCT.md`, `DESIGN.md`, `packages/hax-design/ARCHITECTURE.md`, and Fleet Pi building blocks under `fleet-pi/{layout,chat,pi,primitives,styles}/` are canonical UI design context; semantic tokens live in `fleet-pi/styles/tokens.ts`.
-- Pi provider catalog and metadata live in `packages/hax-design/src/lib/pi/provider-catalog.ts`; canonical Google provider id is `google` (not `google-genai`) and reads `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls. Dev server loads repo-root `.env` then `.env.local` with override; Configurations Provider Credentials persist to `.env.local`.
+- Pi provider catalog and metadata live in `packages/hax-design/src/lib/pi/provider-catalog.ts`; canonical Google provider id is `google` (not `google-genai`) and reads `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls. Dev server loads repo-root `.env` then `.env.local` with override; Settings dialog provider credentials persist to `.env.local`. PostHog funnel telemetry lives in `apps/web/src/lib/analytics/posthog.ts`; install product analytics (PostHog wizard) in `apps/web`, not the monorepo root.
 - Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API; Workspace and Artifacts share `selectedWorkspacePath` and `workspace-panel` clears selections outside each panel's `scopePath`.
 - Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
 - `.vercelignore` excludes `agent-workspace/`, `.fleet/`, `.pi/`, `dist/`, and `node_modules` (apps/web must not import from `.pi/` on Vercel—colocate server helpers like `context-filter` under `apps/web/src/lib/pi/`). Feature-branch previews need `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` scoped to Preview, not Production-only or a single branch alias.

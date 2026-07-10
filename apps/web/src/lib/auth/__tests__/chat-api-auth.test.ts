@@ -4,10 +4,14 @@ import {
   isVercelChatDeployment,
   requireVercelChatAuth,
   unauthorizedChatResponse,
+  withAuthenticatedChatRequest,
 } from "../chat-api-auth"
 
 import { auth } from "@/lib/auth/server"
-import { verifySessionOwnership } from "@/lib/db/pi-session-mirror"
+import {
+  lookupSessionIdBySessionFile,
+  verifySessionOwnership,
+} from "@/lib/db/pi-session-mirror"
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {
@@ -19,6 +23,7 @@ vi.mock("@/lib/auth/server", () => ({
 
 vi.mock("@/lib/db/pi-session-mirror", () => ({
   verifySessionOwnership: vi.fn(),
+  lookupSessionIdBySessionFile: vi.fn(),
 }))
 
 const originalVercel = process.env.VERCEL
@@ -73,14 +78,70 @@ describe("chat-api-auth", () => {
     }
   })
 
-  it("skips ownership checks when session metadata is incomplete", async () => {
+  it("skips ownership checks when no session identifier is present", async () => {
     const result = await enforceChatSessionOwnership({
-      sessionId: undefined,
       userId: "user-1",
     })
 
     expect(verifySessionOwnership).not.toHaveBeenCalled()
     expect(result.ok).toBe(true)
+  })
+
+  it("denies sessionFile-only access on Vercel when mirror lookup fails", async () => {
+    process.env.VERCEL = "1"
+    vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue(undefined)
+
+    const result = await enforceChatSessionOwnership({
+      sessionFile: "/tmp/.fleet/sessions/session.jsonl",
+      userId: "user-1",
+    })
+
+    expect(lookupSessionIdBySessionFile).toHaveBeenCalled()
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(403)
+    }
+  })
+
+  it("resolves sessionFile to sessionId on Vercel before ownership check", async () => {
+    process.env.VERCEL = "1"
+    vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue("session-1")
+    vi.mocked(verifySessionOwnership).mockResolvedValue(true)
+
+    const result = await enforceChatSessionOwnership({
+      sessionFile: "/tmp/.fleet/sessions/session.jsonl",
+      userId: "user-1",
+    })
+
+    expect(verifySessionOwnership).toHaveBeenCalledWith("session-1", "user-1")
+    expect(result.ok).toBe(true)
+  })
+
+  it("allows sessionFile-only access outside Vercel", async () => {
+    delete process.env.VERCEL
+
+    const result = await enforceChatSessionOwnership({
+      sessionFile: "/tmp/.fleet/sessions/session.jsonl",
+      userId: "user-1",
+    })
+
+    expect(verifySessionOwnership).not.toHaveBeenCalled()
+    expect(result.ok).toBe(true)
+  })
+
+  it("wraps handlers with authenticated chat context", async () => {
+    delete process.env.VERCEL
+    vi.mocked(auth.api.getSession).mockResolvedValue({
+      user: { id: "user-1", email: "user@example.com" },
+    } as never)
+
+    const response = await withAuthenticatedChatRequest(
+      new Request("http://localhost/api/chat"),
+      async ({ userId }) => Response.json({ userId })
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ userId: "user-1" })
   })
 
   it("exposes deployment detection for tests", () => {

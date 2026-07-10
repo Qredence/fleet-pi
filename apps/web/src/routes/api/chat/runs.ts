@@ -6,16 +6,31 @@ import {
   createSessionRunsResponse,
   createUnexpectedProvenanceErrorResponse,
 } from "../../../lib/pi/provenance-query"
+import {
+  enforceChatSessionOwnership,
+  withAuthenticatedChatRequest,
+} from "@/lib/auth/chat-api-auth"
 
-export function chatRunsHandler(request: Request) {
+export async function chatRunsHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()
   const url = new URL(request.url)
+  const sessionId = url.searchParams.get("sessionId") ?? undefined
+  const sessionFile = url.searchParams.get("sessionFile") ?? undefined
+
+  const ownership = await enforceChatSessionOwnership({
+    sessionId,
+    sessionFile,
+    userId,
+  })
+  if (!ownership.ok) {
+    return ownership.response
+  }
 
   try {
     return Response.json(
       createSessionRunsResponse(context, {
-        sessionId: url.searchParams.get("sessionId"),
-        sessionFile: url.searchParams.get("sessionFile"),
+        sessionId,
+        sessionFile,
       })
     )
   } catch (error) {
@@ -35,7 +50,10 @@ export function chatRunsHandler(request: Request) {
 export const Route = createFileRoute("/api/chat/runs")({
   server: {
     handlers: {
-      GET: ({ request }) => chatRunsHandler(request),
+      GET: ({ request }) =>
+        withAuthenticatedChatRequest(request, ({ userId }) =>
+          chatRunsHandler(request, userId)
+        ),
     },
   },
 })

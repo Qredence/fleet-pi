@@ -6,6 +6,10 @@ import {
   CHAT_POSTGRES_RLS_STRICT_SQL,
 } from "../src/lib/db/chat-postgres-rls-strict"
 import {
+  CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
+  CHAT_POSTGRES_SESSION_OWNERSHIP_SQL,
+} from "../src/lib/db/chat-postgres-session-ownership"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -39,6 +43,21 @@ async function recordMigration(client: PoolClient, migrationId: string) {
   )
 }
 
+async function applyMigrationIfNeeded(
+  client: PoolClient,
+  migrationId: string,
+  sql: string
+) {
+  if (await isMigrationApplied(client, migrationId)) {
+    console.log(`Skipping chat migration: ${migrationId}`)
+    return
+  }
+
+  await client.query(sql)
+  await recordMigration(client, migrationId)
+  console.log(`Applied chat migration: ${migrationId}`)
+}
+
 async function main() {
   const connectionString = process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL
   if (!connectionString) {
@@ -55,19 +74,16 @@ async function main() {
     await recordMigration(client, CHAT_POSTGRES_MIGRATION_ID)
     console.log(`Applied chat migration: ${CHAT_POSTGRES_MIGRATION_ID}`)
 
-    if (
-      !(await isMigrationApplied(client, CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID))
-    ) {
-      await client.query(CHAT_POSTGRES_RLS_STRICT_SQL)
-      await recordMigration(client, CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID)
-      console.log(
-        `Applied chat migration: ${CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID}`
-      )
-    } else {
-      console.log(
-        `Skipping chat migration: ${CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID}`
-      )
-    }
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
+      CHAT_POSTGRES_RLS_STRICT_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
+      CHAT_POSTGRES_SESSION_OWNERSHIP_SQL
+    )
 
     await client.query("COMMIT")
   } catch (error) {

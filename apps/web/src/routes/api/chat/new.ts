@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { createNewChatSession, getErrorMessage } from "@/lib/pi/server"
 
 export const Route = createFileRoute("/api/chat/new")({
@@ -7,14 +8,14 @@ export const Route = createFileRoute("/api/chat/new")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const { auth } = await import("@/lib/auth/server")
-          const session = await auth.api.getSession({
-            headers: request.headers,
-          })
-          const userId = session?.user.id
-
-          return Response.json(
-            await createNewChatSession(resolveAppRuntimeContext(), { userId })
+          return await withAuthenticatedChatRequest(
+            request,
+            async ({ userId }) =>
+              Response.json(
+                await createNewChatSession(resolveAppRuntimeContext(), {
+                  userId,
+                })
+              )
           )
         } catch (error) {
           return Response.json(

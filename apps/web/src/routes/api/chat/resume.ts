@@ -3,7 +3,7 @@ import { ChatSessionMetadataSchema } from "@workspace/hax-design/lib/pi/chat-pro
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   enforceChatSessionOwnership,
-  requireVercelChatAuth,
+  withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { hydrateChatSession } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"
@@ -12,27 +12,26 @@ export const Route = createFileRoute("/api/chat/resume")({
   server: {
     handlers: {
       POST: async ({ request }) =>
-        wrapApiHandler(async () => {
-          const authGate = await requireVercelChatAuth(request)
-          if (!authGate.ok) {
-            return authGate.response
-          }
+        wrapApiHandler(async () =>
+          withAuthenticatedChatRequest(request, async ({ userId }) => {
+            const metadata = ChatSessionMetadataSchema.parse(
+              await request.json()
+            )
 
-          const metadata = ChatSessionMetadataSchema.parse(await request.json())
-          const userId = authGate.authSession?.user.id
+            const ownership = await enforceChatSessionOwnership({
+              sessionId: metadata.sessionId,
+              sessionFile: metadata.sessionFile,
+              userId,
+            })
+            if (!ownership.ok) {
+              return ownership.response
+            }
 
-          const ownership = await enforceChatSessionOwnership({
-            sessionId: metadata.sessionId,
-            userId,
+            return Response.json(
+              await hydrateChatSession(resolveAppRuntimeContext(), metadata)
+            )
           })
-          if (!ownership.ok) {
-            return ownership.response
-          }
-
-          return Response.json(
-            await hydrateChatSession(resolveAppRuntimeContext(), metadata)
-          )
-        }),
+        ),
     },
   },
 })
