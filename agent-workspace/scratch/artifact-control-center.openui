@@ -1,0 +1,81 @@
+root = Root([container])
+
+$category = "all"
+$selectedArtifact = "architecture-review"
+
+container = Stack([header, demoCallout, metricsGrid, Divider("Artifact Explorer"), bodyGrid], "column", "md")
+
+header = Stack([
+  Heading("Artifact Control Center (Demo)", 1),
+  Text("Scratch UI prototype for browsing real files under agent-workspace/artifacts/. Not a live index — use workspace_index or the Artifacts panel for current state.", "muted", "md")
+], "column", "xs")
+
+demoCallout = Callout("Demo only", Text("Lists only artifacts that exist on disk today. No fabricated datasets, sizes, or capacity metrics.", "muted", "sm"), "warning")
+
+metricsGrid = Grid([
+  Metric("Reports", "4", "Markdown specs", "info"),
+  Metric("Diagrams", "1", "OpenUI Lang", "default"),
+  Metric("Datasets", "0", ".gitkeep only", "muted"),
+  Metric("Traces", "0", ".gitkeep only", "muted")
+], 4, "md")
+
+bodyGrid = Stack([sidebar, detailPanel], "row", "md")
+
+sidebar = Card("Artifacts Directory", Stack([
+  categorySelector,
+  Divider("Files"),
+  activeList
+], "column", "md"), "default", "normal")
+
+categorySelector = Group([
+  Button("All", Action([@Set($category, "all")]), $category == "all" ? "default" : "outline"),
+  Button("Reports", Action([@Set($category, "reports")]), $category == "reports" ? "default" : "outline"),
+  Button("Diagrams", Action([@Set($category, "diagrams")]), $category == "diagrams" ? "default" : "outline")
+], "sm")
+
+activeList = $category == "all" ? listAll : ($category == "reports" ? listReports : listDiagrams)
+
+listAll = Stack([item1, item2, item3, item4, item5], "column", "xs")
+listReports = Stack([item1, item2, item3, item4], "column", "xs")
+listDiagrams = Stack([item5], "column", "xs")
+
+item1 = Button("architecture-review-2026-05-12.md", Action([@Set($selectedArtifact, "architecture-review")]), $selectedArtifact == "architecture-review" ? "secondary" : "ghost")
+item2 = Button("codebase-map-2026-05-15.md", Action([@Set($selectedArtifact, "codebase-map")]), $selectedArtifact == "codebase-map" ? "secondary" : "ghost")
+item3 = Button("explorator-agent-spec.md", Action([@Set($selectedArtifact, "explorator-spec")]), $selectedArtifact == "explorator-spec" ? "secondary" : "ghost")
+item4 = Button("memory-recall-scenario-spec.md", Action([@Set($selectedArtifact, "memory-recall")]), $selectedArtifact == "memory-recall" ? "secondary" : "ghost")
+item5 = Button("codebase-node-graph.openui", Action([@Set($selectedArtifact, "diagram")]), $selectedArtifact == "diagram" ? "secondary" : "ghost")
+
+detailPanel = Card("Selected Artifact", Stack([activeDetailView], "column", "sm"), "default", "full")
+
+activeDetailView = $selectedArtifact == "architecture-review" ? detail1 : ($selectedArtifact == "codebase-map" ? detail2 : ($selectedArtifact == "explorator-spec" ? detail3 : ($selectedArtifact == "memory-recall" ? detail4 : detail5)))
+
+detail1 = Stack([
+  Heading("architecture-review-2026-05-12.md", 2),
+  Group([Badge("Reports", "info"), Badge("On disk", "success")]),
+  KeyValue("Path", "agent-workspace/artifacts/reports/architecture-review-2026-05-12.md")
+], "column", "md")
+
+detail2 = Stack([
+  Heading("codebase-map-2026-05-15.md", 2),
+  Group([Badge("Reports", "info"), Badge("On disk", "success")]),
+  KeyValue("Path", "agent-workspace/artifacts/reports/codebase-map-2026-05-15.md")
+], "column", "md")
+
+detail3 = Stack([
+  Heading("explorator-agent-spec.md", 2),
+  Group([Badge("Reports", "info"), Badge("On disk", "success")]),
+  KeyValue("Path", "agent-workspace/artifacts/reports/explorator-agent-spec.md")
+], "column", "md")
+
+detail4 = Stack([
+  Heading("memory-recall-scenario-spec.md", 2),
+  Group([Badge("Reports", "info"), Badge("On disk", "success")]),
+  KeyValue("Path", "agent-workspace/artifacts/reports/memory-recall-scenario-spec.md")
+], "column", "md")
+
+detail5 = Stack([
+  Heading("codebase-node-graph.openui", 2),
+  Group([Badge("Diagrams", "success"), Badge("On disk", "success")]),
+  KeyValue("Path", "agent-workspace/artifacts/diagrams/codebase-node-graph.openui"),
+  Text("Interactive OpenUI topology map. Counts inside are illustrative — use project_inventory for live inventory.", "muted", "sm")
+], "column", "md")

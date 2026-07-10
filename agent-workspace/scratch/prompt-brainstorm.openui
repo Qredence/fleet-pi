@@ -1,0 +1,26 @@
+root = Root([intro, promptList])
+
+intro = Heading("Brainstormed Prompt Ideas", 2)
+
+promptList = Stack([
+    Card("Refactor & Tech Debt", Stack([
+        Text("Prompts the agent to identify, document, and propose plans for technical debt and refactoring based on codebase analysis.", "default"),
+        Badge("refactor-tech-debt.md", "info")
+    ])),
+    Card("E2E Test Audit", Stack([
+        Text("Prompts the agent to review existing end-to-end tests for coverage gaps, flakiness, and performance, guided by `pnpm e2e` execution.", "default"),
+        Badge("e2e-audit.md", "info")
+    ])),
+    Card("Design Consistency", Stack([
+        Text("Prompts the agent to audit UI components for adherence to `packages/hax-design` token and primitive usage conventions.", "default"),
+        Badge("design-system-consistency.md", "info")
+    ])),
+    Card("Plan Refinement", Stack([
+        Text("Prompts the agent to decompose high-level goals into concrete, ordered plans, ensuring alignment with project memory and `plans/active/`.", "default"),
+        Badge("agent-plan-refinement.md", "info")
+    ])),
+    Card("Memory Gardener", Stack([
+        Text("Prompts the agent to propose narrow updates to canonical files under `agent-workspace/memory/project/` after a session.", "default"),
+        Badge("memory-gardener.md", "info")
+    ]))
+], "column", "md")

@@ -1,0 +1,19 @@
+root = Root([title, description, suggestionList])
+
+title = Heading("Suggestions for Better Harnessing", 2)
+description = Text("Based on current memory and open questions, here are prioritized areas to improve the Fleet Pi agent's capabilities and resilience.", "muted")
+
+suggestionList = Stack([
+    Card("1. Close the Self-Improvement Loop", Stack([
+        Text("Connect plans, evals, and runtime artifacts into a governed observe/judge/propose loop."),
+        Button("Review Backlog", Action([@ToAssistant("Let's review plans/backlog.md and define the first loop automation.")]))
+    ])),
+    Card("2. Strengthen Resource Manager", Stack([
+        Text("Expand resource management beyond staged assets to support package pinning, trust, and metadata."),
+        Button("Plan Extension", Action([@ToAssistant("Let's plan the expansion of .pi/extensions/resource-install.ts.")]))
+    ])),
+    Card("3. Operational Resilience", Stack([
+        Text("Address the autocontext Anthropic/Bedrock mismatch and optimize Daytona sandbox startup."),
+        Button("Investigate Ops", Action([@ToAssistant("Let's look into autocontext configuration for Bedrock and sandbox startup speed.")]))
+    ]))
+], "column", "md")

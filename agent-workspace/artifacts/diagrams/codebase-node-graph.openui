@@ -1,0 +1,195 @@
+root = Root([container])
+
+$selectedNode = "all"
+
+container = Stack([header, nodeSelector, Divider("Codebase Nodes"), activeView], "column", "md")
+
+header = Stack([
+  Heading("Codebase Graph Node Visualization", 1),
+  Text("Interactive architectural topology of Fleet Pi. Explore core node definitions, incoming/outgoing relationship edges, and dependency structures.", "muted", "md"),
+  Callout("Illustrative counts", Text("File totals and metrics are orientation-only. Run project_inventory or workspace_index for live data.", "muted", "sm"), "warning")
+], "column", "sm")
+
+nodeSelector = Group([
+  Button("🌐 Entire Topology", Action([@Set($selectedNode, "all")]), $selectedNode == "all" ? "default" : "outline"),
+  Button("🖥️ apps/web", Action([@Set($selectedNode, "apps/web")]), $selectedNode == "apps/web" ? "default" : "outline"),
+  Button("🎨 hax-design", Action([@Set($selectedNode, "hax-design")]), $selectedNode == "hax-design" ? "default" : "outline"),
+  Button("📂 agent-workspace", Action([@Set($selectedNode, "agent-workspace")]), $selectedNode == "agent-workspace" ? "default" : "outline"),
+  Button("⚙️ .pi Bridge", Action([@Set($selectedNode, "dot-pi")]), $selectedNode == "dot-pi" ? "default" : "outline")
+], "sm")
+
+activeView = $selectedNode == "all" ? overviewLayout : ($selectedNode == "apps/web" ? webLayout : ($selectedNode == "hax-design" ? designLayout : ($selectedNode == "agent-workspace" ? workspaceLayout : piLayout)))
+
+overviewLayout = Stack([metricsGrid, topologyCallout, Grid([appCard, designCard, piCard, workspaceCard], 2, "md")], "column", "md")
+
+metricsGrid = Grid([
+  Metric("Monorepo Apps", "1", "apps/web", "info"),
+  Metric("Shared Packages", "1", "hax-design", "default"),
+  Metric("Workspace Layer", "1", "agent-workspace", "success"),
+  Metric("Pi Bridge", "1", ".pi extensions", "warning")
+], 4, "md")
+
+topologyCallout = Callout("Architectural Dependency Flow Map",
+  Text("User Interface ──▶ [apps/web (Host App)] ──▶ Imports ──▶ [hax-design (UI Registry)] \n                      │ \n                      └──▶ Instantiates ──▶ [.pi Runtime Bridge] ──▶ Modifies/Persists ──▶ [agent-workspace (Memory)]", "default", "sm"),
+  "info"
+)
+
+appCard = Card("🖥️ apps/web (Application Host)", Stack([
+  Text("The main web application orchestrating routing, server-side data fetching, session state, and Daytona sandboxes.", "default", "sm"),
+  Divider("Connections"),
+  KeyValue("Imports From", "packages/hax-design (Components)"),
+  KeyValue("Launches Node", ".pi (Coding Agent Runtime)"),
+  KeyValue("Saves State to", "agent-workspace/ (Memory & Scratch)"),
+  Button("Examine apps/web node", Action([@Set($selectedNode, "apps/web")]), "secondary")
+], "column", "sm"), "default", "normal")
+
+designCard = Card("🎨 packages/hax-design (Design System)", Stack([
+  Text("Monorepo UI registry containing design tokens, base components, generative UI engines, and custom agent-specific components.", "default", "sm"),
+  Divider("Connections"),
+  KeyValue("Imported By", "apps/web (Layouts & Routes)"),
+  KeyValue("Renders Core", "Agent Elements (Cards, Plans, Diff UI)"),
+  KeyValue("Houses Engine", "OpenUI Lang Runtime Interpreter"),
+  Button("Examine hax-design node", Action([@Set($selectedNode, "hax-design")]), "secondary")
+], "column", "sm"), "default", "normal")
+
+piCard = Card("⚙️ .pi Environment (Extension Bridge)", Stack([
+  Text("Local Pi agent container boundary. Extends the default LLM runtime with project-specific MCP tools, context loaders, and auth helpers.", "default", "sm"),
+  Divider("Connections"),
+  KeyValue("Orchestrated By", "apps/web/src/lib/pi/server.ts"),
+  KeyValue("Controls Node", "agent-workspace/ (Tool executions)"),
+  KeyValue("Credentials via", ".env / AWS Bearer Auth"),
+  Button("Examine .pi node", Action([@Set($selectedNode, "dot-pi")]), "secondary")
+], "column", "sm"), "default", "normal")
+
+workspaceCard = Card("📂 agent-workspace (Durable Layer)", Stack([
+  Text("A version-controlled local workspace serving as the agent's long-term memory, active roadmap, specialized skills, and test evals.", "default", "sm"),
+  Divider("Connections"),
+  KeyValue("Queried By", ".pi/extensions/workspace-context.ts"),
+  KeyValue("Previewed In", "apps/web Workspace Side-Panel"),
+  KeyValue("Storage Tier", "Multi-tier (Free / Rationale / Protected)"),
+  Button("Examine agent-workspace node", Action([@Set($selectedNode, "agent-workspace")]), "secondary")
+], "column", "sm"), "default", "normal")
+
+webLayout = Stack([webHeader, webMetrics, webDetails, webEndpointsTable], "column", "md")
+
+webHeader = Stack([
+  Heading("🖥️ Codebase Node: apps/web", 2),
+  Text("A TanStack Start full-stack TypeScript application that integrates the user interface with persistent agent sessions.", "muted", "sm")
+], "column", "xs")
+
+webMetrics = Grid([
+  Metric("Stack", "TanStack Start", "React 19 + Vite + Nitro", "info"),
+  Metric("Chat API", "/api/chat", "NDJSON Pi stream", "default"),
+  Metric("Sandboxes", "Daytona", "Optional isolated volumes", "success")
+], 3, "md")
+
+webDetails = Card("Role & Graph Integration", Stack([
+  Text("The core hub node in the network. It receives requests from the user browser, executes authentication using Better Auth, and maintains persistent AgentSessionRuntime instances in-memory.", "default", "sm"),
+  Divider("Graph Relationships"),
+  KeyValue("Incoming Nodes (In-edges)", "User Client, Daytona Webhooks, Better Auth Callback"),
+  KeyValue("Outgoing Nodes (Out-edges)", "packages/hax-design, .pi Runtime, agent-workspace/"),
+  KeyValue("Critical Shared Types", "packages/hax-design/src/lib/pi/chat-protocol.ts")
+], "column", "sm"), "info", "full")
+
+webEndpointsTable = Card("Key Module Entries", Table(
+  ["File Path", "Graph Role", "Description"],
+  [
+    ["apps/web/src/routes/api/chat.ts", "⚡ API Gateway", "NDJSON streaming endpoint for Pi agent conversations."],
+    ["apps/web/src/lib/pi/server.ts", "🔗 Session Orchestrator", "Hydrates/persists Pi JSONL history and validates run state."],
+    ["apps/web/src/lib/workspace/server.ts", "📂 Tree Explorer", "Creates stubs, serves read-only directory views to panels."],
+    ["apps/web/src/routes/index.tsx", "🖥️ Client View", "Main landing chat interface with right-side resources drawer."]
+  ]
+), "default", "full")
+
+designLayout = Stack([designHeader, designMetrics, designDetails, designComponentsTable], "column", "md")
+
+designHeader = Stack([
+  Heading("🎨 Codebase Node: packages/hax-design", 2),
+  Text("The design system repository containing UI tokens, base components, generative UI capabilities, and custom chat views.", "muted", "sm")
+], "column", "xs")
+
+designMetrics = Grid([
+  Metric("Registry", "hax-design", "shadcn-style package", "info"),
+  Metric("Generative UI", "OpenUI Lang", "openui components", "default"),
+  Metric("Fleet Pi UI", "fleet-pi/", "Shell, chat, tokens", "success")
+], 3, "md")
+
+designDetails = Card("Role & Graph Integration", Stack([
+  Text("Acts as the presentation node in the architecture. To prevent interface drift and design slop, it implements an opinionated UI baseline. No custom components should live in apps/web directly.", "default", "sm"),
+  Divider("Graph Relationships"),
+  KeyValue("Incoming Nodes (In-edges)", "Imported by apps/web routes, hydrated by Pi server events"),
+  KeyValue("Outgoing Nodes (Out-edges)", "None (Terminal visual node)"),
+  KeyValue("Upstream Dependencies", "@openuidev/react-lang, Base UI, Lucide, Recharts")
+], "column", "sm"), "info", "full")
+
+designComponentsTable = Card("Key Module Entries", Table(
+  ["Component Module", "Graph Role", "Description"],
+  [
+    ["src/components/agent-elements", "🤖 Tool Cards UI", "Directly visualizes Read, Write, Edit, Bash, and Plan actions."],
+    ["src/components/openui", "⚡ Generative UI", "Fences OpenUI-lang code blocks and translates them to live React subtrees."],
+    ["src/components/fleet-pi", "🏛️ Shell Layout", "Personalization configuration, resizable canvas panels, header pills."],
+    ["src/components/fleet-pi/styles/tokens.ts", "🎨 Stylistic Guide", "Semantic tokens and discrete tab aesthetics."]
+  ]
+), "default", "full")
+
+workspaceLayout = Stack([workspaceHeader, workspaceMetrics, workspaceDetails, workspaceMemoryTable], "column", "md")
+
+workspaceHeader = Stack([
+  Heading("📂 Codebase Node: agent-workspace", 2),
+  Text("The durable knowledge repository and filesystem-backed project context layer for agent execution.", "muted", "sm")
+], "column", "xs")
+
+workspaceMetrics = Grid([
+  Metric("Memory Slices", "5", "Canonical project/*.md", "info"),
+  Metric("Pi Resources", "pi/", "skills, prompts, extensions", "default"),
+  Metric("Security Model", "Multi-tier", "Free, Rationale, Protected", "success")
+], 3, "md")
+
+workspaceDetails = Card("Role & Graph Integration", Stack([
+  Text("The workspace acts as the agent's long-term memory. Instead of storing knowledge in transient chat histories or app databases, it relies on structured Markdown files. This allows subsequent sessions to inherit complete context instantly.", "default", "sm"),
+  Divider("Graph Relationships"),
+  KeyValue("Incoming Nodes (In-edges)", ".pi extensions, workspace_write / resource_install tools"),
+  KeyValue("Outgoing Nodes (Out-edges)", "apps/web file explorer previews, agent startup context injection"),
+  KeyValue("Governance", "workspace-policy.md (Mutation boundaries)")
+], "column", "sm"), "info", "full")
+
+workspaceMemoryTable = Card("Durable Filesystem Layout", Table(
+  ["Subfolder / File", "Graph Role", "Details & Purpose"],
+  [
+    ["memory/project/*.md", "🧠 Canonical Memory", "Continuous workspace records: Architecture, Decisions, Preferences."],
+    ["plans/active/*.md", "🗺️ Active Roadmaps", "Step-by-step roadmap items for execution and feedback tracking."],
+    ["pi/{skills,prompts}", "⚡ Local Pi Addons", "Installed Pi packages, staged and enabled extensions."],
+    ["evals/*.md", "🛡️ Validation Suites", "Scenario datasets to evaluate agent tool use and prevent regressions."]
+  ]
+), "default", "full")
+
+piLayout = Stack([piHeader, piMetrics, piDetails, piToolsTable], "column", "md")
+
+piHeader = Stack([
+  Heading("⚙️ Codebase Node: .pi (Runtime Bridge)", 2),
+  Text("The interface and settings layer bridging the Google Gemini LLM with the local project environment.", "muted", "sm")
+], "column", "xs")
+
+piMetrics = Grid([
+  Metric("npm Packages", "4", "pi-autoresearch, palette, etc.", "info"),
+  Metric("Vendored Ext", "vendor/", "filechanges, subagents", "default"),
+  Metric("Default Model", "gemini-3.5-flash", "google provider", "success")
+], 3, "md")
+
+piDetails = Card("Role & Graph Integration", Stack([
+  Text("Operates as the executor node. It boots up inside the server container, registers tool allowlists, processes incoming user requests, and implements trust-handler logic for safe execution.", "default", "sm"),
+  Divider("Graph Relationships"),
+  KeyValue("Incoming Nodes (In-edges)", "Instantiated on `/api/chat` request sequences"),
+  KeyValue("Outgoing Nodes (Out-edges)", "Direct system execution via Bash, file edits via Edit/Write"),
+  KeyValue("Trust Policies", "Mode-aware auto-approval for workspace-native paths")
+], "column", "sm"), "info", "full")
+
+piToolsTable = Card("Registered Extension Tools", Table(
+  ["Tool Name", "Provider Node", "Responsibility"],
+  [
+    ["project_inventory", ".pi/extensions/project-inventory.ts", "Discovers skills, packages, and diagnostics for resource browser."],
+    ["workspace_index", ".pi/extensions/workspace-index.ts", "Inspects agent-workspace folder layouts and active indexes."],
+    ["workspace_write", ".pi/extensions/workspace-write.ts", "Saves durable memory updates checking policy rules."],
+    ["resource_install", ".pi/extensions/resource-install.ts", "Stages or installs custom skills and npm package bundles."]
+  ]
+), "default", "full")
