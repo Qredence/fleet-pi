@@ -106,7 +106,8 @@ describe("chat provenance APIs", () => {
     recorder.close()
 
     const runsResponse = await chatRunsHandler(
-      createRequest("/api/chat/runs?sessionId=session-1")
+      createRequest("/api/chat/runs?sessionId=session-1"),
+      undefined
     )
     const runsBody = (await runsResponse.json()) as {
       total: number
@@ -430,7 +431,10 @@ describe("chat provenance APIs", () => {
   it("returns stable error payloads for missing provenance query parameters", async () => {
     createProjectRoot()
 
-    const runsResponse = await chatRunsHandler(createRequest("/api/chat/runs"))
+    const runsResponse = await chatRunsHandler(
+      createRequest("/api/chat/runs"),
+      undefined
+    )
     const runsBody = (await runsResponse.json()) as {
       ok: boolean
       code: string

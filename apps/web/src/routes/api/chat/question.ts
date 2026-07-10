@@ -3,6 +3,7 @@ import { ChatQuestionAnswerRequestSchema } from "@workspace/hax-design/lib/pi/ch
 import type { ChatQuestionAnswerResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { answerChatQuestion } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"
 
@@ -15,20 +16,23 @@ export const Route = createFileRoute("/api/chat/question")({
         const log = createRequestLogger(requestId)
 
         return wrapApiHandler(
-          async () => {
-            resolveAppRuntimeContext()
-            const body = ChatQuestionAnswerRequestSchema.parse(
-              await request.json()
-            )
+          async () =>
+            withAuthenticatedChatRequest(request, async ({ userId }) => {
+              resolveAppRuntimeContext()
+              const body = ChatQuestionAnswerRequestSchema.parse(
+                await request.json()
+              )
+              const runtimeRequest = { ...body, userId }
 
-            log.info(
-              { toolCallId: body.toolCallId },
-              "question answer received"
-            )
-            const result: ChatQuestionAnswerResponse = answerChatQuestion(body)
-            log.info({ ok: result.ok }, "question answer processed")
-            return Response.json(result, { status: result.ok ? 200 : 404 })
-          },
+              log.info(
+                { toolCallId: body.toolCallId },
+                "question answer received"
+              )
+              const result: ChatQuestionAnswerResponse =
+                answerChatQuestion(runtimeRequest)
+              log.info({ ok: result.ok }, "question answer processed")
+              return Response.json(result, { status: result.ok ? 200 : 404 })
+            }),
           { log }
         )
       },

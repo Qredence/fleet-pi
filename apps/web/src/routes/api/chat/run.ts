@@ -6,8 +6,9 @@ import {
   createRunDetailResponse,
   createUnexpectedProvenanceErrorResponse,
 } from "../../../lib/pi/provenance-query"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 
-export function chatRunHandler(request: Request) {
+export async function chatRunHandler(request: Request) {
   const context = resolveAppRuntimeContext()
   const url = new URL(request.url)
 
@@ -32,7 +33,8 @@ export function chatRunHandler(request: Request) {
 export const Route = createFileRoute("/api/chat/run")({
   server: {
     handlers: {
-      GET: ({ request }) => chatRunHandler(request),
+      GET: ({ request }) =>
+        withAuthenticatedChatRequest(request, () => chatRunHandler(request)),
     },
   },
 })
