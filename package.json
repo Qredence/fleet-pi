@@ -14,6 +14,7 @@
   },
   "scripts": {
     "build": "turbo build",
+    "auth:migrate": "pnpm --filter web auth:migrate",
     "chat:migrate": "pnpm --filter web chat:migrate",
     "dev": "turbo dev --filter=web",
     "lint": "turbo lint",

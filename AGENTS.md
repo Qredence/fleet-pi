@@ -131,7 +131,7 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## Learned Workspace Facts
 
-- Neon user-scoped RLS applies to `pi_*` mirror tables via `app.current_user_id`; Better Auth tables (`user`, `session`, `account`, `verification`) must not use RLS—run `pnpm auth:migrate` from `apps/web` (chains `auth-post-migrate.ts` to disable RLS and grant `fleet_pi_app` DML).
+- Neon user-scoped RLS applies to `pi_*` mirror tables via `app.current_user_id`; Better Auth tables (`user`, `session`, `account`, `verification`) must not use RLS—`pnpm auth:migrate` chains `auth-post-migrate.ts` to disable RLS and grant `fleet_pi_app` DML.
 - Use Daytona to provision secure, isolated sandbox volumes for each user's Workspace sidepanel.
 - On Vercel (`VERCEL=1`), session-scoped chat endpoints require Better Auth: `/api/chat`, `/api/chat/session`, `/api/chat/resume`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, and `PATCH /api/chat/settings`. Local dev keeps anonymous chat on routes that do not mutate shared session state. Mirror ownership uses `fleet_pi_check_session_owner` (SECURITY DEFINER) so RLS cannot hide foreign-owned rows; run `pnpm chat:migrate` after deploy when the ownership probe migration changes.
 - Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
