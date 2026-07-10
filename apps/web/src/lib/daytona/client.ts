@@ -19,7 +19,7 @@ const DEFAULT_RESOURCES = {
   disk: 3, // GiB
 }
 
-const DEFAULT_IMAGE = "debian:12.9"
+const DEFAULT_IMAGE = "node:22-bookworm"
 
 export interface SandboxConfig {
   name?: string

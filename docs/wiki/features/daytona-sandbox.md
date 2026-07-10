@@ -58,7 +58,7 @@ Concurrent requests for the same user are deduplicated via a `userSandboxRequest
 
 ## Snapshots
 
-When creating a sandbox, the code first tries to find a pre-built snapshot whose name starts with `fleet-pi-v` and whose state is `active`. The most recent such snapshot (by `createdAt`) is used. If no snapshot is found the container starts from the base Debian 12 image and installs git on first run.
+When creating a sandbox, the code first tries to find a pre-built snapshot whose name starts with `fleet-pi-v` and whose state is `active`. The most recent such snapshot (by `createdAt`) is used. If no snapshot is found the container starts from the `node:22-bookworm` image. On first launch, `ensureRepositoryCheckout` shallow-clones `FLEET_PI_REPOSITORY_URL` into the workspace volume and installs `git` via apt when needed. Workspace seeding happens later through the server-side workspace APIs, not inside the sandbox prep shell.
 
 Snapshot lookup is implemented in `apps/web/src/lib/daytona/snapshot-config.ts`.
 

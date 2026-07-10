@@ -73,11 +73,11 @@ Bootstrap uses a `WorkspaceFS` abstraction that dispatches to either:
 - `createLocalWorkspaceFS()` — wraps `node:fs/promises` (default)
 - `createSandboxWorkspaceFS(sandbox)` — wraps Daytona SDK operations
 
-The volume content persists across sandbox restarts. Bootstrap only seeds missing files.
+The volume content persists across sandbox restarts. Bootstrap only seeds missing files through the workspace API (`bootstrapAgentWorkspace()`), not through sandbox prep shell commands.
 
 ### Snapshot optimization (Phase 4)
 
-Snapshots pre-bake the Fleet Pi environment (Node 22, pnpm, system deps). When creating a new sandbox, the system tries the latest available snapshot first. Shared across all users.
+Snapshots can pre-bake the Fleet Pi environment (Node 22, pnpm, system deps). When creating a new sandbox, the system tries the latest available `fleet-pi-v*` snapshot first. If none exists, new sandboxes fall back to the `node:22-bookworm` image. Shared across all users.
 
 ### Preview URLs (Phase 4)
 

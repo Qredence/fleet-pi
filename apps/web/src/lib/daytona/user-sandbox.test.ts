@@ -116,7 +116,15 @@ describe("naming conventions", () => {
 describe("getUserSandbox", () => {
   it("creates volume and sandbox with correct labels on first call", async () => {
     const client = makeMockClient()
-    const sandbox = makeMockSandbox()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "", exitCode: 0 })
+    const sandbox = makeMockSandbox({
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+    } as unknown as Partial<Sandbox>)
 
     mockedCreateClient.mockReturnValue(client)
     mockedGetOrCreateVolume.mockResolvedValue({
@@ -156,7 +164,36 @@ describe("getUserSandbox", () => {
     expect(handle.userId).toBe("user123")
     expect(handle.volumeId).toBe("vol-1")
     expect(handle.sandboxId).toBe("sandbox-abc")
-    expect(sandbox.process.executeCommand).toHaveBeenCalled()
+    expect(executeCommandMock).toHaveBeenCalled()
+    const prepCommand = executeCommandMock.mock.calls[0]?.[0] as
+      string | undefined
+    expect(prepCommand).toContain("git clone")
+    expect(prepCommand).not.toContain("npm install")
+    expect(prepCommand).not.toContain("npx")
+  })
+
+  it("throws when repository preparation fails", async () => {
+    const client = makeMockClient()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "clone failed", exitCode: 1 })
+    const sandbox = makeMockSandbox({
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+    } as unknown as Partial<Sandbox>)
+
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockResolvedValue(sandbox)
+
+    await expect(getUserSandbox({ userId: "user123" })).rejects.toThrow(
+      "Failed to prepare Daytona repository: clone failed"
+    )
   })
 
   it("returns cached handle on second call when sandbox is healthy", async () => {

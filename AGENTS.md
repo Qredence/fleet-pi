@@ -46,6 +46,7 @@ The repository includes a VS Code devcontainer configuration at `.devcontainer/d
 - BYOK provider credentials and Pi session mirroring on Vercel also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
 - `PATCH /api/chat/settings` requires authentication on Vercel; settings hot-reload applies only to the signed-in user's active sessions. Vercel Preview deployments need `BETTER_AUTH_SECRET`, `FLEET_PI_AUTH_DATABASE_URL`, and `FLEET_PI_CHAT_DATABASE_URL` scoped to Preview (not only feature-branch aliases). Run `pnpm chat:migrate` with `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` after schema or ownership-probe changes.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
+- Daytona sandboxes on Vercel require a resolved Daytona API key per authenticated user: either org-level `DAYTONA_API_KEY` or a user-stored `daytona` provider secret in `pi_user_providers`. Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_PI_REPOSITORY_URL`, `FLEET_PI_PERSIST_SESSIONS`.
 
 ## Pre-commit Hooks
 

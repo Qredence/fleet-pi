@@ -119,7 +119,7 @@ describe("Daytona client", () => {
     })
 
     expect(calls[0]).toMatchObject({
-      image: "debian:12.9",
+      image: "node:22-bookworm",
       resources: {
         cpu: 2,
         memory: 4,

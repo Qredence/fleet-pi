@@ -4,6 +4,7 @@ import {
   getCachedUserSandbox,
   isDaytonaEnabled,
 } from "@/lib/daytona/user-sandbox"
+import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 
 export const Route = createFileRoute("/api/sandbox/preview")({
   server: {
@@ -21,7 +22,13 @@ export const Route = createFileRoute("/api/sandbox/preview")({
           )
         }
 
-        if (!isDaytonaEnabled(user.id)) {
+        const clientDaytonaApiKey = request.headers.get("x-daytona-api-key")
+        const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
+          user.id,
+          clientDaytonaApiKey || undefined
+        )
+
+        if (!isDaytonaEnabled(user.id, resolvedDaytonaApiKey)) {
           return Response.json(
             { error: "Sandbox not available" },
             { status: 503 }

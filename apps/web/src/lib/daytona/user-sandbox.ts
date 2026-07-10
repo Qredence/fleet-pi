@@ -230,7 +230,6 @@ async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
     'rm -rf "$tmpdir";',
     "fi;",
     `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)} ${shellEscape(SESSION_MOUNT_PATH)};`,
-    `rm -rf /home/daytona/bootstrap && mkdir -p /home/daytona/bootstrap && cp -a ${shellEscape(WORKSPACE_MOUNT_PATH)}/apps/web/src /home/daytona/bootstrap/ && cd /home/daytona && npm install zod better-sqlite3 --no-save --no-audit --no-fund && FLEET_PI_REPO_ROOT=${shellEscape(WORKSPACE_MOUNT_PATH)} npx --yes tsx /home/daytona/bootstrap/src/lib/workspace/bootstrap-agent-workspace.ts && rm -rf /home/daytona/bootstrap;`,
   ].join(" ")
   const result = await executeCommand(sandbox, command)
   if (result.exitCode !== 0) {
