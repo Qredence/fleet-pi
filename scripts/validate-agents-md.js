@@ -31,7 +31,12 @@ const PNPM_BUILTINS = new Set([
 // Scripts that should only be checked for existence, not executed.
 // Some mutate files, while others require extra runtime setup that this validator
 // job does not provision.
-const EXISTENCE_ONLY_SCRIPTS = new Set(["syncpack:fix", "e2e", "chat:migrate"])
+const EXISTENCE_ONLY_SCRIPTS = new Set([
+  "syncpack:fix",
+  "e2e",
+  "chat:migrate",
+  "auth:migrate",
+])
 
 // Commands to skip (Pi tool commands, examples with placeholders, self-referencing)
 const SKIP_PATTERNS = [
@@ -130,7 +135,7 @@ function main() {
       const reason =
         scriptName === "syncpack:fix"
           ? "existence check only - modifies files"
-          : scriptName === "chat:migrate"
+          : scriptName === "chat:migrate" || scriptName === "auth:migrate"
             ? "existence check only - requires Neon migration credentials"
             : "existence check only - requires e2e runtime setup"
 
