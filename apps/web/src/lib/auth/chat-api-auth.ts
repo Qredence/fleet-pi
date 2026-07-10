@@ -1,9 +1,11 @@
 import { auth } from "@/lib/auth/server"
 import { isVercelDeployment } from "@/lib/deployment"
 import {
+  isUserScopedEphemeralSessionFile,
   lookupSessionIdBySessionFile,
+  verifyRunOwnership,
   verifySessionOwnership,
-} from "@/lib/db/pi-session-mirror"
+} from "@/lib/db/pi-session-ownership-db"
 
 export type ChatAuthSession = Awaited<ReturnType<typeof getChatAuthSession>>
 
@@ -77,7 +79,10 @@ export async function enforceChatSessionOwnership(input: {
   if (!sessionId && input.sessionFile) {
     if (isVercelChatDeployment()) {
       sessionId = await lookupSessionIdBySessionFile(input.sessionFile)
-      if (!sessionId) {
+      if (
+        !sessionId &&
+        !isUserScopedEphemeralSessionFile(input.sessionFile, input.userId)
+      ) {
         return { ok: false as const, response: forbiddenSessionResponse() }
       }
     } else {
@@ -89,10 +94,37 @@ export async function enforceChatSessionOwnership(input: {
     return { ok: true as const }
   }
 
-  const isOwner = await verifySessionOwnership(sessionId, input.userId)
+  const isOwner = await verifySessionOwnership(sessionId, input.userId, {
+    sessionFile: input.sessionFile,
+  })
   if (!isOwner) {
     return { ok: false as const, response: forbiddenSessionResponse() }
   }
 
   return { ok: true as const, sessionId }
+}
+
+export async function enforceRunOwnership(input: {
+  runId?: string
+  userId?: string
+}) {
+  const normalizedRunId = input.runId?.trim()
+  if (!normalizedRunId) {
+    return { ok: true as const }
+  }
+
+  if (isVercelChatDeployment() && !input.userId) {
+    return { ok: false as const, response: unauthorizedChatResponse() }
+  }
+
+  if (!input.userId) {
+    return { ok: true as const }
+  }
+
+  const isOwner = await verifyRunOwnership(normalizedRunId, input.userId)
+  if (!isOwner) {
+    return { ok: false as const, response: forbiddenSessionResponse() }
+  }
+
+  return { ok: true as const, runId: normalizedRunId }
 }

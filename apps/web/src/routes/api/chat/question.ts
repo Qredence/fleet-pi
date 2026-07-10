@@ -3,7 +3,10 @@ import { ChatQuestionAnswerRequestSchema } from "@workspace/hax-design/lib/pi/ch
 import type { ChatQuestionAnswerResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import {
+  enforceChatSessionOwnership,
+  withAuthenticatedChatRequest,
+} from "@/lib/auth/chat-api-auth"
 import { answerChatQuestion } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"
 
@@ -22,6 +25,16 @@ export const Route = createFileRoute("/api/chat/question")({
               const body = ChatQuestionAnswerRequestSchema.parse(
                 await request.json()
               )
+
+              const ownership = await enforceChatSessionOwnership({
+                sessionId: body.sessionId,
+                sessionFile: body.sessionFile,
+                userId,
+              })
+              if (!ownership.ok) {
+                return ownership.response
+              }
+
               const runtimeRequest = { ...body, userId }
 
               log.info(

@@ -35,6 +35,7 @@ import { Route as ApiChatProvidersRouteImport } from './routes/api/chat/provider
 import { Route as ApiChatProvenanceRouteImport } from './routes/api/chat/provenance'
 import { Route as ApiChatNewRouteImport } from './routes/api/chat/new'
 import { Route as ApiChatModelsRouteImport } from './routes/api/chat/models'
+import { Route as ApiChatAccountRouteImport } from './routes/api/chat/account'
 import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -169,6 +170,11 @@ const ApiChatModelsRoute = ApiChatModelsRouteImport.update({
   path: '/models',
   getParentRoute: () => ApiChatRoute,
 } as any)
+const ApiChatAccountRoute = ApiChatAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => ApiChatRoute,
+} as any)
 const ApiChatAbortRoute = ApiChatAbortRouteImport.update({
   id: '/abort',
   path: '/abort',
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/chat/abort': typeof ApiChatAbortRoute
+  '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/models': typeof ApiChatModelsRoute
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/session'
     | '/api/chat/abort'
+    | '/api/chat/account'
     | '/api/chat/models'
     | '/api/chat/new'
     | '/api/chat/provenance'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/session'
     | '/api/chat/abort'
+    | '/api/chat/account'
     | '/api/chat/models'
     | '/api/chat/new'
     | '/api/chat/provenance'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/session'
     | '/api/chat/abort'
+    | '/api/chat/account'
     | '/api/chat/models'
     | '/api/chat/new'
     | '/api/chat/provenance'
@@ -578,6 +590,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatModelsRouteImport
       parentRoute: typeof ApiChatRoute
     }
+    '/api/chat/account': {
+      id: '/api/chat/account'
+      path: '/account'
+      fullPath: '/api/chat/account'
+      preLoaderRoute: typeof ApiChatAccountRouteImport
+      parentRoute: typeof ApiChatRoute
+    }
     '/api/chat/abort': {
       id: '/api/chat/abort'
       path: '/abort'
@@ -604,6 +623,7 @@ declare module '@tanstack/react-router' {
 
 interface ApiChatRouteChildren {
   ApiChatAbortRoute: typeof ApiChatAbortRoute
+  ApiChatAccountRoute: typeof ApiChatAccountRoute
   ApiChatModelsRoute: typeof ApiChatModelsRoute
   ApiChatNewRoute: typeof ApiChatNewRoute
   ApiChatProvenanceRoute: typeof ApiChatProvenanceRoute
@@ -620,6 +640,7 @@ interface ApiChatRouteChildren {
 
 const ApiChatRouteChildren: ApiChatRouteChildren = {
   ApiChatAbortRoute: ApiChatAbortRoute,
+  ApiChatAccountRoute: ApiChatAccountRoute,
   ApiChatModelsRoute: ApiChatModelsRoute,
   ApiChatNewRoute: ApiChatNewRoute,
   ApiChatProvenanceRoute: ApiChatProvenanceRoute,

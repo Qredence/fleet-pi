@@ -7,14 +7,24 @@ import {
   createUnexpectedProvenanceErrorResponse,
 } from "../../../lib/pi/provenance-query"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
+import { isVercelDeployment } from "@/lib/deployment"
 
-export async function chatProvenanceHandler(request: Request) {
+export async function chatProvenanceHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()
   const url = new URL(request.url)
+  const allowedSessionIds =
+    isVercelDeployment() && userId
+      ? new Set(await fetchUserSessionIds(userId))
+      : undefined
 
   try {
     return Response.json(
-      createPathProvenanceResponse(context, url.searchParams.get("path"))
+      createPathProvenanceResponse(
+        context,
+        url.searchParams.get("path"),
+        allowedSessionIds
+      )
     )
   } catch (error) {
     if (error instanceof ProvenanceQueryApiError) {
@@ -34,8 +44,8 @@ export const Route = createFileRoute("/api/chat/provenance")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        withAuthenticatedChatRequest(request, () =>
-          chatProvenanceHandler(request)
+        withAuthenticatedChatRequest(request, ({ userId }) =>
+          chatProvenanceHandler(request, userId)
         ),
     },
   },

@@ -1,5 +1,5 @@
 import { mkdirSync, realpathSync } from "node:fs"
-import { resolve } from "node:path"
+import { join, resolve } from "node:path"
 import { createSessionServices } from "./runtime/session-factory"
 import { DEFAULT_MODEL } from "./runtime/types"
 import {
@@ -7,6 +7,7 @@ import {
   resolveDefaultModelSelection,
 } from "./runtime/diagnostics"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export {
   DEFAULT_MODEL,
@@ -26,10 +27,12 @@ export function getErrorMessage(error: unknown) {
 
 export function getSessionDir(
   repoRoot: string,
-  services: AgentSessionServices
+  services: AgentSessionServices,
+  options: { userId?: string } = {}
 ) {
-  if (process.env.VERCEL === "1") {
-    const sessionDir = "/tmp/.fleet/sessions"
+  if (isVercelDeployment()) {
+    const baseDir = "/tmp/.fleet/sessions"
+    const sessionDir = options.userId ? join(baseDir, options.userId) : baseDir
     mkdirSync(sessionDir, { recursive: true })
     return sessionDir
   }

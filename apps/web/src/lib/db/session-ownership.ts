@@ -33,12 +33,14 @@ export function resolveSessionOwnershipStatusFromRow(
 }
 
 export function isSessionAccessAllowed(
-  status: SessionOwnershipStatus
+  status: SessionOwnershipStatus,
+  options: { denyMissing?: boolean } = {}
 ): boolean {
   switch (status) {
     case "owned":
-    case "missing":
       return true
+    case "missing":
+      return !options.denyMissing
     case "foreign":
     case "orphan":
       return false

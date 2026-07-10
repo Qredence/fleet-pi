@@ -5,6 +5,7 @@ import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
+import { deleteOwnedPiSession } from "@/lib/db/pi-session-deletion"
 import { hydrateChatSession } from "@/lib/pi/server"
 import { wrapApiHandler } from "@/lib/api-utils"
 
@@ -30,8 +31,53 @@ export const Route = createFileRoute("/api/chat/session")({
             }
 
             return Response.json(
-              await hydrateChatSession(resolveAppRuntimeContext(), metadata)
+              await hydrateChatSession(resolveAppRuntimeContext(), metadata, {
+                userId,
+              })
             )
+          })
+        ),
+      DELETE: async ({ request }) =>
+        wrapApiHandler(async () =>
+          withAuthenticatedChatRequest(request, async ({ userId }) => {
+            if (!userId) {
+              return Response.json({ message: "Unauthorized" }, { status: 401 })
+            }
+
+            const url = new URL(request.url)
+            const sessionId = url.searchParams.get("sessionId") ?? undefined
+            const sessionFile = url.searchParams.get("sessionFile") ?? undefined
+
+            const ownership = await enforceChatSessionOwnership({
+              sessionId,
+              sessionFile,
+              userId,
+            })
+            if (!ownership.ok) {
+              return ownership.response
+            }
+
+            const result = await deleteOwnedPiSession({
+              sessionId,
+              sessionFile,
+              userId,
+            })
+
+            if (!result.deleted) {
+              return Response.json(
+                {
+                  ok: false,
+                  reason: result.reason ?? "delete-failed",
+                },
+                { status: result.reason === "mirror-disabled" ? 501 : 404 }
+              )
+            }
+
+            return Response.json({
+              ok: true,
+              sessionId: result.sessionId,
+              sessionFile: result.sessionFile,
+            })
           })
         ),
     },

@@ -129,6 +129,83 @@ registry.registerPath({
   },
 })
 
+const ChatSessionDeleteResponseSchema = z.object({
+  ok: z.literal(true),
+  sessionId: z.string().optional(),
+  sessionFile: z.string().optional(),
+})
+
+registry.registerPath({
+  method: "delete",
+  path: "/api/chat/session",
+  description: "Delete an owned Pi session mirror row and ephemeral JSONL",
+  request: {
+    query: ChatSessionMetadataSchema,
+  },
+  responses: {
+    200: {
+      description: "Session deleted",
+      content: {
+        "application/json": {
+          schema: ChatSessionDeleteResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Session not found or not owned",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(false),
+            reason: z.string(),
+          }),
+        },
+      },
+    },
+  },
+})
+
+const ChatAccountDeleteResponseSchema = z.object({
+  ok: z.literal(true),
+  scope: z.literal("pi-mirror"),
+  message: z.string(),
+  erasedSessions: z.number(),
+  erasedProviders: z.number(),
+})
+
+registry.registerPath({
+  method: "delete",
+  path: "/api/chat/account",
+  description:
+    "Erase mirrored Pi sessions and BYOK provider credentials for the signed-in user",
+  responses: {
+    200: {
+      description: "Mirrored Pi data erased",
+      content: {
+        "application/json": {
+          schema: ChatAccountDeleteResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
 registry.registerPath({
   method: "get",
   path: "/api/chat/sessions",

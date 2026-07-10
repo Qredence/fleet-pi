@@ -1181,6 +1181,153 @@
             }
           }
         }
+      },
+      "delete": {
+        "description": "Delete an owned Pi session mirror row and ephemeral JSONL",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Session file path"
+            },
+            "required": false,
+            "description": "Session file path",
+            "name": "sessionFile",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Session ID"
+            },
+            "required": false,
+            "description": "Session ID",
+            "name": "sessionId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "sessionFile": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok", "reason"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/account": {
+      "delete": {
+        "description": "Erase mirrored Pi sessions and BYOK provider credentials for the signed-in user",
+        "responses": {
+          "200": {
+            "description": "Mirrored Pi data erased",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": ["pi-mirror"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "erasedSessions": {
+                      "type": "number"
+                    },
+                    "erasedProviders": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "scope",
+                    "message",
+                    "erasedSessions",
+                    "erasedProviders"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/chat/sessions": {

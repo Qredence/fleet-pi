@@ -22,6 +22,8 @@
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 - Apply Neon chat mirror migrations with `pnpm chat:migrate` after setting `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`.
+- Verify Vercel deployment readiness with `pnpm verify-deployment-readiness` (set migration URLs to validate Neon grants/RLS).
+- Quarantine legacy ownerless mirror rows with `pnpm quarantine-orphan-sessions` (owner URL required; use `--purge` only after approval).
 - Validate the Vercel build output with `NITRO_PRESET=vercel pnpm --filter web build:vercel` when deployment routing changes.
 
 ## Public Docs & Community Health

@@ -160,7 +160,8 @@ export function createRunDetailResponse(
 
 export function createPathProvenanceResponse(
   context: AppRuntimeContext,
-  path: string | null
+  path: string | null,
+  allowedSessionIds?: Set<string>
 ): PathProvenanceResponse {
   const canonicalPath = normalizeCanonicalPath(context, path ?? undefined)
 
@@ -175,7 +176,10 @@ export function createPathProvenanceResponse(
   const connection = openWorkspaceProvenance(context)
 
   try {
-    const runs = listPathProvenance(connection.db, canonicalPath)
+    let runs = listPathProvenance(connection.db, canonicalPath)
+    if (allowedSessionIds) {
+      runs = runs.filter((entry) => allowedSessionIds.has(entry.run.sessionId))
+    }
     return {
       ok: true,
       canonicalPath,

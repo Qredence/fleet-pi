@@ -180,7 +180,9 @@ export async function createPiRuntime(
 
   const services = await createSessionServices(context)
   const requestDiagnostics = collectDiagnostics(services)
-  const sessionDir = getSessionDir(context.projectRoot, services)
+  const sessionDir = getSessionDir(context.projectRoot, services, {
+    userId: metadata.userId,
+  })
   const mayReuseRuntime =
     !metadata.sessionFile ||
     isUsableSessionFile(metadata.sessionFile, sessionDir)
@@ -215,7 +217,8 @@ export async function createPiRuntime(
   const { sessionManager, sessionReset } = await createSessionManager(
     metadata,
     context.projectRoot,
-    sessionDir
+    sessionDir,
+    { userId: metadata.userId }
   )
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd,

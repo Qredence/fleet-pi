@@ -19,7 +19,12 @@ import type {
   ChatSessionResponse,
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
+import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
+import {
+  fetchUserSessionIds,
+  isPiSessionMirrorEnabled,
+  syncPiSessionMirrorSafely,
+} from "@/lib/db/pi-session-mirror"
 
 export type SessionManagerResult = {
   sessionManager: SessionManager
@@ -33,10 +38,9 @@ export async function createNewChatSession(
   const services = await createSessionServices(context)
   const sessionManager = SessionManager.create(
     context.projectRoot,
-    getSessionDir(context.projectRoot, services)
+    getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
-  // Fire-and-forget: mirror sync must not delay session response.
-  void syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
+  await syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -46,14 +50,18 @@ export async function createNewChatSession(
 
 export async function hydrateChatSession(
   context: AppRuntimeContext,
-  metadata: ChatSessionMetadata
+  metadata: ChatSessionMetadata,
+  options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
   const services = await createSessionServices(context)
-  const sessionDir = getSessionDir(context.projectRoot, services)
-  const sessionFile = await resolveSessionFile(
+  const sessionDir = getSessionDir(context.projectRoot, services, {
+    userId: options.userId,
+  })
+  const sessionFile = await resolveSessionFileWithRecovery(
     metadata,
     context.projectRoot,
-    sessionDir
+    sessionDir,
+    options
   )
   const sessionReset = didRequestedSessionReset(metadata, sessionFile)
 
@@ -62,7 +70,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
-    void syncPiSessionMirrorSafely(sessionManager)
+    void syncPiSessionMirrorSafely(sessionManager, options)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -77,7 +85,7 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
-    void syncPiSessionMirrorSafely(fresh)
+    void syncPiSessionMirrorSafely(fresh, options)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -85,7 +93,7 @@ export async function hydrateChatSession(
     }
   }
 
-  void syncPiSessionMirrorSafely(sessionManager)
+  void syncPiSessionMirrorSafely(sessionManager, options)
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -103,17 +111,11 @@ export async function listChatSessions(
   const services = await createSessionServices(context)
   let sessions = await SessionManager.list(
     context.projectRoot,
-    getSessionDir(context.projectRoot, services)
+    getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
 
   if (options.userId) {
-    const { fetchUserSessionIds } = await import("@/lib/db/pi-session-mirror")
     const allowedIds = new Set(await fetchUserSessionIds(options.userId))
-    // We assume if allowedIds is empty but DB is connected, the user has 0 sessions synced.
-    // If mirror is disabled, fetchUserSessionIds returns [] and we can't easily distinguish.
-    // A robust approach checks if mirror is enabled first.
-    const { isPiSessionMirrorEnabled } =
-      await import("@/lib/db/pi-session-mirror")
     if (isPiSessionMirrorEnabled()) {
       sessions = sessions.filter((s) => allowedIds.has(s.id))
     }
@@ -134,9 +136,15 @@ export async function listChatSessions(
 export async function createSessionManager(
   metadata: ChatSessionMetadata,
   repoRoot: string,
-  sessionDir: string
+  sessionDir: string,
+  options: { userId?: string } = {}
 ): Promise<SessionManagerResult> {
-  const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
+  const sessionFile = await resolveSessionFileWithRecovery(
+    metadata,
+    repoRoot,
+    sessionDir,
+    options
+  )
   const sessionReset = didRequestedSessionReset(metadata, sessionFile)
   const createFreshSession = (nextSessionReset: boolean) => ({
     sessionManager: SessionManager.create(repoRoot, sessionDir),
@@ -174,6 +182,31 @@ export async function resolveSessionFile(
   }
 
   return match.path
+}
+
+export async function resolveSessionFileWithRecovery(
+  metadata: ChatSessionMetadata,
+  repoRoot: string,
+  sessionDir: string,
+  options: { userId?: string } = {}
+) {
+  const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
+  if (sessionFile || !options.userId) {
+    return sessionFile
+  }
+
+  const recovery = await recoverOwnedSessionFile({
+    sessionId: metadata.sessionId,
+    sessionFile: metadata.sessionFile,
+    userId: options.userId,
+    sessionDir,
+  })
+
+  if (recovery.recovered && recovery.sessionFile) {
+    return recovery.sessionFile
+  }
+
+  return undefined
 }
 
 function didRequestedSessionReset(

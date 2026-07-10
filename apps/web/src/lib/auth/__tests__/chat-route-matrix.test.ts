@@ -40,7 +40,7 @@ const CHAT_ROUTE_AUTH_MATRIX: Array<ChatRouteAuthExpectation> = [
   {
     route: "POST /api/chat/question",
     vercelAuthRequired: true,
-    ownershipWhenSessionPresent: false,
+    ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/runs",
@@ -50,10 +50,20 @@ const CHAT_ROUTE_AUTH_MATRIX: Array<ChatRouteAuthExpectation> = [
   {
     route: "GET /api/chat/run",
     vercelAuthRequired: true,
-    ownershipWhenSessionPresent: false,
+    ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/provenance",
+    vercelAuthRequired: true,
+    ownershipWhenSessionPresent: true,
+  },
+  {
+    route: "DELETE /api/chat/session",
+    vercelAuthRequired: true,
+    ownershipWhenSessionPresent: true,
+  },
+  {
+    route: "DELETE /api/chat/account",
     vercelAuthRequired: true,
     ownershipWhenSessionPresent: false,
   },

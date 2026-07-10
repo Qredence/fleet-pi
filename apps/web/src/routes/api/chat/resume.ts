@@ -28,7 +28,9 @@ export const Route = createFileRoute("/api/chat/resume")({
             }
 
             return Response.json(
-              await hydrateChatSession(resolveAppRuntimeContext(), metadata)
+              await hydrateChatSession(resolveAppRuntimeContext(), metadata, {
+                userId,
+              })
             )
           })
         ),

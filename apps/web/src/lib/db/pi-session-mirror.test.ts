@@ -307,6 +307,7 @@ describe("Pi session mirror repository", () => {
       cwd: "/repo",
       mode: "agent",
       startedAt: "2026-05-22T10:00:00.000Z",
+      userId: "user-1",
     })
     await appendPiRunEvent(client, {
       runId: "run-1",
@@ -390,6 +391,23 @@ describe("Pi session mirror repository", () => {
     )
   })
 
+  it("requires userId when inserting runs on Vercel", async () => {
+    process.env.VERCEL = "1"
+    const client = createMockClient()
+
+    await expect(
+      insertPiRunStart(client, {
+        runId: "run-1",
+        assistantMessageId: "assistant-1",
+        sessionId: "session-1",
+        cwd: "/repo",
+        startedAt: "2026-05-22T10:00:00.000Z",
+      })
+    ).rejects.toThrow(/Authenticated owner is required/)
+
+    delete process.env.VERCEL
+  })
+
   it("logs mirror sync failures on Vercel without throwing", async () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
     process.env.VERCEL = "1"
@@ -399,11 +417,14 @@ describe("Pi session mirror repository", () => {
 
     try {
       await expect(
-        syncPiSessionMirrorSafely({
-          getHeader() {
-            throw new Error("boom vercel")
-          },
-        } as never)
+        syncPiSessionMirrorSafely(
+          {
+            getHeader() {
+              throw new Error("boom vercel")
+            },
+          } as never,
+          { userId: "user-vercel" }
+        )
       ).resolves.toBeUndefined()
 
       expect(errorSpy).toHaveBeenCalledWith(

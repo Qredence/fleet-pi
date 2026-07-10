@@ -43,9 +43,14 @@ describe("resolveSessionOwnershipFromRow", () => {
 })
 
 describe("isSessionAccessAllowed", () => {
-  it("allows owned and missing sessions", () => {
+  it("allows owned and missing sessions by default", () => {
     expect(isSessionAccessAllowed("owned")).toBe(true)
     expect(isSessionAccessAllowed("missing")).toBe(true)
+  })
+
+  it("denies missing sessions when denyMissing is set", () => {
+    expect(isSessionAccessAllowed("missing", { denyMissing: true })).toBe(false)
+    expect(isSessionAccessAllowed("owned", { denyMissing: true })).toBe(true)
   })
 
   it("denies foreign and orphan sessions", () => {
