@@ -514,7 +514,6 @@ jobs:
           FLEET_PI_PRODUCTION_DATABASE_MARKER: prod-neon
 
       - name: Verify deployment readiness (migration probes)
-        if: ${{ secrets.FLEET_PI_CHAT_MIGRATION_DATABASE_URL && secrets.FLEET_PI_AUTH_MIGRATION_DATABASE_URL }}
         run: pnpm verify-deployment-readiness
         env:
           VERCEL: "1"
