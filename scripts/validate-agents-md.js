@@ -36,6 +36,7 @@ const EXISTENCE_ONLY_SCRIPTS = new Set([
   "e2e",
   "chat:migrate",
   "auth:migrate",
+  "quarantine-orphan-sessions",
 ])
 
 // Commands to skip (Pi tool commands, examples with placeholders, self-referencing)
@@ -135,7 +136,9 @@ function main() {
       const reason =
         scriptName === "syncpack:fix"
           ? "existence check only - modifies files"
-          : scriptName === "chat:migrate" || scriptName === "auth:migrate"
+          : scriptName === "chat:migrate" ||
+              scriptName === "auth:migrate" ||
+              scriptName === "quarantine-orphan-sessions"
             ? "existence check only - requires Neon migration credentials"
             : "existence check only - requires e2e runtime setup"
 
