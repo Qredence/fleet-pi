@@ -27,6 +27,10 @@ describe("chat postgres schema ordering", () => {
       "pi_user_providers",
       "DELETE FROM pi_user_providers WHERE provider_id = 'google-genai';"
     )
+    expect(CHAT_POSTGRES_SCHEMA_SQL).toContain(
+      "auth_type TEXT NOT NULL DEFAULT 'apiKey'"
+    )
+    expect(CHAT_POSTGRES_SCHEMA_SQL).toContain("encrypted_payload TEXT NULL")
     expectCreateBeforeReference(
       "pi_session_entries",
       "ALTER TABLE IF EXISTS pi_session_entries ENABLE ROW LEVEL SECURITY;"

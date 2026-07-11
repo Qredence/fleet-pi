@@ -8,6 +8,7 @@ import {
 import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../src/lib/db/chat-postgres-rls-strict"
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-ownership"
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-tombstones"
+import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../src/lib/db/chat-postgres-provider-auth"
 import { validateDeploymentReadiness } from "../src/lib/deployment/readiness"
 import { resolveDeploymentTrustZone } from "../src/lib/deployment/trust-zone"
 import type { DeploymentReadinessInput } from "../src/lib/deployment/readiness"
@@ -144,7 +145,7 @@ async function main() {
   }
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (chatRuntimeUrl && trustZone !== "local") {
+  if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
     const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
     const prefix = smoke.ok ? "OK" : "FAIL"
     console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
@@ -187,6 +188,7 @@ async function main() {
     CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
     CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
     CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
+    CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
   ]
   console.log(
     `INFO migrations: expected chat migration ids: ${expectedMigrations.join(", ")}`
