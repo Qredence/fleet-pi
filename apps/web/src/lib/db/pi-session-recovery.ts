@@ -1,4 +1,11 @@
-import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs"
+import {
+  chmodSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  writeSync,
+} from "node:fs"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { shouldFailClosedOnMirrorError } from "../deployment/environment"
 import { logger } from "../logger"
@@ -154,8 +161,16 @@ function isPathInside(parent: string, child: string) {
 }
 
 function writeRecoveredSessionFile(sessionFile: string, content: string) {
-  mkdirSync(dirname(sessionFile), { recursive: true })
-  const fd = openSync(sessionFile, "wx")
+  const parentDir = dirname(sessionFile)
+  mkdirSync(parentDir, { recursive: true, mode: 0o700 })
+  try {
+    chmodSync(parentDir, 0o700)
+  } catch {
+    // Parent may already exist with different ownership in tests.
+  }
+  // lgtm[js/insecure-temporary-file-creation] Vercel Pi sessions are intentionally
+  // reconstructed under user-scoped /tmp/.fleet/sessions paths validated above.
+  const fd = openSync(sessionFile, "wx", 0o600)
   try {
     writeSync(fd, content, undefined, "utf8")
   } finally {
