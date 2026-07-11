@@ -506,6 +506,7 @@ export const ChatProviderInfoSchema = z
     name: z.string(),
     isConfigured: z.boolean(),
     envVarName: z.string(),
+    authType: z.enum(["apiKey", "oauth"]).optional(),
   })
   .openapi({ description: "Chat provider info" })
 
@@ -529,3 +530,16 @@ export const ChatProviderUpdateResponseSchema = z
     reloadRequired: z.boolean().optional(),
   })
   .openapi({ description: "Chat provider update response" })
+
+export const ChatSlashCommandInfoSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  argumentHint: z.string().optional(),
+  source: z.enum(["builtin", "extension", "prompt", "skill"]),
+  passThrough: z.boolean().optional(),
+})
+
+export const ChatCommandsResponseSchema = z.object({
+  commands: z.array(ChatSlashCommandInfoSchema),
+  diagnostics: z.array(z.string()),
+})

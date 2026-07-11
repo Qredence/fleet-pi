@@ -578,19 +578,27 @@ function InputSuggestionsOverlay({
   const suggestionConfig = resolveSuggestionConfig(suggestions)
   const slashCommandConfig = resolveSuggestionConfig(slashCommands)
   const slashQuery = input.match(/^\/([^\s/]*)$/)?.[1]?.toLowerCase()
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [slashDismissed, setSlashDismissed] = useState(false)
   const filteredSlashCommands = useMemo(() => {
     if (slashQuery === undefined) return []
-    return slashCommandConfig.items
-      .filter((item) =>
-        `${item.id} ${item.label} ${item.value ?? ""}`
-          .toLowerCase()
-          .includes(slashQuery)
-      )
-      .slice(0, 8)
+    return slashCommandConfig.items.filter((item) =>
+      `${item.id} ${item.label} ${item.value ?? ""}`
+        .toLowerCase()
+        .includes(slashQuery)
+    )
   }, [slashCommandConfig.items, slashQuery])
   const interactionsDisabled = disabled || isStreaming
   const showSlashCommands =
-    filteredSlashCommands.length > 0 && !interactionsDisabled
+    filteredSlashCommands.length > 0 && !interactionsDisabled && !slashDismissed
+
+  useEffect(() => {
+    setSlashDismissed(false)
+  }, [slashQuery])
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [slashQuery, filteredSlashCommands.length])
 
   const focusEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -621,19 +629,69 @@ function InputSuggestionsOverlay({
     [focusEnd, interactionsDisabled, setInput]
   )
 
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el || !showSlashCommands) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const count = filteredSlashCommands.length
+      if (count === 0) return
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault()
+        event.stopPropagation()
+        setActiveIndex((prev) => (prev + 1) % count)
+        return
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault()
+        event.stopPropagation()
+        setActiveIndex((prev) => (prev - 1 + count) % count)
+        return
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault()
+        event.stopPropagation()
+        setSlashDismissed(true)
+        return
+      }
+
+      if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
+        const item = filteredSlashCommands[activeIndex]
+        if (!item) return
+        event.preventDefault()
+        event.stopPropagation()
+        handleSlashCommandSelect(item)
+      }
+    }
+
+    el.addEventListener("keydown", onKeyDown, true)
+    return () => el.removeEventListener("keydown", onKeyDown, true)
+  }, [
+    activeIndex,
+    filteredSlashCommands,
+    handleSlashCommandSelect,
+    showSlashCommands,
+    textareaRef,
+  ])
+
   if (showSlashCommands) {
     return (
       <SuggestionsPopover
+        activeIndex={activeIndex}
         className={cn(
-          "flex-col items-stretch gap-1 rounded-an-input-border-radius border border-border/70 bg-an-input-background p-1 shadow-lg",
+          "max-h-[min(40vh,280px)] flex-col flex-nowrap items-stretch gap-1 overflow-y-auto overscroll-contain rounded-an-input-border-radius border border-border/70 bg-an-input-background p-1 shadow-lg",
           slashCommandConfig.className
         )}
         disabled={interactionsDisabled}
         itemClassName={cn(
-          "h-8 justify-start rounded-[6px] border-transparent px-2 text-left font-mono text-[12px]",
+          "h-8 shrink-0 justify-start rounded-[6px] border-transparent px-2 text-left font-mono text-[12px]",
           slashCommandConfig.itemClassName
         )}
         items={filteredSlashCommands}
+        onActiveIndexChange={setActiveIndex}
         onSelect={handleSlashCommandSelect}
       />
     )
@@ -653,25 +711,31 @@ function InputSuggestionsOverlay({
 }
 
 function SuggestionsPopover({
+  activeIndex,
   className,
   disabled,
   itemClassName,
   items,
+  onActiveIndexChange,
   onSelect,
 }: {
+  activeIndex?: number
   className?: string
   disabled?: boolean
   itemClassName?: string
   items: Array<SuggestionItem>
+  onActiveIndexChange?: (index: number) => void
   onSelect: (item: SuggestionItem) => void
 }) {
   return (
     <div className="absolute right-0 bottom-full left-0 pb-2">
       <Suggestions
+        activeIndex={activeIndex}
         className={className}
         disabled={disabled}
         itemClassName={itemClassName}
         items={items}
+        onActiveIndexChange={onActiveIndexChange}
         onSelect={onSelect}
       />
     </div>

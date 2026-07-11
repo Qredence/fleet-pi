@@ -1,4 +1,5 @@
 import {
+  ChatCommandsResponseSchema,
   ChatModelsResponseSchema,
   ChatProviderUpdateRequestSchema,
   ChatProviderUpdateResponseSchema,
@@ -19,6 +20,7 @@ import {
   readChatStream,
 } from "./chat-fetch"
 import type {
+  ChatCommandsResponse,
   ChatModelsResponse,
   ChatProviderInfo,
   ChatProviderUpdateRequest,
@@ -44,6 +46,7 @@ export type ChatClient = {
   createSession: () => Promise<ChatSessionResponse>
   getModels: () => Promise<ChatModelsResponse>
   getResources: () => Promise<ChatResourcesResponse>
+  getCommands: () => Promise<ChatCommandsResponse>
   getSettings: () => Promise<ChatSettingsResponse>
   getWorkspaceTree: () => Promise<WorkspaceTreeResponse>
   listSessions: () => Promise<Array<ChatSessionInfo>>
@@ -99,6 +102,10 @@ export const chatClient: ChatClient = {
       "/api/chat/resources",
       ChatResourcesResponseSchema
     )
+  },
+
+  async getCommands() {
+    return fetchValidatedJson("/api/chat/commands", ChatCommandsResponseSchema)
   },
 
   async getSettings() {

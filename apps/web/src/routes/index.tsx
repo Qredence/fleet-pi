@@ -13,16 +13,14 @@ import { RightPanelLauncherFromContext } from "@workspace/hax-design/components/
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
 import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
 import { queueLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
-import type {
-  ChatPiSettingsUpdate,
-  ChatResourcesResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatPiSettingsUpdate } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
 import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
 import { identifyAnalyticsUser, resetAnalytics } from "@/lib/analytics/posthog"
 import {
+  useChatCommands,
   useChatModels,
   useChatProviders,
   useChatResources,
@@ -31,6 +29,7 @@ import {
   useUpdateChatSettings,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
+import { buildSlashCommands } from "@/lib/pi/slash-commands"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
 import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
@@ -42,36 +41,6 @@ import { usePendingQuestionBar } from "@/lib/pi/use-pending-question-bar"
 import { loadWorkspaceFile } from "@/lib/workspace/client"
 
 export const Route = createFileRoute("/")({ component: Chat })
-
-function buildSlashCommands(
-  resources: ChatResourcesResponse | null,
-  enabled: boolean
-) {
-  if (!enabled || !resources) return []
-
-  const commands = [...resources.skills, ...resources.prompts]
-    .filter(
-      (resource) =>
-        !resource.activationStatus || resource.activationStatus === "active"
-    )
-    .map((resource) => {
-      const commandName = normalizeSlashCommandName(resource.name)
-      if (!commandName) return null
-      return {
-        id: commandName,
-        label: `/${commandName}`,
-        value: `/${commandName} `,
-      }
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
-
-  return Array.from(new Map(commands.map((item) => [item.id, item])).values())
-}
-
-function normalizeSlashCommandName(name: string) {
-  const normalized = name.trim().replace(/\s+/g, "-")
-  return /^[\w.-]+$/.test(normalized) ? normalized : ""
-}
 
 function ChatWorkspaceShell() {
   const navigate = useNavigate()
@@ -114,6 +83,7 @@ function ChatWorkspaceShell() {
     error: resourcesError,
     refetch: refetchResources,
   } = useChatResources()
+  const { data: commandsData } = useChatCommands()
   const {
     data: settingsData,
     isLoading: settingsLoading,
@@ -244,9 +214,10 @@ function ChatWorkspaceShell() {
     () =>
       buildSlashCommands(
         resources,
-        settingsData?.effective.enableSkillCommands ?? false
+        settingsData?.effective.enableSkillCommands ?? false,
+        commandsData
       ),
-    [resources, settingsData]
+    [commandsData, resources, settingsData]
   )
   const rightPanelContextValue = useRightPanelContextValue({
     activityLabel,

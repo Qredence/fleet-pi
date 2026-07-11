@@ -10,6 +10,7 @@ const keys = {
   models: ["chat", "models"] as const,
   providers: ["chat", "providers"] as const,
   resources: ["chat", "resources"] as const,
+  commands: ["chat", "commands"] as const,
   settings: ["chat", "settings"] as const,
   workspace: ["workspace", "tree"] as const,
 } as const
@@ -25,6 +26,13 @@ export function useChatResources() {
   return useQuery({
     queryKey: keys.resources,
     queryFn: () => chatClient.getResources(),
+  })
+}
+
+export function useChatCommands() {
+  return useQuery({
+    queryKey: keys.commands,
+    queryFn: () => chatClient.getCommands(),
   })
 }
 
@@ -45,6 +53,7 @@ export function useUpdateChatSettings() {
       queryClient.setQueryData(keys.settings, settings)
       void queryClient.invalidateQueries({ queryKey: keys.models })
       void queryClient.invalidateQueries({ queryKey: keys.resources })
+      void queryClient.invalidateQueries({ queryKey: keys.commands })
     },
   })
 }
