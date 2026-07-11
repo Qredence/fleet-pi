@@ -203,6 +203,18 @@ registry.registerPath({
         },
       },
     },
+    500: {
+      description: "Failed to erase mirrored Pi data",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(false),
+            reason: z.string(),
+            message: z.string(),
+          }),
+        },
+      },
+    },
   },
 })
 
