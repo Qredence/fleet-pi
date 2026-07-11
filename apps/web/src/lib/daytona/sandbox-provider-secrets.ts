@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import {
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
@@ -75,10 +74,6 @@ async function loadAllProviderSecrets(
   }
 
   return secrets
-}
-
-export function hashOAuthState(payload: Record<string, string>): string {
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex")
 }
 
 const INFRA_PROVIDER_IDS = new Set(["daytona", "daytona-target"])

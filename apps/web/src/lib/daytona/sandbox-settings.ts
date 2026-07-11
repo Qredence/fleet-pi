@@ -31,13 +31,6 @@ function shellEscape(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
 }
 
-export function isSandboxSettingsContext(context: {
-  daytonaSandbox?: unknown
-  workspaceFS?: unknown
-}): boolean {
-  return Boolean(context.daytonaSandbox) && Boolean(context.workspaceFS)
-}
-
 export function isEmptySettingsFile(settings: Record<string, unknown>) {
   return Object.keys(settings).length === 0
 }

@@ -3,14 +3,16 @@ import {
   ensureUserCredentials,
 } from "./sandbox-prepare"
 import { loadSandboxProviderSecrets } from "./sandbox-provider-secrets"
-import { getCachedUserSandbox, getUserSandbox } from "./user-sandbox"
+import { getCachedUserSandbox } from "./user-sandbox"
 
-export async function refreshSandboxProviderCredentials(
-  userId: string,
-  apiKey?: string
-) {
-  const handle =
-    getCachedUserSandbox(userId) ?? (await getUserSandbox({ userId, apiKey }))
+/**
+ * Push the latest provider secrets into an already-running cached sandbox.
+ * Does not provision a sandbox — if none is cached, this is a no-op.
+ */
+export async function refreshSandboxProviderCredentials(userId: string) {
+  const handle = getCachedUserSandbox(userId)
+  if (!handle) return
+
   const secrets = await loadSandboxProviderSecrets(userId)
   clearSandboxAuthFingerprint(userId)
   await ensureUserCredentials(handle.sandbox, secrets, userId)

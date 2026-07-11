@@ -102,35 +102,6 @@ export async function upsertUserProviderEncryptedKey(
   })
 }
 
-export async function upsertUserProviderOAuthPayload(
-  userId: string,
-  providerId: string,
-  encryptedPayload: string
-) {
-  await withUserProvidersTransaction(userId, async (client) => {
-    await client.query(
-      `
-      INSERT INTO pi_user_providers (
-        user_id,
-        provider_id,
-        encrypted_key,
-        auth_type,
-        encrypted_payload,
-        updated_at
-      )
-      VALUES ($1, $2, '', 'oauth', $3, now())
-      ON CONFLICT (user_id, provider_id)
-      DO UPDATE SET
-        encrypted_key = '',
-        auth_type = 'oauth',
-        encrypted_payload = EXCLUDED.encrypted_payload,
-        updated_at = EXCLUDED.updated_at
-    `,
-      [userId, providerId, encryptedPayload]
-    )
-  })
-}
-
 export async function storeUserProviderApiKey(
   userId: string,
   providerId: string,
@@ -142,31 +113,6 @@ export async function storeUserProviderApiKey(
     providerId,
     encryptString(apiKey, secret)
   )
-}
-
-export async function storeUserProviderOAuthCredentials(
-  userId: string,
-  providerId: string,
-  credentials: unknown
-) {
-  const secret = requireEncryptionSecret()
-  await upsertUserProviderOAuthPayload(
-    userId,
-    providerId,
-    encryptString(JSON.stringify(credentials), secret)
-  )
-}
-
-export async function deleteUserProviderCredentials(
-  userId: string,
-  providerId: string
-) {
-  await withUserProvidersTransaction(userId, async (client) => {
-    await client.query(
-      `DELETE FROM pi_user_providers WHERE user_id = $1 AND provider_id = $2`,
-      [userId, providerId]
-    )
-  })
 }
 
 async function loadEncryptedUserProviders(

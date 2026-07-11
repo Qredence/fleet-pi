@@ -28,6 +28,7 @@ describe("runtime provider catalog", () => {
 
   it("marks Vercel providers configured from pi_user_providers rows", async () => {
     process.env.VERCEL = "1"
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
     mocks.withChatPostgresTransaction.mockImplementation(
       async (callback: (client: unknown) => Promise<void>) => {
         await callback({

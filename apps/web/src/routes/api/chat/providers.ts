@@ -8,8 +8,7 @@ import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import { updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
-import { encryptString } from "@/lib/auth/crypto"
-import { upsertUserProviderEncryptedKey } from "@/lib/db/user-providers"
+import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
 import {
   getProviderConfigStatus,
@@ -67,20 +66,7 @@ export const Route = createFileRoute("/api/chat/providers")({
             if (!userId) {
               return Response.json({ message: "Unauthorized" }, { status: 401 })
             }
-            if (!process.env.BETTER_AUTH_SECRET) {
-              throw new Error(
-                "BETTER_AUTH_SECRET is required to encrypt provider keys."
-              )
-            }
-            const encryptedKey = encryptString(
-              body.apiKey,
-              process.env.BETTER_AUTH_SECRET
-            )
-            await upsertUserProviderEncryptedKey(
-              userId,
-              provider.id,
-              encryptedKey
-            )
+            await storeUserProviderApiKey(userId, provider.id, body.apiKey)
           } else {
             const context = resolveAppRuntimeContext()
             await updateEnvVar(

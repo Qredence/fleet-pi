@@ -133,10 +133,6 @@ export function clearSandboxAuthFingerprint(userId: string): void {
   authFingerprintByUser.delete(userId)
 }
 
-export function clearSandboxAuthFingerprints(): void {
-  authFingerprintByUser.clear()
-}
-
 function ensureGitInstalledCommand(): string {
   return [
     "if ! command -v git >/dev/null; then",
@@ -196,7 +192,8 @@ function ensureAgentWorkspaceSeedCommand(
     `if [ ! -f ${workspace}/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
     `git clone --depth 1 --filter=blob:none --sparse ${url} "$tmpdir"`,
-    'cd "$tmpdir" && git sparse-checkout set agent-workspace',
+    // Subshell so sparse-checkout does not change the outer script cwd.
+    '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
     `mkdir -p ${workspace}`,
     `cp -a "$tmpdir/agent-workspace/." ${workspace}/`,
     'rm -rf "$tmpdir"',
