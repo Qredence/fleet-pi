@@ -172,10 +172,10 @@ export async function verifyRunOwnership(
           SELECT r.id
           FROM pi_runs AS r
           JOIN pi_sessions AS s ON s.id = r.session_id
-          WHERE r.id = $1
+          WHERE r.id = $1 AND s.user_id = $2
           LIMIT 1
         `,
-        [runId]
+        [runId, userId]
       )
     )
     return result.rows.length > 0
