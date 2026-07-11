@@ -43,14 +43,20 @@ describe("resolveSessionOwnershipFromRow", () => {
 })
 
 describe("isSessionAccessAllowed", () => {
-  it("allows owned and missing sessions", () => {
+  it("allows owned and missing sessions by default", () => {
     expect(isSessionAccessAllowed("owned")).toBe(true)
     expect(isSessionAccessAllowed("missing")).toBe(true)
+  })
+
+  it("denies missing sessions when denyMissing is set", () => {
+    expect(isSessionAccessAllowed("missing", { denyMissing: true })).toBe(false)
+    expect(isSessionAccessAllowed("owned", { denyMissing: true })).toBe(true)
   })
 
   it("denies foreign and orphan sessions", () => {
     expect(isSessionAccessAllowed("foreign")).toBe(false)
     expect(isSessionAccessAllowed("orphan")).toBe(false)
+    expect(isSessionAccessAllowed("deleted")).toBe(false)
   })
 })
 
@@ -60,6 +66,7 @@ describe("isSessionOwnershipStatus", () => {
     expect(isSessionOwnershipStatus("foreign")).toBe(true)
     expect(isSessionOwnershipStatus("missing")).toBe(true)
     expect(isSessionOwnershipStatus("orphan")).toBe(true)
+    expect(isSessionOwnershipStatus("deleted")).toBe(true)
     expect(isSessionOwnershipStatus("unknown")).toBe(false)
   })
 })

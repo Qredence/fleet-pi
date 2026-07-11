@@ -6,16 +6,23 @@ import {
   createRunDetailResponse,
   createUnexpectedProvenanceErrorResponse,
 } from "../../../lib/pi/provenance-query"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import {
+  enforceRunOwnership,
+  withAuthenticatedChatRequest,
+} from "@/lib/auth/chat-api-auth"
 
-export async function chatRunHandler(request: Request) {
+export async function chatRunHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()
   const url = new URL(request.url)
+  const runId = url.searchParams.get("id") ?? undefined
+
+  const ownership = await enforceRunOwnership({ runId, userId })
+  if (!ownership.ok) {
+    return ownership.response
+  }
 
   try {
-    return Response.json(
-      createRunDetailResponse(context, url.searchParams.get("id"))
-    )
+    return Response.json(createRunDetailResponse(context, runId ?? null))
   } catch (error) {
     if (error instanceof ProvenanceQueryApiError) {
       return Response.json(
@@ -34,7 +41,9 @@ export const Route = createFileRoute("/api/chat/run")({
   server: {
     handlers: {
       GET: ({ request }) =>
-        withAuthenticatedChatRequest(request, () => chatRunHandler(request)),
+        withAuthenticatedChatRequest(request, ({ userId }) =>
+          chatRunHandler(request, userId)
+        ),
     },
   },
 })

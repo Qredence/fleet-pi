@@ -1,11 +1,15 @@
 import { createHash } from "node:crypto"
-import { Pool } from "@neondatabase/serverless"
-import { shouldFailClosedOnMirrorError } from "../deployment"
+import { shouldFailClosedOnMirrorError } from "../deployment/environment"
 import { logger } from "../logger"
 import {
-  isSessionAccessAllowed,
-  isSessionOwnershipStatus,
-} from "./session-ownership"
+  PI_SESSION_USER_ID_ON_CONFLICT_SQL,
+  assertMirrorOwnerForPersistence,
+  getChatPostgresPool,
+  isPiSessionMirrorEnabled,
+  withUserContext,
+} from "./pi-session-ownership-db"
+import { isPiSessionDeleted } from "./pi-session-tombstones"
+import type { PostgresQueryClient } from "./pi-session-ownership-db"
 import type {
   SessionEntry,
   SessionHeader,
@@ -18,27 +22,7 @@ import type {
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { ProvenanceMutationKind } from "./workspace-provenance"
 
-let sharedPool: InstanceType<typeof Pool> | undefined
-
-function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
-  const connectionString = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (!connectionString) return undefined
-  if (!sharedPool) {
-    sharedPool = new Pool({ connectionString })
-  }
-  return sharedPool
-}
-
-type QueryResult<T = Record<string, unknown>> = {
-  rows: Array<T>
-}
-
-export type PostgresQueryClient = {
-  query: <T = Record<string, unknown>>(
-    sql: string,
-    params?: Array<unknown>
-  ) => Promise<QueryResult<T>>
-}
+export type { PostgresQueryClient } from "./pi-session-ownership-db"
 
 export type PiSessionMirrorInput = {
   id: string
@@ -144,17 +128,21 @@ export type ReplacePiFileMutationsInput = {
   }>
 }
 
-export function isPiSessionMirrorEnabled() {
-  return Boolean(process.env.FLEET_PI_CHAT_DATABASE_URL?.trim())
-}
-
 export async function syncPiSessionMirror(
   sessionManager: SessionManager,
   options: { userId?: string } = {}
 ) {
   if (!isPiSessionMirrorEnabled()) return
+  assertMirrorOwnerForPersistence(options.userId)
   const session = extractPiSessionMirrorInput(sessionManager, options)
   if (!session) return
+  if (isPiSessionDeleted(session.id)) {
+    logger.info(
+      { sessionId: session.id },
+      "[pi-session-mirror] skipping sync for deleted session"
+    )
+    return
+  }
 
   await withChatPostgresTransaction(
     (client) => upsertPiSessionMirror(client, session),
@@ -261,27 +249,6 @@ export function mapSessionEntryToMirrorRow(
   }
 }
 
-export async function withUserContext<T>(
-  pool: InstanceType<typeof Pool>,
-  userId: string | undefined,
-  operation: (client: PostgresQueryClient) => Promise<T>
-): Promise<T> {
-  const client = await pool.connect()
-  try {
-    if (userId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [
-        userId,
-      ])
-    }
-    return await operation(client)
-  } finally {
-    if (userId) {
-      await client.query("RESET app.current_user_id")
-    }
-    client.release()
-  }
-}
-
 export async function fetchUserSessionIds(
   userId: string
 ): Promise<Array<string>> {
@@ -304,70 +271,6 @@ export async function fetchUserSessionIds(
       "[pi-session-mirror] failed to fetch user session IDs"
     )
     return []
-  }
-}
-
-export async function lookupSessionOwnershipStatus(
-  sessionId: string,
-  userId: string
-): Promise<string | undefined> {
-  const pool = getChatPostgresPool()
-  if (!pool) return undefined
-
-  const result = await pool.query<{ status: string }>(
-    "SELECT fleet_pi_check_session_owner($1, $2) AS status",
-    [sessionId, userId]
-  )
-
-  return result.rows[0]?.status
-}
-
-export async function lookupSessionIdBySessionFile(
-  sessionFile: string
-): Promise<string | undefined> {
-  const pool = getChatPostgresPool()
-  if (!pool) return undefined
-
-  const result = await pool.query<{ session_id: string | null }>(
-    "SELECT fleet_pi_lookup_session_id_by_file($1) AS session_id",
-    [sessionFile]
-  )
-
-  return result.rows[0]?.session_id ?? undefined
-}
-
-/**
- * Mirror-backed ownership check. When mirror is disabled (local dev), allows access.
- * Uses SECURITY DEFINER SQL functions so RLS cannot hide foreign-owned rows.
- */
-export async function verifySessionOwnership(
-  sessionId: string,
-  userId: string
-): Promise<boolean> {
-  if (!isPiSessionMirrorEnabled()) return true
-
-  const pool = getChatPostgresPool()
-  if (!pool) return true
-
-  const failClosedOnError = shouldFailClosedOnMirrorError()
-
-  try {
-    const status = await lookupSessionOwnershipStatus(sessionId, userId)
-    if (!status || !isSessionOwnershipStatus(status)) {
-      logger.warn(
-        { sessionId, userId, status },
-        "[pi-session-mirror] unexpected session ownership status"
-      )
-      return failClosedOnError ? false : true
-    }
-
-    return isSessionAccessAllowed(status)
-  } catch (error) {
-    logger.warn(
-      { error, sessionId, userId },
-      "[pi-session-mirror] failed to verify session ownership"
-    )
-    return failClosedOnError ? false : true
   }
 }
 
@@ -396,7 +299,7 @@ export async function upsertPiSessionMirror(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now()
       )
       ON CONFLICT (id) DO UPDATE SET
-        user_id = COALESCE(EXCLUDED.user_id, pi_sessions.user_id),
+        ${PI_SESSION_USER_ID_ON_CONFLICT_SQL},
         session_file_path = EXCLUDED.session_file_path,
         cwd = EXCLUDED.cwd,
         version = EXCLUDED.version,
@@ -435,6 +338,7 @@ export async function insertPiRunStart(
   client: PostgresQueryClient,
   input: InsertPiRunInput
 ) {
+  assertMirrorOwnerForPersistence(input.userId)
   await upsertPiSessionStub(client, {
     sessionId: input.sessionId,
     sessionFile: input.sessionFile,
@@ -676,18 +580,7 @@ export function createChatPostgresOperationQueue() {
     pending = pending
       .then(async () => {
         if (userId) {
-          // Provide RLS context manually for enqueue since it doesn't use the explicit transaction wrapper
-          const client = await pool.connect()
-          try {
-            await client.query(
-              "SELECT set_config('app.current_user_id', $1, true)",
-              [userId]
-            )
-            await operation(client)
-          } finally {
-            await client.query("RESET app.current_user_id")
-            client.release()
-          }
+          await withUserContext(pool, userId, operation)
         } else {
           await operation(pool)
         }
@@ -718,22 +611,16 @@ export async function withChatPostgresTransaction(
   const pool = getChatPostgresPool()
   if (!pool) return
 
-  const client = await pool.connect()
-  try {
+  await withUserContext(pool, userId, async (client) => {
     await client.query("BEGIN")
-    if (userId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [
-        userId,
-      ])
+    try {
+      await operation(client)
+      await client.query("COMMIT")
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
     }
-    await operation(client)
-    await client.query("COMMIT")
-  } catch (error) {
-    await client.query("ROLLBACK")
-    throw error
-  } finally {
-    client.release()
-  }
+  })
 }
 
 async function upsertPiSessionEntriesBatch(
@@ -829,7 +716,7 @@ async function upsertPiSessionStub(
         last_synced_at
       ) VALUES ($1, $2, $3, $4, 3, $5, $5, now())
       ON CONFLICT (id) DO UPDATE SET
-        user_id = COALESCE(EXCLUDED.user_id, pi_sessions.user_id),
+        ${PI_SESSION_USER_ID_ON_CONFLICT_SQL},
         session_file_path = EXCLUDED.session_file_path,
         cwd = EXCLUDED.cwd,
         updated_at = GREATEST(pi_sessions.updated_at, EXCLUDED.updated_at),

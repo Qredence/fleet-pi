@@ -6,7 +6,12 @@ import {
   collectDiagnostics,
   resolveDefaultModelSelection,
 } from "./runtime/diagnostics"
+import {
+  VERCEL_EPHEMERAL_SESSION_BASE,
+  resolveVercelUserSessionDir,
+} from "./session-paths"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export {
   DEFAULT_MODEL,
@@ -26,10 +31,13 @@ export function getErrorMessage(error: unknown) {
 
 export function getSessionDir(
   repoRoot: string,
-  services: AgentSessionServices
+  services: AgentSessionServices,
+  options: { userId?: string } = {}
 ) {
-  if (process.env.VERCEL === "1") {
-    const sessionDir = "/tmp/.fleet/sessions"
+  if (isVercelDeployment()) {
+    const sessionDir = options.userId
+      ? resolveVercelUserSessionDir(options.userId)
+      : VERCEL_EPHEMERAL_SESSION_BASE
     mkdirSync(sessionDir, { recursive: true })
     return sessionDir
   }

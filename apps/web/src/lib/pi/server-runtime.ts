@@ -132,6 +132,49 @@ export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
   return true
 }
 
+export function evictPiRuntimeForDeletedSession(input: {
+  sessionId: string
+  sessionFile?: string
+  userId?: string
+}) {
+  const active =
+    runtimeRecords.get(input.sessionId) ??
+    findRuntimeRecord({
+      sessionId: input.sessionId,
+      sessionFile: input.sessionFile,
+      userId: input.userId,
+    })
+  if (!active) return
+
+  disposeRuntimeRecord(active)
+}
+
+export function evictAllPiRuntimesForUser(userId: string) {
+  for (const record of [...runtimeRecords.values()]) {
+    if (record.userId === userId) {
+      disposeRuntimeRecord(record)
+    }
+  }
+}
+
+function disposeRuntimeRecord(record: ActiveSessionRecord) {
+  if (record.disposeTimer) {
+    clearTimeout(record.disposeTimer)
+    record.disposeTimer = undefined
+  }
+
+  clearPlanModeSession(record.sessionId)
+  deleteActiveSessionRecord(record.sessionId)
+  untrackDaytonaToolSession(record.sessionId, record.sessionFile)
+  if (
+    record.userId &&
+    !hasOtherActiveSessionForUser(record.userId, record.sessionId)
+  ) {
+    void releaseUserSandbox(record.userId)
+  }
+  void record.runtime.dispose()
+}
+
 export async function queuePromptOnActiveSession(
   metadata: ChatRuntimeMetadata,
   prompt: string,
@@ -180,7 +223,9 @@ export async function createPiRuntime(
 
   const services = await createSessionServices(context)
   const requestDiagnostics = collectDiagnostics(services)
-  const sessionDir = getSessionDir(context.projectRoot, services)
+  const sessionDir = getSessionDir(context.projectRoot, services, {
+    userId: metadata.userId,
+  })
   const mayReuseRuntime =
     !metadata.sessionFile ||
     isUsableSessionFile(metadata.sessionFile, sessionDir)
@@ -215,7 +260,8 @@ export async function createPiRuntime(
   const { sessionManager, sessionReset } = await createSessionManager(
     metadata,
     context.projectRoot,
-    sessionDir
+    sessionDir,
+    { userId: metadata.userId }
   )
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd,
@@ -420,16 +466,7 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
         return
       }
 
-      clearPlanModeSession(record.sessionId)
-      deleteActiveSessionRecord(record.sessionId)
-      untrackDaytonaToolSession(record.sessionId, record.sessionFile)
-      if (
-        record.userId &&
-        !hasOtherActiveSessionForUser(record.userId, record.sessionId)
-      ) {
-        void releaseUserSandbox(record.userId)
-      }
-      void current.runtime.dispose()
+      disposeRuntimeRecord(record)
     },
     Math.max(0, RUNTIME_TTL_MS)
   )

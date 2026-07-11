@@ -16,6 +16,8 @@
     "build": "turbo build",
     "auth:migrate": "pnpm --filter web auth:migrate",
     "chat:migrate": "pnpm --filter web chat:migrate",
+    "verify-deployment-readiness": "pnpm --filter web verify-deployment-readiness",
+    "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
     "dev": "turbo dev --filter=web",
     "lint": "turbo lint",
     "format": "turbo format",

@@ -5,24 +5,16 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { Pool } from "@neondatabase/serverless"
 import Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
-
-const PRODUCTION_AUTH_URL = "https://fleet-pi-web.vercel.app"
-const LOCAL_AUTH_URL = "http://localhost:3000"
-const LOCAL_TRUSTED_ORIGINS = [
+import {
   LOCAL_AUTH_URL,
-  "http://localhost:3001",
-  "http://localhost:3002",
-]
-const VERCEL_AUTH_HOSTS = [
-  "fleet-pi-web.vercel.app",
-  "fleet-pi-web-qredence.vercel.app",
-  "fleet-pi-web-git-main-qredence.vercel.app",
-  "*.vercel.app",
-]
-
-function isVercelRuntime() {
-  return process.env.VERCEL === "1"
-}
+  PRODUCTION_AUTH_URL,
+  resolvePreviewAuthOrigin,
+  resolveTrustedOriginsForDeployment,
+  resolveVercelAllowedHosts,
+} from "@/lib/auth/auth-host-policy"
+import { assertDeploymentReadyOnBoot } from "@/lib/deployment/boot-check"
+import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isVercelPreviewDeployment } from "@/lib/deployment/trust-zone"
 
 function readCsvEnv(name: string) {
   return (process.env[name] ?? "")
@@ -33,28 +25,16 @@ function readCsvEnv(name: string) {
 
 function requiredVercelEnv(name: string) {
   const value = process.env[name]?.trim()
-  if (!value && isVercelRuntime()) {
+  if (!value && isVercelDeployment()) {
     throw new Error(`${name} is required for Better Auth on Vercel.`)
   }
   return value
 }
 
-function toHost(value: string) {
-  try {
-    return new URL(value).host
-  } catch {
-    return value.replace(/^https?:\/\//, "").split("/")[0]
-  }
-}
-
-function unique(values: Array<string | undefined>) {
-  return [...new Set(values.filter(Boolean) as Array<string>)]
-}
-
 function openAuthDatabase() {
   const url = process.env.FLEET_PI_AUTH_DATABASE_URL?.trim()
   if (url) return new Pool({ connectionString: url })
-  if (isVercelRuntime()) {
+  if (isVercelDeployment()) {
     throw new Error(
       "FLEET_PI_AUTH_DATABASE_URL is required for Better Auth on Vercel."
     )
@@ -121,35 +101,34 @@ function migrateAuthSchema(db: InstanceType<typeof Database>) {
 
 function resolveAuthBaseURL() {
   const configuredBaseURL = process.env.BETTER_AUTH_URL?.trim()
-  if (!isVercelRuntime()) return configuredBaseURL ?? LOCAL_AUTH_URL
+  const vercelUrl = process.env.VERCEL_URL?.trim()
+  if (!isVercelDeployment()) return configuredBaseURL ?? LOCAL_AUTH_URL
+
+  const previewFallback = resolvePreviewAuthOrigin({
+    betterAuthUrl: configuredBaseURL,
+    vercelUrl,
+  })
 
   return {
-    allowedHosts: unique([
-      configuredBaseURL ? toHost(configuredBaseURL) : undefined,
-      ...VERCEL_AUTH_HOSTS,
-    ]),
+    allowedHosts: resolveVercelAllowedHosts(configuredBaseURL, vercelUrl),
     protocol: "https" as const,
-    fallback: configuredBaseURL ?? PRODUCTION_AUTH_URL,
+    fallback: isVercelPreviewDeployment()
+      ? (previewFallback ?? PRODUCTION_AUTH_URL)
+      : (configuredBaseURL ?? PRODUCTION_AUTH_URL),
   }
 }
 
 function resolveTrustedOrigins() {
-  const configuredOrigins = readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS")
-  if (configuredOrigins.length > 0) return configuredOrigins
-  if (!isVercelRuntime()) {
-    return unique([
-      process.env.BETTER_AUTH_URL?.trim(),
-      ...LOCAL_TRUSTED_ORIGINS,
-    ])
-  }
-
-  return [
-    PRODUCTION_AUTH_URL,
-    "https://fleet-pi-web-qredence.vercel.app",
-    "https://fleet-pi-web-git-main-qredence.vercel.app",
-    "https://*.vercel.app",
-  ]
+  return resolveTrustedOriginsForDeployment({
+    isVercel: isVercelDeployment(),
+    isPreview: isVercelPreviewDeployment(),
+    configuredOrigins: readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS"),
+    betterAuthUrl: process.env.BETTER_AUTH_URL?.trim(),
+    vercelUrl: process.env.VERCEL_URL?.trim(),
+  })
 }
+
+assertDeploymentReadyOnBoot()
 
 const betterAuthSecret = requiredVercelEnv("BETTER_AUTH_SECRET")
 const authSecret =

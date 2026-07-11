@@ -227,6 +227,68 @@ Hydrate a chat session by query parameters
 
 ---
 
+## DELETE /api/chat/session
+
+Delete an owned Pi session mirror row and ephemeral JSONL
+
+### Parameters
+
+| Name          | In    | Required | Description       |
+| ------------- | ----- | -------- | ----------------- |
+| `sessionFile` | query | No       | Session file path |
+| `sessionId`   | query | No       | Session ID        |
+
+### Responses
+
+- **200** — Session deleted
+  ```json
+  {
+    "ok": <boolean> (required),
+    "sessionId": <string>,
+    "sessionFile": <string>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **404** — Session not found or not owned
+  ```json
+  {
+    "ok": <boolean> (required),
+    "reason": <string> (required)
+  }
+  ```
+
+---
+
+## DELETE /api/chat/account
+
+Erase mirrored Pi sessions and BYOK provider credentials for the signed-in user
+
+### Responses
+
+- **200** — Mirrored Pi data erased
+  ```json
+  {
+    "ok": <boolean> (required),
+    "scope": <string> (required),
+    "message": <string> (required),
+    "erasedSessions": <number> (required),
+    "erasedProviders": <number> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
 ## GET /api/chat/sessions
 
 List all chat sessions

@@ -166,6 +166,7 @@ export function createRunProvenanceRecorder(
               mode: options.mode,
               planAction: options.planAction,
               startedAt,
+              userId: options.userId,
             }),
           options.userId
         )
