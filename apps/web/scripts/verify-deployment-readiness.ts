@@ -7,11 +7,9 @@ import {
 } from "../src/lib/db/chat-postgres-schema"
 import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../src/lib/db/chat-postgres-rls-strict"
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-ownership"
-import {
-  validateDeploymentReadiness,
-  type DeploymentReadinessInput,
-} from "../src/lib/deployment/readiness"
+import { validateDeploymentReadiness } from "../src/lib/deployment/readiness"
 import { resolveDeploymentTrustZone } from "../src/lib/deployment/trust-zone"
+import type { DeploymentReadinessInput } from "../src/lib/deployment/readiness"
 
 const cwd = process.cwd()
 dotenv.config({ path: path.resolve(cwd, ".env") })
