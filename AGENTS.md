@@ -125,21 +125,21 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Prefer `bg-sidebar` for inactive header pills and floating panel launcher buttons; use pill-shaped rounding (`rounded-full` / `rounded-[100px]`) for header controls and InputBar mode/model selectors.
 - Avoid inline `style` props in Fleet Pi UI; prefer Tailwind utilities, `cva`, co-located component CSS, or shared hax-design tokens.
 - Keep inline `DiscreteTabs` in the chat header when panels are open; stack the header above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`) and align tabs with chrome pill tokens (`DISCRETE_TAB_ACTIVE_CLASS` / `DISCRETE_TAB_INACTIVE_CLASS`) at compact sizing (12px labels, 14px icons).
-- Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` over duplicating long inline Tailwind class strings.
+- Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` (especially `ItemRow` variants) over nested card stacks or duplicated Tailwind class strings in Settings lists.
 - Avoid generic AI SaaS aesthetics (cream backgrounds, gradient heroes, card grids) and heavy IDE-style dense toolbars unless explicitly requested.
 - Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
-- Make Settings dialog main content vertically scrollable; use single-column layout for LLM Provider credential cards.
-- Use Playwright `testInfo.outputPath()` for E2E screenshots and artifacts instead of hardcoded machine-specific paths.
-- Put newly added test files in a dedicated test directory for the module or area, such as `__tests__/`, instead of scattering new colocated test files.
+- Settings dialog should follow shadcn sidebar-13: icon+label nav only (no subtitles), scrollable main pane, single-column credential cards, and proper base Input/Select usage—keep panes simple rather than over-wrapped surfaces.
+- InputBar slash-command suggestions must be scrollable and arrow-key navigable.
+- Use Playwright `testInfo.outputPath()` for E2E screenshots and artifacts instead of hardcoded machine-specific paths; put new tests under dedicated `__tests__/` directories rather than scattering colocated test files.
 
 ## Learned Workspace Facts
 
 - Neon user-scoped RLS applies to `pi_*` mirror tables via `app.current_user_id`; Better Auth tables (`user`, `session`, `account`, `verification`) must not use RLS—`pnpm auth:migrate` chains `auth-post-migrate.ts` to disable RLS and grant `fleet_pi_app` DML.
-- Use Daytona to provision secure, isolated sandbox volumes for each user's Workspace sidepanel.
+- Daytona provisions per-user sandboxes whose persistent volume mirrors `agent-workspace/` (sparse-seeded from git, not the full repo), with per-user provider API keys and OAuth subscription tokens injected into the sandbox environment.
 - On Vercel (`VERCEL=1`), session-scoped chat endpoints require Better Auth: `/api/chat`, `/api/chat/session`, `/api/chat/resume`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, and `PATCH /api/chat/settings`. Local dev keeps anonymous chat on routes that do not mutate shared session state. Mirror ownership uses `fleet_pi_check_session_owner` (SECURITY DEFINER) so RLS cannot hide foreign-owned rows; run `pnpm chat:migrate` after deploy when the ownership probe migration changes.
 - Chat shell layout utilities and constants (`layout-constants.ts`, `canvas-utils.ts`, breakpoint 960px, 70% default panel width) live in `packages/hax-design`.
 - OpenUI components and registry code belong under `packages/hax-design/src/components/openui/`; files inside `packages/hax-design` must use relative imports and apps import via `@workspace/hax-design/*`.
-- Pi settings, appearance, and LLM provider credentials live in the Settings dialog (Account menu); the right panel is Workspace, Pi Resources, and Artifacts only.
+- Appearance, Sandbox, Providers, LLM Models, and Skills live in the Settings dialog (Account menu); the right panel is Workspace, Pi Resources, and Artifacts only. Chat slash/package commands go through `/api/chat/commands` and the InputBar suggestion list.
 - `PRODUCT.md`, `DESIGN.md`, `packages/hax-design/ARCHITECTURE.md`, and Fleet Pi building blocks under `fleet-pi/{layout,chat,pi,primitives,styles}/` are canonical UI design context; semantic tokens live in `fleet-pi/styles/tokens.ts`.
 - Pi provider catalog and metadata live in `packages/hax-design/src/lib/pi/provider-catalog.ts`; canonical Google provider id is `google` (not `google-genai`) and reads `GEMINI_API_KEY`. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are for Better Auth login, not LLM calls. Dev server loads repo-root `.env` then `.env.local` with override; Settings dialog provider credentials persist to `.env.local`. PostHog funnel telemetry lives in `apps/web/src/lib/analytics/posthog.ts`; install product analytics (PostHog wizard) in `apps/web`, not the monorepo root.
 - Right panel includes an Artifacts tab scoped to `agent-workspace/artifacts/` via the workspace tree API; Workspace and Artifacts share `selectedWorkspacePath` and `workspace-panel` clears selections outside each panel's `scopePath`.

@@ -1,140 +1,109 @@
-import { Cpu } from "lucide-react"
-import { Select } from "../../../../select"
-import { FIELD_CONTROL_CLASS, THINKING_LEVELS } from "../shared/constants"
+import { Search } from "lucide-react"
 import {
-  ConfigurationSection,
-  EditableSection,
-  FieldLabel,
-} from "../shared/fields"
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "../../../../input-group"
+import { Switch } from "../../../../switch"
+import { ItemRow } from "../../../primitives/item-row"
 import {
-  CustomModelEditor,
-  DefaultModelSummary,
-  ModelActivationList,
-  ProviderManagementList,
-} from "../shared/lists"
-import type {
-  ChatPiSettings,
-  ChatThinkingLevel,
-} from "../../../../../lib/pi/chat-protocol"
-import type { ConfigModelInfo, ProviderSummary } from "../shared/types"
+  SettingsCommitActions,
+  SettingsPane,
+} from "../../../primitives/settings-pane"
+import { isModelEnabled } from "../shared/model-patterns"
+import {
+  ProviderBrandIcon,
+  formatProviderLabel,
+} from "../shared/provider-brand-icon"
+import type { ChatPiSettings } from "../../../../../lib/pi/chat-protocol"
+import type { ConfigModelInfo } from "../shared/types"
 
 export function ModelDefaultsSection({
-  customModel,
-  customProvider,
   draft,
   modelDirty,
   modelFilter,
   modelOptions,
-  modelSelectValue,
-  onConnectProvider,
-  onCustomModelChange,
-  onCustomProviderChange,
-  onModelDefault,
   onModelFilterChange,
   onModelToggle,
-  onProviderDefault,
-  onProviderFilterChange,
-  onProviderToggle,
   onRevert,
   onSave,
-  onSetAllModels,
-  onThinkingLevelChange,
-  onUseCustomModel,
-  onUseRecommended,
-  providerFilter,
-  providerOptions,
   saving,
   settingsLoading,
 }: {
-  customModel: string
-  customProvider: string
   draft: ChatPiSettings | null
   modelDirty: boolean
   modelFilter: string
   modelOptions: Array<ConfigModelInfo>
-  modelSelectValue: string
-  onConnectProvider: (provider: string) => void
-  onCustomModelChange: (value: string) => void
-  onCustomProviderChange: (value: string) => void
-  onModelDefault: (model: ConfigModelInfo) => void
   onModelFilterChange: (value: string) => void
   onModelToggle: (model: ConfigModelInfo, enabled: boolean) => void
-  onProviderDefault: (provider: string) => void
-  onProviderFilterChange: (value: string) => void
-  onProviderToggle: (provider: string, enabled: boolean) => void
   onRevert: () => void
   onSave: () => void
-  onSetAllModels: (enabled: boolean) => void
-  onThinkingLevelChange: (level: ChatThinkingLevel) => void
-  onUseCustomModel: () => void
-  onUseRecommended: () => void
-  providerFilter: string
-  providerOptions: Array<ProviderSummary>
   saving: boolean
   settingsLoading: boolean
 }) {
+  const disabled = !draft || settingsLoading
+  const normalizedFilter = modelFilter.trim().toLowerCase()
+  const visibleModels = modelOptions.filter((model) => {
+    if (!normalizedFilter) return true
+    return [model.name, model.modelId, model.provider, model.id]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedFilter)
+  })
+
   return (
-    <ConfigurationSection icon={Cpu} label="Model Defaults">
-      <EditableSection
-        dirty={modelDirty}
-        disabled={!draft || settingsLoading}
-        onRevert={onRevert}
-        onSave={onSave}
-        saving={saving}
-        title="Providers and models"
-      >
-        <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
-          <DefaultModelSummary
-            model={modelOptions.find((item) => item.id === modelSelectValue)}
-            provider={draft?.defaultProvider}
-          />
-          <FieldLabel label="Thinking">
-            <Select
-              aria-label="Thinking level"
-              value={draft?.defaultThinkingLevel ?? ""}
-              disabled={!draft}
-              onValueChange={(nextValue) => {
-                onThinkingLevelChange(nextValue as ChatThinkingLevel)
-              }}
-              className={FIELD_CONTROL_CLASS}
-              options={THINKING_LEVELS.map((level) => ({
-                label: level,
-                value: level,
-              }))}
+    <SettingsPane
+      title="LLM Models"
+      description="Enable models available in chat."
+      actions={
+        <SettingsCommitActions
+          dirty={modelDirty}
+          disabled={disabled}
+          onRevert={onRevert}
+          onSave={onSave}
+          saving={saving}
+        />
+      }
+    >
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label="Search models"
+          value={modelFilter}
+          onChange={(event) => onModelFilterChange(event.target.value)}
+          placeholder="Search models…"
+        />
+      </InputGroup>
+
+      <div className="flex flex-col gap-1.5" data-testid="runtime-models-list">
+        {visibleModels.length === 0 ? (
+          <p className="px-1 py-6 text-center text-xs text-pretty text-muted-foreground">
+            No models match your search.
+          </p>
+        ) : null}
+
+        {visibleModels.map((model) => {
+          const enabled = isModelEnabled(model, draft?.enabledModels)
+          return (
+            <ItemRow
+              key={model.id}
+              icon={<ProviderBrandIcon provider={model.provider} />}
+              title={model.name}
+              subtitle={formatProviderLabel(model.provider)}
+              trailing={
+                <Switch
+                  aria-label={`${enabled ? "Disable" : "Enable"} ${model.name}`}
+                  checked={enabled}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => onModelToggle(model, checked)}
+                />
+              }
             />
-          </FieldLabel>
-        </div>
-        <ProviderManagementList
-          defaultProvider={draft?.defaultProvider}
-          onConnect={onConnectProvider}
-          onDefault={onProviderDefault}
-          onToggle={onProviderToggle}
-          providers={providerOptions}
-        />
-        <CustomModelEditor
-          model={customModel}
-          onModelChange={onCustomModelChange}
-          onUse={onUseCustomModel}
-          onProviderChange={onCustomProviderChange}
-          provider={customProvider}
-          providers={providerOptions.map((item) => item.provider)}
-        />
-        <ModelActivationList
-          defaultModel={draft?.defaultModel}
-          defaultProvider={draft?.defaultProvider}
-          enabledPatterns={draft?.enabledModels}
-          filter={modelFilter}
-          models={modelOptions}
-          onDefault={onModelDefault}
-          onFilterChange={onModelFilterChange}
-          onProviderFilterChange={onProviderFilterChange}
-          onSetAll={onSetAllModels}
-          onToggle={onModelToggle}
-          onUseRecommended={onUseRecommended}
-          providerFilter={providerFilter}
-          providers={providerOptions}
-        />
-      </EditableSection>
-    </ConfigurationSection>
+          )
+        })}
+      </div>
+    </SettingsPane>
   )
 }

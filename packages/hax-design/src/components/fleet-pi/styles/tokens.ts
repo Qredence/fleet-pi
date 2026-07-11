@@ -79,8 +79,8 @@ export const fleetPiRowSurface = cva("flex min-w-0 rounded-[8px] border", {
       lg: "p-2.5",
     },
     interactive: {
-      true: "transition-all duration-200 hover:border-border/45 hover:bg-foreground/2 hover:shadow-sm",
-      lift: "transition-all duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm",
+      true: "transition-[border-color,background-color,box-shadow] duration-200 hover:border-border/45 hover:bg-foreground/2 hover:shadow-sm",
+      lift: "transition-[border-color,background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-border/45 hover:bg-foreground/3.5 hover:shadow-sm",
       false: "",
     },
   },

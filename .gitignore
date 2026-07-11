@@ -78,7 +78,6 @@ tempo/.tempo/
 .agents/skills/visual-plan/references/document-quality.md
 .agents/skills/visual-plan/references/exemplar.md
 .agents/skills/visual-plan/references/wireframe.md
-.agents/skills/wayfinder/SKILL.md
-.agents/skills/writing-great-skills/GLOSSARY.md
-.agents/skills/writing-great-skills/SKILL.md
-.agents/skills/research/SKILL.md
+.agents/skills/migrate-radix-to-base
+.agents/skills/baseline-ui
+.agents/skills/shadcn-ui

@@ -5,12 +5,12 @@ import { Select } from "../../../../select"
 import { Switch } from "../../../../switch"
 import { Badge } from "../../../../badge"
 import { cn } from "../../../../../lib/utils"
+import { ItemRow } from "../../../primitives/item-row"
 import {
   FieldLabel,
   RowSurface,
   SectionSurface,
 } from "../../../primitives/surface"
-import { fleetPiRowSurface } from "../../../styles/tokens"
 import { FIELD_CONTROL_CLASS } from "./constants"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
@@ -163,34 +163,28 @@ export function ToggleField({
   disabled,
   label,
   onChange,
+  subtitle,
 }: {
   checked: boolean
   disabled?: boolean
   label: string
   onChange: (checked: boolean) => void
+  subtitle?: string
 }) {
   return (
-    <label
-      className={cn(
-        fleetPiRowSurface({
-          tone: "default",
-          padding: "md",
-          interactive: true,
-        }),
-        "h-8.5 cursor-pointer items-center justify-between gap-3 bg-background/40 hover:bg-foreground/1.5"
-      )}
-    >
-      <span className="truncate text-[11px] font-semibold text-foreground/65">
-        {label}
-      </span>
-      <Switch
-        aria-label={label}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onChange}
-        className="scale-90"
-      />
-    </label>
+    <ItemRow
+      title={label}
+      subtitle={subtitle}
+      interactive={!disabled}
+      trailing={
+        <Switch
+          aria-label={label}
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={onChange}
+        />
+      }
+    />
   )
 }
 

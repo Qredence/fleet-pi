@@ -18,5 +18,6 @@
   "defaultProvider": "google",
   "defaultModel": "gemini-3.5-flash",
   "defaultThinkingLevel": "high",
-  "enabledModels": ["google/*", "github-copilot/*"]
+  "enabledModels": ["google/*", "github-copilot/*"],
+  "enableSkillCommands": true
 }
