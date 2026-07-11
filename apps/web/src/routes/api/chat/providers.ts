@@ -10,6 +10,7 @@ import { updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
 import { encryptString } from "@/lib/auth/crypto"
 import { upsertUserProviderEncryptedKey } from "@/lib/db/user-providers"
+import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
 import {
   getProviderConfigStatus,
   hotReloadActiveRuntimesForUser,
@@ -91,6 +92,12 @@ export const Route = createFileRoute("/api/chat/providers")({
 
           if (userId) {
             await hotReloadActiveRuntimesForUser(userId)
+            // Best-effort: push updated keys into a live Daytona sandbox.
+            try {
+              await refreshSandboxProviderCredentials(userId)
+            } catch {
+              // Sandbox may be offline or disabled; credentials still saved.
+            }
           } else {
             await hotReloadProviderAuthForActiveRuntimes()
           }
