@@ -146,21 +146,33 @@ export function evictPiRuntimeForDeletedSession(input: {
     })
   if (!active) return
 
-  if (active.disposeTimer) {
-    clearTimeout(active.disposeTimer)
-    active.disposeTimer = undefined
+  disposeRuntimeRecord(active)
+}
+
+export function evictAllPiRuntimesForUser(userId: string) {
+  for (const record of [...runtimeRecords.values()]) {
+    if (record.userId === userId) {
+      disposeRuntimeRecord(record)
+    }
+  }
+}
+
+function disposeRuntimeRecord(record: ActiveSessionRecord) {
+  if (record.disposeTimer) {
+    clearTimeout(record.disposeTimer)
+    record.disposeTimer = undefined
   }
 
-  clearPlanModeSession(active.sessionId)
-  deleteActiveSessionRecord(active.sessionId)
-  untrackDaytonaToolSession(active.sessionId, active.sessionFile)
+  clearPlanModeSession(record.sessionId)
+  deleteActiveSessionRecord(record.sessionId)
+  untrackDaytonaToolSession(record.sessionId, record.sessionFile)
   if (
-    active.userId &&
-    !hasOtherActiveSessionForUser(active.userId, active.sessionId)
+    record.userId &&
+    !hasOtherActiveSessionForUser(record.userId, record.sessionId)
   ) {
-    void releaseUserSandbox(active.userId)
+    void releaseUserSandbox(record.userId)
   }
-  void active.runtime.dispose()
+  void record.runtime.dispose()
 }
 
 export async function queuePromptOnActiveSession(
@@ -454,16 +466,7 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
         return
       }
 
-      clearPlanModeSession(record.sessionId)
-      deleteActiveSessionRecord(record.sessionId)
-      untrackDaytonaToolSession(record.sessionId, record.sessionFile)
-      if (
-        record.userId &&
-        !hasOtherActiveSessionForUser(record.userId, record.sessionId)
-      ) {
-        void releaseUserSandbox(record.userId)
-      }
-      void current.runtime.dispose()
+      disposeRuntimeRecord(record)
     },
     Math.max(0, RUNTIME_TTL_MS)
   )

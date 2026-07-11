@@ -27,11 +27,25 @@ export function uniqueHosts(values: Array<string | undefined>) {
   return [...new Set(values.filter(Boolean) as Array<string>)]
 }
 
-export function resolveVercelAllowedHosts(configuredBaseURL?: string) {
+export function resolveVercelAllowedHosts(
+  configuredBaseURL?: string,
+  vercelUrl?: string
+) {
   return uniqueHosts([
     configuredBaseURL ? toAuthHost(configuredBaseURL) : undefined,
+    vercelUrl ? toAuthHost(`https://${vercelUrl}`) : undefined,
     ...VERCEL_AUTH_HOSTS,
   ])
+}
+
+export function resolvePreviewAuthOrigin(input: {
+  betterAuthUrl?: string
+  vercelUrl?: string
+}) {
+  return (
+    input.betterAuthUrl ??
+    (input.vercelUrl ? `https://${input.vercelUrl}` : undefined)
+  )
 }
 
 export function resolveTrustedOriginsForDeployment(input: {
@@ -50,9 +64,10 @@ export function resolveTrustedOriginsForDeployment(input: {
   }
 
   if (input.isPreview) {
-    const previewOrigin =
-      input.betterAuthUrl ??
-      (input.vercelUrl ? `https://${input.vercelUrl}` : undefined)
+    const previewOrigin = resolvePreviewAuthOrigin({
+      betterAuthUrl: input.betterAuthUrl,
+      vercelUrl: input.vercelUrl,
+    })
     if (!previewOrigin) {
       throw new Error(
         "BETTER_AUTH_URL is required for Preview deployments. Set BETTER_AUTH_TRUSTED_ORIGINS to the preview origin."

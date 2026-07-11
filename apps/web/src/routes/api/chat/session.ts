@@ -69,7 +69,9 @@ export const Route = createFileRoute("/api/chat/session")({
                   ? 501
                   : result.reason === "session-not-owned-or-missing"
                     ? 404
-                    : 500
+                    : result.reason === "mirror-unavailable"
+                      ? 503
+                      : 500
 
               return Response.json(
                 {

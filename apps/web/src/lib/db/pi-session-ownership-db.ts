@@ -1,5 +1,5 @@
 import { existsSync, statSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { resolve } from "node:path"
 import { Pool } from "@neondatabase/serverless"
 import {
   isVercelDeployment,
@@ -7,6 +7,7 @@ import {
 } from "../deployment/environment"
 import { requiresAuthenticatedMirrorOwner } from "../deployment/trust-zone"
 import { logger } from "../logger"
+import { resolveVercelUserSessionDir } from "../pi/session-paths"
 import {
   isSessionAccessAllowed,
   isSessionOwnershipStatus,
@@ -104,7 +105,7 @@ export function isUserScopedEphemeralSessionFile(
   if (!isVercelDeployment()) return false
 
   const normalized = resolve(sessionFile)
-  const userPrefix = join("/tmp/.fleet/sessions", userId)
+  const userPrefix = resolveVercelUserSessionDir(userId)
   if (normalized === userPrefix || !normalized.startsWith(`${userPrefix}/`)) {
     return false
   }

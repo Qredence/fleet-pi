@@ -8,6 +8,7 @@ import { getDefaultProjectRoot } from "@/lib/app-runtime"
 import {
   LOCAL_AUTH_URL,
   PRODUCTION_AUTH_URL,
+  resolvePreviewAuthOrigin,
   resolveTrustedOriginsForDeployment,
   resolveVercelAllowedHosts,
 } from "@/lib/auth/auth-host-policy"
@@ -100,12 +101,20 @@ function migrateAuthSchema(db: InstanceType<typeof Database>) {
 
 function resolveAuthBaseURL() {
   const configuredBaseURL = process.env.BETTER_AUTH_URL?.trim()
+  const vercelUrl = process.env.VERCEL_URL?.trim()
   if (!isVercelDeployment()) return configuredBaseURL ?? LOCAL_AUTH_URL
 
+  const previewFallback = resolvePreviewAuthOrigin({
+    betterAuthUrl: configuredBaseURL,
+    vercelUrl,
+  })
+
   return {
-    allowedHosts: resolveVercelAllowedHosts(configuredBaseURL),
+    allowedHosts: resolveVercelAllowedHosts(configuredBaseURL, vercelUrl),
     protocol: "https" as const,
-    fallback: configuredBaseURL ?? PRODUCTION_AUTH_URL,
+    fallback: isVercelPreviewDeployment()
+      ? (previewFallback ?? PRODUCTION_AUTH_URL)
+      : (configuredBaseURL ?? PRODUCTION_AUTH_URL),
   }
 }
 

@@ -1,6 +1,9 @@
 import { unlinkSync } from "node:fs"
 import { logger } from "../logger"
-import { evictPiRuntimeForDeletedSession } from "../pi/server-runtime"
+import {
+  evictAllPiRuntimesForUser,
+  evictPiRuntimeForDeletedSession,
+} from "../pi/server-runtime"
 import {
   getChatPostgresPool,
   isPiSessionMirrorEnabled,
@@ -19,6 +22,30 @@ export type SessionDeletionResult = {
 export type UserPiDataEraseResult =
   | { ok: true; erasedSessions: number; erasedProviders: number }
   | { ok: false; reason: string }
+
+type DeletedSessionRow = {
+  id: string
+  session_file_path: string
+}
+
+function finalizeLocalSessionCleanup(input: {
+  userId: string
+  sessions: Array<DeletedSessionRow>
+}) {
+  for (const session of input.sessions) {
+    markPiSessionDeleted(session.id)
+    try {
+      unlinkSync(session.session_file_path)
+    } catch {
+      // Ephemeral Vercel JSONL may already be gone.
+    }
+    evictPiRuntimeForDeletedSession({
+      sessionId: session.id,
+      sessionFile: session.session_file_path,
+      userId: input.userId,
+    })
+  }
+}
 
 export async function deleteOwnedPiSession(input: {
   sessionId?: string
@@ -43,24 +70,28 @@ export async function deleteOwnedPiSession(input: {
       return { deleted: false, reason: "session-not-owned-or-missing" }
     }
 
+    markPiSessionDeleted(resolved.id)
+
     await withUserContext(pool, input.userId, async (client) => {
+      await client.query(
+        `
+          INSERT INTO pi_session_tombstones (session_id, user_id)
+          VALUES ($1, $2)
+          ON CONFLICT (session_id) DO NOTHING
+        `,
+        [resolved.id, input.userId]
+      )
       await client.query(
         "DELETE FROM pi_sessions WHERE id = $1 AND user_id = $2",
         [resolved.id, input.userId]
       )
     })
 
-    try {
-      unlinkSync(resolved.session_file_path)
-    } catch {
-      // Ephemeral Vercel JSONL may already be gone.
-    }
-
-    markPiSessionDeleted(resolved.id)
-    evictPiRuntimeForDeletedSession({
-      sessionId: resolved.id,
-      sessionFile: resolved.session_file_path,
+    finalizeLocalSessionCleanup({
       userId: input.userId,
+      sessions: [
+        { id: resolved.id, session_file_path: resolved.session_file_path },
+      ],
     })
 
     logger.info(
@@ -98,12 +129,21 @@ export async function eraseUserPiData(
     const erased = await withUserContext(pool, userId, async (client) => {
       await client.query("BEGIN")
       try {
-        const sessions = await client.query<{
-          id: string
-          session_file_path: string
-        }>("SELECT id, session_file_path FROM pi_sessions WHERE user_id = $1", [
-          userId,
-        ])
+        const sessions = await client.query<DeletedSessionRow>(
+          "SELECT id, session_file_path FROM pi_sessions WHERE user_id = $1",
+          [userId]
+        )
+
+        await client.query(
+          `
+            INSERT INTO pi_session_tombstones (session_id, user_id)
+            SELECT id, user_id
+            FROM pi_sessions
+            WHERE user_id = $1
+            ON CONFLICT (session_id) DO NOTHING
+          `,
+          [userId]
+        )
 
         await client.query("DELETE FROM pi_sessions WHERE user_id = $1", [
           userId,
@@ -115,15 +155,8 @@ export async function eraseUserPiData(
 
         await client.query("COMMIT")
 
-        for (const row of sessions.rows) {
-          try {
-            unlinkSync(row.session_file_path)
-          } catch {
-            // ignore missing ephemeral files
-          }
-        }
-
         return {
+          sessions: sessions.rows,
           erasedSessions: sessions.rows.length,
           erasedProviders: providers.rows.length,
         }
@@ -133,7 +166,17 @@ export async function eraseUserPiData(
       }
     })
 
-    return { ok: true, ...erased }
+    finalizeLocalSessionCleanup({
+      userId,
+      sessions: erased.sessions,
+    })
+    evictAllPiRuntimesForUser(userId)
+
+    return {
+      ok: true,
+      erasedSessions: erased.erasedSessions,
+      erasedProviders: erased.erasedProviders,
+    }
   } catch (error) {
     logger.warn(
       { error, userId },

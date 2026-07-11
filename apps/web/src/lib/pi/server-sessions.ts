@@ -20,9 +20,9 @@ import type {
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
+import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import {
   fetchUserSessionIds,
-  isPiSessionMirrorEnabled,
   syncPiSessionMirrorSafely,
 } from "@/lib/db/pi-session-mirror"
 

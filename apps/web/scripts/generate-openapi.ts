@@ -189,8 +189,19 @@ registry.registerPath({
         },
       },
     },
+    503: {
+      description: "Session mirror is temporarily unavailable",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(false),
+            reason: z.string(),
+          }),
+        },
+      },
+    },
     500: {
-      description: "Delete failed or mirror unavailable",
+      description: "Delete failed",
       content: {
         "application/json": {
           schema: z.object({

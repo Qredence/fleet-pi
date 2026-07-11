@@ -2,6 +2,7 @@ import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../db/auth-postgres-post-migrate
 import { CHAT_POSTGRES_MIGRATION_ID } from "../db/chat-postgres-schema"
 import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../db/chat-postgres-rls-strict"
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../db/chat-postgres-session-ownership"
+import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgres-session-tombstones"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
@@ -31,6 +32,7 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
   CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
+  CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
 ] as const
 
 function readEnv(name: string, env: NodeJS.ProcessEnv) {
@@ -63,6 +65,21 @@ export function validateDeploymentReadiness(
 
   for (const name of REQUIRED_VERCEL_ENV_VARS) {
     const value = readEnv(name, env)
+    if (name === "BETTER_AUTH_URL" && trustZone === "vercel-preview") {
+      const vercelUrl = readEnv("VERCEL_URL", env)
+      const ok = value.length > 0 || vercelUrl.length > 0
+      push(
+        `env:${name}`,
+        ok,
+        ok
+          ? value.length > 0
+            ? `${name} is set.`
+            : `${name} falls back to VERCEL_URL on Preview.`
+          : `${name} or VERCEL_URL is required on Preview.`
+      )
+      continue
+    }
+
     push(
       `env:${name}`,
       value.length > 0,

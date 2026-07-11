@@ -1,11 +1,15 @@
 import { mkdirSync, realpathSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { resolve } from "node:path"
 import { createSessionServices } from "./runtime/session-factory"
 import { DEFAULT_MODEL } from "./runtime/types"
 import {
   collectDiagnostics,
   resolveDefaultModelSelection,
 } from "./runtime/diagnostics"
+import {
+  VERCEL_EPHEMERAL_SESSION_BASE,
+  resolveVercelUserSessionDir,
+} from "./session-paths"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 
@@ -31,8 +35,9 @@ export function getSessionDir(
   options: { userId?: string } = {}
 ) {
   if (isVercelDeployment()) {
-    const baseDir = "/tmp/.fleet/sessions"
-    const sessionDir = options.userId ? join(baseDir, options.userId) : baseDir
+    const sessionDir = options.userId
+      ? resolveVercelUserSessionDir(options.userId)
+      : VERCEL_EPHEMERAL_SESSION_BASE
     mkdirSync(sessionDir, { recursive: true })
     return sessionDir
   }

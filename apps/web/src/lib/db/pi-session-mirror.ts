@@ -23,14 +23,6 @@ import type {
 import type { ProvenanceMutationKind } from "./workspace-provenance"
 
 export type { PostgresQueryClient } from "./pi-session-ownership-db"
-export {
-  isPiSessionMirrorEnabled,
-  lookupSessionIdBySessionFile,
-  lookupSessionOwnershipStatus,
-  verifyRunOwnership,
-  verifySessionOwnership,
-  withUserContext,
-} from "./pi-session-ownership-db"
 
 export type PiSessionMirrorInput = {
   id: string

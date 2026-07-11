@@ -56,6 +56,7 @@ describe("isSessionAccessAllowed", () => {
   it("denies foreign and orphan sessions", () => {
     expect(isSessionAccessAllowed("foreign")).toBe(false)
     expect(isSessionAccessAllowed("orphan")).toBe(false)
+    expect(isSessionAccessAllowed("deleted")).toBe(false)
   })
 })
 
@@ -65,6 +66,7 @@ describe("isSessionOwnershipStatus", () => {
     expect(isSessionOwnershipStatus("foreign")).toBe(true)
     expect(isSessionOwnershipStatus("missing")).toBe(true)
     expect(isSessionOwnershipStatus("orphan")).toBe(true)
+    expect(isSessionOwnershipStatus("deleted")).toBe(true)
     expect(isSessionOwnershipStatus("unknown")).toBe(false)
   })
 })

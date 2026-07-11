@@ -1,6 +1,6 @@
 import path from "node:path"
 import dotenv from "dotenv"
-import { Pool  } from "@neondatabase/serverless"
+import { Pool } from "@neondatabase/serverless"
 import {
   CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
   CHAT_POSTGRES_RLS_STRICT_SQL,
@@ -10,10 +10,14 @@ import {
   CHAT_POSTGRES_SESSION_OWNERSHIP_SQL,
 } from "../src/lib/db/chat-postgres-session-ownership"
 import {
+  CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
+  CHAT_POSTGRES_SESSION_TOMBSTONES_SQL,
+} from "../src/lib/db/chat-postgres-session-tombstones"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
-import type {PoolClient} from "@neondatabase/serverless";
+import type { PoolClient } from "@neondatabase/serverless"
 
 const cwd = process.cwd()
 dotenv.config({ path: path.resolve(cwd, ".env") })
@@ -83,6 +87,11 @@ async function main() {
       client,
       CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
       CHAT_POSTGRES_SESSION_OWNERSHIP_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
+      CHAT_POSTGRES_SESSION_TOMBSTONES_SQL
     )
 
     await client.query("COMMIT")

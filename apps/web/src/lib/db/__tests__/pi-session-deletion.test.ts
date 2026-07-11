@@ -34,6 +34,7 @@ vi.mock("../pi-session-ownership-db", async (importOriginal) => {
 
 vi.mock("@/lib/pi/server-runtime", () => ({
   evictPiRuntimeForDeletedSession: vi.fn(),
+  evictAllPiRuntimesForUser: vi.fn(),
 }))
 
 describe("pi-session-deletion", () => {
@@ -59,7 +60,9 @@ describe("pi-session-deletion", () => {
       id: "session-1",
       session_file_path: "/tmp/session-1.jsonl",
     } as never)
-    poolQuery.mockResolvedValueOnce({ rows: [] })
+    poolQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
 
     const result = await deleteOwnedPiSession({
       sessionId: "session-1",
@@ -67,6 +70,10 @@ describe("pi-session-deletion", () => {
     })
 
     expect(result.deleted).toBe(true)
+    expect(poolQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO pi_session_tombstones"),
+      ["session-1", "user-1"]
+    )
     expect(poolQuery).toHaveBeenCalledWith(
       "DELETE FROM pi_sessions WHERE id = $1 AND user_id = $2",
       ["session-1", "user-1"]
@@ -79,6 +86,7 @@ describe("pi-session-deletion", () => {
       .mockResolvedValueOnce({
         rows: [{ id: "session-1", session_file_path: "/tmp/session-1.jsonl" }],
       })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: "provider-1" }] })
       .mockResolvedValueOnce({ rows: [] })

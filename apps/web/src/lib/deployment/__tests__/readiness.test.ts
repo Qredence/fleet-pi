@@ -65,11 +65,43 @@ describe("validateDeploymentReadiness", () => {
         "20260614_pi_session_mirror_all_rls",
         "20260709_pi_sessions_rls_strict",
         "20260710_pi_session_ownership_probe",
+        "20260711_pi_session_tombstones",
       ],
       piSessionsRlsEnabled: true,
       ownershipProbePresent: true,
     })
 
+    expect(result.ok).toBe(true)
+  })
+
+  it("accepts VERCEL_URL as preview auth URL fallback", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "vercel-preview",
+      env: {
+        BETTER_AUTH_SECRET: "secret",
+        VERCEL_URL: "fleet-pi-web-git-branch-qredence.vercel.app",
+        FLEET_PI_AUTH_DATABASE_URL: "postgres://preview-neon-host/preview-auth",
+        FLEET_PI_CHAT_DATABASE_URL: "postgres://preview-neon-host/preview-chat",
+        BETTER_AUTH_TRUSTED_ORIGINS:
+          "https://fleet-pi-web-git-branch-qredence.vercel.app",
+        FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
+        FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
+        FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
+      },
+      authTablesRlsDisabled: true,
+      chatMigrationsApplied: [
+        "20260614_pi_session_mirror_all_rls",
+        "20260709_pi_sessions_rls_strict",
+        "20260710_pi_session_ownership_probe",
+        "20260711_pi_session_tombstones",
+      ],
+      piSessionsRlsEnabled: true,
+      ownershipProbePresent: true,
+    })
+
+    expect(
+      result.checks.find((check) => check.id === "env:BETTER_AUTH_URL")?.ok
+    ).toBe(true)
     expect(result.ok).toBe(true)
   })
 

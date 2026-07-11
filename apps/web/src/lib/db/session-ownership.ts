@@ -2,7 +2,8 @@ export type SessionOwnershipRow = {
   user_id: string | null
 }
 
-export type SessionOwnershipStatus = "owned" | "foreign" | "missing" | "orphan"
+export type SessionOwnershipStatus =
+  "owned" | "foreign" | "missing" | "orphan" | "deleted"
 
 /**
  * Resolves mirror-backed session ownership for an authenticated user.
@@ -43,6 +44,7 @@ export function isSessionAccessAllowed(
       return !options.denyMissing
     case "foreign":
     case "orphan":
+    case "deleted":
       return false
     default: {
       const exhaustive: never = status
@@ -58,6 +60,7 @@ export function isSessionOwnershipStatus(
     value === "owned" ||
     value === "foreign" ||
     value === "missing" ||
-    value === "orphan"
+    value === "orphan" ||
+    value === "deleted"
   )
 }

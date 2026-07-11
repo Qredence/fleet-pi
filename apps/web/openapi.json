@@ -1285,7 +1285,7 @@
             }
           },
           "500": {
-            "description": "Delete failed or mirror unavailable",
+            "description": "Delete failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -1306,6 +1306,26 @@
           },
           "501": {
             "description": "Session mirror is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok", "reason"]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Session mirror is temporarily unavailable",
             "content": {
               "application/json": {
                 "schema": {

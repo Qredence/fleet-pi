@@ -92,6 +92,18 @@ describe("pi-session-ownership-db", () => {
     ).resolves.toBe(true)
   })
 
+  it("verifySessionOwnership denies deleted mirror rows even when JSONL exists", async () => {
+    process.env.VERCEL = "1"
+    existsSync.mockReturnValue(true)
+    poolQuery.mockResolvedValueOnce({ rows: [{ status: "deleted" }] })
+
+    await expect(
+      verifySessionOwnership("session-1", "user-1", {
+        sessionFile: "/tmp/.fleet/sessions/user-1/session.jsonl",
+      })
+    ).resolves.toBe(false)
+  })
+
   it("isUserScopedEphemeralSessionFile rejects paths outside the user session dir", () => {
     expect(
       isUserScopedEphemeralSessionFile(
