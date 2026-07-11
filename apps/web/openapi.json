@@ -1247,8 +1247,65 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: session belongs to another user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Session not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok", "reason"]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Delete failed or mirror unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok", "reason"]
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Session mirror is disabled",
             "content": {
               "application/json": {
                 "schema": {
@@ -1323,6 +1380,29 @@
                   },
                   "required": ["message"],
                   "description": "Error response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to erase mirrored Pi data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["ok", "reason", "message"]
                 }
               }
             }

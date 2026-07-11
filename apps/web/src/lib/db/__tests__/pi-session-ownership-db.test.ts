@@ -18,6 +18,7 @@ const existsSync = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock("node:fs", () => ({
   existsSync,
+  statSync: vi.fn(() => ({ isFile: () => true })),
 }))
 
 vi.mock("@neondatabase/serverless", () => ({
@@ -95,6 +96,22 @@ describe("pi-session-ownership-db", () => {
     expect(
       isUserScopedEphemeralSessionFile(
         "/tmp/.fleet/sessions/other-user/session.jsonl",
+        "user-1"
+      )
+    ).toBe(false)
+  })
+
+  it("isUserScopedEphemeralSessionFile rejects the user session directory itself", () => {
+    expect(
+      isUserScopedEphemeralSessionFile("/tmp/.fleet/sessions/user-1", "user-1")
+    ).toBe(false)
+  })
+
+  it("isUserScopedEphemeralSessionFile rejects non-jsonl paths", () => {
+    existsSync.mockReturnValue(true)
+    expect(
+      isUserScopedEphemeralSessionFile(
+        "/tmp/.fleet/sessions/user-1/notes.txt",
         "user-1"
       )
     ).toBe(false)

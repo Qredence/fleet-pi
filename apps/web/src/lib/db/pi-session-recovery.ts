@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs"
+import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { shouldFailClosedOnMirrorError } from "../deployment/environment"
 import { logger } from "../logger"
 import {
@@ -86,8 +86,7 @@ export async function recoverOwnedSessionFile(input: {
       ...entries.map((entry) => JSON.stringify(entry.raw_entry)),
     ]
 
-    mkdirSync(dirname(targetPath.sessionFile), { recursive: true })
-    writeFileSync(targetPath.sessionFile, `${lines.join("\n")}\n`, "utf8")
+    writeRecoveredSessionFile(targetPath.sessionFile, `${lines.join("\n")}\n`)
 
     logger.info(
       { sessionId: session.id, sessionFile: targetPath.sessionFile },
@@ -138,12 +137,28 @@ function resolveRecoveredSessionPath(
   sessionId: string
 ) {
   const normalizedMirrored = resolve(mirroredPath)
-  const sessionFile = normalizedMirrored.startsWith(sessionDir)
+  const resolvedSessionDir = resolve(sessionDir)
+  const sessionFile = isPathInside(resolvedSessionDir, normalizedMirrored)
     ? normalizedMirrored
-    : join(sessionDir, `${sessionId}.jsonl`)
+    : join(resolvedSessionDir, `${sessionId}.jsonl`)
 
   return {
     sessionFile,
     recoveredFromDisk: existsSync(sessionFile),
+  }
+}
+
+function isPathInside(parent: string, child: string) {
+  const path = relative(parent, child)
+  return path === "" || (!path.startsWith("..") && !isAbsolute(path))
+}
+
+function writeRecoveredSessionFile(sessionFile: string, content: string) {
+  mkdirSync(dirname(sessionFile), { recursive: true })
+  const fd = openSync(sessionFile, "wx")
+  try {
+    writeSync(fd, content, undefined, "utf8")
+  } finally {
+    closeSync(fd)
   }
 }

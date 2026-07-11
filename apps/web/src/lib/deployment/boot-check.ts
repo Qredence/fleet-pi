@@ -3,6 +3,12 @@ import { isVercelDeployment } from "./environment"
 import { validateDeploymentReadiness } from "./readiness"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 
+function isVercelServerlessRuntime() {
+  return Boolean(
+    process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_REGION
+  )
+}
+
 export function formatReadinessFailure(
   checks: Array<{ id: string; message: string }>
 ) {
@@ -15,7 +21,7 @@ export function formatReadinessFailure(
  * `pnpm verify-deployment-readiness` with owner migration URLs.
  */
 export function assertDeploymentReadyOnBoot() {
-  if (!isVercelDeployment()) {
+  if (!isVercelDeployment() || !isVercelServerlessRuntime()) {
     return
   }
 

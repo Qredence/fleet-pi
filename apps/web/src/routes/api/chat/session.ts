@@ -64,12 +64,19 @@ export const Route = createFileRoute("/api/chat/session")({
             })
 
             if (!result.deleted) {
+              const status =
+                result.reason === "mirror-disabled"
+                  ? 501
+                  : result.reason === "session-not-owned-or-missing"
+                    ? 404
+                    : 500
+
               return Response.json(
                 {
                   ok: false,
                   reason: result.reason ?? "delete-failed",
                 },
-                { status: result.reason === "mirror-disabled" ? 501 : 404 }
+                { status }
               )
             }
 

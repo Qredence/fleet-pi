@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, statSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { Pool } from "@neondatabase/serverless"
 import {
@@ -11,6 +11,7 @@ import {
   isSessionAccessAllowed,
   isSessionOwnershipStatus,
 } from "./session-ownership"
+import { isPiSessionDeleted } from "./pi-session-tombstones"
 
 export type PostgresQueryClient = {
   query: <T = Record<string, unknown>>(
@@ -104,10 +105,18 @@ export function isUserScopedEphemeralSessionFile(
 
   const normalized = resolve(sessionFile)
   const userPrefix = join("/tmp/.fleet/sessions", userId)
-  return (
-    (normalized === userPrefix || normalized.startsWith(`${userPrefix}/`)) &&
-    existsSync(normalized)
-  )
+  if (normalized === userPrefix || !normalized.startsWith(`${userPrefix}/`)) {
+    return false
+  }
+  if (!normalized.endsWith(".jsonl")) {
+    return false
+  }
+
+  try {
+    return existsSync(normalized) && statSync(normalized).isFile()
+  } catch {
+    return false
+  }
 }
 
 export async function verifySessionOwnership(
@@ -139,6 +148,7 @@ export async function verifySessionOwnership(
       status === "missing" &&
       failClosedOnError &&
       options.sessionFile &&
+      !isPiSessionDeleted(sessionId) &&
       isUserScopedEphemeralSessionFile(options.sessionFile, userId)
     ) {
       return true

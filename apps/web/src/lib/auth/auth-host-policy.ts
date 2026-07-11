@@ -39,6 +39,7 @@ export function resolveTrustedOriginsForDeployment(input: {
   isPreview: boolean
   configuredOrigins: Array<string>
   betterAuthUrl?: string
+  vercelUrl?: string
 }) {
   if (input.configuredOrigins.length > 0) {
     return input.configuredOrigins
@@ -49,12 +50,15 @@ export function resolveTrustedOriginsForDeployment(input: {
   }
 
   if (input.isPreview) {
-    if (!input.betterAuthUrl) {
+    const previewOrigin =
+      input.betterAuthUrl ??
+      (input.vercelUrl ? `https://${input.vercelUrl}` : undefined)
+    if (!previewOrigin) {
       throw new Error(
         "BETTER_AUTH_URL is required for Preview deployments. Set BETTER_AUTH_TRUSTED_ORIGINS to the preview origin."
       )
     }
-    return [input.betterAuthUrl]
+    return [previewOrigin]
   }
 
   return [

@@ -1,11 +1,13 @@
 import { unlinkSync } from "node:fs"
 import { logger } from "../logger"
+import { evictPiRuntimeForDeletedSession } from "../pi/server-runtime"
 import {
   getChatPostgresPool,
   isPiSessionMirrorEnabled,
   resolveOwnedMirrorSession,
   withUserContext,
 } from "./pi-session-ownership-db"
+import { markPiSessionDeleted } from "./pi-session-tombstones"
 
 export type SessionDeletionResult = {
   deleted: boolean
@@ -53,6 +55,13 @@ export async function deleteOwnedPiSession(input: {
     } catch {
       // Ephemeral Vercel JSONL may already be gone.
     }
+
+    markPiSessionDeleted(resolved.id)
+    evictPiRuntimeForDeletedSession({
+      sessionId: resolved.id,
+      sessionFile: resolved.session_file_path,
+      userId: input.userId,
+    })
 
     logger.info(
       { sessionId: resolved.id, userId: input.userId },

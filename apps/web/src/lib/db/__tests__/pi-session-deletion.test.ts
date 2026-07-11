@@ -32,6 +32,10 @@ vi.mock("../pi-session-ownership-db", async (importOriginal) => {
   }
 })
 
+vi.mock("@/lib/pi/server-runtime", () => ({
+  evictPiRuntimeForDeletedSession: vi.fn(),
+}))
+
 describe("pi-session-deletion", () => {
   const originalChatUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
 

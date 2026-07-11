@@ -8,6 +8,7 @@ import {
   isPiSessionMirrorEnabled,
   withUserContext,
 } from "./pi-session-ownership-db"
+import { isPiSessionDeleted } from "./pi-session-tombstones"
 import type { PostgresQueryClient } from "./pi-session-ownership-db"
 import type {
   SessionEntry,
@@ -143,6 +144,13 @@ export async function syncPiSessionMirror(
   assertMirrorOwnerForPersistence(options.userId)
   const session = extractPiSessionMirrorInput(sessionManager, options)
   if (!session) return
+  if (isPiSessionDeleted(session.id)) {
+    logger.info(
+      { sessionId: session.id },
+      "[pi-session-mirror] skipping sync for deleted session"
+    )
+    return
+  }
 
   await withChatPostgresTransaction(
     (client) => upsertPiSessionMirror(client, session),

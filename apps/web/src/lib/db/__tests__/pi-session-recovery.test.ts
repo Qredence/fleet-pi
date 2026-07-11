@@ -137,4 +137,47 @@ describe("recoverOwnedSessionFile", () => {
     expect(result.recovered).toBe(false)
     expect(result.reason).toBe("session-not-owned-or-missing")
   })
+
+  it("does not trust mirrored paths that only share the sessionDir prefix", async () => {
+    const evilDir = `${sessionDir}-evil`
+    vi.mocked(resolveOwnedMirrorSession).mockResolvedValue({
+      id: "session-1",
+      user_id: "user-1",
+      session_file_path: join(evilDir, "hijack.jsonl"),
+      cwd: "/repo",
+      version: 1,
+      parent_session_file_path: null,
+      name: null,
+    })
+
+    poolQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          entry_id: "entry-1",
+          parent_entry_id: null,
+          raw_entry: {
+            type: "message",
+            id: "entry-1",
+            parentId: null,
+            timestamp: "2026-07-10T12:00:00.000Z",
+            message: {
+              role: "user",
+              content: [{ type: "text", text: "hello" }],
+            },
+          },
+          entry_timestamp: "2026-07-10T12:00:00.000Z",
+        },
+      ],
+    })
+
+    const result = await recoverOwnedSessionFile({
+      sessionId: "session-1",
+      userId: "user-1",
+      sessionDir,
+    })
+
+    expect(result.recovered).toBe(true)
+    expect(result.sessionFile).toBe(join(sessionDir, "session-1.jsonl"))
+    expect(existsSync(join(evilDir, "hijack.jsonl"))).toBe(false)
+  })
 })

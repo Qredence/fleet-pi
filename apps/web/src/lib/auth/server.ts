@@ -115,6 +115,7 @@ function resolveTrustedOrigins() {
     isPreview: isVercelPreviewDeployment(),
     configuredOrigins: readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS"),
     betterAuthUrl: process.env.BETTER_AUTH_URL?.trim(),
+    vercelUrl: process.env.VERCEL_URL?.trim(),
   })
 }
 

@@ -159,8 +159,38 @@ registry.registerPath({
         },
       },
     },
+    403: {
+      description: "Forbidden: session belongs to another user",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
     404: {
       description: "Session not found or not owned",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(false),
+            reason: z.string(),
+          }),
+        },
+      },
+    },
+    501: {
+      description: "Session mirror is disabled",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(false),
+            reason: z.string(),
+          }),
+        },
+      },
+    },
+    500: {
+      description: "Delete failed or mirror unavailable",
       content: {
         "application/json": {
           schema: z.object({

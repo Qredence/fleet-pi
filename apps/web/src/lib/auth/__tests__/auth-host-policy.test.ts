@@ -24,6 +24,17 @@ describe("auth-host-policy", () => {
     ).toEqual(["https://preview.example"])
   })
 
+  it("falls back to VERCEL_URL for preview trusted origins", () => {
+    expect(
+      resolveTrustedOriginsForDeployment({
+        isVercel: true,
+        isPreview: true,
+        configuredOrigins: [],
+        vercelUrl: "fleet-pi-web-git-branch-qredence.vercel.app",
+      })
+    ).toEqual(["https://fleet-pi-web-git-branch-qredence.vercel.app"])
+  })
+
   it("requires preview BETTER_AUTH_URL when trusted origins are unset", () => {
     expect(() =>
       resolveTrustedOriginsForDeployment({

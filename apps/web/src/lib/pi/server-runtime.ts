@@ -132,6 +132,37 @@ export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
   return true
 }
 
+export function evictPiRuntimeForDeletedSession(input: {
+  sessionId: string
+  sessionFile?: string
+  userId?: string
+}) {
+  const active =
+    runtimeRecords.get(input.sessionId) ??
+    findRuntimeRecord({
+      sessionId: input.sessionId,
+      sessionFile: input.sessionFile,
+      userId: input.userId,
+    })
+  if (!active) return
+
+  if (active.disposeTimer) {
+    clearTimeout(active.disposeTimer)
+    active.disposeTimer = undefined
+  }
+
+  clearPlanModeSession(active.sessionId)
+  deleteActiveSessionRecord(active.sessionId)
+  untrackDaytonaToolSession(active.sessionId, active.sessionFile)
+  if (
+    active.userId &&
+    !hasOtherActiveSessionForUser(active.userId, active.sessionId)
+  ) {
+    void releaseUserSandbox(active.userId)
+  }
+  void active.runtime.dispose()
+}
+
 export async function queuePromptOnActiveSession(
   metadata: ChatRuntimeMetadata,
   prompt: string,
