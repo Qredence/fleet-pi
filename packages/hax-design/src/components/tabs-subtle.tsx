@@ -48,6 +48,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
     ref
   ) => {
     const containerRef = useRef<HTMLDivElement | null>(null)
+    const observerRef = useRef<ResizeObserver | null>(null)
     const [rects, setRects] = useState<
       Array<{ left: number; top: number; width: number; height: number }>
     >([])
@@ -79,7 +80,12 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
       (index: number, element: HTMLElement | null) => {
         if (element) {
           tabElementsRef.current.set(index, element)
+          observerRef.current?.observe(element)
         } else {
+          const previous = tabElementsRef.current.get(index)
+          if (previous) {
+            observerRef.current?.unobserve(previous)
+          }
           tabElementsRef.current.delete(index)
         }
         measureTabs()
@@ -92,10 +98,14 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
       const container = containerRef.current
       if (!container) return
       const observer = new ResizeObserver(() => measureTabs())
+      observerRef.current = observer
       observer.observe(container)
       tabElementsRef.current.forEach((element) => observer.observe(element))
-      return () => observer.disconnect()
-    }, [measureTabs, children])
+      return () => {
+        observer.disconnect()
+        observerRef.current = null
+      }
+    }, [measureTabs])
 
     const selectedRect =
       selectedIndex >= 0 && selectedIndex < rects.length

@@ -13,6 +13,7 @@ import { addUnique } from "./settings-mappers"
 import type { ChatResourceInfo } from "../../../../../lib/pi/chat-protocol"
 
 export function resourceOptionValue(item: ChatResourceInfo) {
+  // `name` is required on ChatResourceInfo, so this never trims undefined.
   return (item.source ?? item.path ?? item.workspacePath ?? item.name).trim()
 }
 
