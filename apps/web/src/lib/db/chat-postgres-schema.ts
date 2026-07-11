@@ -173,8 +173,12 @@ CREATE TABLE IF NOT EXISTS pi_user_providers (
   user_id TEXT NOT NULL,
   provider_id TEXT NOT NULL,
   encrypted_key TEXT NOT NULL,
+  auth_type TEXT NOT NULL DEFAULT 'apiKey',
+  encrypted_payload TEXT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, provider_id)
+  PRIMARY KEY (user_id, provider_id),
+  CONSTRAINT pi_user_providers_auth_type_check
+    CHECK (auth_type IN ('apiKey', 'oauth'))
 );
 
 ALTER TABLE IF EXISTS pi_user_providers ENABLE ROW LEVEL SECURITY;

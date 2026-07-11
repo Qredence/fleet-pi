@@ -14,6 +14,10 @@ import {
   CHAT_POSTGRES_SESSION_TOMBSTONES_SQL,
 } from "../src/lib/db/chat-postgres-session-tombstones"
 import {
+  CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
+  CHAT_POSTGRES_PROVIDER_AUTH_SQL,
+} from "../src/lib/db/chat-postgres-provider-auth"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -92,6 +96,11 @@ async function main() {
       client,
       CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
       CHAT_POSTGRES_SESSION_TOMBSTONES_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
+      CHAT_POSTGRES_PROVIDER_AUTH_SQL
     )
 
     await client.query("COMMIT")
