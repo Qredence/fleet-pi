@@ -56,7 +56,11 @@ describe("pi-session-ownership-db", () => {
   })
 
   it("verifyRunOwnership returns true when mirror row exists under RLS", async () => {
-    poolQuery.mockResolvedValueOnce({ rows: [{ id: "run-1" }] })
+    poolQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "run-1" }] })
+      .mockResolvedValueOnce({ rows: [] })
 
     await expect(verifyRunOwnership("run-1", "user-1")).resolves.toBe(true)
     expect(poolConnect).toHaveBeenCalled()

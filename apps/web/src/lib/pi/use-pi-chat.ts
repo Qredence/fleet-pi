@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { createTextMessage } from "./chat-message-helpers"
 import { chatClient } from "./chat-client"
 import { isPlanDecisionToolCall } from "./plan-state"
-import { EMPTY_QUEUE_STATE, applyChatStreamEvent } from "./chat-stream-state"
+import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
 import { getChatSessionScope } from "./use-chat-storage"
+import {
+  runForbiddenSessionRecovery,
+  tryRecoverForbiddenSession,
+} from "./use-pi-chat-forbidden-session"
+import { usePiChatMessaging } from "./use-pi-chat-messaging"
+import {
+  enhancePlanDecisionMessages,
+  resolvePlanDecisionMessages,
+} from "./use-pi-chat-plan-decisions"
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatMessage,
@@ -17,13 +25,8 @@ import type {
   ChatQuestionAnswer,
   ChatSessionInfo,
   ChatSessionMetadata,
-  ChatStreamEvent,
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import type { ChatClient } from "./chat-client"
-import {
-  captureChatSessionStarted,
-  captureConversationSaved,
-} from "@/lib/analytics/posthog"
 
 export type SendMessageInput = {
   text: string
@@ -36,118 +39,6 @@ export type UsePiChatOptions = {
   initialSessionMetadata: ChatSessionMetadata
   onModeChange?: (mode: ChatMode) => void
   persistSession: (metadata: ChatSessionMetadata) => void
-}
-
-type QuestionAnswerHandler = (input: {
-  toolCallId?: string
-  answer: ChatQuestionAnswer
-}) => Promise<unknown>
-
-function resolvePlanDecisionMessages(
-  currentMessages: Array<ChatMessage>,
-  toolCallId: string | undefined,
-  answer: ChatQuestionAnswer
-) {
-  if (!isPlanDecisionToolCall(toolCallId)) return currentMessages
-
-  const nextMessages = currentMessages.map((message) => {
-    const nextParts = message.parts.map((part) => {
-      if (
-        part.type !== "tool-PlanWrite" ||
-        part.toolCallId !== toolCallId ||
-        !part.input ||
-        typeof part.input !== "object"
-      ) {
-        return part
-      }
-
-      return {
-        ...part,
-        input: {
-          ...(part.input as Record<string, unknown>),
-          approved:
-            answer.selectedIds?.[0] === "execute" ||
-            answer.selectedIds?.[0] === "stay",
-          pendingDecision: false,
-        },
-      }
-    })
-
-    const partsChanged = nextParts.some(
-      (part, index) => part !== message.parts[index]
-    )
-    if (!partsChanged) return message
-    return { ...message, parts: nextParts }
-  })
-
-  return nextMessages.some(
-    (message, index) => message !== currentMessages[index]
-  )
-    ? nextMessages
-    : currentMessages
-}
-
-function enhancePlanDecisionMessages(
-  currentMessages: Array<ChatMessage>,
-  submitQuestionAnswer: QuestionAnswerHandler
-) {
-  const nextMessages = currentMessages.map((message) => {
-    const nextParts = message.parts.map((part) => {
-      if (
-        part.type !== "tool-PlanWrite" ||
-        typeof part.toolCallId !== "string"
-      ) {
-        return part
-      }
-      if (!part.input || typeof part.input !== "object") return part
-
-      const input = part.input as Record<string, unknown>
-      if (input.pendingDecision !== true) return part
-
-      const hasPlanActionHandlers =
-        typeof input.onExecute === "function" &&
-        typeof input.onStay === "function" &&
-        typeof input.onRefine === "function"
-      if (hasPlanActionHandlers) return part
-
-      return {
-        ...part,
-        input: {
-          ...input,
-          onExecute: () =>
-            submitQuestionAnswer({
-              toolCallId: part.toolCallId,
-              answer: { kind: "single", selectedIds: ["execute"] },
-            }),
-          onStay: () =>
-            submitQuestionAnswer({
-              toolCallId: part.toolCallId,
-              answer: { kind: "single", selectedIds: ["stay"] },
-            }),
-          onRefine: (instructions?: string) =>
-            submitQuestionAnswer({
-              toolCallId: part.toolCallId,
-              answer:
-                instructions && instructions.trim().length > 0
-                  ? { kind: "text", text: instructions.trim() }
-                  : { kind: "single", selectedIds: ["refine"] },
-            }),
-        },
-      }
-    })
-
-    const partsChanged = nextParts.some(
-      (part, index) => part !== message.parts[index]
-    )
-    if (!partsChanged) return message
-    return { ...message, parts: nextParts }
-  })
-
-  return nextMessages.some(
-    (message, index) => message !== currentMessages[index]
-  )
-    ? nextMessages
-    : currentMessages
 }
 
 export function usePiChat(
@@ -238,6 +129,30 @@ export function usePiChat(
     const nextSessions = await client.listSessions()
     setSessions(nextSessions)
   }, [client])
+
+  const recoverFromForbiddenSession = useCallback(
+    () =>
+      runForbiddenSessionRecovery({
+        client,
+        refreshSessions,
+        setActivityLabelSynced,
+        setError,
+        setMessagesSynced,
+        setPlanLabelSynced,
+        setQueueSynced,
+        setSessionMetadataSynced,
+        setStatus,
+      }),
+    [
+      client,
+      refreshSessions,
+      setActivityLabelSynced,
+      setMessagesSynced,
+      setPlanLabelSynced,
+      setQueueSynced,
+      setSessionMetadataSynced,
+    ]
+  )
 
   initialSessionMetadataRef.current = initialSessionMetadata
 
@@ -337,13 +252,21 @@ export function usePiChat(
       )
     }
 
-    void loadActiveSession().catch((err) => {
-      if (!cancelled) {
-        const nextError = err instanceof Error ? err : new Error(String(err))
-        setError(nextError)
-        setStatus("error")
-        toast.error(nextError.message)
+    void loadActiveSession().catch(async (err) => {
+      if (cancelled) return
+      if (
+        await tryRecoverForbiddenSession(err, recoverFromForbiddenSession, {
+          setError,
+          setStatus,
+        })
+      ) {
+        return
       }
+
+      const nextError = err instanceof Error ? err : new Error(String(err))
+      setError(nextError)
+      setStatus("error")
+      toast.error(nextError.message)
     })
 
     return () => {
@@ -357,162 +280,30 @@ export function usePiChat(
     setPlanLabelSynced,
     setQueueSynced,
     setSessionMetadataSynced,
+    recoverFromForbiddenSession,
   ])
 
-  const handleStreamEvent = useCallback(
-    (event: ChatStreamEvent, assistantIdRef: { current: string | null }) => {
-      if (event.type === "error") {
-        throw new Error(event.message)
-      }
-
-      const next = applyChatStreamEvent(
-        {
-          assistantId: assistantIdRef.current,
-          snapshot: {
-            activityLabel: activityLabelRef.current,
-            messages: messagesRef.current,
-            planLabel: planLabelRef.current,
-            queue: queueRef.current,
-            sessionMetadata: sessionMetadataRef.current,
-          },
-        },
-        event
-      )
-
-      assistantIdRef.current = next.assistantId
-      setMessagesSynced(next.snapshot.messages)
-      setSessionMetadataSynced(next.snapshot.sessionMetadata)
-      setQueueSynced(next.snapshot.queue)
-      setActivityLabelSynced(next.snapshot.activityLabel)
-      setPlanLabelSynced(next.snapshot.planLabel)
-
-      if (event.type === "start") {
-        setStatus("streaming")
-      }
-
-      if (event.type === "done") {
-        setStatus("ready")
-        void refreshSessions()
-      }
-    },
-    [
-      refreshSessions,
-      setActivityLabelSynced,
-      setMessagesSynced,
-      setPlanLabelSynced,
-      setQueueSynced,
-      setSessionMetadataSynced,
-    ]
-  )
-
-  const queueFollowUp = useCallback(
-    async (trimmed: string, requestMode: ChatMode) => {
-      const userMessage = createTextMessage("user", trimmed)
-      setMessagesSynced((current) => [...current, userMessage])
-      setError(null)
-
-      await client.streamMessage(
-        {
-          message: trimmed,
-          model,
-          mode: requestMode,
-          sessionFile: sessionMetadataRef.current.sessionFile,
-          sessionId: sessionMetadataRef.current.sessionId,
-          streamingBehavior: "followUp",
-        },
-        (event) => {
-          if (event.type === "queue") {
-            setQueueSynced({
-              steering: event.steering,
-              followUp: event.followUp,
-            })
-            setActivityLabelSynced("Follow-up queued")
-          }
-          if (event.type === "error") {
-            throw new Error(event.message)
-          }
-        }
-      )
-    },
-    [client, model, setActivityLabelSynced, setMessagesSynced, setQueueSynced]
-  )
-
-  const sendMessage = useCallback(
-    async ({ text, mode: requestedMode, planAction }: SendMessageInput) => {
-      const trimmed = text.trim()
-      if (!trimmed || status === "submitted") return
-      const requestMode = requestedMode ?? mode
-
-      if (status === "streaming") {
-        try {
-          await queueFollowUp(trimmed, requestMode)
-        } catch (err) {
-          const nextError = err instanceof Error ? err : new Error(String(err))
-          setError(nextError)
-          toast.error(nextError.message)
-        }
-        return
-      }
-
-      const controller = new AbortController()
-      abortRef.current?.abort()
-      abortRef.current = controller
-      setError(null)
-      setActivityLabelSynced(undefined)
-      setStatus("submitted")
-
-      if (messagesRef.current.length === 0) {
-        captureChatSessionStarted({
-          promptLength: trimmed.length,
-          sessionId: sessionMetadataRef.current.sessionId,
-        })
-      }
-
-      const userMessage = createTextMessage("user", trimmed)
-      setMessagesSynced((current) => [...current, userMessage])
-      const assistantIdRef = { current: null as string | null }
-
-      try {
-        await client.streamMessage(
-          {
-            message: trimmed,
-            model,
-            mode: requestMode,
-            planAction,
-            sessionFile: sessionMetadataRef.current.sessionFile,
-            sessionId: sessionMetadataRef.current.sessionId,
-          },
-          (event) => handleStreamEvent(event, assistantIdRef),
-          controller.signal
-        )
-
-        setStatus("ready")
-        captureConversationSaved({
-          messageCount: messagesRef.current.length,
-          sessionId: sessionMetadataRef.current.sessionId,
-        })
-      } catch (err) {
-        if (controller.signal.aborted) return
-        const nextError = err instanceof Error ? err : new Error(String(err))
-        setError(nextError)
-        setStatus("error")
-        toast.error(nextError.message)
-      } finally {
-        if (abortRef.current === controller) {
-          abortRef.current = null
-        }
-      }
-    },
-    [
-      client,
-      handleStreamEvent,
-      mode,
-      model,
-      queueFollowUp,
-      setMessagesSynced,
-      status,
-    ]
-  )
+  const { sendMessage } = usePiChatMessaging({
+    abortRef,
+    activityLabelRef,
+    client,
+    messagesRef,
+    mode,
+    model,
+    planLabelRef,
+    queueRef,
+    recoverFromForbiddenSession,
+    refreshSessions,
+    sessionMetadataRef,
+    setActivityLabelSynced,
+    setError,
+    setMessagesSynced,
+    setPlanLabelSynced,
+    setQueueSynced,
+    setSessionMetadataSynced,
+    setStatus,
+    status,
+  })
 
   const stop = useCallback(() => {
     void client.abortSession(sessionMetadataRef.current).catch(() => undefined)
@@ -544,19 +335,35 @@ export function usePiChat(
 
   const resumeSession = useCallback(
     async (metadata: ChatSessionMetadata) => {
-      const result = await client.resumeSession(metadata)
-      setSessionMetadataSynced(result.session)
-      setMessagesSynced(result.messages)
-      setQueueSynced(EMPTY_QUEUE_STATE)
-      setActivityLabelSynced(
-        result.sessionReset ? "Started a fresh Pi session" : undefined
-      )
-      setPlanLabelSynced(undefined)
-      toast.success("Session resumed")
-      await refreshSessions()
+      try {
+        const result = await client.resumeSession(metadata)
+        setSessionMetadataSynced(result.session)
+        setMessagesSynced(result.messages)
+        setQueueSynced(EMPTY_QUEUE_STATE)
+        setActivityLabelSynced(
+          result.sessionReset ? "Started a fresh Pi session" : undefined
+        )
+        setPlanLabelSynced(undefined)
+        toast.success("Session resumed")
+        await refreshSessions()
+      } catch (err) {
+        if (
+          await tryRecoverForbiddenSession(err, recoverFromForbiddenSession, {
+            setError,
+            setStatus,
+          })
+        ) {
+          return
+        }
+        const nextError = err instanceof Error ? err : new Error(String(err))
+        setError(nextError)
+        setStatus("error")
+        toast.error(nextError.message)
+      }
     },
     [
       client,
+      recoverFromForbiddenSession,
       refreshSessions,
       setActivityLabelSynced,
       setMessagesSynced,

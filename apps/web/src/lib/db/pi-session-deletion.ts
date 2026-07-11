@@ -127,42 +127,32 @@ export async function eraseUserPiData(
 
   try {
     const erased = await withUserContext(pool, userId, async (client) => {
-      await client.query("BEGIN")
-      try {
-        const sessions = await client.query<DeletedSessionRow>(
-          "SELECT id, session_file_path FROM pi_sessions WHERE user_id = $1",
-          [userId]
-        )
+      const sessions = await client.query<DeletedSessionRow>(
+        "SELECT id, session_file_path FROM pi_sessions WHERE user_id = $1",
+        [userId]
+      )
 
-        await client.query(
-          `
+      await client.query(
+        `
             INSERT INTO pi_session_tombstones (session_id, user_id)
             SELECT id, user_id
             FROM pi_sessions
             WHERE user_id = $1
             ON CONFLICT (session_id) DO NOTHING
           `,
-          [userId]
-        )
+        [userId]
+      )
 
-        await client.query("DELETE FROM pi_sessions WHERE user_id = $1", [
-          userId,
-        ])
-        const providers = await client.query<{ id: string }>(
-          "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING id",
-          [userId]
-        )
+      await client.query("DELETE FROM pi_sessions WHERE user_id = $1", [userId])
+      const providers = await client.query<{ id: string }>(
+        "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING id",
+        [userId]
+      )
 
-        await client.query("COMMIT")
-
-        return {
-          sessions: sessions.rows,
-          erasedSessions: sessions.rows.length,
-          erasedProviders: providers.rows.length,
-        }
-      } catch (error) {
-        await client.query("ROLLBACK")
-        throw error
+      return {
+        sessions: sessions.rows,
+        erasedSessions: sessions.rows.length,
+        erasedProviders: providers.rows.length,
       }
     })
 

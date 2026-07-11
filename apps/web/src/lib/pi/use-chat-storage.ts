@@ -121,6 +121,14 @@ function parseSessionMetadata(value: unknown): ChatSessionMetadata {
   return result.success ? result.data : {}
 }
 
+export function clearBrowserChatSessions() {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof window === "undefined" || !window.localStorage) return
+
+  window.localStorage.removeItem(CHAT_SESSION_BY_SCOPE_STORAGE_KEY)
+  window.localStorage.removeItem(CHAT_SESSION_STORAGE_KEY)
+}
+
 function storeBrowserSessions(sessions: StoredChatSessions) {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (typeof window === "undefined" || !window.localStorage) return

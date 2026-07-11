@@ -19,11 +19,9 @@ import type {
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
+import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
 import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
-import {
-  identifyAnalyticsUser,
-  resetAnalytics,
-} from "@/lib/analytics/posthog"
+import { identifyAnalyticsUser, resetAnalytics } from "@/lib/analytics/posthog"
 import {
   useChatModels,
   useChatProviders,
@@ -311,6 +309,7 @@ function ChatWorkspaceShell() {
             <AccountMenu
               user={user}
               onSignOut={async () => {
+                clearBrowserChatSessions()
                 await signOut()
                 resetAnalytics()
                 void navigate({ to: "/" })

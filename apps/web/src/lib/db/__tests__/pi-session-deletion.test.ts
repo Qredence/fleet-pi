@@ -82,14 +82,12 @@ describe("pi-session-deletion", () => {
 
   it("erases all mirrored sessions and provider credentials for a user", async () => {
     poolQuery
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [{ id: "session-1", session_file_path: "/tmp/session-1.jsonl" }],
       })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: "provider-1" }] })
-      .mockResolvedValueOnce({ rows: [] })
 
     const result = await eraseUserPiData("user-1")
 

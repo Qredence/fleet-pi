@@ -12,6 +12,7 @@ import {
   WorkspaceTreeResponseSchema,
 } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import {
+  ChatRequestError,
   fetchJson,
   fetchValidatedJson,
   metadataUrl,
@@ -166,7 +167,7 @@ export const chatClient: ChatClient = {
 
     if (!response.ok) {
       const body = await response.text()
-      throw new Error(body || `Chat request failed (${response.status})`)
+      throw new ChatRequestError(response.status, body)
     }
 
     await readChatStream(response, onEvent)

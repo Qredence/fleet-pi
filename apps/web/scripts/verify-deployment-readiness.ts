@@ -47,6 +47,48 @@ async function queryAuthDatabaseState(connectionString: string) {
   }
 }
 
+async function runChatRlsSmokeTest(connectionString: string) {
+  const pool = new Pool({ connectionString })
+  const testUserId = "__fleet_pi_rls_smoke__"
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    await client.query("SELECT set_config('app.current_user_id', $1, true)", [
+      testUserId,
+    ])
+    await client.query(
+      `
+        INSERT INTO pi_user_providers (user_id, provider_id, encrypted_key)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (user_id, provider_id) DO NOTHING
+      `,
+      [testUserId, "google", "rls-smoke-test"]
+    )
+    await client.query("ROLLBACK")
+    return {
+      ok: true as const,
+      message:
+        "Pooled RLS smoke insert into pi_user_providers succeeded (rolled back).",
+    }
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK")
+    } catch {
+      // Ignore rollback failures after a failed smoke insert.
+    }
+    return {
+      ok: false as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Chat RLS smoke test failed unexpectedly.",
+    }
+  } finally {
+    client.release()
+    await pool.end()
+  }
+}
+
 async function queryChatDatabaseState(connectionString: string) {
   const pool = new Pool({ connectionString })
   try {
@@ -99,6 +141,17 @@ async function main() {
   const chatMigrationUrl = process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL
   if (chatMigrationUrl) {
     Object.assign(input, await queryChatDatabaseState(chatMigrationUrl))
+  }
+
+  const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
+  if (chatRuntimeUrl && trustZone !== "local") {
+    const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
+    const prefix = smoke.ok ? "OK" : "FAIL"
+    console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
+    if (!smoke.ok) {
+      process.exitCode = 1
+      return
+    }
   }
 
   const result = validateDeploymentReadiness(input)

@@ -5,6 +5,28 @@ import type {
   ChatStreamEvent,
 } from "@workspace/hax-design/lib/pi/chat-protocol"
 
+export class ChatRequestError extends Error {
+  readonly status: number
+  readonly body: string
+
+  constructor(status: number, body: string) {
+    super(body || `Request failed (${status})`)
+    this.name = "ChatRequestError"
+    this.status = status
+    this.body = body
+  }
+}
+
+export function isForbiddenSessionError(error: unknown) {
+  const body =
+    error instanceof ChatRequestError
+      ? error.body
+      : error instanceof Error
+        ? error.message
+        : String(error)
+  return body.includes("Session belongs to another user")
+}
+
 export async function fetchJson<T>(
   url: string,
   init?: RequestInit
@@ -19,7 +41,7 @@ export async function fetchJson<T>(
   const response = await fetch(url, { ...init, headers })
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(body || `Request failed (${response.status})`)
+    throw new ChatRequestError(response.status, body)
   }
   return (await response.json()) as T
 }

@@ -611,16 +611,7 @@ export async function withChatPostgresTransaction(
   const pool = getChatPostgresPool()
   if (!pool) return
 
-  await withUserContext(pool, userId, async (client) => {
-    await client.query("BEGIN")
-    try {
-      await operation(client)
-      await client.query("COMMIT")
-    } catch (error) {
-      await client.query("ROLLBACK")
-      throw error
-    }
-  })
+  await withUserContext(pool, userId, operation)
 }
 
 async function upsertPiSessionEntriesBatch(

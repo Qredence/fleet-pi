@@ -48,6 +48,15 @@ export function assertMirrorOwnerForPersistence(userId?: string) {
   }
 }
 
+export async function setLocalUserId(
+  client: PostgresQueryClient,
+  userId: string
+) {
+  await client.query("SELECT set_config('app.current_user_id', $1, true)", [
+    userId,
+  ])
+}
+
 export async function withUserContext<T>(
   pool: InstanceType<typeof Pool>,
   userId: string | undefined,
@@ -55,16 +64,19 @@ export async function withUserContext<T>(
 ): Promise<T> {
   const client = await pool.connect()
   try {
-    if (userId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [
-        userId,
-      ])
+    await client.query("BEGIN")
+    try {
+      if (userId) {
+        await setLocalUserId(client, userId)
+      }
+      const result = await operation(client)
+      await client.query("COMMIT")
+      return result
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
     }
-    return await operation(client)
   } finally {
-    if (userId) {
-      await client.query("RESET app.current_user_id")
-    }
     client.release()
   }
 }

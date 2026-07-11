@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 import { ChatSessionResponseSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
 import {
+  ChatRequestError,
   fetchValidatedJson,
+  isForbiddenSessionError,
   parseWithSchema,
   readChatStream,
 } from "./chat-fetch"
@@ -98,6 +100,43 @@ describe("chat-fetch", () => {
 
     await expect(readChatStream(response, () => undefined)).rejects.toThrow(
       "Chat stream event did not match the expected contract"
+    )
+  })
+
+  it("throws ChatRequestError for non-OK responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: "Forbidden: Session belongs to another user",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    )
+
+    await expect(
+      fetchValidatedJson("/api/chat/session", ChatSessionResponseSchema)
+    ).rejects.toBeInstanceOf(ChatRequestError)
+  })
+
+  it("detects forbidden session ownership errors", () => {
+    expect(
+      isForbiddenSessionError(
+        new ChatRequestError(
+          403,
+          JSON.stringify({
+            message: "Forbidden: Session belongs to another user",
+          })
+        )
+      )
+    ).toBe(true)
+    expect(isForbiddenSessionError(new Error("Request failed (500)"))).toBe(
+      false
     )
   })
 
