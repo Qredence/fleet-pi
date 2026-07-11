@@ -13,12 +13,7 @@ export type ChatMode = "agent" | "plan" | "harness"
 export type ChatPlanAction = "execute" | "refine"
 
 export type ChatThinkingLevel =
-  | "off"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh"
+  "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
 
 export type ChatTransport = "auto" | "sse" | "websocket"
 
@@ -242,6 +237,7 @@ export type ChatProviderInfo = {
   name: string
   isConfigured: boolean
   envVarName: string
+  authType?: "apiKey" | "oauth"
 }
 
 export type ChatProviderUpdateRequest = {
@@ -313,4 +309,20 @@ export type WorkspaceFileResponse = {
   mediaType: "text/markdown" | "text/plain" | "application/octet-stream"
   size?: number
   status?: "ok" | "too-large" | "unsupported"
+}
+
+export type ChatSlashCommandSource =
+  "builtin" | "extension" | "prompt" | "skill"
+
+export type ChatSlashCommandInfo = {
+  name: string
+  description?: string
+  argumentHint?: string
+  source: ChatSlashCommandSource
+  passThrough?: boolean
+}
+
+export type ChatCommandsResponse = {
+  commands: Array<ChatSlashCommandInfo>
+  diagnostics: Array<string>
 }
