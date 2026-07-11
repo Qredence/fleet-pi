@@ -192,7 +192,7 @@ describe("getUserSandbox", () => {
     mockedCreateSandbox.mockResolvedValue(sandbox)
 
     await expect(getUserSandbox({ userId: "user123" })).rejects.toThrow(
-      "Failed to prepare Daytona repository: clone failed"
+      "Failed to prepare Daytona sandbox layout: clone failed"
     )
   })
 

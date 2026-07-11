@@ -3,22 +3,28 @@ import {
   createSandbox,
   createVolumeMount,
   deleteSandbox,
-  executeCommand,
   getOrCreateVolume,
   getSandboxStatus,
   startSandbox,
   stopSandbox,
 } from "./client"
+import {
+  prepareSandboxLayout,
+  resolveRepositoryUrl,
+  syncSandboxProviderCredentials,
+} from "./sandbox-prepare"
+import { ensureSandboxSettingsSeeded } from "./sandbox-settings"
+import { loadSandboxProviderSecrets } from "./sandbox-provider-secrets"
 import { findLatestSnapshot } from "./snapshot-config"
+import type { SandboxProviderSecrets } from "./sandbox-prepare"
 import type { Daytona, Sandbox } from "@daytona/sdk"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
 const SESSION_VOLUME_PREFIX = "fleet-pi-sessions-"
 const MANAGED_BY_LABEL = "fleet-pi"
-const WORKSPACE_MOUNT_PATH = "/home/daytona/fleet-pi/agent-workspace"
+export const WORKSPACE_MOUNT_PATH = "/home/daytona/fleet-pi/agent-workspace"
 const SESSION_MOUNT_PATH = "/home/daytona/fleet-pi/.fleet"
-const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
 export interface UserSandboxConfig {
   userId: string
@@ -82,7 +88,10 @@ async function resolveUserSandbox(
   const cached = userSandboxes.get(config.userId)
   if (cached) {
     const healthy = await isSandboxHealthy(cached.sandbox)
-    if (healthy) return cached
+    if (healthy) {
+      await syncSandboxCredentialsOnly(cached.sandbox, config.userId)
+      return cached
+    }
 
     userSandboxes.delete(config.userId)
   }
@@ -90,6 +99,7 @@ async function resolveUserSandbox(
   const client = createDaytonaClient(config.apiKey)
   const volumeName = getVolumeName(config.userId)
   const volume = await getOrCreateVolume(client, volumeName)
+  const providerSecrets = await loadSandboxProviderSecrets(config.userId)
 
   const sandboxName = getSandboxName(config.userId)
 
@@ -133,13 +143,15 @@ async function resolveUserSandbox(
       snapshot: snapshot ?? undefined,
       labels: buildLabels(config),
       volumes,
+      envVars: providerSecrets.envVars,
       cpu: config.cpu,
       memory: config.memory,
       disk: config.disk,
       autoStopInterval: 30,
     })
   }
-  await ensureRepositoryCheckout(sandbox)
+
+  await prepareSandboxForUser(sandbox, config.userId, providerSecrets)
 
   const handle: UserSandboxHandle = {
     sandbox,
@@ -151,6 +163,27 @@ async function resolveUserSandbox(
 
   userSandboxes.set(config.userId, handle)
   return handle
+}
+
+async function syncSandboxCredentialsOnly(
+  sandbox: Sandbox,
+  userId: string,
+  providerSecrets?: SandboxProviderSecrets
+) {
+  const secrets = providerSecrets ?? (await loadSandboxProviderSecrets(userId))
+  await syncSandboxProviderCredentials(sandbox, secrets, userId)
+}
+
+async function prepareSandboxForUser(
+  sandbox: Sandbox,
+  userId: string,
+  providerSecrets?: SandboxProviderSecrets
+) {
+  const secrets = providerSecrets ?? (await loadSandboxProviderSecrets(userId))
+  const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
+  await prepareSandboxLayout(sandbox, repoUrl)
+  await ensureSandboxSettingsSeeded(sandbox)
+  await syncSandboxProviderCredentials(sandbox, secrets, userId)
 }
 
 export async function releaseUserSandbox(userId: string): Promise<void> {
@@ -213,50 +246,6 @@ async function isSandboxHealthy(sandbox: Sandbox): Promise<boolean> {
 function isManagedSandboxForUser(sandbox: Sandbox, userId: string): boolean {
   const labels = (sandbox as { labels?: Record<string, string> }).labels
   return labels?.managedBy === MANAGED_BY_LABEL && labels.userId === userId
-}
-
-async function ensureRepositoryCheckout(sandbox: Sandbox): Promise<void> {
-  const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
-  const command = [
-    "set -e;",
-    `if [ ! -d ${shellEscape(`${WORKSPACE_MOUNT_PATH}/.git`)} ]; then`,
-    "if ! command -v git >/dev/null 2>&1; then",
-    "apt-get update && apt-get install -y git ca-certificates;",
-    "fi;",
-    "tmpdir=$(mktemp -d);",
-    `git clone --depth 1 ${shellEscape(repoUrl)} "$tmpdir";`,
-    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)};`,
-    `cp -a "$tmpdir"/. ${shellEscape(WORKSPACE_MOUNT_PATH)}/;`,
-    'rm -rf "$tmpdir";',
-    "fi;",
-    `mkdir -p ${shellEscape(WORKSPACE_MOUNT_PATH)} ${shellEscape(SESSION_MOUNT_PATH)};`,
-  ].join(" ")
-  const result = await executeCommand(sandbox, command)
-  if (result.exitCode !== 0) {
-    throw new Error(`Failed to prepare Daytona repository: ${result.result}`)
-  }
-}
-
-function resolveRepositoryUrl(value: string | undefined): string {
-  const trimmed = value?.trim()
-  if (!trimmed) return DEFAULT_REPOSITORY_URL
-
-  let url: URL
-  try {
-    url = new URL(trimmed)
-  } catch {
-    throw new Error("FLEET_PI_REPOSITORY_URL must be an HTTPS URL")
-  }
-
-  if (url.protocol !== "https:") {
-    throw new Error("FLEET_PI_REPOSITORY_URL must be an HTTPS URL")
-  }
-
-  return url.toString()
-}
-
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`
 }
 
 async function findExistingSandbox(
