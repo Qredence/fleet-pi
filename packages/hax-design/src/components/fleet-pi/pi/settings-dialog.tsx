@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Cpu, HardDrive, Paintbrush, Settings } from "lucide-react"
+import {
+  Cpu,
+  HardDrive,
+  KeyRound,
+  Paintbrush,
+  Settings,
+  Sparkles,
+} from "lucide-react"
 
 import {
   Dialog,
@@ -38,20 +45,14 @@ import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider
 
 import {
   customModelKey,
-  ensureModelEnabled,
-  ensureModelPattern,
-  isModelEnabled,
   nextEnabledModelPatterns,
-  nextProviderModelPatterns,
 } from "./config-panel/shared/model-patterns"
 import {
   formatPackageSourceRows,
   modelSettings,
   parsePackageSourceRows,
-  recommendedModelPatterns,
   resourceSettings,
   sameJson,
-  summarizeProviders,
   summarizeResources,
 } from "./config-panel/shared/settings-mappers"
 import type { ReactNode } from "react"
@@ -74,7 +75,6 @@ function useSettingsForm() {
     providers = [],
     resources,
     saveSettings,
-    selectedModelKey,
     settings,
     settingsLoading,
     themePreference,
@@ -84,10 +84,7 @@ function useSettingsForm() {
   const [savingSection, setSavingSection] = useState<string | null>(null)
   const [packageRows, setPackageRows] = useState<Array<string>>([])
   const [packageError, setPackageError] = useState<string | undefined>()
-  const [customProvider, setCustomProvider] = useState("")
-  const [customModel, setCustomModel] = useState("")
   const [modelFilter, setModelFilter] = useState("")
-  const [providerFilter, setProviderFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("appearance")
 
   const resourceSummary = summarizeResources(resources)
@@ -116,24 +113,6 @@ function useSettingsForm() {
     ]
   }, [draft, models])
 
-  const modelSelectValue = useMemo(() => {
-    if (!draft) return selectedModelKey ?? ""
-    return (
-      modelOptions.find(
-        (model) =>
-          model.provider === draft.defaultProvider &&
-          model.modelId === draft.defaultModel
-      )?.id ??
-      selectedModelKey ??
-      ""
-    )
-  }, [draft, modelOptions, selectedModelKey])
-
-  const providerOptions = useMemo(
-    () => summarizeProviders(modelOptions, draft?.enabledModels),
-    [draft?.enabledModels, modelOptions]
-  )
-
   const modelDirty =
     !!draft &&
     !!settings &&
@@ -155,16 +134,12 @@ function useSettingsForm() {
 
     const nextDraft = settings.effective
     const nextPackageRows = formatPackageSourceRows(nextDraft.packages)
-    const nextCustomProvider = nextDraft.defaultProvider ?? ""
-    const nextCustomModel = nextDraft.defaultModel ?? ""
 
     if (draft && hasUnsavedChanges) return
     if (
       draft &&
       sameJson(draft, nextDraft) &&
       sameJson(packageRows, nextPackageRows) &&
-      customProvider === nextCustomProvider &&
-      customModel === nextCustomModel &&
       packageError === undefined
     ) {
       return
@@ -173,17 +148,7 @@ function useSettingsForm() {
     setDraft(nextDraft)
     setPackageRows(nextPackageRows)
     setPackageError(undefined)
-    setCustomProvider(nextCustomProvider)
-    setCustomModel(nextCustomModel)
-  }, [
-    customModel,
-    customProvider,
-    draft,
-    hasUnsavedChanges,
-    packageError,
-    packageRows,
-    settings,
-  ])
+  }, [draft, hasUnsavedChanges, packageError, packageRows, settings])
 
   const updateDraft = (
     updater: (current: ChatPiSettings) => ChatPiSettings
@@ -216,72 +181,6 @@ function useSettingsForm() {
     }))
   }
 
-  const setProviderEnabled = (provider: string, enabled: boolean) => {
-    updateDraft((current) => ({
-      ...current,
-      enabledModels: nextProviderModelPatterns({
-        currentPatterns: current.enabledModels,
-        enabled,
-        models: modelOptions,
-        provider,
-      }),
-    }))
-  }
-
-  const setAllModelsEnabled = (enabled: boolean) => {
-    updateDraft((current) => ({
-      ...current,
-      enabledModels: enabled ? undefined : [],
-    }))
-  }
-
-  const useRecommendedModels = () => {
-    updateDraft((current) => ({
-      ...current,
-      enabledModels: recommendedModelPatterns(current),
-    }))
-  }
-
-  const useProviderAsDefault = (provider: string) => {
-    const providerModels = modelOptions.filter(
-      (model) => model.provider === provider
-    )
-    const activeModel =
-      providerModels.find((model) =>
-        isModelEnabled(model, draft?.enabledModels)
-      ) ?? providerModels.at(0)
-
-    if (!activeModel) {
-      updateDraft((current) => ({
-        ...current,
-        defaultProvider: provider,
-      }))
-      return
-    }
-
-    updateDraft((current) => ({
-      ...current,
-      defaultProvider: provider,
-      defaultModel: activeModel.modelId,
-      enabledModels: ensureModelEnabled(current.enabledModels, activeModel),
-    }))
-  }
-
-  const useCustomModel = () => {
-    const provider = customProvider.trim()
-    const model = customModel.trim()
-    if (!provider || !model) {
-      toast.error("Custom provider and model are required")
-      return
-    }
-    updateDraft((current) => ({
-      ...current,
-      defaultProvider: provider,
-      defaultModel: model,
-      enabledModels: ensureModelPattern(current.enabledModels, provider, model),
-    }))
-  }
-
   const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
     setSavingSection(section)
     try {
@@ -302,6 +201,7 @@ function useSettingsForm() {
     onThemePreferenceChange,
     onUpdateProvider,
     providers,
+    resources,
     settings,
     settingsLoading,
     themePreference,
@@ -311,30 +211,17 @@ function useSettingsForm() {
     setPackageRows,
     packageError,
     setPackageError,
-    customProvider,
-    setCustomProvider,
-    customModel,
-    setCustomModel,
     modelFilter,
     setModelFilter,
-    providerFilter,
-    setProviderFilter,
     activeTab,
     setActiveTab,
     resourceSummary,
     modelOptions,
-    modelSelectValue,
-    providerOptions,
     modelDirty,
     resourceDirty,
     updateDraft,
     handlePackageRowsChange,
     setModelEnabled,
-    setProviderEnabled,
-    setAllModelsEnabled,
-    useRecommendedModels,
-    useProviderAsDefault,
-    useCustomModel,
     saveSection,
   }
 }
@@ -346,42 +233,17 @@ function SidebarNavItem({
   onClick,
   icon: Icon,
   label,
-  status,
 }: {
   active: boolean
   onClick: () => void
   icon: LucideIcon
   label: string
-  status: string
 }) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={active}
-        onClick={onClick}
-        className="relative flex h-12 items-center justify-between gap-3 overflow-hidden px-3 py-1.5"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/10 transition-colors",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "bg-muted/40 text-muted-foreground group-hover/sidebar-menu-item:text-foreground"
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-          </div>
-          <div className="flex min-w-0 flex-col text-left">
-            <span className="text-xs font-semibold tracking-wide">{label}</span>
-            <span className="mt-0.5 truncate text-[10px] text-muted-foreground/75">
-              {status}
-            </span>
-          </div>
-        </div>
-        {active && (
-          <div className="absolute top-1/4 bottom-1/4 left-0 w-1 rounded-r bg-foreground" />
-        )}
+      <SidebarMenuButton isActive={active} onClick={onClick}>
+        <Icon />
+        <span>{label}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
@@ -425,6 +287,7 @@ export function SettingsDialog({
     onThemePreferenceChange,
     onUpdateProvider,
     providers,
+    resources,
     settings,
     settingsLoading,
     themePreference,
@@ -434,69 +297,67 @@ export function SettingsDialog({
     setPackageRows,
     packageError,
     setPackageError,
-    customProvider,
-    setCustomProvider,
-    customModel,
-    setCustomModel,
     modelFilter,
     setModelFilter,
-    providerFilter,
-    setProviderFilter,
     activeTab,
     setActiveTab,
     resourceSummary,
     modelOptions,
-    modelSelectValue,
-    providerOptions,
     modelDirty,
     resourceDirty,
     updateDraft,
     handlePackageRowsChange,
     setModelEnabled,
-    setProviderEnabled,
-    setAllModelsEnabled,
-    useRecommendedModels,
-    useProviderAsDefault,
-    useCustomModel,
     saveSection,
   } = useSettingsForm()
 
-  const formatThemeLabel = (theme: string) => {
-    if (!theme) return "System preference"
-    return theme.charAt(0).toUpperCase() + theme.slice(1) + " mode"
-  }
-
-  const daytonaProvider = providers.find((p) => p.id === "daytona")
-  const daytonaTargetProvider = providers.find((p) => p.id === "daytona-target")
-  const isSandboxConfigured =
-    !!daytonaProvider?.isConfigured && !!daytonaTargetProvider?.isConfigured
-  const sandboxStatus = isSandboxConfigured
-    ? "Daytona Active"
-    : "Not configured"
-
-  const formatProviderName = (prov: string) => {
-    if (!prov) return ""
-    if (prov.toLowerCase() === "google") return "Google"
-    if (prov.toLowerCase() === "anthropic") return "Anthropic"
-    if (prov.toLowerCase() === "openai") return "OpenAI"
-    return prov.charAt(0).toUpperCase() + prov.slice(1)
-  }
-  const currentProvider = draft?.defaultProvider ?? ""
-  const currentModel = draft?.defaultModel ?? ""
-  const truncateModel = (m: string) =>
-    m.length > 18 ? m.substring(0, 16) + "..." : m
-  const llmStatus = currentModel
-    ? `${formatProviderName(currentProvider)}: ${truncateModel(currentModel)}`
-    : "Not configured"
-
-  const activeCount = resourceSummary.active
-  const stagedCount = resourceSummary.staged
-  const piHarnessStatus =
-    stagedCount > 0
-      ? `${activeCount} active (${stagedCount} staged)`
-      : activeCount > 0
-        ? `${activeCount} active skills`
-        : "0 active skills"
+  const resourcesPane = (scope: "skills" | "harness") => (
+    <ResourcesSection
+      scope={scope}
+      draft={draft}
+      onEnableSkillCommandsChange={(enableSkillCommands) =>
+        updateDraft((current) => ({
+          ...current,
+          enableSkillCommands,
+        }))
+      }
+      onExtensionsChange={(extensions) =>
+        updateDraft((current) => ({ ...current, extensions }))
+      }
+      onPackageRowsChange={handlePackageRowsChange}
+      onPromptsChange={(prompts) =>
+        updateDraft((current) => ({ ...current, prompts }))
+      }
+      onRevert={() => {
+        if (!settings) return
+        updateDraft((current) => ({
+          ...current,
+          packages: settings.effective.packages,
+          extensions: settings.effective.extensions,
+          skills: settings.effective.skills,
+          prompts: settings.effective.prompts,
+          themes: settings.effective.themes,
+          enableSkillCommands: settings.effective.enableSkillCommands,
+        }))
+        setPackageRows(formatPackageSourceRows(settings.effective.packages))
+        setPackageError(undefined)
+      }}
+      onSave={() => draft && saveSection("resources", resourceSettings(draft))}
+      onSkillsChange={(skills) =>
+        updateDraft((current) => ({ ...current, skills }))
+      }
+      onThemesChange={(themes) =>
+        updateDraft((current) => ({ ...current, themes }))
+      }
+      packageError={packageError}
+      packageRows={packageRows}
+      resourceDirty={resourceDirty}
+      resources={resources}
+      resourceSummary={resourceSummary}
+      saving={savingSection === "resources"}
+      settingsLoading={settingsLoading}
+    />
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -524,28 +385,36 @@ export function SettingsDialog({
                       onClick={() => setActiveTab("appearance")}
                       icon={Paintbrush}
                       label="Appearance"
-                      status={formatThemeLabel(themePreference)}
                     />
                     <SidebarNavItem
                       active={activeTab === "sandbox"}
                       onClick={() => setActiveTab("sandbox")}
                       icon={HardDrive}
-                      label="Sandbox Provider"
-                      status={sandboxStatus}
+                      label="Sandbox"
                     />
                     <SidebarNavItem
-                      active={activeTab === "llm"}
-                      onClick={() => setActiveTab("llm")}
+                      active={activeTab === "providers"}
+                      onClick={() => setActiveTab("providers")}
+                      icon={KeyRound}
+                      label="Providers"
+                    />
+                    <SidebarNavItem
+                      active={activeTab === "llm-models"}
+                      onClick={() => setActiveTab("llm-models")}
                       icon={Cpu}
-                      label="LLM Provider"
-                      status={llmStatus}
+                      label="LLM Models"
+                    />
+                    <SidebarNavItem
+                      active={activeTab === "skills"}
+                      onClick={() => setActiveTab("skills")}
+                      icon={Sparkles}
+                      label="Skills"
                     />
                     <SidebarNavItem
                       active={activeTab === "pi-harness"}
                       onClick={() => setActiveTab("pi-harness")}
                       icon={Settings}
                       label="Pi Harness"
-                      status={piHarnessStatus}
                     />
                   </SidebarMenu>
                 </SidebarGroupContent>
@@ -566,8 +435,10 @@ export function SettingsDialog({
                     <BreadcrumbItem>
                       <BreadcrumbPage>
                         {activeTab === "appearance" && "Appearance"}
-                        {activeTab === "sandbox" && "Sandbox Provider"}
-                        {activeTab === "llm" && "LLM Provider"}
+                        {activeTab === "sandbox" && "Sandbox"}
+                        {activeTab === "providers" && "Providers"}
+                        {activeTab === "llm-models" && "LLM Models"}
+                        {activeTab === "skills" && "Skills"}
                         {activeTab === "pi-harness" && "Pi Harness"}
                       </BreadcrumbPage>
                     </BreadcrumbItem>
@@ -591,10 +462,22 @@ export function SettingsDialog({
                 Sandbox
               </MobileTabButton>
               <MobileTabButton
-                active={activeTab === "llm"}
-                onClick={() => setActiveTab("llm")}
+                active={activeTab === "providers"}
+                onClick={() => setActiveTab("providers")}
               >
-                LLM Provider
+                Providers
+              </MobileTabButton>
+              <MobileTabButton
+                active={activeTab === "llm-models"}
+                onClick={() => setActiveTab("llm-models")}
+              >
+                LLM Models
+              </MobileTabButton>
+              <MobileTabButton
+                active={activeTab === "skills"}
+                onClick={() => setActiveTab("skills")}
+              >
+                Skills
               </MobileTabButton>
               <MobileTabButton
                 active={activeTab === "pi-harness"}
@@ -624,7 +507,7 @@ export function SettingsDialog({
                 {activeTab === "sandbox" && (
                   <div className="flex flex-col gap-6">
                     <div>
-                      <h3 className="text-lg font-medium">Sandbox Provider</h3>
+                      <h3 className="text-lg font-medium">Sandbox</h3>
                       <p className="text-sm text-muted-foreground">
                         Configure isolated execution environments.
                       </p>
@@ -638,12 +521,15 @@ export function SettingsDialog({
                   </div>
                 )}
 
-                {activeTab === "llm" && (
+                {activeTab === "providers" && (
                   <div className="flex flex-col gap-6">
                     <div>
-                      <h3 className="text-lg font-medium">LLM Provider</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage your AI models and API credentials.
+                      <h3 className="text-lg font-medium text-balance">
+                        Providers
+                      </h3>
+                      <p className="text-sm text-pretty text-muted-foreground">
+                        API keys are stored in `.env.local` for the active
+                        workspace.
                       </p>
                     </div>
                     <ProviderCredentialsSection
@@ -652,127 +538,39 @@ export function SettingsDialog({
                       providers={providers}
                       onUpdateProvider={onUpdateProvider}
                     />
-                    <div className="h-px bg-border/40" />
-                    <ModelDefaultsSection
-                      customModel={customModel}
-                      customProvider={customProvider}
-                      draft={draft}
-                      modelDirty={modelDirty}
-                      modelFilter={modelFilter}
-                      modelOptions={modelOptions}
-                      modelSelectValue={modelSelectValue}
-                      onConnectProvider={(provider) => {
-                        setCustomProvider(provider)
-                        setCustomModel("")
-                      }}
-                      onCustomModelChange={setCustomModel}
-                      onCustomProviderChange={setCustomProvider}
-                      onModelDefault={(model) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          defaultProvider: model.provider,
-                          defaultModel: model.modelId,
-                          enabledModels: ensureModelEnabled(
-                            current.enabledModels,
-                            model
-                          ),
-                        }))
-                      }
-                      onModelFilterChange={setModelFilter}
-                      onModelToggle={setModelEnabled}
-                      onProviderDefault={useProviderAsDefault}
-                      onProviderFilterChange={setProviderFilter}
-                      onProviderToggle={setProviderEnabled}
-                      onRevert={() => {
-                        if (!settings) return
-                        updateDraft((current) => ({
-                          ...current,
-                          defaultProvider: settings.effective.defaultProvider,
-                          defaultModel: settings.effective.defaultModel,
-                          defaultThinkingLevel:
-                            settings.effective.defaultThinkingLevel,
-                          enabledModels: settings.effective.enabledModels,
-                        }))
-                      }}
-                      onSave={() =>
-                        draft && saveSection("models", modelSettings(draft))
-                      }
-                      onSetAllModels={setAllModelsEnabled}
-                      onThinkingLevelChange={(value) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          defaultThinkingLevel: value,
-                        }))
-                      }
-                      onUseCustomModel={useCustomModel}
-                      onUseRecommended={useRecommendedModels}
-                      providerFilter={providerFilter}
-                      providerOptions={providerOptions}
-                      saving={savingSection === "models"}
-                      settingsLoading={settingsLoading}
-                    />
                   </div>
                 )}
 
-                {activeTab === "pi-harness" && (
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium">Pi Harness</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage skills and packages.
-                      </p>
-                    </div>
-                    <ResourcesSection
-                      draft={draft}
-                      onEnableSkillCommandsChange={(enableSkillCommands) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          enableSkillCommands,
-                        }))
-                      }
-                      onExtensionsChange={(extensions) =>
-                        updateDraft((current) => ({ ...current, extensions }))
-                      }
-                      onPackageRowsChange={handlePackageRowsChange}
-                      onPromptsChange={(prompts) =>
-                        updateDraft((current) => ({ ...current, prompts }))
-                      }
-                      onRevert={() => {
-                        if (!settings) return
-                        updateDraft((current) => ({
-                          ...current,
-                          packages: settings.effective.packages,
-                          extensions: settings.effective.extensions,
-                          skills: settings.effective.skills,
-                          prompts: settings.effective.prompts,
-                          themes: settings.effective.themes,
-                          enableSkillCommands:
-                            settings.effective.enableSkillCommands,
-                        }))
-                        setPackageRows(
-                          formatPackageSourceRows(settings.effective.packages)
-                        )
-                        setPackageError(undefined)
-                      }}
-                      onSave={() =>
-                        draft &&
-                        saveSection("resources", resourceSettings(draft))
-                      }
-                      onSkillsChange={(skills) =>
-                        updateDraft((current) => ({ ...current, skills }))
-                      }
-                      onThemesChange={(themes) =>
-                        updateDraft((current) => ({ ...current, themes }))
-                      }
-                      packageError={packageError}
-                      packageRows={packageRows}
-                      resourceDirty={resourceDirty}
-                      resourceSummary={resourceSummary}
-                      saving={savingSection === "resources"}
-                      settingsLoading={settingsLoading}
-                    />
-                  </div>
+                {activeTab === "llm-models" && (
+                  <ModelDefaultsSection
+                    draft={draft}
+                    modelDirty={modelDirty}
+                    modelFilter={modelFilter}
+                    modelOptions={modelOptions}
+                    onModelFilterChange={setModelFilter}
+                    onModelToggle={setModelEnabled}
+                    onRevert={() => {
+                      if (!settings) return
+                      updateDraft((current) => ({
+                        ...current,
+                        defaultProvider: settings.effective.defaultProvider,
+                        defaultModel: settings.effective.defaultModel,
+                        defaultThinkingLevel:
+                          settings.effective.defaultThinkingLevel,
+                        enabledModels: settings.effective.enabledModels,
+                      }))
+                    }}
+                    onSave={() =>
+                      draft && saveSection("models", modelSettings(draft))
+                    }
+                    saving={savingSection === "models"}
+                    settingsLoading={settingsLoading}
+                  />
                 )}
+
+                {activeTab === "skills" && resourcesPane("skills")}
+
+                {activeTab === "pi-harness" && resourcesPane("harness")}
               </div>
             </ScrollArea>
           </main>

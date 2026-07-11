@@ -12,3 +12,5 @@ export type {
   DiscreteTabTriggerProps,
 } from "./discrete-tab"
 export { FieldLabel, InlineNotice, RowSurface, SectionSurface } from "./surface"
+export { ItemRow } from "./item-row"
+export { SettingsCommitActions, SettingsPane } from "./settings-pane"
