@@ -145,7 +145,7 @@ async function main() {
   }
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (chatRuntimeUrl && trustZone !== "local") {
+  if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
     const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
     const prefix = smoke.ok ? "OK" : "FAIL"
     console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
