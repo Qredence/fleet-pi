@@ -254,7 +254,34 @@ Delete an owned Pi session mirror row and ephemeral JSONL
     "message": <string> (required)
   }
   ```
+- **403** — Forbidden: session belongs to another user
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
 - **404** — Session not found or not owned
+  ```json
+  {
+    "ok": <boolean> (required),
+    "reason": <string> (required)
+  }
+  ```
+- **500** — Delete failed
+  ```json
+  {
+    "ok": <boolean> (required),
+    "reason": <string> (required)
+  }
+  ```
+- **501** — Session mirror is disabled
+  ```json
+  {
+    "ok": <boolean> (required),
+    "reason": <string> (required)
+  }
+  ```
+- **503** — Session mirror is temporarily unavailable
   ```json
   {
     "ok": <boolean> (required),
@@ -283,6 +310,14 @@ Erase mirrored Pi sessions and BYOK provider credentials for the signed-in user
 - **401** — Unauthorized
   ```json
   {
+    "message": <string> (required)
+  }
+  ```
+- **500** — Failed to erase mirrored Pi data
+  ```json
+  {
+    "ok": <boolean> (required),
+    "reason": <string> (required),
     "message": <string> (required)
   }
   ```

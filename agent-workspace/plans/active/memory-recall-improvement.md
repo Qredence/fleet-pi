@@ -32,18 +32,18 @@ Improve Fleet Pi's project-memory recall across three dimensions:
 
 ## Steps
 
-| #   | Step                                                                                     | Status     |
-| --- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | Audit canonical memory content — identify gaps across all 5 files                        | ✅ Done    |
-| 2   | Enrich canonical memory files — fill 9 identified gaps                                   | ✅ Done    |
-| 3   | Design prompt-aware retrieval — spec the scoring and integration points                  | ✅ Done    |
-| 4   | Implement retrieval in `workspace-memory-index.ts` and `workspace-context.ts`            | ✅ Done    |
-| 5   | Write `memory-recall.md` eval rubric — 4 dimensions, pass threshold, regression triggers | ✅ Done    |
-| 6   | Wire eval to `pi-autocontext` — document scenario spec as runnable artifact              | ❌ Blocked |
-| 7   | Create active plan file and promote backlog candidate                                    | ✅ Done    |
+| #   | Step                                                                                     | Status  |
+| --- | ---------------------------------------------------------------------------------------- | ------- |
+| 1   | Audit canonical memory content — identify gaps across all 5 files                        | ✅ Done |
+| 2   | Enrich canonical memory files — fill 9 identified gaps                                   | ✅ Done |
+| 3   | Design prompt-aware retrieval — spec the scoring and integration points                  | ✅ Done |
+| 4   | Implement retrieval in `workspace-memory-index.ts` and `workspace-context.ts`            | ✅ Done |
+| 5   | Write `memory-recall.md` eval rubric — 4 dimensions, pass threshold, regression triggers | ✅ Done |
+| 6   | Wire eval to `pi-autocontext` — document scenario spec as runnable artifact              | ✅ Done |
+| 7   | Create active plan file and promote backlog candidate                                    | ✅ Done |
 
 _Note on Step 4:_ Fully implemented and applied to `.pi/extensions/lib/workspace-memory-index.ts` and `.pi/extensions/workspace-context.ts` during an Agent-mode write session! Prompt-aware dynamic context is now active for all user turns.
-_Note on Step 6:_ Blocked by unhandled `Cannot find module './parsers/any.js'` error within the `pi-autocontext` zod-to-json-schema dependency. Direct manual scoring with `agent-workspace/evals/memory-recall.md` is the current active workaround.
+_Note on Step 6:_ Fully resolved! We successfully initialized the `autoctx` database via `autoctx init` at the root and configured `.autoctx.json` with Google Gemini. `autocontext_judge` and `autocontext_improve` now run seamlessly on Gemini.
 
 ---
 
@@ -88,7 +88,6 @@ The temporary scratch patch copies used during the earlier design phase were ret
 
 ## Follow-up backlog
 
-- Resolve `pi-autocontext` module error and register `memory-recall` as a named scenario
 - Add `memory-recall` to the regression gate run after workspace-context changes
 - Consider adding section-level scoring: weight snippets by which section heading they fall under
 - Evaluate whether `selectScoredSnippets` limit=10 is the right default or should be
