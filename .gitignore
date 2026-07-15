@@ -66,18 +66,4 @@ package-lock.json
 # Local-only Pi skill symlinks pointing at gitignored skill dirs
 .pi/skills/impeccable
 tempo/.tempo/
-.agents/skills/grill-with-docs/SKILL.md
-.agents/skills/grilling/SKILL.md
-.agents/skills/improve-codebase-architecture/HTML-REPORT.md
-.agents/skills/improve-codebase-architecture/SKILL.md
-.agents/skills/to-spec/SKILL.md
-.agents/skills/to-tickets/SKILL.md
-.agents/skills/visual-plan/agent-native-skill.json
-.agents/skills/visual-plan/SKILL.md
-.agents/skills/visual-plan/references/canvas.md
-.agents/skills/visual-plan/references/document-quality.md
-.agents/skills/visual-plan/references/exemplar.md
-.agents/skills/visual-plan/references/wireframe.md
-.agents/skills/migrate-radix-to-base
-.agents/skills/baseline-ui
-.agents/skills/shadcn-ui
+.agents/skills/**
