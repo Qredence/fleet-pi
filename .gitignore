@@ -67,3 +67,4 @@ package-lock.json
 .pi/skills/impeccable
 tempo/.tempo/
 .agents/skills/**
+skills-lock.json
