@@ -146,3 +146,13 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
 - `.vercelignore` excludes `agent-workspace/`, `.fleet/`, `.pi/`, `dist/`, and `node_modules` (apps/web must not import from `.pi/` on Vercel—colocate server helpers like `context-filter` under `apps/web/src/lib/pi/`). Feature-branch previews need `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` scoped to Preview, not Production-only or a single branch alias.
 - Pi `enabledModels: []` means deny-all models; shared glob matching lives in `packages/hax-design/src/lib/pi/model-patterns.ts`.
+
+<!-- AUTOCTX_GUIDE_START -->
+
+## AutoContext
+
+- Use `autoctx capabilities` to inspect supported commands and project state.
+- Use `autoctx whoami` to confirm provider credentials before running evaluations.
+- Run `autoctx run` from this directory to use the defaults stored in `.autoctx.json`.
+
+<!-- AUTOCTX_GUIDE_END -->

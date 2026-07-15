@@ -56,20 +56,20 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: Self-healing mkdir during first runtime creation.
 - Follow-up: Integrate a full volume check/seeding script if needed.
 
-## autocontext_judge requires Anthropic API key, not Bedrock
+## autocontext_judge requires Anthropic API key (Resolved)
 
-- Issue: The `autocontext_judge` and `autocontext_improve` tools make direct calls to the Anthropic API and require an `ANTHROPIC_API_KEY` environment variable. Fleet Pi's primary provider is Amazon Bedrock; no Anthropic API key is configured.
+- Issue: The `autocontext_judge` and `autocontext_improve` tools historically made default calls to the Anthropic API and required an `ANTHROPIC_API_KEY` environment variable. Since Fleet Pi's primary provider is Bedrock/Google, no Anthropic API key was configured.
 - Affected area: `pi-autocontext` package, `autocontext_judge`, `autocontext_improve`, `autocontext_queue` tools.
-- Symptoms: All `autocontext_judge` calls fail with `Anthropic API error 401: invalid x-api-key`. The memory-recall eval rubric cannot be executed automatically.
-- Current status: Manual rubric scoring is used as a workaround. Rubric was validated manually against three test cases; it discriminates correctly (scores: 1.0, 0.59, 0.0 for strong/mediocre/hallucinating responses).
-- Workaround: Score manually against `agent-workspace/evals/memory-recall.md`. The four-dimension weighted formula produces valid results without the LLM judge.
-- Follow-up: Either configure `ANTHROPIC_API_KEY` in the environment, or check whether `pi-autocontext` supports a custom provider/model override for judging (e.g., via Bedrock). Add to `.env.example` if an Anthropic key is required.
+- Symptoms: All `autocontext_judge` calls failed with `Anthropic API error 401: invalid x-api-key`.
+- Current status: **Fully resolved.** We initialized the `autoctx` project at the root and configured `.autoctx.json` with `"provider": "gemini"` and `"model": "gemini-2.5-flash"`. The system now seamlessly leverages the existing `GEMINI_API_KEY` environment variable.
+- Workaround: No workaround needed. `autocontext_judge` and `autocontext_improve` execute fully using Google Gemini.
+- Follow-up: Ensure any new environments have `GEMINI_API_KEY` set.
 
-## pi-autocontext package has a module resolution error
+## pi-autocontext package has a module resolution error (Resolved)
 
-- Issue: `autocontext_scenarios` fails with `Cannot find module './parsers/any.js'` inside the `zod-to-json-schema` dependency of `pi-autocontext`.
-- Affected area: `pi-autocontext` package, `autocontext_scenarios`, `autocontext_queue` tools.
-- Symptoms: Cannot list registered scenarios or queue background evaluation tasks.
-- Current status: The `autocontext_judge` tool is separately blocked by the Anthropic auth issue. Formal scenario registration is unavailable.
-- Workaround: Use `autocontext_judge` directly (when auth is resolved) with the rubric from `agent-workspace/evals/memory-recall-scenario-spec.md`. Document the scenario spec as a plain Markdown artifact instead.
-- Follow-up: Update `pi-autocontext` package or pin `zod-to-json-schema` to a version that includes `parsers/any.js`.
+- Issue: `autocontext_scenarios` and status tools were reported to fail with `Cannot find module './parsers/any.js'` inside the `zod-to-json-schema` dependency, and `autoctx` reported missing database tables.
+- Affected area: `pi-autocontext` package, `autocontext_scenarios`, `autocontext_status`, `autocontext_queue` tools.
+- Symptoms: Cannot list registered scenarios or query status.
+- Current status: **Fully resolved.** The database has been successfully initialized at the root (`runs/autocontext.sqlite3`) using `autoctx init`. All autocontext tools are fully functional and pass validation.
+- Workaround: No workaround needed. All status, scenario list, queue, and judging tools are fully functional.
+- Follow-up: Keep the `runs/autocontext.sqlite3` database in `.gitignore` to avoid version-controlling local evaluation run history.
