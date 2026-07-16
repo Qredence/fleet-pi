@@ -81,9 +81,9 @@ describe("resolveWorkspaceContext", () => {
     })
     expect(mockExecuteCommand).toHaveBeenCalledWith(
       sandbox,
-      "mkdir -p /home/daytona/fleet-pi/agent-workspace"
+      "mkdir -p /home/daytona/agent-workspace"
     )
-    expect(context.workspaceRoot).toBe("/home/daytona/fleet-pi/agent-workspace")
+    expect(context.workspaceRoot).toBe("/home/daytona/agent-workspace")
     expect(context.workspaceFS).toBeDefined()
   })
 })

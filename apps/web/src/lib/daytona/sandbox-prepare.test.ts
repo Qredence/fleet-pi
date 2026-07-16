@@ -81,7 +81,7 @@ describe("sandbox-prepare seed", () => {
     )
   })
 
-  it("includes safe seed in the prepare script", () => {
+  it("includes safe seed in the prepare script and skips full-repo clone", () => {
     const script = buildPrepareSandboxCommand(
       "https://github.com/Qredence/fleet-pi.git"
     )
@@ -89,5 +89,7 @@ describe("sandbox-prepare seed", () => {
     expect(script).toContain(
       `if [ ! -f '${SANDBOX_WORKSPACE_ROOT}'/manifest.json ]; then`
     )
+    expect(script).toContain("--sparse")
+    expect(script).not.toContain("/home/daytona/fleet-pi")
   })
 })

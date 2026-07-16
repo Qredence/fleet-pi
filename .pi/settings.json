@@ -3,7 +3,8 @@
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "npm:@daytona/pi"
   ],
   "skills": ["../agent-workspace/pi/skills"],
   "prompts": ["../agent-workspace/pi/prompts"],

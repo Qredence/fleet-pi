@@ -67,5 +67,7 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
+  // Deployed: each user must BYOK their Daytona key — no org env fallback.
+  if (process.env.VERCEL === "1") return undefined
   return process.env.DAYTONA_API_KEY
 }

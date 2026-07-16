@@ -18,7 +18,7 @@ describe("SandboxWorkspaceFS", () => {
       })
       const fs = createSandboxWorkspaceFS(ops)
 
-      const s = await fs.stat("/home/daytona/fleet-pi/agent-workspace")
+      const s = await fs.stat("/home/daytona/agent-workspace")
       expect(s.isDirectory()).toBe(true)
       expect(s.isFile()).toBe(false)
     })
@@ -30,9 +30,7 @@ describe("SandboxWorkspaceFS", () => {
       })
       const fs = createSandboxWorkspaceFS(ops)
 
-      const s = await fs.stat(
-        "/home/daytona/fleet-pi/agent-workspace/manifest.json"
-      )
+      const s = await fs.stat("/home/daytona/agent-workspace/manifest.json")
       expect(s.isDirectory()).toBe(false)
       expect(s.isFile()).toBe(true)
       expect(s.size).toBe(123)
@@ -45,7 +43,7 @@ describe("SandboxWorkspaceFS", () => {
       })
       const fs = createSandboxWorkspaceFS(ops)
 
-      const s = await fs.stat("/home/daytona/fleet-pi/agent-workspace/.gitkeep")
+      const s = await fs.stat("/home/daytona/agent-workspace/.gitkeep")
       expect(s.isFile()).toBe(true)
     })
 
@@ -68,7 +66,7 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       await expect(
-        fs.access("/home/daytona/fleet-pi/agent-workspace")
+        fs.access("/home/daytona/agent-workspace")
       ).resolves.toBeUndefined()
     })
 
@@ -87,12 +85,12 @@ describe("SandboxWorkspaceFS", () => {
       mockedExecuteCommand.mockResolvedValue({ result: "", exitCode: 0 })
       const fs = createSandboxWorkspaceFS(ops)
 
-      await fs.mkdir("/home/daytona/fleet-pi/agent-workspace/deep/nested", {
+      await fs.mkdir("/home/daytona/agent-workspace/deep/nested", {
         recursive: true,
       })
 
       expect(mockedExecuteCommand).toHaveBeenCalledWith(
-        "mkdir -p '/home/daytona/fleet-pi/agent-workspace/deep/nested'"
+        "mkdir -p '/home/daytona/agent-workspace/deep/nested'"
       )
     })
 
@@ -100,10 +98,10 @@ describe("SandboxWorkspaceFS", () => {
       mockedExecuteCommand.mockResolvedValue({ result: "", exitCode: 0 })
       const fs = createSandboxWorkspaceFS(ops)
 
-      await fs.mkdir("/home/daytona/fleet-pi/agent-workspace/new")
+      await fs.mkdir("/home/daytona/agent-workspace/new")
 
       expect(mockedExecuteCommand).toHaveBeenCalledWith(
-        "mkdir '/home/daytona/fleet-pi/agent-workspace/new'"
+        "mkdir '/home/daytona/agent-workspace/new'"
       )
     })
 
@@ -115,7 +113,7 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       await expect(
-        fs.mkdir("/home/daytona/fleet-pi/agent-workspace/new")
+        fs.mkdir("/home/daytona/agent-workspace/new")
       ).rejects.toMatchObject({ code: "EIO" })
     })
   })
@@ -125,10 +123,7 @@ describe("SandboxWorkspaceFS", () => {
       mockedExecuteCommand.mockResolvedValue({ result: "", exitCode: 0 })
       const fs = createSandboxWorkspaceFS(ops)
 
-      await fs.writeFile(
-        "/home/daytona/fleet-pi/agent-workspace/test.md",
-        "hello world"
-      )
+      await fs.writeFile("/home/daytona/agent-workspace/test.md", "hello world")
 
       const calls = mockedExecuteCommand.mock.calls
       const writeCall = calls.find((c: Array<string>) =>
@@ -148,11 +143,9 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       await expect(
-        fs.writeFile(
-          "/home/daytona/fleet-pi/agent-workspace/existing.md",
-          "content",
-          { flag: "wx" }
-        )
+        fs.writeFile("/home/daytona/agent-workspace/existing.md", "content", {
+          flag: "wx",
+        })
       ).rejects.toMatchObject({ code: "EEXIST" })
     })
 
@@ -163,11 +156,9 @@ describe("SandboxWorkspaceFS", () => {
 
       const fs = createSandboxWorkspaceFS(ops)
 
-      await fs.writeFile(
-        "/home/daytona/fleet-pi/agent-workspace/new.md",
-        "content",
-        { flag: "wx" }
-      )
+      await fs.writeFile("/home/daytona/agent-workspace/new.md", "content", {
+        flag: "wx",
+      })
 
       const calls = mockedExecuteCommand.mock.calls
       const writeCall = calls.find((c: Array<string>) =>
@@ -184,7 +175,7 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       await expect(
-        fs.writeFile("/home/daytona/fleet-pi/agent-workspace/new.md", "content")
+        fs.writeFile("/home/daytona/agent-workspace/new.md", "content")
       ).rejects.toMatchObject({ code: "EIO" })
     })
 
@@ -195,7 +186,7 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       await expect(
-        fs.writeFile("/home/daytona/fleet-pi/agent-workspace/new.md", "content")
+        fs.writeFile("/home/daytona/agent-workspace/new.md", "content")
       ).rejects.toMatchObject({ code: "EIO" })
     })
   })
@@ -209,13 +200,13 @@ describe("SandboxWorkspaceFS", () => {
       const fs = createSandboxWorkspaceFS(ops)
 
       const content = await fs.readFile(
-        "/home/daytona/fleet-pi/agent-workspace/manifest.json",
+        "/home/daytona/agent-workspace/manifest.json",
         "utf8"
       )
 
       expect(content).toBe('{"version":1}')
       expect(mockedExecuteCommand).toHaveBeenCalledWith(
-        "cat '/home/daytona/fleet-pi/agent-workspace/manifest.json'"
+        "cat '/home/daytona/agent-workspace/manifest.json'"
       )
     })
 
@@ -237,7 +228,7 @@ describe("SandboxWorkspaceFS", () => {
       })
       const fs = createSandboxWorkspaceFS(ops)
 
-      const entries = await fs.readdir("/home/daytona/fleet-pi/agent-workspace")
+      const entries = await fs.readdir("/home/daytona/agent-workspace")
 
       expect(entries).toHaveLength(4)
       expect(entries[0]).toMatchObject({ name: "instructions" })
@@ -261,9 +252,7 @@ describe("SandboxWorkspaceFS", () => {
       mockedExecuteCommand.mockResolvedValue({ result: "", exitCode: 0 })
       const fs = createSandboxWorkspaceFS(ops)
 
-      const entries = await fs.readdir(
-        "/home/daytona/fleet-pi/agent-workspace/empty"
-      )
+      const entries = await fs.readdir("/home/daytona/agent-workspace/empty")
       expect(entries).toHaveLength(0)
     })
   })

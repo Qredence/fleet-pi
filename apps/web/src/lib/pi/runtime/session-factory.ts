@@ -10,6 +10,7 @@ import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
+import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
@@ -42,10 +43,20 @@ export async function createSessionServices(
   }
 
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
+  const userResourceOptions = overrides?.resourceLoaderOptions
   const services = await createAgentSessionServices({
     cwd: context.projectRoot,
     agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
     ...overrides,
+    resourceLoaderOptions: {
+      ...userResourceOptions,
+      extensionsOverride: (base) => {
+        const withoutStock = excludeStockDaytonaPiExtension(base)
+        return userResourceOptions?.extensionsOverride
+          ? userResourceOptions.extensionsOverride(withoutStock)
+          : withoutStock
+      },
+    },
   })
 
   const servicesWithBootstrap = attachWorkspaceBootstrap(

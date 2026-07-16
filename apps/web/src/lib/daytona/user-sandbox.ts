@@ -9,11 +9,11 @@ import {
   stopSandbox,
 } from "./client"
 import {
+  SANDBOX_WORKSPACE_ROOT,
   prepareSandboxLayout,
   resolveRepositoryUrl,
   syncSandboxProviderCredentials,
 } from "./sandbox-prepare"
-import { ensureSandboxSettingsSeeded } from "./sandbox-settings"
 import { loadSandboxProviderSecrets } from "./sandbox-provider-secrets"
 import { findLatestSnapshot } from "./snapshot-config"
 import type { SandboxProviderSecrets } from "./sandbox-prepare"
@@ -21,10 +21,8 @@ import type { Daytona, Sandbox } from "@daytona/sdk"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
-const SESSION_VOLUME_PREFIX = "fleet-pi-sessions-"
 const MANAGED_BY_LABEL = "fleet-pi"
-export const WORKSPACE_MOUNT_PATH = "/home/daytona/fleet-pi/agent-workspace"
-const SESSION_MOUNT_PATH = "/home/daytona/fleet-pi/.fleet"
+export const WORKSPACE_MOUNT_PATH = SANDBOX_WORKSPACE_ROOT
 
 export interface UserSandboxConfig {
   userId: string
@@ -46,11 +44,19 @@ export interface UserSandboxHandle {
 const userSandboxes = new Map<string, UserSandboxHandle>()
 const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 
+/**
+ * Daytona is enabled when the caller has a userId and a resolved API key.
+ * Pass the result of `resolveDaytonaRuntimeApiKey` as `clientApiKey`.
+ * On Vercel, env `DAYTONA_API_KEY` alone must not enable Daytona (BYOK required).
+ */
 export function isDaytonaEnabled(
   userId?: string,
   clientApiKey?: string
 ): boolean {
-  return Boolean(userId) && Boolean(clientApiKey || process.env.DAYTONA_API_KEY)
+  if (!userId) return false
+  if (clientApiKey) return true
+  if (process.env.VERCEL === "1") return false
+  return Boolean(process.env.DAYTONA_API_KEY)
 }
 
 export function getSandboxName(userId: string): string {
@@ -59,14 +65,6 @@ export function getSandboxName(userId: string): string {
 
 export function getVolumeName(userId: string): string {
   return `${VOLUME_NAME_PREFIX}${userId}`
-}
-
-export function getSessionVolumeName(userId: string): string {
-  return `${SESSION_VOLUME_PREFIX}${userId}`
-}
-
-export function isSessionPersistenceEnabled(): boolean {
-  return process.env.FLEET_PI_PERSIST_SESSIONS === "true"
 }
 
 export async function getUserSandbox(
@@ -124,19 +122,6 @@ async function resolveUserSandbox(
       }),
     ]
 
-    if (isSessionPersistenceEnabled()) {
-      const sessionVolume = await getOrCreateVolume(
-        client,
-        getSessionVolumeName(config.userId)
-      )
-      volumes.push(
-        createVolumeMount({
-          volumeId: sessionVolume.id,
-          mountPath: SESSION_MOUNT_PATH,
-        })
-      )
-    }
-
     const snapshot = await findLatestSnapshot(client)
     sandbox = await createSandbox(client, {
       name: sandboxName,
@@ -182,7 +167,6 @@ async function prepareSandboxForUser(
   const secrets = providerSecrets ?? (await loadSandboxProviderSecrets(userId))
   const repoUrl = resolveRepositoryUrl(process.env.FLEET_PI_REPOSITORY_URL)
   await prepareSandboxLayout(sandbox, repoUrl)
-  await ensureSandboxSettingsSeeded(sandbox)
   await syncSandboxProviderCredentials(sandbox, secrets, userId)
 }
 
