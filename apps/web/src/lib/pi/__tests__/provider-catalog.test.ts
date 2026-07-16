@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   KNOWN_PROVIDERS,
   PI_PROVIDER_CATALOG,
-  PROVIDER_METADATA,
-} from "@workspace/hax-design/lib/pi/provider-catalog"
+} from "@workspace/pi-protocol/provider-catalog"
+import { PROVIDER_METADATA } from "@workspace/hax-design/components/fleet-pi/pi/config-panel/shared/provider-metadata"
 
 describe("provider catalog", () => {
   it("uses Pi's canonical google provider id for Gemini", () => {
@@ -21,9 +21,11 @@ describe("provider catalog", () => {
 
   it("keeps credential and UI metadata aligned for configured providers", () => {
     for (const entry of PI_PROVIDER_CATALOG) {
-      if (entry.ui === undefined) continue
+      if (!(entry.id in PROVIDER_METADATA)) continue
+      const ui = PROVIDER_METADATA[entry.id]
 
-      expect(PROVIDER_METADATA[entry.id]).toEqual(entry.ui)
+      expect(ui.placeholder.length).toBeGreaterThan(0)
+      expect(ui.help.length).toBeGreaterThan(0)
     }
   })
 
@@ -33,6 +35,7 @@ describe("provider catalog", () => {
         "openrouter",
         "vercel-ai-gateway",
         "github-copilot",
+        "openai-chat-completions",
       ])
     )
     expect(

@@ -214,10 +214,11 @@ Chat column and configuration lists stay flat. Header pills, suggestion chips, a
 
 ### Discrete Tabs (`DiscreteTabs`)
 
-- **Shape:** Pill triggers in inline flex row; icon + expanding label on active tab
-- **Inactive:** Transparent; muted text; hover `bg-accent/50`
-- **Active:** `bg-accent text-accent-foreground`; label expands via CSS grid `0fr → 1fr` (220ms ease)
+- **Shape:** Pill triggers in inline flex row; icon + expanding label on active tab; full header-pill chrome (`CHROME_PILL_CLASS`: h-9, border, shadow-sm, backdrop-blur)
+- **Inactive:** Quiet Chrome — `bg-sidebar text-foreground/55`; hover lifts toward background
+- **Active:** Quiet Chrome — `bg-background text-foreground/75`; label expands via CSS grid `0fr → 1fr` (220ms ease)
 - **Tooltip:** Popover-style title on hover when inactive; no side-stripe indicators
+- **Note:** Implemented tabs follow Quiet Chrome / header-pill tokens, not accent-fill tab chrome.
 
 ### Chips / Suggestion Pills
 
@@ -241,7 +242,7 @@ Chat column and configuration lists stay flat. Header pills, suggestion chips, a
 ### Navigation
 
 - **Header:** Floating pill cluster (account, sessions, new session) — not a full-width top bar
-- **Right panel:** `DiscreteTabs` launcher (Resources, Workspace, Configurations) + resizable canvas
+- **Right panel:** `DiscreteTabs` launcher (Pi Resources, Workspace, Artifacts) + resizable canvas
 - **Mobile:** Overlay panel below 960px; desktop inline launcher hidden on small screens per `layout-constants`
 
 ### Resizable Right Canvas

@@ -2,11 +2,19 @@ import { createFileRoute } from "@tanstack/react-router"
 import {
   ChatProviderUpdateRequestSchema,
   ChatProviderUpdateResponseSchema,
-} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
-import { KNOWN_PROVIDERS } from "@workspace/hax-design/lib/pi/provider-catalog"
+} from "@workspace/pi-protocol/chat-protocol.zod"
+import {
+  KNOWN_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+} from "@workspace/pi-protocol/provider-catalog"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
-import { updateEnvVar } from "@/lib/env-manager"
+import {
+  sanitizeProviderCredentialValue,
+  updateEnvVars,
+} from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
@@ -15,6 +23,8 @@ import {
   hotReloadActiveRuntimesForUser,
   hotReloadProviderAuthForActiveRuntimes,
 } from "@/lib/pi/runtime"
+import { ensureOpenAiChatCompletionsModelEnabled } from "@/lib/pi/runtime/ensure-openai-chat-completions-model"
+import { assertSafeOpenAiCompatibleBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-provider"
 
 export const Route = createFileRoute("/api/chat/providers")({
   server: {
@@ -57,28 +67,101 @@ export const Route = createFileRoute("/api/chat/providers")({
             )
           }
 
+          const apiKey = sanitizeProviderCredentialValue(body.apiKey)
+          const isOpenAiChatCompletions =
+            body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+
+          let baseUrl: string | undefined
+          let modelId: string | undefined
+          if (isOpenAiChatCompletions) {
+            try {
+              baseUrl = assertSafeOpenAiCompatibleBaseUrl(body.baseUrl ?? "")
+            } catch (error) {
+              return Response.json(
+                {
+                  message:
+                    error instanceof Error
+                      ? error.message
+                      : "Invalid OpenAI Chat Completions base URL.",
+                },
+                { status: 400 }
+              )
+            }
+            modelId = sanitizeProviderCredentialValue(body.modelId ?? "")
+            if (!baseUrl || !modelId) {
+              return Response.json(
+                {
+                  message:
+                    "OpenAI Chat Completions requires apiKey, baseUrl, and modelId.",
+                },
+                { status: 400 }
+              )
+            }
+          }
+
+          if (!apiKey) {
+            return Response.json(
+              { message: "API key is required." },
+              { status: 400 }
+            )
+          }
+
           const authSession = await auth.api
             .getSession({ headers: request.headers })
             .catch(() => null)
           const userId = authSession?.user.id
+          const context = resolveAppRuntimeContext()
 
           if (process.env.VERCEL === "1") {
             if (!userId) {
               return Response.json({ message: "Unauthorized" }, { status: 401 })
             }
-            await storeUserProviderApiKey(userId, provider.id, body.apiKey)
+            await storeUserProviderApiKey(userId, provider.id, apiKey)
+            if (isOpenAiChatCompletions && baseUrl && modelId) {
+              await storeUserProviderApiKey(
+                userId,
+                OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+                baseUrl
+              )
+              await storeUserProviderApiKey(
+                userId,
+                OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+                modelId
+              )
+            }
           } else {
-            const context = resolveAppRuntimeContext()
-            await updateEnvVar(
-              context.projectRoot,
-              provider.envVarName,
-              body.apiKey
-            )
+            const envEntries: Record<string, string> = {
+              [provider.envVarName]: apiKey,
+            }
+            if (isOpenAiChatCompletions && baseUrl && modelId) {
+              const baseUrlProvider = KNOWN_PROVIDERS.find(
+                (entry) =>
+                  entry.id === OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+              )
+              const modelProvider = KNOWN_PROVIDERS.find(
+                (entry) =>
+                  entry.id === OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID
+              )
+              if (baseUrlProvider) {
+                envEntries[baseUrlProvider.envVarName] = baseUrl
+              }
+              if (modelProvider) {
+                envEntries[modelProvider.envVarName] = modelId
+              }
+            }
+            // Vite ignores .env.local watches; await durable persistence so
+            // success means credentials are on disk (temp file + rename).
+            await updateEnvVars(context.projectRoot, envEntries)
+          }
+
+          if (isOpenAiChatCompletions && modelId) {
+            await ensureOpenAiChatCompletionsModelEnabled(context, modelId, {
+              userId,
+            })
           }
 
           if (userId) {
             await hotReloadActiveRuntimesForUser(userId)
-            // Best-effort: push updated keys into a live Daytona sandbox.
             try {
               await refreshSandboxProviderCredentials(userId)
             } catch {

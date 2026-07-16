@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "@daytona/sdk": "^0.191.0",
+    "@daytona/sdk": "^0.197.0",
     "@earendil-works/pi-agent-core": "^0.80.2",
     "@earendil-works/pi-ai": "^0.80.2",
     "@earendil-works/pi-coding-agent": "^0.80.2",
@@ -35,6 +35,7 @@
     "@tanstack/router-plugin": "^1.168.18",
     "@types/better-sqlite3": "^7.6.13",
     "@workspace/hax-design": "workspace:*",
+    "@workspace/pi-protocol": "workspace:*",
     "better-auth": "^1.6.21",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",

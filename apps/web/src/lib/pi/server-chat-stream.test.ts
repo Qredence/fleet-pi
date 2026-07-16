@@ -4,7 +4,7 @@ import {
   createTurnStartContext,
   handleSessionEvent,
 } from "./server-chat-stream"
-import type { ChatStreamEvent } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatStreamEvent } from "@workspace/pi-protocol/chat-protocol"
 
 describe("server chat stream", () => {
   afterEach(() => {

@@ -32,7 +32,8 @@
     "allowJs": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@workspace/hax-design/*": ["../../packages/hax-design/src/*"]
+      "@workspace/hax-design/*": ["../../packages/hax-design/src/*"],
+      "@workspace/pi-protocol/*": ["../../packages/pi-protocol/src/*"]
     }
   }
 }

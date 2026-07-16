@@ -143,7 +143,7 @@ export function ChatCommandPalette({
             keywords={["resources", "skills", "panels"]}
           >
             <Library className="mr-2 size-4" />
-            <span>Open Resources</span>
+            <span>Open Pi Resources</span>
           </CommandItem>
           <CommandItem
             onSelect={() => handleSelect(() => onSetRightPanel("workspace"))}

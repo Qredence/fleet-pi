@@ -3,7 +3,7 @@ import {
   isWebBuiltinSlashCommand,
 } from "../slash-commands"
 import { createSessionServices } from "./session-factory"
-import type { ChatSlashCommandInfo } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatSlashCommandInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function loadChatCommands(context: AppRuntimeContext) {

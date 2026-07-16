@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getProviderConfigStatus } from "../provider-catalog"
 
 const mocks = vi.hoisted(() => ({
-  isEnvVarConfigured: vi.fn(() => false),
+  isEnvVarConfigured: vi.fn((_key?: string) => false),
   withChatPostgresTransaction: vi.fn(),
 }))
 
@@ -67,5 +67,45 @@ describe("runtime provider catalog", () => {
     expect(
       providers.find((provider) => provider.id === "google")?.isConfigured
     ).toBe(false)
+  })
+
+  it("requires key, base URL, and model ID for OpenAI Chat Completions", async () => {
+    delete process.env.VERCEL
+    mocks.isEnvVarConfigured.mockImplementation((key?: string) =>
+      key === "OPENAI_CHAT_COMPLETIONS_API_KEY" ? true : false
+    )
+
+    const providers = await getProviderConfigStatus()
+    expect(
+      providers.find((provider) => provider.id === "openai-chat-completions")
+        ?.isConfigured
+    ).toBe(false)
+
+    mocks.isEnvVarConfigured.mockImplementation((key?: string) =>
+      [
+        "OPENAI_CHAT_COMPLETIONS_API_KEY",
+        "OPENAI_CHAT_COMPLETIONS_BASE_URL",
+      ].includes(key ?? "")
+    )
+
+    const missingModel = await getProviderConfigStatus()
+    expect(
+      missingModel.find((provider) => provider.id === "openai-chat-completions")
+        ?.isConfigured
+    ).toBe(false)
+
+    mocks.isEnvVarConfigured.mockImplementation((key?: string) =>
+      [
+        "OPENAI_CHAT_COMPLETIONS_API_KEY",
+        "OPENAI_CHAT_COMPLETIONS_BASE_URL",
+        "OPENAI_CHAT_COMPLETIONS_MODEL",
+      ].includes(key ?? "")
+    )
+
+    const configured = await getProviderConfigStatus()
+    expect(
+      configured.find((provider) => provider.id === "openai-chat-completions")
+        ?.isConfigured
+    ).toBe(true)
   })
 })

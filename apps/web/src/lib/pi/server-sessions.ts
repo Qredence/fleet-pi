@@ -17,7 +17,7 @@ import type {
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"

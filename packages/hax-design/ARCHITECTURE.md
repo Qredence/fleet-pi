@@ -10,12 +10,16 @@ apps/web (routes compose only — no local components)
 @workspace/hax-design/components/*
     ├── fleet-pi/          Product shell, panels, config, chat wiring
     ├── agent-elements/    Reusable agent chat UI (messages, tools, input)
-    ├── openui/            Generative UI (OpenUI Lang renderer + registry)
+    ├── openui/            Generative UI renderer + registry (prompt lives in pi-protocol)
     └── [primitives]       shadcn/base-nova (button, input, dialog, …)
     ↓
+@workspace/pi-protocol     Wire-format types, Zod, provider IDs, OpenUI prompt (no React)
+    ↓
 src/styles/globals.css     OKLCH tokens, Tailwind v4 theme, radius scale
-src/lib/                   Shared utilities (layout, canvas, protocol types)
+src/lib/                   Shell utilities (layout, canvas, chat-helpers); lib/pi/* shims protocol
 ```
+
+**Package exports:** Prefer `@workspace/pi-protocol` for server/wire types. Use curated `@workspace/hax-design/components/fleet-pi/*` and `@workspace/hax-design/components/agent-elements/*` entrypoints. `fleet-pi/pi/config-panel/` internals are not a supported public seam — compose via `SettingsDialog` and right-panel surfaces.
 
 ## fleet-pi/ layout
 

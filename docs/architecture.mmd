@@ -12,12 +12,14 @@ graph TD
         Vite[Vite Dev Server]
         API[API Routes]
         ChatRoute[/api/chat]
+        HandleChatTurn[handleChatTurn]
         HealthRoute[/api/health]
         ModelsRoute[/api/chat/models]
         ResourcesRoute[/api/chat/resources]
         SessionRoute[/api/chat/session]
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
+        SandboxContext[resolveUserSandboxContext]
         PlanMode[Plan Mode Extension]
         WorkspaceServer[Workspace Server]
         ResourceCatalog[Workspace Resource Catalog]
@@ -40,14 +42,24 @@ graph TD
         PiSkills[Committed Pi Skills]
     end
 
-    subgraph UI["packages/ui — Shared Components"]
+    subgraph Protocol["packages/pi-protocol — Wire format"]
+        ChatTypes[ChatMessage and ChatStreamEvent]
+        ZodSchemas[Zod schemas and model patterns]
+        ProviderIds[Provider credential IDs]
+        OpenUIPrompt[buildOpenUIPrompt]
+    end
+
+    subgraph UI["packages/hax-design — Shared UI"]
+        FleetPi[fleet-pi shell and panels]
         AgentElements[agent-elements]
-        Shadcn[shadcn/ui Components]
+        OpenUIRenderer[openui renderer]
+        Shadcn[shadcn/base-nova primitives]
         Styles[Tailwind CSS v4]
     end
 
     subgraph External["External Services"]
-        Bedrock[Amazon Bedrock]
+        GoogleGemini[Google Gemini via Pi google provider]
+        Daytona[Daytona per-user sandboxes]
     end
 
     React --> AgentChat
@@ -62,24 +74,31 @@ graph TD
     API --> ResourcesRoute
     API --> SessionRoute
     API --> WorkspaceRoutes
-    ChatRoute --> PiServer
+    ChatRoute --> HandleChatTurn
+    HandleChatTurn --> PiServer
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> Bedrock
+    CircuitBreaker --> GoogleGemini
+    PiServer --> SandboxContext
+    SandboxContext --> Daytona
     PiServer --> PlanMode
     PiServer --> PiConfig
     PiServer --> PiExtensions
     PiServer --> PiSkills
     ResourcesRoute --> ResourceCatalog
+    WorkspaceRoutes --> SandboxContext
     WorkspaceRoutes --> WorkspaceServer
     ResourceCatalog --> PiResources
     WorkspaceServer --> Memory
     WorkspaceServer --> Plans
     WorkspaceServer --> Skills
     WorkspaceServer --> Artifacts
-    AgentChat --> AgentElements
+    AgentChat --> FleetPi
+    FleetPi --> AgentElements
     AgentElements --> Shadcn
     AgentElements --> Styles
-    InputBar --> AgentElements
-    MessageList --> AgentElements
+    AgentElements --> ChatTypes
+    PiServer --> ChatTypes
+    HandleChatTurn --> ChatTypes
+    OpenUIRenderer --> OpenUIPrompt

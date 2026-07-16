@@ -3,8 +3,8 @@ import {
   ChatModeSchema,
   ChatSettingsResponseSchema,
   ChatSettingsUpdateRequestSchema,
-} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
-import type { ChatRequest } from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol.zod"
+import type { ChatRequest } from "@workspace/pi-protocol/chat-protocol"
 
 describe("chat-protocol types", () => {
   it("accepts a valid agent mode request", () => {

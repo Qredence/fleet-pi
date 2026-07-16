@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { buildOpenUIPrompt } from "./openui-prompt"
+import { buildOpenUIPrompt } from "../openui-prompt"
 
 describe("buildOpenUIPrompt", () => {
   it("includes Fleet Pi chat rules and component signatures", () => {

@@ -1,6 +1,9 @@
 import { Bot, ClipboardList, Hammer } from "lucide-react"
 import type { ModelOption } from "../../components/agent-elements/types"
-import type { ChatModelInfo, ChatModelSelection } from "./chat-protocol"
+import type {
+  ChatModelInfo,
+  ChatModelSelection,
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ChatModelOption = ModelOption & {
   provider: string

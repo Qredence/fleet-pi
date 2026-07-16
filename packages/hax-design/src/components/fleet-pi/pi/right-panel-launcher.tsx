@@ -62,8 +62,8 @@ export function RightPanelLauncher({
     () => [
       {
         id: "resources" as const,
-        title: "Resources",
-        ariaLabel: "Pi resources",
+        title: "Pi Resources",
+        ariaLabel: "Pi Resources",
         badge: totalResources,
         icon: Library,
       },

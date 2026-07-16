@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { ChatPiSettingsUpdateSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   hotReloadActiveRuntimes,
@@ -14,7 +14,7 @@ import type {
   ChatPiSettingsUpdate,
   ChatSettingsResponse,
   ChatTransport,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const SETTINGS_PATH = ".pi/settings.json"

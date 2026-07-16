@@ -9,7 +9,7 @@ import {
 import { collectDiagnostics } from "./diagnostics"
 import { createSessionServices } from "./session-factory"
 import type { PromptTemplate, Skill } from "@earendil-works/pi-coding-agent"
-import type { ChatResourcesResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatResourcesResponse } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function loadChatResources(

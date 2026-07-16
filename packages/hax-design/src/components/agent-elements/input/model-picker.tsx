@@ -13,6 +13,9 @@ export type ModelPickerProps = {
   onChange?: (modelId: string) => void
   placeholder?: string
   className?: string
+  /** Controlled open state for the model popover. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export const ModelPicker = memo(function ModelPicker({
@@ -22,12 +25,16 @@ export const ModelPicker = memo(function ModelPicker({
   onChange,
   placeholder = "Auto",
   className,
+  open: controlledOpen,
+  onOpenChange,
 }: ModelPickerProps) {
   const isControlled = value !== undefined
   const [internalValue, setInternalValue] = useState(defaultValue)
   const activeId = isControlled ? value : internalValue
   const activeModel = models.find((m) => m.id === activeId) ?? models[0]
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isOpenControlled = controlledOpen !== undefined
+  const open = isOpenControlled ? controlledOpen : uncontrolledOpen
 
   const scrollActiveModelIntoView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -48,19 +55,20 @@ export const ModelPicker = memo(function ModelPicker({
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
-      setOpen(nextOpen)
+      if (!isOpenControlled) setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
       if (nextOpen) scrollActiveModelIntoView()
     },
-    [scrollActiveModelIntoView]
+    [isOpenControlled, onOpenChange, scrollActiveModelIntoView]
   )
 
   const handleSelect = useCallback(
     (id: string) => {
       if (!isControlled) setInternalValue(id)
       onChange?.(id)
-      setOpen(false)
+      handleOpenChange(false)
     },
-    [isControlled, onChange]
+    [handleOpenChange, isControlled, onChange]
   )
 
   return (

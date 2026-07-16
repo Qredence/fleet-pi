@@ -54,16 +54,14 @@ import type {
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
   ChatSessionMetadata,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import {
-  getUserSandbox,
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
+import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import { createSandboxOperations } from "@/lib/daytona/sandbox-operations"
-import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
-import { executeCommand as daytonaExecuteCommand } from "@/lib/daytona/client"
 import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
@@ -205,20 +203,15 @@ export async function createPiRuntime(
     isDaytonaEnabled(metadata.userId, daytonaApiKey) &&
     !context.workspaceFS
   ) {
-    const handle = await getUserSandbox({
+    const sandboxContext = await resolveUserSandboxContext({
       userId: metadata.userId!,
       userEmail: metadata.userEmail,
-      apiKey: daytonaApiKey,
+      apiKey: daytonaApiKey!,
+      surface: "chat",
     })
-    const sb = handle.sandbox
-    const sandboxWorkspaceRoot = "/home/daytona/fleet-pi/agent-workspace"
-    // Ensure the workspace directory exists in the sandbox (FUSE volume may be empty on first mount)
-    await daytonaExecuteCommand(sb, `mkdir -p ${sandboxWorkspaceRoot}`)
-    context.workspaceFS = createSandboxWorkspaceFS({
-      executeCommand: (cmd, cwd) => daytonaExecuteCommand(sb, cmd, cwd),
-    })
-    context.workspaceRoot = sandboxWorkspaceRoot
-    context.workspaceBootstrap = undefined // reset so bootstrap re-runs with sandbox FS
+    context.workspaceFS = sandboxContext.workspaceFS
+    context.workspaceRoot = sandboxContext.workspaceRoot
+    context.workspaceBootstrap = undefined
   }
 
   const services = await createSessionServices(context)
@@ -288,13 +281,14 @@ export async function createPiRuntime(
       metadata.userId
     )
     if (isDaytonaEnabled(metadata.userId, runtimeDaytonaApiKey)) {
-      const handle = await getUserSandbox({
+      const sandboxContext = await resolveUserSandboxContext({
         userId: metadata.userId!,
         userEmail: metadata.userEmail,
-        apiKey: runtimeDaytonaApiKey,
+        apiKey: runtimeDaytonaApiKey!,
+        surface: "chat",
       })
-      const sandboxCwd = "/home/daytona/fleet-pi"
-      const s = handle.sandbox
+      const sandboxCwd = sandboxContext.sandboxProjectRoot
+      const s = sandboxContext.sandbox
       const ops = createSandboxOperations(s)
       customTools = [
         createBashToolDefinition(sandboxCwd, { operations: ops.bash }),

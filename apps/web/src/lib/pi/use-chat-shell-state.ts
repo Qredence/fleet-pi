@@ -20,7 +20,7 @@ import type {
   ChatMode,
   ChatModelsResponse,
   ChatSessionMetadata,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type {
   RightPanel,
   ThemePreference,

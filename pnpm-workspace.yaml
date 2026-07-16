@@ -1,7 +1,7 @@
 packages:
   - "apps/web"
   - "packages/hax-design"
-  - "tempo"
+  - "packages/pi-protocol"
 overrides:
   '@anthropic-ai/sdk': '>=0.91.1'
   handlebars: '>=4.7.9'

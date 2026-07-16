@@ -13,7 +13,7 @@ Use this skill when chat requests fail, sessions do not resume, tool cards look 
 2. Check Pi runtime creation and session hydration in `apps/web/src/lib/pi/server.ts`.
 3. Check Plan mode state and questionnaire handling in `apps/web/src/lib/pi/plan-mode.ts`.
 4. Check UI stream consumption in `apps/web/src/routes/index.tsx`.
-5. Check shared tool rendering in `packages/ui/src/components/agent-elements/tools/`.
+5. Check shared tool rendering in `packages/hax-design/src/components/agent-elements/tools/`.
 
 ## Common Checks
 

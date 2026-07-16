@@ -1,33 +1,34 @@
 import type {
   ChatResourcesResponse,
   ChatSlashCommandInfo,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 /**
- * Discovery-only builtins for the InputBar slash menu.
- * Selecting an item inserts the command into the input; execution backends
- * for packages/OAuth/compact/reload are intentionally not shipped yet.
+ * Fleet Pi UI builtins for the InputBar slash menu.
+ * Selecting or submitting these runs a local UI action (model picker,
+ * Settings tab, new session) instead of prompting the agent.
+ * Package/OAuth/compact/reload backends are intentionally not shipped yet.
  */
 export const WEB_BUILTIN_SLASH_COMMANDS: Array<ChatSlashCommandInfo> = [
   {
     name: "model",
-    description: "Select provider/model or thinking level",
-    argumentHint: "[provider/id[:thinking]]",
+    description: "Open the model picker",
+    argumentHint: "[provider/id]",
     source: "builtin",
   },
   {
     name: "models",
-    description: "Open model allowlist settings",
+    description: "Open LLM Models settings",
     source: "builtin",
   },
   {
     name: "scoped-models",
-    description: "Open model allowlist settings",
+    description: "Open LLM Models settings",
     source: "builtin",
   },
   {
     name: "settings",
-    description: "Open Pi settings",
+    description: "Open Settings",
     source: "builtin",
   },
   {
@@ -42,10 +43,57 @@ export const WEB_BUILTIN_SLASH_COMMANDS: Array<ChatSlashCommandInfo> = [
   },
   {
     name: "config",
-    description: "Open package configuration",
+    description: "Open Pi Harness settings",
     source: "builtin",
   },
 ]
+
+export type SettingsSlashTab =
+  | "appearance"
+  | "sandbox"
+  | "providers"
+  | "llm-models"
+  | "skills"
+  | "pi-harness"
+
+export type LocalSlashAction =
+  | { type: "open-model-picker"; modelKey?: string }
+  | { type: "open-settings"; tab: SettingsSlashTab }
+  | { type: "new-session" }
+  | { type: "show-session" }
+
+/**
+ * Map a slash command (+ optional args) to a client-only UI action.
+ * Returns null for resource/skill commands that should reach the agent.
+ */
+export function resolveLocalSlashAction(
+  command: string,
+  args = ""
+): LocalSlashAction | null {
+  const trimmedArgs = args.trim()
+  switch (command) {
+    case "model": {
+      // Strip optional `:thinking` suffix from Pi-style args.
+      const modelKey = trimmedArgs
+        ? trimmedArgs.replace(/:[\w.-]+$/, "")
+        : undefined
+      return { type: "open-model-picker", modelKey }
+    }
+    case "models":
+    case "scoped-models":
+      return { type: "open-settings", tab: "llm-models" }
+    case "settings":
+      return { type: "open-settings", tab: "appearance" }
+    case "config":
+      return { type: "open-settings", tab: "pi-harness" }
+    case "new":
+      return { type: "new-session" }
+    case "session":
+      return { type: "show-session" }
+    default:
+      return null
+  }
+}
 
 const WEB_BUILTIN_COMMAND_NAMES = new Set(
   WEB_BUILTIN_SLASH_COMMANDS.map((command) => command.name)

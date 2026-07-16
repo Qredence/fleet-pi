@@ -1,4 +1,4 @@
-import { isModelPatternEnabled } from "@workspace/hax-design/lib/pi/model-patterns"
+import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import { createSessionServices } from "./session-factory"
 import type {
@@ -11,7 +11,7 @@ import type {
   ChatModelSelection,
   ChatModelsResponse,
   ChatThinkingLevel,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "off",
