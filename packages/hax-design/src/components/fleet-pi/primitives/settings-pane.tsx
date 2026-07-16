@@ -16,7 +16,7 @@ export function SettingsPane({
 }: {
   actions?: ReactNode
   children: ReactNode
-  description: string
+  description: ReactNode
   title: string
 }) {
   return (

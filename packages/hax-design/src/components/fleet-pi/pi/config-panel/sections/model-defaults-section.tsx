@@ -12,6 +12,7 @@ import {
   SettingsCommitActions,
   SettingsPane,
 } from "../../../primitives/settings-pane"
+import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { isModelEnabled } from "../shared/model-patterns"
 import {
   ProviderBrandIcon,
@@ -100,7 +101,13 @@ export function ModelDefaultsSection({
   return (
     <SettingsPane
       title="LLM Models"
-      description={`Enable models available in chat. ${enabledCount} enabled of ${modelOptions.length}.`}
+      description={
+        <>
+          Enable models available in chat.{" "}
+          <span className="tabular-nums">{enabledCount}</span> enabled of{" "}
+          <span className="tabular-nums">{modelOptions.length}</span>.
+        </>
+      }
       actions={
         <SettingsCommitActions
           dirty={modelDirty}
@@ -118,11 +125,12 @@ export function ModelDefaultsSection({
       >
         {(
           [
-            { id: "all", label: "All" },
-            { id: "enabled", label: `Enabled (${enabledCount})` },
+            { id: "all" as const, label: "All", count: null },
+            { id: "enabled" as const, label: "Enabled", count: enabledCount },
             {
-              id: "disabled",
-              label: `Disabled (${Math.max(modelOptions.length - enabledCount, 0)})`,
+              id: "disabled" as const,
+              label: "Disabled",
+              count: Math.max(modelOptions.length - enabledCount, 0),
             },
           ] as const
         ).map((option) => (
@@ -130,7 +138,8 @@ export function ModelDefaultsSection({
             key={option.id}
             type="button"
             className={cn(
-              "h-7 rounded-full px-2.5 text-[11px] font-medium transition-colors",
+              HIT_AREA_EXPAND_DENSE_CLASS,
+              "h-7 rounded-full px-2.5 text-[11px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.96]",
               statusFilter === option.id
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
@@ -139,6 +148,12 @@ export function ModelDefaultsSection({
             onClick={() => setStatusFilter(option.id)}
           >
             {option.label}
+            {option.count !== null ? (
+              <>
+                {" "}
+                (<span className="tabular-nums">{option.count}</span>)
+              </>
+            ) : null}
           </button>
         ))}
       </div>

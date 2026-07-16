@@ -11,6 +11,7 @@ import {
   RowSurface,
   SectionSurface,
 } from "../../../primitives/surface"
+import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { FIELD_CONTROL_CLASS } from "./constants"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
@@ -66,7 +67,8 @@ export function EditableSection({
             type="button"
             variant="ghost"
             className={cn(
-              "h-7 w-7 cursor-pointer rounded-[6px] p-0 text-foreground/35 transition-all duration-150 hover:bg-foreground/5 hover:text-foreground/65 disabled:opacity-35",
+              HIT_AREA_EXPAND_DENSE_CLASS,
+              "h-7 w-7 cursor-pointer rounded-[6px] p-0 text-foreground/35 transition-[background-color,color,transform] duration-150 hover:bg-foreground/5 hover:text-foreground/65 active:scale-[0.96] disabled:opacity-35 disabled:active:scale-100",
               !dirty && "hidden"
             )}
             disabled={!dirty || disabled || saving}
@@ -81,9 +83,10 @@ export function EditableSection({
             variant="outline"
             size="sm"
             className={cn(
-              "h-7 cursor-pointer rounded-[6px] border-border/45 bg-background/50 px-2.5 text-[10px] font-bold text-foreground/60 shadow-sm transition-all duration-200 hover:bg-foreground/5 hover:text-foreground/80 disabled:opacity-40",
+              HIT_AREA_EXPAND_DENSE_CLASS,
+              "h-7 cursor-pointer rounded-[6px] border-border/45 bg-background/50 px-2.5 text-[10px] font-bold text-foreground/60 shadow-sm transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:bg-foreground/5 hover:text-foreground/80 active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100",
               dirty &&
-                "border-primary/30 text-primary shadow-sm hover:bg-primary/5 hover:text-primary/90 active:scale-95"
+                "border-primary/30 text-primary shadow-sm hover:bg-primary/5 hover:text-primary/90"
             )}
             disabled={!dirty || disabled || saving}
             onClick={onSave}

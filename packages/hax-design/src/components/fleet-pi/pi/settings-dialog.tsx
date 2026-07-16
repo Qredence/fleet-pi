@@ -263,7 +263,7 @@ function MobileTabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
+        "relative rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-[background-color,color,transform] duration-150 after:absolute after:inset-x-0 after:-top-1 after:-bottom-1 active:scale-[0.96]",
         active
           ? "bg-foreground font-bold text-background"
           : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
