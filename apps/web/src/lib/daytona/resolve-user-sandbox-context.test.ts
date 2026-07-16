@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { resolveUserSandboxContext } from "./resolve-user-sandbox-context"
+import {
+  resolveSandboxToolCwd,
+  resolveUserSandboxContext,
+} from "./resolve-user-sandbox-context"
 import { SANDBOX_PROJECT_ROOT, SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
+import type * as UserSandboxModule from "./user-sandbox"
 
 const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =
   vi.hoisted(() => ({
@@ -11,7 +15,7 @@ const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =
   }))
 
 vi.mock("./user-sandbox", async (importOriginal) => {
-  const actual = (await importOriginal())
+  const actual = await importOriginal<typeof UserSandboxModule>()
   return {
     ...actual,
     getUserSandbox: mockGetUserSandbox,
@@ -58,5 +62,12 @@ describe("resolveUserSandboxContext", () => {
 
     await context.release()
     expect(mockReleaseUserSandbox).toHaveBeenCalledWith("user-1")
+  })
+
+  it("resolves Daytona tool cwd to the agent-workspace volume", () => {
+    expect(
+      resolveSandboxToolCwd({ workspaceRoot: SANDBOX_WORKSPACE_ROOT })
+    ).toBe(SANDBOX_WORKSPACE_ROOT)
+    expect(SANDBOX_WORKSPACE_ROOT).not.toBe(SANDBOX_PROJECT_ROOT)
   })
 })

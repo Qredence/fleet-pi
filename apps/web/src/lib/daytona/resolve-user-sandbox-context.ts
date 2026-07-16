@@ -27,6 +27,16 @@ export interface UserSandboxContext {
   release: () => Promise<void>
 }
 
+/**
+ * Cwd for Daytona-backed Pi builtins (bash, read/write/edit, grep, find, ls).
+ * Always the agent-workspace volume — not the full sandbox project checkout.
+ */
+export function resolveSandboxToolCwd(
+  context: Pick<UserSandboxContext, "workspaceRoot">
+): string {
+  return context.workspaceRoot
+}
+
 export interface UserSandboxContextDeps {
   getUserSandbox?: typeof defaultGetUserSandbox
   executeCommand?: typeof defaultExecuteCommand

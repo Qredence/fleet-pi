@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto"
+import {
+  WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+  workspaceVolumeShellKeepPattern,
+} from "../workspace/workspace-contract"
 import { executeCommand, uploadFile } from "./client"
 import type { Sandbox } from "@daytona/sdk"
 
@@ -62,7 +66,7 @@ export function buildPrepareSandboxCommand(repoUrl: string): string {
   return [
     "set -euo pipefail",
     ensureGitInstalledCommand(),
-    migrateLegacyWorkspaceVolumeCommand(repo, workspace),
+    migrateLegacyWorkspaceVolumeCommand(workspace),
     ensureProjectCheckoutCommand(repo, url),
     ensureAgentWorkspaceSeedCommand(workspace, url),
     piDirs,
@@ -142,26 +146,43 @@ function ensureGitInstalledCommand(): string {
   ].join("\n")
 }
 
-function migrateLegacyWorkspaceVolumeCommand(
-  repo: string,
-  workspace: string
-): string {
+/**
+ * Heal polluted volumes. Nested agent-workspace wins over root stubs.
+ * Foreign entries are quarantined on the durable volume (not moved to the
+ * ephemeral project checkout). Exported for unit tests.
+ */
+export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
+  const keepPattern = workspaceVolumeShellKeepPattern()
+  const quarantine = `${workspace}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}`
   return [
-    `if [ -f ${workspace}/.git/config ] && [ -f ${workspace}/package.json ]; then`,
+    "polluted=0",
+    // Nested real workspace is always treated as pollution to flatten.
+    `if [ -f ${workspace}/agent-workspace/manifest.json ]; then polluted=1; fi`,
+    // Tighten monorepo fingerprints: require package.json with apps|packages,
+    // or .git with package.json — avoid false positives on lone user dirs.
+    `if { [ -d ${workspace}/apps ] || [ -d ${workspace}/packages ]; } && [ -f ${workspace}/package.json ]; then polluted=1; fi`,
+    `if [ -d ${workspace}/.git ] && [ -f ${workspace}/package.json ]; then polluted=1; fi`,
+    'if [ "$polluted" = "1" ]; then',
+    `mkdir -p ${quarantine}`,
+    // Nested wins: snapshot nested, quarantine foreign, then force-copy nested onto root.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
     `cp -a ${workspace}/agent-workspace/. "$tmpdir"/`,
-    `find ${workspace} -mindepth 1 -maxdepth 1 ! -name agent-workspace -exec rm -rf {} +`,
-    `cp -a "$tmpdir"/. ${workspace}/`,
-    'rm -rf "$tmpdir"',
-    "fi",
-    `mkdir -p ${repo}`,
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
-    'case "$(basename "$item")" in agent-workspace|manifest.json|instructions|system|memory|plans|skills|evals|artifacts|scratch|pi|indexes) continue;; esac',
-    'if [ -e "$item" ]; then',
-    `mv "$item" ${repo}/ 2>/dev/null || true`,
-    "fi",
+    `[ -e "$item" ] || continue`,
+    `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
+    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
     "done",
+    `cp -a "$tmpdir"/. ${workspace}/`,
+    `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
+    "else",
+    // No nested workspace: quarantine foreign only; keep contract entries.
+    `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
+    `[ -e "$item" ] || continue`,
+    `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
+    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    "done",
+    "fi",
     "fi",
   ].join("\n")
 }
@@ -184,7 +205,12 @@ function ensureProjectCheckoutCommand(repo: string, url: string): string {
   ].join("\n")
 }
 
-function ensureAgentWorkspaceSeedCommand(
+/**
+ * Sparse-seed only when manifest.json is missing. Non-clobber copy preserves
+ * any existing files; bootstrap fills remaining stubs.
+ * Exported for unit tests.
+ */
+export function ensureAgentWorkspaceSeedCommand(
   workspace: string,
   url: string
 ): string {
@@ -195,7 +221,8 @@ function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd.
     '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
     `mkdir -p ${workspace}`,
-    `cp -a "$tmpdir/agent-workspace/." ${workspace}/`,
+    // Non-clobber: preserve any existing files on a partially filled volume.
+    `cp -an "$tmpdir/agent-workspace/." ${workspace}/`,
     'rm -rf "$tmpdir"',
     "fi",
   ].join("\n")

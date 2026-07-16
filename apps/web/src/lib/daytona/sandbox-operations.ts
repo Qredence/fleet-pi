@@ -1,4 +1,4 @@
-import { dirname } from "node:path"
+import { dirname, isAbsolute, relative, resolve } from "node:path"
 import { downloadFile, executeCommand, listFiles, uploadFile } from "./client"
 import type { Sandbox } from "@daytona/sdk"
 import type {
@@ -11,9 +11,33 @@ import type {
   WriteOperations,
 } from "@earendil-works/pi-coding-agent"
 
-export function createSandboxBashOperations(sandbox: Sandbox): BashOperations {
+export function assertPathWithinWorkspaceBound(
+  absolutePath: string,
+  boundRoot: string
+): void {
+  const resolvedPath = resolve(absolutePath)
+  const resolvedRoot = resolve(boundRoot)
+  const rel = relative(resolvedRoot, resolvedPath)
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(
+      `Sandbox path escapes workspace bound (${boundRoot}): ${absolutePath}`
+    )
+  }
+}
+
+function guardPath(absolutePath: string, boundRoot?: string) {
+  if (boundRoot) {
+    assertPathWithinWorkspaceBound(absolutePath, boundRoot)
+  }
+}
+
+export function createSandboxBashOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): BashOperations {
   return {
     exec: async (command, cwd, { onData, timeout }) => {
+      guardPath(cwd, boundRoot)
       const result = await executeCommand(
         sandbox,
         command,
@@ -29,10 +53,17 @@ export function createSandboxBashOperations(sandbox: Sandbox): BashOperations {
   }
 }
 
-export function createSandboxReadOperations(sandbox: Sandbox): ReadOperations {
+export function createSandboxReadOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): ReadOperations {
   return {
-    readFile: (absolutePath) => downloadFile(sandbox, absolutePath),
+    readFile: (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
+      return downloadFile(sandbox, absolutePath)
+    },
     access: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       const entries = await listFiles(sandbox, dir)
@@ -44,13 +75,16 @@ export function createSandboxReadOperations(sandbox: Sandbox): ReadOperations {
 }
 
 export function createSandboxWriteOperations(
-  sandbox: Sandbox
+  sandbox: Sandbox,
+  boundRoot?: string
 ): WriteOperations {
   return {
     writeFile: async (absolutePath, content) => {
+      guardPath(absolutePath, boundRoot)
       await uploadFile(sandbox, content, absolutePath)
     },
     mkdir: async (dir) => {
+      guardPath(dir, boundRoot)
       const result = await executeCommand(
         sandbox,
         `mkdir -p ${shellEscape(dir)}`
@@ -64,13 +98,21 @@ export function createSandboxWriteOperations(
   }
 }
 
-export function createSandboxEditOperations(sandbox: Sandbox): EditOperations {
+export function createSandboxEditOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): EditOperations {
   return {
-    readFile: (absolutePath) => downloadFile(sandbox, absolutePath),
+    readFile: (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
+      return downloadFile(sandbox, absolutePath)
+    },
     writeFile: async (absolutePath, content) => {
+      guardPath(absolutePath, boundRoot)
       await uploadFile(sandbox, content, absolutePath)
     },
     access: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       const entries = await listFiles(sandbox, dir)
@@ -81,9 +123,13 @@ export function createSandboxEditOperations(sandbox: Sandbox): EditOperations {
   }
 }
 
-export function createSandboxGrepOperations(sandbox: Sandbox): GrepOperations {
+export function createSandboxGrepOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): GrepOperations {
   return {
     isDirectory: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       try {
         const entries = await listFiles(sandbox, dirname(absolutePath))
         const name = absolutePath.slice(dirname(absolutePath).length + 1)
@@ -94,15 +140,20 @@ export function createSandboxGrepOperations(sandbox: Sandbox): GrepOperations {
       }
     },
     readFile: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       const buf = await downloadFile(sandbox, absolutePath)
       return buf.toString("utf-8")
     },
   }
 }
 
-export function createSandboxFindOperations(sandbox: Sandbox): FindOperations {
+export function createSandboxFindOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): FindOperations {
   return {
     exists: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       try {
         const dir = dirname(absolutePath)
         const name = absolutePath.slice(dir.length + 1)
@@ -117,6 +168,7 @@ export function createSandboxFindOperations(sandbox: Sandbox): FindOperations {
       }
     },
     glob: async (pattern, cwd, { ignore, limit }) => {
+      guardPath(cwd, boundRoot)
       const ignoreArgs = ignore
         .map((p) => `-not -path ${shellEscape(p)}`)
         .join(" ")
@@ -133,9 +185,13 @@ export function createSandboxFindOperations(sandbox: Sandbox): FindOperations {
   }
 }
 
-export function createSandboxLsOperations(sandbox: Sandbox): LsOperations {
+export function createSandboxLsOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): LsOperations {
   return {
     exists: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       try {
         await listFiles(sandbox, absolutePath)
         return true
@@ -151,6 +207,7 @@ export function createSandboxLsOperations(sandbox: Sandbox): LsOperations {
       }
     },
     stat: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       if (!name) {
@@ -162,6 +219,7 @@ export function createSandboxLsOperations(sandbox: Sandbox): LsOperations {
       return { isDirectory: () => entry.isDir }
     },
     readdir: async (absolutePath) => {
+      guardPath(absolutePath, boundRoot)
       const entries = await listFiles(sandbox, absolutePath)
       return entries.map((e) => e.name)
     },
@@ -178,15 +236,18 @@ export interface ToolOperations {
   ls: LsOperations
 }
 
-export function createSandboxOperations(sandbox: Sandbox): ToolOperations {
+export function createSandboxOperations(
+  sandbox: Sandbox,
+  boundRoot: string
+): ToolOperations {
   return {
-    bash: createSandboxBashOperations(sandbox),
-    read: createSandboxReadOperations(sandbox),
-    write: createSandboxWriteOperations(sandbox),
-    edit: createSandboxEditOperations(sandbox),
-    grep: createSandboxGrepOperations(sandbox),
-    find: createSandboxFindOperations(sandbox),
-    ls: createSandboxLsOperations(sandbox),
+    bash: createSandboxBashOperations(sandbox, boundRoot),
+    read: createSandboxReadOperations(sandbox, boundRoot),
+    write: createSandboxWriteOperations(sandbox, boundRoot),
+    edit: createSandboxEditOperations(sandbox, boundRoot),
+    grep: createSandboxGrepOperations(sandbox, boundRoot),
+    find: createSandboxFindOperations(sandbox, boundRoot),
+    ls: createSandboxLsOperations(sandbox, boundRoot),
   }
 }
 

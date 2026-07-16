@@ -60,7 +60,10 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
-import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
+import {
+  resolveSandboxToolCwd,
+  resolveUserSandboxContext,
+} from "@/lib/daytona/resolve-user-sandbox-context"
 import { createSandboxOperations } from "@/lib/daytona/sandbox-operations"
 import {
   trackDaytonaToolSession,
@@ -287,9 +290,9 @@ export async function createPiRuntime(
         apiKey: runtimeDaytonaApiKey!,
         surface: "chat",
       })
-      const sandboxCwd = sandboxContext.sandboxProjectRoot
+      const sandboxCwd = resolveSandboxToolCwd(sandboxContext)
       const s = sandboxContext.sandbox
-      const ops = createSandboxOperations(s)
+      const ops = createSandboxOperations(s, sandboxCwd)
       customTools = [
         createBashToolDefinition(sandboxCwd, { operations: ops.bash }),
         createReadToolDefinition(sandboxCwd, { operations: ops.read }),
