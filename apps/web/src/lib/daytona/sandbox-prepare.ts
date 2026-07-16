@@ -6,11 +6,9 @@ import {
 import { executeCommand, uploadFile } from "./client"
 import type { Sandbox } from "@daytona/sdk"
 
-export const SANDBOX_PROJECT_ROOT = "/home/daytona/fleet-pi"
-export const SANDBOX_WORKSPACE_ROOT = `${SANDBOX_PROJECT_ROOT}/agent-workspace`
-export const SANDBOX_SESSION_MOUNT_PATH = `${SANDBOX_PROJECT_ROOT}/.fleet`
+/** Durable agent-workspace volume mount (only durable FS on the sandbox). */
+export const SANDBOX_WORKSPACE_ROOT = "/home/daytona/agent-workspace"
 export const SANDBOX_PI_AUTH_PATH = "/home/daytona/.pi/agent/auth.json"
-export const SANDBOX_SETTINGS_PATH = `${SANDBOX_PROJECT_ROOT}/.pi/settings.json`
 export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
 const WORKSPACE_PI_DIRS = [
@@ -53,9 +51,7 @@ export function resolveRepositoryUrl(value: string | undefined): string {
 }
 
 export function buildPrepareSandboxCommand(repoUrl: string): string {
-  const repo = shellEscape(SANDBOX_PROJECT_ROOT)
   const workspace = shellEscape(SANDBOX_WORKSPACE_ROOT)
-  const session = shellEscape(SANDBOX_SESSION_MOUNT_PATH)
   const url = shellEscape(repoUrl)
   const piDirs = WORKSPACE_PI_DIRS.map(
     (dir) => `mkdir -p ${shellEscape(`${SANDBOX_WORKSPACE_ROOT}/${dir}`)}`
@@ -67,10 +63,9 @@ export function buildPrepareSandboxCommand(repoUrl: string): string {
     "set -euo pipefail",
     ensureGitInstalledCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
-    ensureProjectCheckoutCommand(repo, url),
     ensureAgentWorkspaceSeedCommand(workspace, url),
     piDirs,
-    `mkdir -p ${workspace} ${session}`,
+    `mkdir -p ${workspace}`,
   ].join("\n")
 }
 
@@ -148,8 +143,8 @@ function ensureGitInstalledCommand(): string {
 
 /**
  * Heal polluted volumes. Nested agent-workspace wins over root stubs.
- * Foreign entries are quarantined on the durable volume (not moved to the
- * ephemeral project checkout). Exported for unit tests.
+ * Foreign entries are quarantined on the durable volume.
+ * Exported for unit tests.
  */
 export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
   const keepPattern = workspaceVolumeShellKeepPattern()
@@ -183,24 +178,6 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `mv "$item" ${quarantine}/ 2>/dev/null || true`,
     "done",
     "fi",
-    "fi",
-  ].join("\n")
-}
-
-function ensureProjectCheckoutCommand(repo: string, url: string): string {
-  return [
-    `if [ ! -d ${repo}/.git ]; then`,
-    "tmpdir=$(mktemp -d)",
-    `git clone --depth 1 ${url} "$tmpdir"`,
-    `mkdir -p ${repo}`,
-    `for item in "$tmpdir"/* "$tmpdir"/.[!.]* "$tmpdir"/..?*; do`,
-    'name=$(basename "$item")',
-    'if [ "$name" = "agent-workspace" ]; then continue; fi',
-    'if [ -e "$item" ]; then',
-    `cp -a "$item" ${repo}/`,
-    "fi",
-    "done",
-    'rm -rf "$tmpdir"',
     "fi",
   ].join("\n")
 }

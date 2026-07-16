@@ -43,12 +43,12 @@ describe("Daytona client", () => {
     expect(
       createVolumeMount({
         volumeId: "vol-1",
-        mountPath: "/home/daytona/fleet-pi/agent-workspace",
+        mountPath: "/home/daytona/agent-workspace",
         subpath: "projects/fleet-pi",
       })
     ).toEqual({
       volumeId: "vol-1",
-      mountPath: "/home/daytona/fleet-pi/agent-workspace",
+      mountPath: "/home/daytona/agent-workspace",
       subpath: "projects/fleet-pi",
     })
   })
@@ -81,7 +81,7 @@ describe("Daytona client", () => {
       volumes: [
         createVolumeMount({
           volumeId: "vol-1",
-          mountPath: "/home/daytona/fleet-pi/agent-workspace",
+          mountPath: "/home/daytona/agent-workspace",
         }),
       ],
     })
@@ -95,7 +95,7 @@ describe("Daytona client", () => {
       volumes: [
         {
           volumeId: "vol-1",
-          mountPath: "/home/daytona/fleet-pi/agent-workspace",
+          mountPath: "/home/daytona/agent-workspace",
         },
       ],
     })

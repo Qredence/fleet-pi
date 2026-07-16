@@ -101,6 +101,14 @@ describe("isDaytonaEnabled", () => {
     process.env.DAYTONA_API_KEY = "test-key"
     expect(isDaytonaEnabled("user123")).toBe(true)
   })
+
+  it("ignores env DAYTONA_API_KEY on Vercel without a client key", () => {
+    process.env.VERCEL = "1"
+    process.env.DAYTONA_API_KEY = "org-key"
+    expect(isDaytonaEnabled("user123")).toBe(false)
+    expect(isDaytonaEnabled("user123", "byok-key")).toBe(true)
+    delete process.env.VERCEL
+  })
 })
 
 describe("naming conventions", () => {
@@ -154,7 +162,7 @@ describe("getUserSandbox", () => {
         volumes: [
           expect.objectContaining({
             volumeId: "vol-1",
-            mountPath: "/home/daytona/fleet-pi/agent-workspace",
+            mountPath: "/home/daytona/agent-workspace",
           }),
         ],
         autoStopInterval: 30,
@@ -168,8 +176,12 @@ describe("getUserSandbox", () => {
     const prepCommand = executeCommandMock.mock.calls[0]?.[0] as
       string | undefined
     expect(prepCommand).toContain("git clone")
+    expect(prepCommand).toContain("--sparse")
+    expect(prepCommand).toContain("agent-workspace")
     expect(prepCommand).not.toContain("npm install")
     expect(prepCommand).not.toContain("npx")
+    // No full-repo checkout under /home/daytona/fleet-pi
+    expect(prepCommand).not.toContain("/home/daytona/fleet-pi'")
   })
 
   it("throws when repository preparation fails", async () => {
