@@ -26,6 +26,8 @@ Authenticated user → POST /api/chat (with session cookie)
 | Session volume   | `fleet-pi-sessions-{userId}` | Optional, gated by `FLEET_PI_PERSIST_SESSIONS=true`    |
 | Snapshot         | `fleet-pi-v{version}`        | Shared across users, speeds up sandbox creation        |
 
+**Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` at `/home/daytona/fleet-pi/agent-workspace`. Sandbox stop/recreate reuses the same volume. Prepare flattens a nested `agent-workspace/` when present (nested wins over root stubs) and quarantines foreign monorepo pollution under `.fleet-pi-quarantine/` on the volume. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an` so existing files win. Do not delete the workspace volume unless intentionally resetting that user.
+
 Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 
 ## Environment
@@ -73,7 +75,7 @@ Bootstrap uses a `WorkspaceFS` abstraction that dispatches to either:
 - `createLocalWorkspaceFS()` — wraps `node:fs/promises` (default)
 - `createSandboxWorkspaceFS(sandbox)` — wraps Daytona SDK operations
 
-The volume content persists across sandbox restarts. Bootstrap only seeds missing files through the workspace API (`bootstrapAgentWorkspace()`), not through sandbox prep shell commands.
+The volume content persists across sandbox restarts. Prepare seeds only empty volumes (no `manifest.json` and no contract section directories) using non-clobber copy; bootstrap then fills missing stubs through the workspace API (`bootstrapAgentWorkspace()`) without overwriting user-authored files.
 
 ### Snapshot optimization (Phase 4)
 

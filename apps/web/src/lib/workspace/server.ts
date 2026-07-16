@@ -1,9 +1,12 @@
 import { open, realpath, stat } from "node:fs/promises"
-import { basename, extname, isAbsolute, relative, resolve } from "node:path"
+import { basename, extname, isAbsolute, join, relative } from "node:path"
 import { RequestContextError } from "../app-runtime"
 import { bootstrapAgentWorkspace } from "./bootstrap-agent-workspace"
 import { createLocalWorkspaceFS } from "./workspace-fs"
-import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
+import {
+  AGENT_WORKSPACE_DIRECTORY,
+  isWorkspaceContractTopLevelName,
+} from "./workspace-contract"
 import type { AppRuntimeContext } from "../app-runtime"
 import type { WorkspaceFS } from "./workspace-fs"
 import type {
@@ -36,14 +39,31 @@ export async function loadAgentWorkspaceTree(
 
   await fs.access(context.workspaceRoot)
 
+  const { listingRoot, droppedNames } = await resolveWorkspaceListingRoot(
+    fs,
+    context.workspaceRoot
+  )
+
+  const nodes = await readTreeChildrenViaFS(fs, listingRoot, listingRoot, {
+    filterTopLevel: true,
+  })
+
+  const treeDiagnostics = [...diagnostics]
+  if (droppedNames.length > 0) {
+    treeDiagnostics.push(
+      `Dropped non-workspace entries: ${droppedNames.join(", ")}`
+    )
+  }
+  if (listingRoot !== context.workspaceRoot) {
+    treeDiagnostics.push(
+      "Re-rooted workspace tree to nested agent-workspace/ (polluted volume)."
+    )
+  }
+
   return {
     root: AGENT_WORKSPACE_DIRECTORY,
-    nodes: await readTreeChildrenViaFS(
-      fs,
-      context.workspaceRoot,
-      context.workspaceRoot
-    ),
-    diagnostics,
+    nodes,
+    diagnostics: treeDiagnostics,
   }
 }
 
@@ -63,7 +83,7 @@ export async function loadAgentWorkspaceFile(
   }
 
   const previewFile = await resolveWorkspacePreviewFile(context, filePath)
-  const { fileHandle } = previewFile
+  const { fileHandle, listingRoot } = previewFile
 
   try {
     const fileStats = await fileHandle.stat()
@@ -72,7 +92,7 @@ export async function loadAgentWorkspaceFile(
     }
 
     const baseResponse = {
-      path: toWorkspacePath(context.projectRoot, previewFile.resolvedPath),
+      path: toLogicalWorkspacePath(listingRoot, previewFile.resolvedPath),
       name: basename(previewFile.resolvedPath),
       size: fileStats.size,
     }
@@ -142,12 +162,16 @@ async function loadWorkspaceFileViaFS(
       403
     )
   }
-  const subPath = filePath.substring(AGENT_WORKSPACE_DIRECTORY.length)
-  const resolvedPath = `${context.workspaceRoot}${subPath}`
+
   const fs = context.workspaceFS!
+  const { listingRoot } = await resolveWorkspaceListingRoot(
+    fs,
+    context.workspaceRoot
+  )
+  const resolvedPath = resolveWorkspacePath(filePath, listingRoot)
   const fileStat = await statWorkspaceFile(fs, resolvedPath)
 
-  const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${resolvedPath.substring(context.workspaceRoot.length)}`
+  const relativePath = toLogicalWorkspacePath(listingRoot, resolvedPath)
   const size = fileStat.size ?? 0
 
   if (size > WORKSPACE_PREVIEW_MAX_BYTES) {
@@ -207,10 +231,52 @@ function hasUnsafeWorkspacePathSegments(filePath: string) {
   return filePath.split("/").some((part) => part === "." || part === "..")
 }
 
+async function pathExists(fs: WorkspaceFS, path: string): Promise<boolean> {
+  try {
+    await fs.access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function resolveWorkspaceListingRoot(
+  fs: WorkspaceFS,
+  workspaceRoot: string
+): Promise<{ listingRoot: string; droppedNames: Array<string> }> {
+  const hasRootManifest = await pathExists(fs, `${workspaceRoot}/manifest.json`)
+  const hasNestedManifest = await pathExists(
+    fs,
+    `${workspaceRoot}/agent-workspace/manifest.json`
+  )
+
+  const entries = await fs.readdir(workspaceRoot)
+  const entryNames = entries.map((entry) => entry.name)
+  const foreignNames = entryNames
+    .filter(
+      (name) =>
+        name !== AGENT_WORKSPACE_DIRECTORY &&
+        !isWorkspaceContractTopLevelName(name)
+    )
+    .sort((left, right) => left.localeCompare(right))
+
+  // Prefer a nested real workspace when the volume root is polluted
+  // (even if bootstrap already wrote a root manifest.json).
+  if (hasNestedManifest && (foreignNames.length > 0 || !hasRootManifest)) {
+    return {
+      listingRoot: `${workspaceRoot}/agent-workspace`,
+      droppedNames: [],
+    }
+  }
+
+  return { listingRoot: workspaceRoot, droppedNames: foreignNames }
+}
+
 async function readTreeChildrenViaFS(
   fs: WorkspaceFS,
   workspaceRoot: string,
-  directory: string
+  directory: string,
+  options?: { filterTopLevel?: boolean }
 ): Promise<Array<WorkspaceTreeNode>> {
   const entries = await fs.readdir(directory)
   const sorted = entries.sort((left, right) => {
@@ -220,8 +286,13 @@ async function readTreeChildrenViaFS(
     return left.name.localeCompare(right.name)
   })
 
+  const filtered =
+    options?.filterTopLevel && directory === workspaceRoot
+      ? sorted.filter((entry) => isWorkspaceContractTopLevelName(entry.name))
+      : sorted
+
   return Promise.all(
-    sorted.map(async (entry) => {
+    filtered.map(async (entry) => {
       const path = `${directory}/${entry.name}`
       const relativePath = `${AGENT_WORKSPACE_DIRECTORY}${path.substring(workspaceRoot.length)}`
       if (!entry.isDirectory()) {
@@ -251,14 +322,15 @@ function collectWorkspaceMessages(
   ]
 }
 
-function toWorkspacePath(projectRoot: string, path: string) {
-  return relative(projectRoot, path)
+function toLogicalWorkspacePath(listingRoot: string, absolutePath: string) {
+  const relativePath = relative(listingRoot, absolutePath)
+  if (!relativePath || relativePath === ".") {
+    return AGENT_WORKSPACE_DIRECTORY
+  }
+  return `${AGENT_WORKSPACE_DIRECTORY}/${relativePath}`
 }
 
-function resolveWorkspacePath(
-  context: AppRuntimeContext,
-  filePath: string | null
-) {
+function resolveWorkspacePath(filePath: string | null, effectiveRoot: string) {
   if (!filePath) {
     throw new WorkspaceFileError("Missing workspace file path.", 400)
   }
@@ -277,9 +349,19 @@ function resolveWorkspacePath(
       403
     )
   }
+  if (hasUnsafeWorkspacePathSegments(filePath)) {
+    throw new WorkspaceFileError(
+      "Workspace file path is outside agent-workspace.",
+      403
+    )
+  }
 
-  const resolvedPath = resolve(context.projectRoot, filePath)
-  const relativeToWorkspace = relative(context.workspaceRoot, resolvedPath)
+  const subPath =
+    filePath === AGENT_WORKSPACE_DIRECTORY
+      ? ""
+      : filePath.slice(`${AGENT_WORKSPACE_DIRECTORY}/`.length)
+  const resolvedPath = subPath ? join(effectiveRoot, subPath) : effectiveRoot
+  const relativeToWorkspace = relative(effectiveRoot, resolvedPath)
   if (relativeToWorkspace === "") {
     throw new WorkspaceFileError(
       "Workspace path is a directory. Provide a path to a specific file.",
@@ -300,8 +382,13 @@ async function resolveWorkspacePreviewFile(
   context: AppRuntimeContext,
   filePath: string | null
 ) {
-  const resolvedPath = resolveWorkspacePath(context, filePath)
-  const realWorkspaceRoot = await realpath(context.workspaceRoot)
+  const fs = context.workspaceFS ?? createLocalWorkspaceFS()
+  const { listingRoot } = await resolveWorkspaceListingRoot(
+    fs,
+    context.workspaceRoot
+  )
+  const resolvedPath = resolveWorkspacePath(filePath, listingRoot)
+  const realWorkspaceRoot = await realpath(listingRoot)
 
   // Open the file atomically — this is the only access check we need.
   // A separate access() call before open() creates a TOCTOU race condition
@@ -349,7 +436,7 @@ async function resolveWorkspacePreviewFile(
       )
     }
 
-    return { fileHandle, resolvedPath, realPath }
+    return { fileHandle, resolvedPath, realPath, listingRoot }
   } catch (error) {
     try {
       await fileHandle.close()

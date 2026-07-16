@@ -69,6 +69,62 @@ describe("workspace server", () => {
     ).rejects.toMatchObject({ status: 400 })
   })
 
+  it("filters foreign top-level entries from a polluted workspace root", async () => {
+    const context = createWorkspaceContext()
+    await loadAgentWorkspaceTree(context)
+
+    mkdirSync(join(context.workspaceRoot, "apps"), { recursive: true })
+    mkdirSync(join(context.workspaceRoot, "packages"), { recursive: true })
+    writeFileSync(join(context.workspaceRoot, "package.json"), "{}")
+
+    const tree = await loadAgentWorkspaceTree(context)
+    const names = tree.nodes.map((node) => node.name)
+
+    expect(names).not.toContain("apps")
+    expect(names).not.toContain("packages")
+    expect(names).not.toContain("package.json")
+    expect(names).toContain("instructions")
+    expect(names).toContain("system")
+    expect(
+      tree.diagnostics.some((message) =>
+        message.includes("Dropped non-workspace entries")
+      )
+    ).toBe(true)
+  })
+
+  it("re-roots the tree when nested agent-workspace holds the manifest", async () => {
+    const context = createWorkspaceContext()
+    await loadAgentWorkspaceTree(context)
+
+    const nested = join(context.workspaceRoot, "agent-workspace")
+    mkdirSync(join(nested, "memory"), { recursive: true })
+    writeFileSync(
+      join(nested, "manifest.json"),
+      JSON.stringify({ version: 1, workspaceRoot: "agent-workspace" })
+    )
+    mkdirSync(join(context.workspaceRoot, "apps"), { recursive: true })
+    writeFileSync(join(context.workspaceRoot, "package.json"), "{}")
+
+    const tree = await loadAgentWorkspaceTree(context)
+    const names = tree.nodes.map((node) => node.name)
+
+    expect(names).toContain("memory")
+    expect(names).toContain("manifest.json")
+    expect(names).not.toContain("apps")
+    expect(names).not.toContain("package.json")
+    expect(
+      tree.diagnostics.some((message) => message.includes("Re-rooted"))
+    ).toBe(true)
+
+    writeFileSync(join(nested, "memory", "nested-note.md"), "nested wins\n")
+    const file = await loadAgentWorkspaceFile(
+      context,
+      "agent-workspace/memory/nested-note.md"
+    )
+    expect(file.content).toBe("nested wins\n")
+    expect(file.path).toBe("agent-workspace/memory/nested-note.md")
+  })
+
   it("rejects traversal paths", async () => {
     const context = createWorkspaceContext()
 
