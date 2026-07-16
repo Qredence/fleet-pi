@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ChatSessionMetadataSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import { ChatSessionMetadataSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import { createRequestLogger } from "@/lib/logger"
 import {
   enforceChatSessionOwnership,

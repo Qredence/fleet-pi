@@ -4,19 +4,22 @@ import { cva } from "class-variance-authority"
 import * as React from "react"
 import { cn } from "../../../lib/utils"
 import {
+  CHROME_PILL_CLASS,
   DISCRETE_TAB_ACTIVE_CLASS,
   DISCRETE_TAB_INACTIVE_CLASS,
 } from "../styles/tokens"
 import type { ComponentType, SVGProps } from "react"
 
 const discreteTabTriggerVariants = cva(
-  "discrete-tab-trigger relative inline-flex items-center justify-center gap-1.5 rounded-full font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  cn(
+    CHROME_PILL_CLASS,
+    "discrete-tab-trigger justify-center transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+  ),
   {
     variants: {
       size: {
-        default:
-          "px-3 py-1.5 text-[12px] [&_svg:not([class*='size-'])]:size-[14px]",
-        compact: "px-2 py-1 text-[11px] [&_svg:not([class*='size-'])]:size-3.5",
+        default: "text-[12px] [&_svg:not([class*='size-'])]:size-[14px]",
+        compact: "h-8 px-2 text-[11px] [&_svg:not([class*='size-'])]:size-3.5",
       },
       state: {
         active: DISCRETE_TAB_ACTIVE_CLASS,

@@ -24,6 +24,19 @@ const config = defineConfig({
   // Env files live at the monorepo root, so load VITE_-prefixed client vars
   // (e.g. VITE_PUBLIC_POSTHOG_KEY) from there instead of apps/web.
   envDir: repoRoot,
+  server: {
+    watch: {
+      // Settings → Providers writes .env.local at runtime. Restarting mid-POST
+      // aborts the browser fetch ("Failed to fetch") even when credentials saved.
+      // process.env is updated in-memory by updateEnvVars; a restart is unnecessary.
+      ignored: [
+        resolve(repoRoot, ".env"),
+        resolve(repoRoot, ".env.local"),
+        "**/.env",
+        "**/.env.local",
+      ],
+    },
+  },
   plugins: [
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],

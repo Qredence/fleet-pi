@@ -82,6 +82,11 @@ export type InputBarProps = {
   autoFocus?: boolean
   suggestions?: SuggestionConfig
   slashCommands?: SuggestionConfig
+  /**
+   * Called when a slash suggestion is chosen (click / Enter / Tab).
+   * Return `true` to consume the selection (do not insert text into the input).
+   */
+  onSlashCommandSelect?: (item: SuggestionItem) => boolean | void
 
   // Typing animation
   typingAnimation?: {
@@ -149,6 +154,7 @@ export const InputBar = memo(function InputBar({
   leftActions,
   rightActions,
   slashCommands = [],
+  onSlashCommandSelect,
 }: InputBarProps) {
   const [internalInput, setInternalInput] = useState("")
   const [isInfoBarOpen, setIsInfoBarOpen] = useState(true)
@@ -407,6 +413,7 @@ export const InputBar = memo(function InputBar({
           disabled={disabled}
           input={input}
           isStreaming={isStreaming}
+          onSlashCommandSelect={onSlashCommandSelect}
           setInput={setInput}
           slashCommands={slashCommands}
           suggestions={suggestions}
@@ -562,6 +569,7 @@ function InputSuggestionsOverlay({
   disabled,
   input,
   isStreaming,
+  onSlashCommandSelect,
   setInput,
   slashCommands,
   suggestions,
@@ -570,6 +578,7 @@ function InputSuggestionsOverlay({
   disabled?: boolean
   input: string
   isStreaming: boolean
+  onSlashCommandSelect?: (item: SuggestionItem) => boolean | void
   setInput: (value: string) => void
   slashCommands: SuggestionConfig
   suggestions: SuggestionConfig
@@ -622,11 +631,16 @@ function InputSuggestionsOverlay({
   const handleSlashCommandSelect = useCallback(
     (item: SuggestionItem) => {
       if (interactionsDisabled) return
+      if (onSlashCommandSelect?.(item) === true) {
+        setInput("")
+        setSlashDismissed(true)
+        return
+      }
       const command = item.value ?? item.label
       setInput(command.endsWith(" ") ? command : `${command} `)
       focusEnd()
     },
-    [focusEnd, interactionsDisabled, setInput]
+    [focusEnd, interactionsDisabled, onSlashCommandSelect, setInput]
   )
 
   useEffect(() => {

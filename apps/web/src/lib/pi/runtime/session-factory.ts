@@ -3,9 +3,9 @@ import {
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import {
-  KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
-} from "@workspace/hax-design/lib/pi/provider-catalog"
+  PROVIDER_ENV_SCRUB_VAR_NAMES,
+} from "@workspace/pi-protocol/provider-catalog"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
@@ -36,9 +36,8 @@ export async function createSessionServices(
   overrides?: Parameters<typeof createAgentSessionServices>[0]
 ) {
   if (process.env.VERCEL === "1") {
-    for (const provider of KNOWN_PROVIDERS) {
-      if (!LLM_PROVIDER_ENV_SCRUB_IDS.includes(provider.id)) continue
-      delete process.env[provider.envVarName]
+    for (const envVarName of PROVIDER_ENV_SCRUB_VAR_NAMES) {
+      delete process.env[envVarName]
     }
   }
 
@@ -49,7 +48,16 @@ export async function createSessionServices(
     ...overrides,
   })
 
-  return attachWorkspaceBootstrap(services, workspaceBootstrap)
+  const servicesWithBootstrap = attachWorkspaceBootstrap(
+    services,
+    workspaceBootstrap
+  )
+
+  const { registerOpenAiChatCompletionsProvider } =
+    await import("./openai-chat-completions-provider")
+  await registerOpenAiChatCompletionsProvider(servicesWithBootstrap, undefined)
+
+  return servicesWithBootstrap
 }
 
 export async function applyRuntimeAuth(
@@ -72,6 +80,10 @@ export async function applyRuntimeAuth(
       authStorage.removeRuntimeApiKey?.(providerId)
     }
   }
+
+  const { registerOpenAiChatCompletionsProvider } =
+    await import("./openai-chat-completions-provider")
+  await registerOpenAiChatCompletionsProvider(services, options.userId)
 }
 
 async function loadBestEffortWorkspaceHealth(

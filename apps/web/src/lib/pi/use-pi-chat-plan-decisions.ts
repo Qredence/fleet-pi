@@ -1,6 +1,6 @@
 import { isPlanDecisionToolCall } from "./plan-state"
-import type { ChatMessage } from "@workspace/hax-design/components/agent-elements/chat-types"
-import type { ChatQuestionAnswer } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
+import type { ChatQuestionAnswer } from "@workspace/pi-protocol/chat-protocol"
 
 type QuestionAnswerHandler = (input: {
   toolCallId?: string

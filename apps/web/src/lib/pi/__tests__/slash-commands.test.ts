@@ -4,6 +4,7 @@ import {
   buildSlashCommands,
   isWebBuiltinSlashCommand,
   parseSlashInput,
+  resolveLocalSlashAction,
 } from "../slash-commands"
 
 describe("slash commands", () => {
@@ -73,5 +74,35 @@ describe("slash commands", () => {
     expect(isWebBuiltinSlashCommand("settings")).toBe(true)
     expect(isWebBuiltinSlashCommand("reload")).toBe(false)
     expect(isWebBuiltinSlashCommand("fleet-pi-orientation")).toBe(false)
+  })
+
+  it("resolves local UI actions for builtins", () => {
+    expect(resolveLocalSlashAction("model")).toEqual({
+      type: "open-model-picker",
+      modelKey: undefined,
+    })
+    expect(
+      resolveLocalSlashAction("model", "google/gemini-3.5-flash:high")
+    ).toEqual({
+      type: "open-model-picker",
+      modelKey: "google/gemini-3.5-flash",
+    })
+    expect(resolveLocalSlashAction("models")).toEqual({
+      type: "open-settings",
+      tab: "llm-models",
+    })
+    expect(resolveLocalSlashAction("settings")).toEqual({
+      type: "open-settings",
+      tab: "appearance",
+    })
+    expect(resolveLocalSlashAction("config")).toEqual({
+      type: "open-settings",
+      tab: "pi-harness",
+    })
+    expect(resolveLocalSlashAction("new")).toEqual({ type: "new-session" })
+    expect(resolveLocalSlashAction("session")).toEqual({
+      type: "show-session",
+    })
+    expect(resolveLocalSlashAction("fleet-pi-orientation")).toBeNull()
   })
 })

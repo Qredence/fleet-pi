@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 import { FleetPiAgentChat } from "@workspace/hax-design/components/fleet-pi/chat/fleet-pi-agent-chat"
 import { ChatCommandPalette } from "@workspace/hax-design/components/fleet-pi/chat-command-palette"
 import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
@@ -13,7 +14,9 @@ import { RightPanelLauncherFromContext } from "@workspace/hax-design/components/
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
 import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
 import { queueLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
-import type { ChatPiSettingsUpdate } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { SuggestionItem } from "@workspace/hax-design/components/agent-elements/input/suggestions"
+import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
+import type {LocalSlashAction, SettingsSlashTab} from "@/lib/pi/slash-commands";
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
@@ -29,7 +32,13 @@ import {
   useUpdateChatSettings,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
-import { buildSlashCommands } from "@/lib/pi/slash-commands"
+import {
+  
+  
+  buildSlashCommands,
+  parseSlashInput,
+  resolveLocalSlashAction
+} from "@/lib/pi/slash-commands"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
 import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
@@ -46,6 +55,10 @@ function ChatWorkspaceShell() {
   const navigate = useNavigate()
   const user = useOptionalUser()
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    SettingsSlashTab | undefined
+  >(undefined)
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
 
   useEffect(() => {
     if (user) identifyAnalyticsUser(user)
@@ -219,6 +232,78 @@ function ChatWorkspaceShell() {
       ),
     [commandsData, resources, settingsData]
   )
+
+  const openSettings = useCallback((tab?: SettingsSlashTab) => {
+    setSettingsInitialTab(tab)
+    setSettingsDialogOpen(true)
+  }, [])
+
+  const applyLocalSlashAction = useCallback(
+    (action: LocalSlashAction): boolean => {
+      switch (action.type) {
+        case "open-model-picker": {
+          if (
+            action.modelKey &&
+            models.some((model) => model.id === action.modelKey)
+          ) {
+            setModelKey(action.modelKey)
+            toast.success(`Model set to ${action.modelKey}`)
+            return true
+          }
+          setModelPickerOpen(true)
+          return true
+        }
+        case "open-settings":
+          openSettings(action.tab)
+          return true
+        case "new-session":
+          void startNewSession()
+          return true
+        case "show-session": {
+          const sessionId = sessionMetadata.sessionId ?? "none"
+          const sessionFile = sessionMetadata.sessionFile ?? "none"
+          toast.message("Current session", {
+            description: `${sessionId}\n${sessionFile}`,
+          })
+          return true
+        }
+        default: {
+          const exhaustiveCheck: never = action
+          void exhaustiveCheck
+          return false
+        }
+      }
+    },
+    [
+      models,
+      openSettings,
+      sessionMetadata.sessionFile,
+      sessionMetadata.sessionId,
+      setModelKey,
+      startNewSession,
+    ]
+  )
+
+  const handleSlashCommandSelect = useCallback(
+    (item: SuggestionItem) => {
+      const action = resolveLocalSlashAction(item.id)
+      if (!action) return false
+      return applyLocalSlashAction(action)
+    },
+    [applyLocalSlashAction]
+  )
+
+  const handleLocalSlashSubmit = useCallback(
+    (message: string) => {
+      const parsed = parseSlashInput(message)
+      if (!parsed) return false
+      const action = resolveLocalSlashAction(parsed.command, parsed.args)
+      if (!action) return false
+      return applyLocalSlashAction(action)
+    },
+    [applyLocalSlashAction]
+  )
+
   const rightPanelContextValue = useRightPanelContextValue({
     activityLabel,
     handleThemePreferenceChange,
@@ -286,7 +371,7 @@ function ChatWorkspaceShell() {
                 void navigate({ to: "/" })
               }}
               onSignIn={() => void navigate({ to: "/login" })}
-              onOpenSettings={() => setSettingsDialogOpen(true)}
+              onOpenSettings={() => openSettings()}
             />
           }
           headerCenter={
@@ -339,13 +424,21 @@ function ChatWorkspaceShell() {
                 questionBar: pendingQuestionBar,
                 onModeChange: handleModeChange,
                 onModelChange: setModelKey,
+                onSlashCommandSelect: handleSlashCommandSelect,
+                onLocalSlashSubmit: handleLocalSlashSubmit,
+                modelPickerOpen,
+                onModelPickerOpenChange: setModelPickerOpen,
               }}
             />
           </UiErrorBoundary>
         </ChatWorkspaceLayout>
         <SettingsDialog
           open={settingsDialogOpen}
-          onOpenChange={setSettingsDialogOpen}
+          onOpenChange={(open) => {
+            setSettingsDialogOpen(open)
+            if (!open) setSettingsInitialTab(undefined)
+          }}
+          initialTab={settingsInitialTab}
         />
       </RightPanelProvider>
     </>

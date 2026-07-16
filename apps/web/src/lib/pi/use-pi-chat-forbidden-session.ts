@@ -2,10 +2,7 @@ import { toast } from "sonner"
 import { isForbiddenSessionError } from "./chat-fetch"
 import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
 import type { ChatClient } from "./chat-client"
-import type {
-  ChatMessage,
-  ChatStatus,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type { QueueState } from "./chat-fetch"
 
 export type ForbiddenSessionRecoveryDeps = {

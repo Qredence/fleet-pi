@@ -14,6 +14,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/inter": "^5.2.8",
+    "@workspace/pi-protocol": "workspace:*",
     "@openuidev/lang-core": "^0.2.7",
     "@openuidev/react-lang": "^0.2.8",
     "@pierre/diffs": "^1.2.11",
@@ -52,7 +53,18 @@
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
-    "./lib/*": "./src/lib/*",
-    "./components/*": "./src/components/*"
+    "./components/fleet-pi/*": "./src/components/fleet-pi/*",
+    "./components/agent-elements/*": "./src/components/agent-elements/*",
+    "./components/openui/*": "./src/components/openui/*",
+    "./components/ui/*": "./src/components/ui/*",
+    "./components/*": "./src/components/*",
+    "./lib/canvas-utils": "./src/lib/canvas-utils.ts",
+    "./lib/horizontal-resize": "./src/lib/horizontal-resize.ts",
+    "./lib/workspace-path-nav": "./src/lib/workspace-path-nav.ts",
+    "./lib/layout-constants": "./src/lib/layout-constants.ts",
+    "./lib/utils": "./src/lib/utils.ts",
+    "./lib/springs": "./src/lib/springs.ts",
+    "./lib/pi/chat-helpers": "./src/lib/pi/chat-helpers.ts",
+    "./lib/pi/*": "./src/lib/pi/*"
   }
 }

@@ -1,36 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ChatRequestSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import { ChatRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import type {
   ChatRequest,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
-import type {
-  AssistantTurnState,
-  TurnStartContext,
-} from "@/lib/pi/server-chat-stream"
+} from "@workspace/pi-protocol/chat-protocol"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
-import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 import { createRequestLogger } from "@/lib/logger"
-import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
+import { handleChatTurn } from "@/lib/pi/handle-chat-turn"
 import {
-  createPiRuntime,
   encodeEvent,
   getErrorMessage,
   queuePromptOnActiveSession,
-  retainPiRuntime,
 } from "@/lib/pi/server"
-import {
-  beginAssistantTurn,
-  completeAssistantTurn,
-  createTurnStartContext,
-  finalizeAssistantTurn,
-  handleSessionEvent,
-  shouldEmitInitialPlanEvent,
-} from "@/lib/pi/server-chat-stream"
 import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 
@@ -98,133 +83,32 @@ export const Route = createFileRoute("/api/chat")({
                 }
               }
 
+              const recorder = createRunProvenanceRecorder(runtimeContext, {
+                mode: body.mode,
+                planAction: body.planAction,
+                userId: body.userId,
+              })
+
               const readable = new ReadableStream<Uint8Array>({
                 async start(controller) {
-                  let unsubscribe: (() => void) | undefined
-                  let releaseRuntime: (() => void) | undefined
-                  let activeTurn: AssistantTurnState | undefined
-                  let turnStartContext: TurnStartContext | undefined
-                  let queuedPromptCount = 0
-                  const recorder = createRunProvenanceRecorder(runtimeContext, {
-                    mode: body.mode,
-                    planAction: body.planAction,
-                    userId: body.userId,
-                  })
-                  const send = (event: ChatStreamEvent) => {
-                    recorder.record(event)
-                    controller.enqueue(encodeEvent(event))
-                  }
-
                   try {
-                    log.info("creating pi runtime")
-                    const result = await createPiRuntime(
+                    log.info("starting chat turn")
+                    for await (const event of handleChatTurn({
+                      body,
+                      signal: request.signal,
+                      recorder,
                       runtimeContext,
-                      body,
-                      body.model
-                    )
-                    const currentSession = result.runtime.session
-                    releaseRuntime = retainPiRuntime(
-                      result.runtime,
-                      body.userId
-                    )
-                    log.info(
-                      {
-                        sessionId: currentSession.sessionId,
-                        sessionReset: result.sessionReset,
-                      },
-                      "pi runtime created"
-                    )
-                    const abort = () => void currentSession.abort()
-
-                    request.signal.addEventListener("abort", abort, {
-                      once: true,
-                    })
-                    const initialPlanState = getPlanState(result.runtime)
-                    if (shouldEmitInitialPlanEvent(initialPlanState)) {
-                      send(createPlanEvent(initialPlanState))
+                      prompt,
+                    })) {
+                      controller.enqueue(encodeEvent(event))
                     }
-                    turnStartContext = createTurnStartContext({
-                      diagnostics: result.diagnostics,
-                      send,
-                      session: currentSession,
-                      sessionReset: result.sessionReset,
-                    })
-
-                    unsubscribe = currentSession.subscribe((event) => {
-                      const nextTurn = handleSessionEvent(
-                        event,
-                        activeTurn,
-                        turnStartContext!
-                      )
-                      activeTurn = nextTurn
-
-                      if (event.type === "queue_update") {
-                        const nextQueuedPromptCount =
-                          event.steering.length + event.followUp.length
-
-                        if (
-                          nextQueuedPromptCount < queuedPromptCount &&
-                          activeTurn &&
-                          !activeTurn.hadError
-                        ) {
-                          activeTurn = finalizeAssistantTurn({
-                            activeTurn,
-                            body,
-                            runtime: result.runtime,
-                            send,
-                            session: currentSession,
-                            sessionReset: result.sessionReset,
-                          })
-                        }
-
-                        queuedPromptCount = nextQueuedPromptCount
-                      }
-                    })
-
-                    await currentSession.prompt(prompt, {
-                      expandPromptTemplates: true,
-                    })
-                    request.signal.removeEventListener("abort", abort)
-
-                    activeTurn = completeAssistantTurn({
-                      activeTurn,
-                      body,
-                      runtime: result.runtime,
-                      send,
-                      session: currentSession,
-                      sessionReset: result.sessionReset,
-                    })
-                    // Fire-and-forget: mirror sync must not delay stream close.
-                    void syncPiSessionMirrorSafely(
-                      result.runtime.session.sessionManager,
-                      { userId: body.userId }
-                    )
-
-                    log.info(
-                      { sessionId: currentSession.sessionId },
-                      "chat stream completed"
-                    )
+                    log.info("chat stream completed")
                   } catch (error) {
                     log.error(
                       { error: getErrorMessage(error) },
                       "chat stream error"
                     )
-                    if (!request.signal.aborted) {
-                      if (turnStartContext?.firstStartPending) {
-                        const errorTurn = beginAssistantTurn(turnStartContext)
-                        send({
-                          type: "error",
-                          message: getErrorMessage(error),
-                          runId: errorTurn.runId,
-                        })
-                      } else {
-                        send({ type: "error", message: getErrorMessage(error) })
-                      }
-                    }
                   } finally {
-                    unsubscribe?.()
-                    releaseRuntime?.()
-                    // Fire-and-forget: mirror queue flush must not delay stream close.
                     void recorder.close()
                     controller.close()
                   }

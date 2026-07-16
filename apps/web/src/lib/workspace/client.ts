@@ -1,4 +1,4 @@
-import type { WorkspaceFileResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { WorkspaceFileResponse } from "@workspace/pi-protocol/chat-protocol"
 
 export async function loadWorkspaceFile(
   path: string

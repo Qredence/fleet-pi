@@ -1,8 +1,5 @@
 import { Cpu } from "lucide-react"
-import {
-  KNOWN_PROVIDERS,
-  PROVIDER_METADATA,
-} from "../../../../../lib/pi/provider-catalog"
+import { KNOWN_PROVIDERS, PROVIDER_METADATA } from "../shared/provider-metadata"
 import { cn } from "../../../../../lib/utils"
 
 const BRAND_CLASS = "size-4"
@@ -73,7 +70,11 @@ export function ProviderBrandIcon({
   className?: string
 }) {
   const id = provider.toLowerCase()
-  if (id === "openai" || id === "openai-codex") {
+  if (
+    id === "openai" ||
+    id === "openai-codex" ||
+    id === "openai-chat-completions"
+  ) {
     return <OpenAiMark className={className} />
   }
   if (id === "anthropic") {

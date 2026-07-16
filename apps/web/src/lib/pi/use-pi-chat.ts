@@ -14,10 +14,7 @@ import {
   resolvePlanDecisionMessages,
 } from "./use-pi-chat-plan-decisions"
 import type { QueueState } from "./chat-fetch"
-import type {
-  ChatMessage,
-  ChatStatus,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatModelSelection,
@@ -25,7 +22,7 @@ import type {
   ChatQuestionAnswer,
   ChatSessionInfo,
   ChatSessionMetadata,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { ChatClient } from "./chat-client"
 
 export type SendMessageInput = {

@@ -1,9 +1,9 @@
-import { ChatStreamEventSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+import { ChatStreamEventSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import type { ZodType } from "zod"
 import type {
   ChatSessionMetadata,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export class ChatRequestError extends Error {
   readonly status: number

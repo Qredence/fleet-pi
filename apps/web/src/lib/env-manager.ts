@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises"
+import { readFile, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
 /**
@@ -10,6 +10,21 @@ export async function updateEnvVar(
   key: string,
   value: string
 ) {
+  await updateEnvVars(projectRoot, { [key]: value })
+}
+
+/**
+ * Atomically update multiple keys in .env.local (single read + temp write + rename).
+ * Also mirrors values into process.env so the current server process can use
+ * them without a restart (Vite must not restart on this write — see vite.config).
+ */
+export async function updateEnvVars(
+  projectRoot: string,
+  entries: Record<string, string>
+) {
+  const keys = Object.keys(entries)
+  if (keys.length === 0) return
+
   const envPath = join(projectRoot, ".env.local")
   let content = ""
   try {
@@ -23,50 +38,63 @@ export async function updateEnvVar(
     ) {
       throw error
     }
-    // File doesn't exist, we will create it
   }
 
-  // Escape value for safe .env.local storage: handle quotes, newlines, $, and backticks
   const escapeEnvValue = (v: string): string =>
     v
-      .replace(/\\/g, "\\\\") // Escape backslashes first
-      .replace(/"/g, '\\"') // Escape double quotes
-      .replace(/\n/g, "\\n") // Escape newlines
-      .replace(/\r/g, "\\r") // Escape carriage returns
-      .replace(/\$/g, "\\$") // Escape $ for shell safety
-      .replace(/`/g, "\\`") // Escape backticks for shell safety
-
-  const escapedValue = escapeEnvValue(value)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\$/g, "\\$")
+      .replace(/`/g, "\\`")
 
   const lines = content.split("\n")
-  let found = false
+  const remaining = new Map(Object.entries(entries))
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    // Check for exact key match
     const match = line.match(/^\s*([\w.-]+)\s*=/)
-    if (match && match[1] === key) {
-      lines[i] = `${key}="${escapedValue}"`
-      found = true
-      break
-    }
+    if (!match) continue
+    const key = match[1]
+    const value = remaining.get(key)
+    if (value === undefined) continue
+    lines[i] = `${key}="${escapeEnvValue(value)}"`
+    remaining.delete(key)
   }
 
-  if (!found) {
-    // If the file didn't end with a newline, and it's not empty, add one
-    if (content && !content.endsWith("\n")) {
+  if (remaining.size > 0) {
+    if (content && !content.endsWith("\n") && lines[lines.length - 1] !== "") {
       lines.push("")
     }
-    lines.push(`${key}="${escapedValue}"`)
+    for (const [key, value] of remaining) {
+      lines.push(`${key}="${escapeEnvValue(value)}"`)
+    }
   }
 
-  // Ensure trailing newline
   const newContent = lines.join("\n").replace(/\n+$/, "\n")
-  await writeFile(envPath, newContent, "utf8")
+  const tempPath = `${envPath}.${process.pid}.${Date.now()}.tmp`
+  await writeFile(tempPath, newContent, "utf8")
+  await rename(tempPath, envPath)
 
-  // Make it immediately available to the running Node process
-  process.env[key] = value
+  for (const [key, value] of Object.entries(entries)) {
+    process.env[key] = value
+  }
 }
 
 export function isEnvVarConfigured(key: string): boolean {
   return typeof process.env[key] === "string" && process.env[key].length > 0
+}
+
+/** Trim and strip accidental wrapping/trailing quotes from credential fields. */
+export function sanitizeProviderCredentialValue(value: string) {
+  let next = value.trim()
+  if (
+    (next.startsWith('"') && next.endsWith('"')) ||
+    (next.startsWith("'") && next.endsWith("'"))
+  ) {
+    next = next.slice(1, -1).trim()
+  }
+  next = next.replace(/['"]+$/u, "").replace(/^['"]+/u, "")
+  return next.trim()
 }

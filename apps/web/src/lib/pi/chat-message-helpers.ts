@@ -2,7 +2,7 @@ import type {
   ChatMessage,
   ChatMessagePart,
   ChatToolPart,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+} from "@workspace/pi-protocol/chat-types"
 
 export function createTextMessage(
   role: ChatMessage["role"],

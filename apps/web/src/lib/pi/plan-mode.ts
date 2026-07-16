@@ -1,4 +1,4 @@
-import { buildOpenUIPrompt } from "@workspace/hax-design/components/openui/openui-prompt"
+import { buildOpenUIPrompt } from "@workspace/pi-protocol/openui-prompt"
 import { keepLastCustomType } from "./context-filter"
 import { evaluatePlanCommand } from "./command-policy"
 import {
@@ -26,7 +26,7 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatQuestionAnswer,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { AgentMessage } from "@earendil-works/pi-agent-core"
 import type { PlanModeState } from "./plan-state"
 

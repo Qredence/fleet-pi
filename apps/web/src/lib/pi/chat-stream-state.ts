@@ -5,12 +5,12 @@ import {
   upsertAssistantToolPart,
 } from "./chat-message-helpers"
 import { labelForState } from "./chat-fetch"
-import type { ChatMessage } from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatSessionMetadata,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ChatStreamSnapshot = {
   activityLabel?: string

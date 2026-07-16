@@ -1,7 +1,7 @@
 import {
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
-} from "@workspace/hax-design/lib/pi/provider-catalog"
+} from "@workspace/pi-protocol/provider-catalog"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 

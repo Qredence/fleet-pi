@@ -16,11 +16,11 @@ import type {
   AgentSessionEvent,
   AgentSessionRuntime,
 } from "@earendil-works/pi-coding-agent"
-import type { ChatMessagePart } from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessagePart } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatRequest,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { PlanModeState } from "./plan-state"
 
 export type ChatRuntimeSession = AgentSessionRuntime["session"]

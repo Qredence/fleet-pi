@@ -7,23 +7,35 @@
       "skillPath": "skills/agent-elements/SKILL.md",
       "computedHash": "899ff281733653460fc7c0864daaa602fb9d32b176f3653178791fae657d9277"
     },
+    "codebase-design": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/codebase-design/SKILL.md",
+      "computedHash": "6d9d51d8caa01633fd00cf87089c5618c982321f942ac69f62565dc001c6b22f"
+    },
     "daytona": {
       "source": "daytona/skills",
       "sourceType": "github",
       "skillPath": "skills/daytona/SKILL.md",
-      "computedHash": "3de5279040cb8bbe632937b444576be34178d6358f4a3ba83691cc768cf5b382"
+      "computedHash": "5ddd9f9edddefb8e950e900e2d038f01f1efb8f6273d4df29dbfebfcc438e37c"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "1e310d65fb286f8bd22c193f48e4aef8dc6c8b9caa6816eecca582b8faa5a096"
+      "computedHash": "e07098370ad7fd4605b67d305d8c06623a5c7d7737d2364e30932294ef880ff6"
+    },
+    "improve-ui": {
+      "source": "ibelick/ui-skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-ui/SKILL.md",
+      "computedHash": "5bd7689c5508c6bd8166f796b3d1bd32255077447595b14b60fac9847dce63f1"
     },
     "openui": {
       "source": "thesysdev/openui",
       "sourceType": "github",
       "skillPath": "skills/openui/SKILL.md",
-      "computedHash": "f7a52713a59e68ac5fc4b470d5b36419ebcfe651d2f87ac3c46f8e898c54feeb"
+      "computedHash": "4c9c63ba16d3ec875f16c3232e95e949561633cf1e8507f89ca3868422f97fad"
     }
   }
 }

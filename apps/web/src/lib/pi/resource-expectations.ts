@@ -1,4 +1,4 @@
-import type { ChatResourcesResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ChatResourcesResponse } from "@workspace/pi-protocol/chat-protocol"
 
 export const EXPECTED_PROJECT_EXTENSION_NAMES = [
   "project-inventory",

@@ -4,16 +4,13 @@ import { createTextMessage } from "./chat-message-helpers"
 import { applyChatStreamEvent } from "./chat-stream-state"
 import { tryRecoverForbiddenSession } from "./use-pi-chat-forbidden-session"
 import type { MutableRefObject } from "react"
-import type {
-  ChatMessage,
-  ChatStatus,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatModelSelection,
   ChatSessionMetadata,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { ChatClient } from "./chat-client"
 import type { QueueState } from "./chat-fetch"
 import type { SendMessageInput } from "./use-pi-chat"

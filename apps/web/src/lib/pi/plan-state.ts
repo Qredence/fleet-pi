@@ -1,12 +1,12 @@
 import { extractTodoItems, markCompletedSteps } from "./plan-parser"
-import type { ChatToolPart } from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatPlanAction,
   ChatPlanState,
   ChatQuestionAnswer,
   ChatQuestionAnswerResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { TodoItem } from "./plan-parser"
 
 export const PLAN_DECISION_TOOL_PREFIX = "plan-mode-decision"
