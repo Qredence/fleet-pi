@@ -6,7 +6,22 @@ export const FIELD_CONTROL_CLASS =
 
 /** Small commit / add actions inside config sections. */
 export const COMPACT_ACTION_BUTTON_CLASS =
-  "h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-all duration-150 hover:bg-foreground/5 disabled:opacity-50"
+  "h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-[background-color,border-color,box-shadow,opacity,transform] duration-150 hover:bg-foreground/5 active:scale-[0.96] disabled:opacity-50"
+
+/**
+ * Invisible 40×40 hit-area expander for visually dense controls.
+ * Use on isolated icon buttons. Prefer HIT_AREA_EXPAND_DENSE_CLASS when
+ * neighbors are within gap-1 so expanders do not overlap.
+ */
+export const HIT_AREA_EXPAND_CLASS =
+  "relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2"
+
+/**
+ * Vertical-only hit-area expander for adjacent dense controls.
+ * Extends height toward 40px without widening past the control.
+ */
+export const HIT_AREA_EXPAND_DENSE_CLASS =
+  "relative after:absolute after:inset-x-0 after:-top-1.5 after:-bottom-1.5"
 
 /** Floating header pills and inactive launcher chrome. */
 export const CHROME_PILL_CLASS =
@@ -40,11 +55,11 @@ export const FIELD_LABEL_CLASS =
   "text-[10px] font-bold tracking-wide text-foreground/45 uppercase"
 
 export const fleetPiSectionSurface = cva(
-  "space-y-3.5 rounded-[10px] border bg-background/30 backdrop-blur-md transition-all duration-300",
+  "space-y-3.5 rounded-[12px] border bg-background/30 backdrop-blur-md transition-[border-color,box-shadow,background-color] duration-300",
   {
     variants: {
       padding: {
-        default: "p-3.5",
+        default: "p-2",
         compact: "p-3",
       },
       elevation: {
@@ -65,7 +80,8 @@ export const fleetPiSectionSurface = cva(
   }
 )
 
-export const fleetPiRowSurface = cva("flex min-w-0 rounded-[8px] border", {
+/** Inner rows: 4px + 8px section padding = 12px outer (concentric). */
+export const fleetPiRowSurface = cva("flex min-w-0 rounded-[4px] border", {
   variants: {
     tone: {
       default: "border-border/30 bg-background/30",

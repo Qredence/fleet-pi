@@ -230,7 +230,7 @@ export const InputBar = memo(function InputBar({
     <div
       className={cn(
         "flex h-[34px] items-center justify-between gap-3 px-3",
-        "overflow-hidden transition-all duration-150 ease-out",
+        "overflow-hidden transition-[max-height,opacity] duration-150 ease-out",
         isInfoBarOpen ? "max-h-[34px] opacity-100" : "max-h-0 opacity-0",
         infoBarPosition === "top"
           ? "rounded-t-an-input-border-radius"
@@ -254,7 +254,7 @@ export const InputBar = memo(function InputBar({
           <button
             type="button"
             onClick={infoBarData.action.onClick}
-            className="h-6 rounded-[4px] bg-an-primary-color px-2 text-xs font-medium text-an-send-button-color transition-[background-color,transform] duration-150 hover:bg-an-primary-color/90 active:scale-[0.98]"
+            className="h-6 rounded-[4px] bg-an-primary-color px-2 text-xs font-medium text-an-send-button-color transition-[background-color,transform] duration-150 hover:bg-an-primary-color/90 active:scale-[0.96]"
           >
             {infoBarData.action.label}
           </button>
@@ -263,7 +263,7 @@ export const InputBar = memo(function InputBar({
           <button
             type="button"
             onClick={handleInfoBarClose}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-an-foreground-muted/70 hover:bg-an-background-secondary hover:text-an-foreground"
+            className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-an-foreground-muted/70 transition-[background-color,color,transform] duration-150 after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2 hover:bg-an-background-secondary hover:text-an-foreground active:scale-[0.96]"
             aria-label="Close"
           >
             <IconX className="h-3.5 w-3.5" strokeWidth={2} />
@@ -337,19 +337,19 @@ export const InputBar = memo(function InputBar({
                 type="button"
                 onClick={handleQuestionPrevious}
                 disabled={!canGoPrev}
-                className="inline-flex size-5 items-center justify-center rounded-[4px] hover:bg-an-background-secondary disabled:opacity-40"
+                className="relative inline-flex size-5 items-center justify-center rounded-[4px] transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-2.5 after:-bottom-2.5 hover:bg-an-background-secondary active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100"
                 aria-label="Previous question"
               >
                 <IconChevronUp className="h-3.5 w-3.5" />
               </button>
-              <span>
+              <span className="tabular-nums">
                 {clampedQuestionIndex} of {totalQuestions}
               </span>
               <button
                 type="button"
                 onClick={handleQuestionNext}
                 disabled={!canGoNext}
-                className="inline-flex size-5 items-center justify-center rounded-[4px] hover:bg-an-background-secondary disabled:opacity-40"
+                className="relative inline-flex size-5 items-center justify-center rounded-[4px] transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-2.5 after:-bottom-2.5 hover:bg-an-background-secondary active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100"
                 aria-label="Next question"
               >
                 <IconChevronDown className="h-3.5 w-3.5" />

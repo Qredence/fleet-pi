@@ -3,7 +3,7 @@ import { useEffect, useId, useMemo, useRef } from "react"
 import { DiscreteTabs } from "../primitives/discrete-tab"
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
 import { useRightPanelContext } from "../layout/right-panel-context"
-import { PANEL_OVERLAY_CLASS } from "../styles/tokens"
+import { HIT_AREA_EXPAND_CLASS, PANEL_OVERLAY_CLASS } from "../styles/tokens"
 import { getArtifactsScopePath } from "./artifacts-panel"
 import {
   countWorkspaceFiles,
@@ -176,7 +176,7 @@ export function MobilePanel({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+                      className={`${HIT_AREA_EXPAND_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
                       aria-label="Close panel"
                       title="Close panel"
                     >

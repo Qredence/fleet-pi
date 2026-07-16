@@ -28,6 +28,10 @@ import {
 } from "../../../../input-group"
 import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
+import {
+  HIT_AREA_EXPAND_CLASS,
+  HIT_AREA_EXPAND_DENSE_CLASS,
+} from "../../../styles/tokens"
 import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
 import {
@@ -253,7 +257,10 @@ export function ProviderCredentialsSection({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className={cn(
+                          HIT_AREA_EXPAND_DENSE_CLASS,
+                          "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                        )}
                         onClick={() => {
                           if (isEditing) {
                             closeEditor()
@@ -287,6 +294,10 @@ export function ProviderCredentialsSection({
                         <InputGroupAddon align="inline-end">
                           <InputGroupButton
                             size="icon-xs"
+                            className={cn(
+                              HIT_AREA_EXPAND_CLASS,
+                              "transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                            )}
                             aria-label={
                               showPassword ? "Hide API key" : "Show API key"
                             }
@@ -389,7 +400,7 @@ export function ProviderCredentialsSection({
 
           <div className="max-h-64 overflow-y-auto">
             {filteredPickerProviders.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
+              <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
                 {unconfiguredProviders.length === 0
                   ? "All providers are already configured."
                   : "No matching providers found."}
@@ -401,12 +412,12 @@ export function ProviderCredentialsSection({
                     key={provider.id}
                     type="button"
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors",
-                      "hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-[background-color,transform] duration-150",
+                      "hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.96]"
                     )}
                     onClick={() => openEditor(provider.id)}
                   >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/40 bg-background/60">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-border/40 bg-background/60">
                       <ProviderBrandIcon
                         provider={provider.id}
                         className="text-foreground/70"
@@ -520,6 +531,10 @@ function AddProviderEditorOverlay({
             <InputGroupAddon align="inline-end">
               <InputGroupButton
                 size="icon-xs"
+                className={cn(
+                  HIT_AREA_EXPAND_CLASS,
+                  "transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                )}
                 aria-label={showPassword ? "Hide API key" : "Show API key"}
                 onClick={onTogglePassword}
               >

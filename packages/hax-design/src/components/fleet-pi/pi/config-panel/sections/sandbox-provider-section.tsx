@@ -17,9 +17,14 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "../../../../input-group"
+import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
 import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
+import {
+  HIT_AREA_EXPAND_CLASS,
+  HIT_AREA_EXPAND_DENSE_CLASS,
+} from "../../../styles/tokens"
 import type {
   ChatProviderInfo,
   ChatProviderUpdateRequest,
@@ -119,7 +124,10 @@ export function SandboxProviderSection({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className={cn(
+                  HIT_AREA_EXPAND_DENSE_CLASS,
+                  "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                )}
                 onClick={() => {
                   if (editing) {
                     closeEditor()
@@ -154,6 +162,10 @@ export function SandboxProviderSection({
                 <InputGroupAddon align="inline-end">
                   <InputGroupButton
                     size="icon-xs"
+                    className={cn(
+                      HIT_AREA_EXPAND_CLASS,
+                      "transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                    )}
                     aria-label={showPassword ? "Hide API key" : "Show API key"}
                     onClick={() => setShowPassword((current) => !current)}
                   >
