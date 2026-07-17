@@ -8,11 +8,7 @@ export default defineConfig({
     globals: false,
     environment: "node",
     include: ["src/**/*.{test,spec}.ts", "src/**/*.{test,spec}.tsx"],
-    exclude: [
-      "node_modules/",
-      "src/lib/pi/plan-mode.test.ts",
-      "src/routeTree.gen.ts",
-    ],
+    exclude: ["node_modules/", "src/routeTree.gen.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

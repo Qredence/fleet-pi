@@ -11,6 +11,8 @@ import type {
   WriteOperations,
 } from "@earendil-works/pi-coding-agent"
 
+export type { Sandbox } from "@daytona/sdk"
+
 export function assertPathWithinWorkspaceBound(
   absolutePath: string,
   boundRoot: string
