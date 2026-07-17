@@ -1,9 +1,6 @@
 # Adaptive Workspace Contract
 
-This guide records the accepted adaptive-workspace contract for Fleet Pi.
-Phase 0 documents the contract and its non-regression boundaries; later
-milestones make every artifact visible through bootstrap, health, indexing, and
-query surfaces without changing the source-of-truth model.
+This guide records the current adaptive-workspace contract for Fleet Pi. The executable contract is defined by `apps/web/src/lib/workspace/workspace-contract.ts` and materialized in `agent-workspace/manifest.json`; this document explains the domain meaning without introducing a separate target shape.
 
 ## Canonical Boundary
 
@@ -21,14 +18,15 @@ source of truth.
 rows may accelerate search, health, provenance, or query flows, but canonical
 files still decide what Fleet Pi knows.
 
-## Accepted Workspace Shape
+## Current Workspace Shape
 
-The accepted contract centers on a manifest plus named section families:
+The current contract centers on a manifest plus named section families:
 
 ```text
 agent-workspace/
 ├── manifest.json
 ├── instructions/
+├── system/
 ├── memory/
 ├── plans/
 ├── skills/
@@ -36,14 +34,12 @@ agent-workspace/
 ├── artifacts/
 ├── scratch/
 ├── pi/
-├── policies/
 └── indexes/
 ```
 
 The contract requires `agent-workspace/manifest.json` to describe the workspace
-shape and versioned policy of the adaptive layer. Bootstrap may seed missing
-artifacts later, but phase 0 already fixes the names and semantics of the
-sections above.
+shape and versioned policy of the adaptive layer. Policy files are currently
+stored under `system/`; `policies/` is not a current top-level section.
 
 ### Section families
 
@@ -57,7 +53,7 @@ sections above.
   material.
 - `artifacts/` holds durable reports, datasets, traces, and reusable outputs.
 - `scratch/` holds temporary working files only.
-- `policies/` holds durable policy and safety artifacts for the workspace.
+- `system/` holds durable policy, identity, constraints, and safety artifacts for the workspace.
 - `indexes/` holds projection/query state only.
 
 ## Workspace-installed Pi resources
@@ -85,16 +81,10 @@ That means:
 - changing the bridge must not imply changing where the canonical resource
   content lives
 
-## Current baseline vs later milestones
+## Current baseline
 
-Fleet Pi already has a committed `agent-workspace/` tree and workspace resource
-bridge today. The accepted contract above is the target shape that later
-bootstrap and indexing milestones must materialize more completely.
-
-Until those milestones land:
-
-- existing canonical files under `agent-workspace/` remain authoritative
-- projection storage stays non-canonical
-- `.pi/settings.json` remains a bridge
-- runtime and UI work must not quietly move durable adaptive state into
-  databases or transient session-only structures
+Fleet Pi materializes the contract above through bootstrap and the workspace
+manifest. Existing canonical files remain authoritative, projection storage
+stays non-canonical, and `.pi/settings.json` remains a compatibility bridge.
+Runtime and UI work must not quietly move durable adaptive state into databases
+or transient session-only structures.

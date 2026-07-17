@@ -66,7 +66,7 @@ graph TD
     end
 
     subgraph External["External Services"]
-        GoogleGemini[Google Gemini via Pi google provider]
+        ConfiguredProvider[OpenAI-compatible provider via Pi openai-chat-completions]
         Daytona[Daytona per-user sandboxes]
     end
 
@@ -87,7 +87,7 @@ graph TD
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> GoogleGemini
+    CircuitBreaker --> ConfiguredProvider
     PiServer --> SandboxContext
     SandboxContext --> Daytona
     PiServer --> PlanMode

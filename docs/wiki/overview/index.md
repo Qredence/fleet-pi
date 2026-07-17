@@ -4,7 +4,7 @@ Fleet Pi is a browser-based coding-agent workspace built on Qredence's Pi AI cod
 
 ## What it does
 
-- Streams responses from Pi, backed by Amazon Bedrock (Claude models)
+- Streams responses from Pi through the current OpenAI-compatible `openai-chat-completions` provider (default model `deepseek-v4-flash-free`)
 - Runs Pi's built-in tools — `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls` — scoped to your project root
 - Supports **Agent mode** (full tools) and **Plan mode** (read-only planning with numbered steps)
 - Maintains persistent Pi JSONL sessions; restores transcript on page refresh

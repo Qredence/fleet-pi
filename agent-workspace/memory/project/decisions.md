@@ -2,7 +2,14 @@
 
 Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace.
 
-## agent-workspace is the durable adaptive layer
+## Domain and architecture records have explicit authority
+
+- Decision: Treat executable contracts as the current behavior authority, accepted ADRs as binding architectural decisions, `CONTEXT.md` as the concise domain glossary, and this file as source-linked operational recall.
+- Status: Active.
+- Context: Fleet Pi's model is described across runtime schemas, manifests, ADRs, context, memory, wiki pages, and generated docs; stale prose must not silently override a live contract or accepted decision.
+- Rationale: An explicit hierarchy keeps domain vocabulary concise, architectural rationale durable, and explanatory docs repairable when they drift.
+- Consequences: Architectural changes that supersede an ADR require a new ADR; wiki and generated docs must be corrected at their sources; this file summarizes decisions but does not amend them.
+- Source: `docs/adr/0005-authority-of-domain-and-architecture-records.md`, `CONTEXT.md`.
 
 - Decision: Treat `agent-workspace/` as Fleet Pi's persistent agent operating surface, not as incidental storage.
 - Status: Active.
@@ -71,8 +78,8 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Status: Active.
 - Context: Fleet Pi needs Pi-native settings, model registry, resource loader, and auth storage behavior without losing plan-mode extensions, Daytona tool injection, per-tenant BYOK, or in-memory runtime TTL semantics.
 - Rationale: A thin runtime facade mirrors AI SDK 7 harness configuration surfaces without adopting harness dependencies that lack Fleet Pi's web-native features.
-- Consequences: UI provider metadata stays in `packages/hax-design/src/lib/pi/provider-catalog.ts`; runtime credential resolution and hot reload live in `apps/web/src/lib/pi/runtime/`. AI SDK harness remains an optional future path for isolated sandbox agents only.
-- Source: `apps/web/src/lib/pi/runtime/`, `packages/hax-design/src/lib/pi/provider-catalog.ts`.
+- Consequences: Provider credential IDs live in `@workspace/pi-protocol/provider-catalog`; Settings UI metadata lives in `fleet-pi/pi/config-panel/shared/provider-metadata.ts`; runtime credential resolution and hot reload live in `apps/web/src/lib/pi/runtime/`. AI SDK harness remains an optional future path for isolated sandbox agents only.
+- Source: `apps/web/src/lib/pi/runtime/`, `packages/pi-protocol/src/provider-catalog.ts`.
 
 ## Daytona Sandbox handles isolated, secure executions
 

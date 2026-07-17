@@ -30,5 +30,5 @@ Prefer:
 ```zsh
 pnpm --filter web typecheck
 pnpm --filter web lint
-pnpm dlx tsx --test apps/web/src/lib/pi/plan-mode.test.ts
+pnpm --filter web test src/lib/pi/plan-mode.spec.ts
 ```

@@ -1,10 +1,20 @@
 # Agent workspace
 
-`agent-workspace/` is Fleet Pi's durable adaptive layer. It lives inside the repository and gives Pi a place to accumulate project knowledge, reusable procedures, active plans, and runtime resources that survive across chat sessions. Everything in it is version-controlled Markdown (or JSON), so changes show up as normal Git diffs and can be reviewed, reverted, or diffed just like code.
+`agent-workspace/` is Fleet Pi's **canonical adaptive state**. It lives inside the repository and gives Pi a place to accumulate project knowledge, reusable procedures, active plans, and runtime resources that survive across chat sessions. Everything in it is version-controlled Markdown (or JSON), so changes show up as normal Git diffs and can be reviewed, reverted, or diffed just like code.
 
-## Layering model
+This **agent workspace** is distinct from the project root, a Daytona sandbox workspace root, and the browser's `Workspace` panel. Pi JSONL session files are the separate **canonical transcript** for conversation history; the workspace does not own transcript history.
 
-The workspace is organised into a strict layer stack. Higher layers are more stable; lower layers change more frequently.
+## Current top-level contract
+
+The current contract has these top-level sections:
+
+- `instructions/`, `system/`, `memory/`, `plans/`, `skills/`, `evals/`, `artifacts/`, and `pi/` are **canonical**.
+- `scratch/` is **temporary** and must not be treated as durable adaptive state.
+- `indexes/` is a **projection** and can be regenerated from canonical files.
+
+Policy files are currently seeded under `system/` (`workspace-policy.md`, `tool-policy.md`, `self-improvement-policy.md`, and `constraints.md`). There is no separate current `policies/` top-level section. Any future restructuring must be documented as a proposal rather than treated as the current contract.
+
+The workspace is organised into a strict layer stack. Higher layers are more stable; lower layers change more frequently. The top-level section names and kinds in the current contract come from `apps/web/src/lib/workspace/workspace-contract.ts` and `agent-workspace/manifest.json`.
 
 ```
 system/       Identity, constraints, policies         (protected — rarely changes)
