@@ -3,18 +3,18 @@
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
-    "npm:pi-web-access",
-    "npm:@daytona/pi"
+    "npm:pi-web-access"
   ],
-  "skills": ["../agent-workspace/pi/skills"],
-  "prompts": ["../agent-workspace/pi/prompts"],
+  "skills": ["../agent-workspace/.pi/skills"],
+  "prompts": ["../agent-workspace/.pi/prompts"],
   "extensions": [
     "extensions/bedrock-bearer-auth",
     "extensions/resource-install",
     "extensions/daytona-sandbox",
     "extensions/vendor/filechanges",
     "extensions/vendor/subagents",
-    "../agent-workspace/pi/extensions/enabled"
+    "../agent-workspace/.pi/extensions/enabled",
+    "../agent-workspace/.pi/extensions"
   ],
   "defaultProvider": "google",
   "defaultModel": "gemini-3.5-flash",
