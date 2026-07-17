@@ -4,12 +4,19 @@ This document describes the structural design, layering model, and evolution
 mechanisms of Fleet Pi's `agent-workspace/`. Read this when performing
 architecture work, self-improvement, or harness-mode operations.
 
+`agent-workspace/` is the **canonical adaptive state**. It is distinct from the
+canonical Pi JSONL transcript, the project root, a Daytona sandbox workspace
+root, and the browser `Workspace` panel. Indexes and live runtimes are derived
+or transient and must not replace either canonical boundary.
+
 ---
 
 ## Layering Model
 
 Each layer builds on the one above. Higher layers are more stable; lower layers
-change more frequently.
+change more frequently. The top-level names and kinds below are the current
+workspace contract; policy files live under `system/`, not in a separate
+`policies/` section.
 
 ```
 system/       Identity, constraints, policies         (protected — rarely changes)

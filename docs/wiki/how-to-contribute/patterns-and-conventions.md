@@ -26,7 +26,7 @@
 ## API routes
 
 - API routes are TanStack Start file routes under `apps/web/src/routes/api/`. Each file exports a `Route` created with `createFileRoute`.
-- All chat API responses are NDJSON streams (`ChatStreamEvent` lines) or JSON objects typed in `apps/web/src/lib/pi/chat-protocol.ts`.
+- All chat API responses are NDJSON streams (`ChatStreamEvent` lines) or JSON objects typed in `packages/pi-protocol/src/chat-protocol.ts`.
 - Validate request bodies with Zod schemas from `chat-protocol.zod.ts`. Use `RequestContextError` from `app-runtime.ts` for structured HTTP errors.
 
 ## Error handling

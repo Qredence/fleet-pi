@@ -21,7 +21,7 @@ sequenceDiagram
     Browser->>Browser: persist session metadata to localStorage
 ```
 
-The browser sends a single JSON body. The server writes newline-delimited JSON (`Content-Type: application/x-ndjson`) until the turn is complete. Each line is one `ChatStreamEvent` object typed in `apps/web/src/lib/pi/chat-protocol.ts`.
+The browser sends a single JSON body. The server writes newline-delimited JSON (`Content-Type: application/x-ndjson`) until the turn is complete. Each line is one `ChatStreamEvent` object typed in `packages/pi-protocol/src/chat-protocol.ts`.
 
 ### Event types
 
@@ -98,16 +98,16 @@ Before each turn, Fleet Pi builds a memory index from the canonical files under 
 
 ## Key source files
 
-| File                                       | Role                                                                          |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `apps/web/src/lib/pi/use-pi-chat.ts`       | Main React hook — state, send, stop, hydration, question answering            |
-| `apps/web/src/lib/pi/chat-stream-state.ts` | Pure event reducer: `applyChatStreamEvent`                                    |
-| `apps/web/src/lib/pi/use-chat-storage.ts`  | localStorage read/write for session metadata and mode                         |
-| `apps/web/src/lib/pi/chat-protocol.ts`     | Shared browser/server types for events, session metadata, modes               |
-| `apps/web/src/lib/pi/chat-client.ts`       | Browser-side fetch wrapper around the `/api/chat` family                      |
-| `apps/web/src/routes/api/chat.ts`          | Server-side API route: session resolution, Pi streaming, NDJSON writing       |
-| `apps/web/src/lib/pi/server.ts`            | Server helpers: session validation, event normalisation, transcript hydration |
-| `apps/web/src/routes/index.tsx`            | Top-level page that wires `usePiChat` into the `AgentChat` component          |
+| File                                        | Role                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `apps/web/src/lib/pi/use-pi-chat.ts`        | Main React hook — state, send, stop, hydration, question answering            |
+| `apps/web/src/lib/pi/chat-stream-state.ts`  | Pure event reducer: `applyChatStreamEvent`                                    |
+| `apps/web/src/lib/pi/use-chat-storage.ts`   | localStorage read/write for session metadata and mode                         |
+| `packages/pi-protocol/src/chat-protocol.ts` | Shared browser/server types for events, session metadata, modes               |
+| `apps/web/src/lib/pi/chat-client.ts`        | Browser-side fetch wrapper around the `/api/chat` family                      |
+| `apps/web/src/routes/api/chat.ts`           | Server-side API route: session resolution, Pi streaming, NDJSON writing       |
+| `apps/web/src/lib/pi/server.ts`             | Server helpers: session validation, event normalisation, transcript hydration |
+| `apps/web/src/routes/index.tsx`             | Top-level page that wires `usePiChat` into the `AgentChat` component          |
 
 ## Related pages
 

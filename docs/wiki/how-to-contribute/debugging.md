@@ -79,7 +79,7 @@ curl -s -X POST http://localhost:3000/api/chat \
   | while IFS= read -r line; do echo "$line" | jq .; done
 ```
 
-Each line is a `ChatStreamEvent` JSON object. Event types: `start`, `delta`, `tool`, `plan`, `state`, `queue`, `thinking`, `compaction`, `retry`, `done`, `error`. See [`apps/web/src/lib/pi/chat-protocol.ts`](../../../apps/web/src/lib/pi/chat-protocol.ts) for the full union type.
+Each line is a `ChatStreamEvent` JSON object. Event types: `start`, `delta`, `tool`, `plan`, `state`, `queue`, `thinking`, `compaction`, `retry`, `done`, `error`. See [`packages/pi-protocol/src/chat-protocol.ts`](../../../packages/pi-protocol/src/chat-protocol.ts) for the full union type.
 
 ## localStorage Session Metadata
 

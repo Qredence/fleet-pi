@@ -159,7 +159,7 @@ If the requested `sessionFile`/`sessionId` does not resolve to a usable file, a 
 
 ## Model selection and catalog
 
-**File:** `apps/web/src/lib/pi/server-catalog.ts`
+**File:** `apps/web/src/lib/pi/runtime/model-catalog.ts`
 
 ### loadChatModels
 
@@ -180,7 +180,7 @@ Called when reusing an existing runtime. Calls `session.setModel()` and `session
 
 ## Resource loading
 
-**File:** `apps/web/src/lib/pi/server-catalog.ts` → `loadChatResources()`
+**File:** `apps/web/src/lib/pi/runtime/resource-catalog.ts` → `loadChatResources()`
 
 Pi's `ResourceLoader` (inside `AgentSessionServices`) discovers resources from:
 

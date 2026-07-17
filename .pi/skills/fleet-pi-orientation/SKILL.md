@@ -14,7 +14,7 @@ Use this skill before broad codebase analysis or feature planning.
 - Supporting chat endpoints: `apps/web/src/routes/api/chat/*.ts`
 - Pi runtime/session/resource bridge: `apps/web/src/lib/pi/server.ts`
 - Plan mode extension: `apps/web/src/lib/pi/plan-mode.ts`
-- Browser-safe chat protocol: `apps/web/src/lib/pi/chat-protocol.ts`
+- Browser-safe chat protocol: `packages/pi-protocol/src/chat-protocol.ts`
 - Shared Agent Elements UI: `packages/hax-design/src/components/agent-elements/`
 - Built-in/project Pi resources: `.pi/skills`, `.pi/prompts`, `.pi/extensions`
 - Chat-installed Pi resources: `agent-workspace/pi/skills`,
