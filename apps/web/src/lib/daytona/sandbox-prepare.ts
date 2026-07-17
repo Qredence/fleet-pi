@@ -8,6 +8,8 @@ import type { Sandbox } from "@daytona/sdk"
 
 /** Durable agent-workspace volume mount (only durable FS on the sandbox). */
 export const SANDBOX_WORKSPACE_ROOT = "/home/daytona/agent-workspace"
+/** Pre-adapter full-repo checkout path — remove on every prepare. */
+export const LEGACY_SANDBOX_ROOT = "/home/daytona/fleet-pi"
 export const SANDBOX_PI_AUTH_PATH = "/home/daytona/.pi/agent/auth.json"
 export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
@@ -62,10 +64,30 @@ export function buildPrepareSandboxCommand(repoUrl: string): string {
   return [
     "set -euo pipefail",
     ensureGitInstalledCommand(),
+    removeLegacySandboxRootsCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
     ensureAgentWorkspaceSeedCommand(workspace, url),
     piDirs,
     `mkdir -p ${workspace}`,
+  ].join("\n")
+}
+
+/**
+ * Drop ephemeral leftover full-repo trees from older Fleet layouts / snapshots.
+ * Never delete a path that is (or contains) a volume mount — recreate instead.
+ */
+export function removeLegacySandboxRootsCommand(): string {
+  const legacy = shellEscape(LEGACY_SANDBOX_ROOT)
+  const legacyWorkspace = shellEscape(`${LEGACY_SANDBOX_ROOT}/agent-workspace`)
+  return [
+    `# Remove legacy full-repo path only when it is not a volume mount`,
+    `if [ -e ${legacy} ]; then`,
+    `if mountpoint -q ${legacy} 2>/dev/null || mountpoint -q ${legacyWorkspace} 2>/dev/null; then`,
+    `: # mounted legacy layout — sandbox will be recreated by the host`,
+    "else",
+    `rm -rf ${legacy}`,
+    "fi",
+    "fi",
   ].join("\n")
 }
 

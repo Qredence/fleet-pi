@@ -27,6 +27,11 @@ export interface SandboxConfig {
   snapshot?: string
   language?: string
   envVars?: Record<string, string>
+  /**
+   * Map of sandbox env var name → Daytona organization Secret name.
+   * Env receives the opaque placeholder; egress substitutes the real value.
+   */
+  secrets?: Record<string, string>
   labels?: Record<string, string>
   public?: boolean
   autoStopInterval?: number
@@ -425,6 +430,9 @@ function toCreateSandboxBaseParams(
   return {
     ...(config.language ? { language: config.language } : {}),
     ...(config.envVars ? { envVars: config.envVars } : {}),
+    ...(config.secrets && Object.keys(config.secrets).length > 0
+      ? { secrets: config.secrets }
+      : {}),
     ...(config.labels ? { labels: config.labels } : {}),
     ...(config.public !== undefined ? { public: config.public } : {}),
     ...(config.autoStopInterval !== undefined

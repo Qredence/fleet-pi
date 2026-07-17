@@ -41,10 +41,11 @@ stateDiagram-v2
 
 1. Checks an in-memory cache keyed by `userId` and verifies the cached sandbox is still in `started` state.
 2. If the cache misses, looks up an existing Daytona sandbox by name (`fleet-pi-user-<userId>`).
-3. If a sandbox exists but is `stopped` or `archived`, calls `startSandbox()` to wake it.
-4. If no sandbox exists, creates one with volume mount at `/home/daytona/agent-workspace` and optional `fleet-pi-v*` snapshot.
-5. Sparse-seeds the volume when `manifest.json` is missing.
-6. Stores the result in the in-memory map and returns a `UserSandboxHandle`.
+3. If the existing sandbox mounts anything other than `/home/daytona/agent-workspace` (legacy `/home/daytona/fleet-pi` layout), **deletes that sandbox and recreates** it — the durable `fleet-pi-ws-*` volume is kept and remounted at the new path.
+4. If a sandbox exists with the correct mount but is `stopped` or `archived`, calls `startSandbox()` to wake it.
+5. If no sandbox exists, creates one with volume mount at `/home/daytona/agent-workspace` and optional `fleet-pi-v*` snapshot.
+6. Sparse-seeds the volume when `manifest.json` is missing; removes ephemeral leftover `/home/daytona/fleet-pi` trees that are not volume mounts.
+7. Stores the result in the in-memory map and returns a `UserSandboxHandle`.
 
 Concurrent requests for the same user are deduplicated via a `userSandboxRequests` Map of in-flight Promises.
 
@@ -76,7 +77,11 @@ Volume paths are validated by `createVolumeMount`.
 
 ## Sandbox identity and safety
 
-Sandboxes are labelled at creation time with `managedBy: "fleet-pi"` and `userId: <id>`. When `getUserSandbox` finds an existing sandbox by name it confirms both labels match.
+Sandboxes are labelled at creation time with `managedBy: "fleet-pi"` and `userId: <id>`. When `getUserSandbox` finds an existing sandbox by name it confirms both labels match. A short `daytonaSecretsFp` label tracks which Secrets-backed credential set was mounted at create time.
+
+## Provider credentials
+
+API keys with known HTTPS hosts are upserted into the user's Daytona org as Secrets and mounted on create (placeholders only in the sandbox). OAuth / ADC / Bedrock / config-only values still go into `auth.json` or plain env. Credential saves that change Secrets-backed keys recreate the sandbox (volume kept).
 
 ## Webhook
 

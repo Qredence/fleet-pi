@@ -30,7 +30,7 @@ Authenticated user → POST /api/chat (with session cookie)
 
 **Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an`. Do not delete the workspace volume unless intentionally resetting that user.
 
-**Migration:** Existing sandboxes with the old mount (`/home/daytona/fleet-pi/agent-workspace`) keep that layout until recreated. Delete the old sandbox in the Daytona dashboard (volume data can be copied manually). Do not auto-delete volumes.
+**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Do not auto-delete volumes.
 
 Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 
@@ -56,8 +56,26 @@ On Vercel, each logged-in user must store their Daytona API key as the `daytona`
 | Purpose                | Path                                |
 | ---------------------- | ----------------------------------- |
 | Workspace volume mount | `/home/daytona/agent-workspace`     |
-| Pi auth (uploaded)     | `/home/daytona/.pi/agent/auth.json` |
+| Pi auth (non-Secrets)  | `/home/daytona/.pi/agent/auth.json` |
 | Web preview port       | `3000`                              |
+
+## Provider credentials (Daytona Secrets)
+
+LLM API keys that have known HTTPS API hosts are synced into the **user's** Daytona organization as Secrets (`fleet_pi_<providerId>`) and mounted on sandbox create via the `secrets` map. The sandbox only sees opaque placeholders (`dtn_secret_*`); Daytona substitutes the real value on egress to the allowlisted hosts.
+
+| Provider                                 | Hosts (examples)                    |
+| ---------------------------------------- | ----------------------------------- |
+| Google Gemini                            | `generativelanguage.googleapis.com` |
+| OpenAI                                   | `api.openai.com`                    |
+| Anthropic                                | `api.anthropic.com`                 |
+| Mistral / Groq / OpenRouter / AI Gateway | their public API hosts              |
+| OpenAI Chat Completions                  | hostname from HTTPS base URL        |
+
+**Still injected as plaintext** (cannot use Secrets egress): OAuth (GitHub Copilot), Google Vertex ADC, Bedrock signing keys, Ollama base URL, OCC base URL / model ID.
+
+When Secrets-backed credentials change while a sandbox is cached, Fleet **recreates** the sandbox (same volume) so placeholders remount. Plaintext `auth.json` sync alone cannot update create-time Secrets.
+
+If the Daytona Secrets API is unavailable for the user's org (for example `Access denied` on list/create), Fleet falls back to the pre-Phase-2 behavior: inject eligible API keys as plaintext in sandbox `auth.json` / env instead of failing sandbox provision. If sync fails partway through upserts, Fleet keeps the partial `secrets` map for providers that succeeded and recreates sandboxes that still have stale Secret placeholders when falling back to plaintext.
 
 ## How it works
 
@@ -109,11 +127,13 @@ Each user (default): 1 vCPU + 1 GB RAM + 3 GB disk when running.
 
 ## Key files
 
-| File                                              | Purpose                                           |
-| ------------------------------------------------- | ------------------------------------------------- |
-| `apps/web/src/lib/daytona/user-sandbox.ts`        | Per-user sandbox + volume provisioning            |
-| `apps/web/src/lib/daytona/sandbox-prepare.ts`     | Sparse seed + volume migration                    |
-| `apps/web/src/lib/daytona/sandbox-operations.ts`  | Tool ops for bash/read/write/edit/grep/find/ls    |
-| `.pi/extensions/daytona-sandbox.ts`               | Fleet adapter: tool registration + status/preview |
-| `apps/web/src/lib/pi/exclude-stock-daytona-pi.ts` | Exclude `npm:@daytona/pi` from web loader         |
-| `apps/web/src/lib/pi/server-runtime.ts`           | Eager warm-up; no customTools                     |
+| File                                               | Purpose                                           |
+| -------------------------------------------------- | ------------------------------------------------- |
+| `apps/web/src/lib/daytona/user-sandbox.ts`         | Per-user sandbox + volume provisioning            |
+| `apps/web/src/lib/daytona/sandbox-prepare.ts`      | Sparse seed + volume migration                    |
+| `apps/web/src/lib/daytona/sandbox-operations.ts`   | Tool ops for bash/read/write/edit/grep/find/ls    |
+| `apps/web/src/lib/daytona/secret-hosts.ts`         | HTTPS allowlists for Secrets-eligible providers   |
+| `apps/web/src/lib/daytona/sync-daytona-secrets.ts` | Upsert org Secrets + createSandbox secrets map    |
+| `.pi/extensions/daytona-sandbox.ts`                | Fleet adapter: tool registration + status/preview |
+| `apps/web/src/lib/pi/exclude-stock-daytona-pi.ts`  | Exclude `npm:@daytona/pi` from web loader         |
+| `apps/web/src/lib/pi/server-runtime.ts`            | Eager warm-up; no customTools                     |

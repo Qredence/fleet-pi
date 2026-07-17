@@ -10,6 +10,7 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "./user-sandbox"
+import { syncDaytonaSecrets } from "./sync-daytona-secrets"
 import {
   createDaytonaClient,
   createSandbox,
@@ -21,6 +22,35 @@ import {
 } from "./client"
 import type { Daytona, Sandbox } from "@daytona/sdk"
 import type * as DaytonaClientModule from "./client"
+
+vi.mock("./sync-daytona-secrets", () => ({
+  syncDaytonaSecrets: vi.fn().mockResolvedValue({
+    secrets: {},
+    fingerprint: "",
+    mode: "plaintext-fallback",
+  }),
+  fingerprintDaytonaSecretsConfig: vi.fn().mockReturnValue(""),
+}))
+
+vi.mock("./sandbox-provider-secrets", async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    loadConfiguredProviderSecrets: vi
+      .fn()
+      .mockResolvedValue(new Map<string, string>()),
+    loadSandboxProviderSecrets: vi.fn().mockResolvedValue({
+      envVars: {},
+      authJson: {},
+      fingerprint: "empty",
+    }),
+    buildPlaintextSandboxCredentials: vi.fn().mockReturnValue({
+      envVars: {},
+      authJson: {},
+      fingerprint: "empty",
+    }),
+  }
+})
 
 vi.mock("./client", async (importOriginal) => {
   const actual = await importOriginal<typeof DaytonaClientModule>()
@@ -43,6 +73,7 @@ const mockedGetSandboxStatus = vi.mocked(getSandboxStatus)
 const mockedStartSandbox = vi.mocked(startSandbox)
 const mockedStopSandbox = vi.mocked(stopSandbox)
 const mockedDeleteSandbox = vi.mocked(deleteSandbox)
+const mockedSyncDaytonaSecrets = vi.mocked(syncDaytonaSecrets)
 
 function makeMockClient(): Daytona {
   return {
@@ -51,6 +82,15 @@ function makeMockClient(): Daytona {
     list: vi.fn(),
     volume: { get: vi.fn(), list: vi.fn(), delete: vi.fn() },
     snapshot: { get: vi.fn(), create: vi.fn(), delete: vi.fn() },
+    secret: {
+      list: vi
+        .fn()
+        .mockResolvedValue({ items: [], total: 0, nextCursor: null }),
+      create: vi.fn(),
+      update: vi.fn(),
+      get: vi.fn(),
+      delete: vi.fn(),
+    },
   } as unknown as Daytona
 }
 
@@ -60,6 +100,12 @@ function makeMockSandbox(overrides?: Partial<Sandbox>): Sandbox {
     name: "fleet-pi-user-user123",
     state: "started",
     labels: { managedBy: "fleet-pi", userId: "user123" },
+    volumes: [
+      {
+        volumeId: "vol-1",
+        mountPath: "/home/daytona/agent-workspace",
+      },
+    ],
     process: {
       executeCommand: vi.fn().mockResolvedValue({ result: "", exitCode: 0 }),
       codeRun: vi.fn(),
@@ -178,10 +224,159 @@ describe("getUserSandbox", () => {
     expect(prepCommand).toContain("git clone")
     expect(prepCommand).toContain("--sparse")
     expect(prepCommand).toContain("agent-workspace")
+    expect(prepCommand).toContain("rm -rf")
+    expect(prepCommand).toContain("/home/daytona/fleet-pi")
+    expect(prepCommand).toContain("mountpoint -q")
     expect(prepCommand).not.toContain("npm install")
     expect(prepCommand).not.toContain("npx")
-    // No full-repo checkout under /home/daytona/fleet-pi
-    expect(prepCommand).not.toContain("/home/daytona/fleet-pi'")
+    // Sparse seed clones to a tempdir only — never into the legacy path.
+    expect(prepCommand).not.toMatch(/git clone[^\n]*\/home\/daytona\/fleet-pi/)
+  })
+
+  it("recreates sandboxes that still mount the legacy fleet-pi path", async () => {
+    const client = makeMockClient()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "", exitCode: 0 })
+    const legacySandbox = makeMockSandbox({
+      id: "sandbox-legacy",
+      volumes: [
+        {
+          volumeId: "vol-1",
+          mountPath: "/home/daytona/fleet-pi/agent-workspace",
+        },
+      ],
+      refreshData: vi.fn().mockResolvedValue(undefined),
+    })
+    const freshSandbox = makeMockSandbox({
+      id: "sandbox-fresh",
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+      volumes: [
+        {
+          volumeId: "vol-1",
+          mountPath: "/home/daytona/agent-workspace",
+        },
+      ],
+    } as unknown as Partial<Sandbox>)
+
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(legacySandbox)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockResolvedValue(freshSandbox)
+
+    const handle = await getUserSandbox({ userId: "user123" })
+
+    expect(mockedDeleteSandbox).toHaveBeenCalledWith(legacySandbox)
+    expect(mockedCreateSandbox).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        volumes: [
+          expect.objectContaining({
+            mountPath: "/home/daytona/agent-workspace",
+          }),
+        ],
+      })
+    )
+    expect(handle.sandboxId).toBe("sandbox-fresh")
+  })
+
+  it("recreates sandboxes that were Secrets-mounted when sync falls back to plaintext", async () => {
+    const fingerprint = "f".repeat(64)
+    mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+      secrets: {},
+      fingerprint,
+      mode: "plaintext-fallback",
+    })
+
+    const client = makeMockClient()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "", exitCode: 0 })
+    const secretsMountedSandbox = makeMockSandbox({
+      id: "sandbox-secrets",
+      labels: {
+        managedBy: "fleet-pi",
+        userId: "user123",
+        daytonaSecretsFp: fingerprint.slice(0, 16),
+      },
+    })
+    const freshSandbox = makeMockSandbox({
+      id: "sandbox-plain",
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+    } as unknown as Partial<Sandbox>)
+
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(secretsMountedSandbox)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockResolvedValue(freshSandbox)
+
+    const handle = await getUserSandbox({ userId: "user123" })
+
+    expect(mockedDeleteSandbox).toHaveBeenCalledWith(secretsMountedSandbox)
+    const createParams = mockedCreateSandbox.mock.calls[0][1] as {
+      secrets?: Record<string, string>
+    }
+    expect(createParams.secrets ?? {}).toEqual({})
+    expect(handle.sandboxId).toBe("sandbox-plain")
+  })
+
+  it("recreates when Secrets sync returns a new map but labels are stale", async () => {
+    const fingerprint = "a".repeat(64)
+    mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+      secrets: { GEMINI_API_KEY: "fleet_pi_google" },
+      fingerprint,
+      mode: "mounted",
+    })
+
+    const client = makeMockClient()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "", exitCode: 0 })
+    const staleSandbox = makeMockSandbox({
+      id: "sandbox-stale",
+      labels: {
+        managedBy: "fleet-pi",
+        userId: "user123",
+        daytonaSecretsFp: "bbbbbbbbbbbbbbbb",
+      },
+    })
+    const freshSandbox = makeMockSandbox({
+      id: "sandbox-fresh-secrets",
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+    } as unknown as Partial<Sandbox>)
+
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(staleSandbox)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockResolvedValue(freshSandbox)
+
+    await getUserSandbox({ userId: "user123" })
+
+    expect(mockedDeleteSandbox).toHaveBeenCalledWith(staleSandbox)
+    expect(mockedCreateSandbox).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        secrets: { GEMINI_API_KEY: "fleet_pi_google" },
+      })
+    )
   })
 
   it("throws when repository preparation fails", async () => {
