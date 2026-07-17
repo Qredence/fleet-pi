@@ -22,6 +22,7 @@ import { Type } from "typebox"
 import { getSandboxStatus } from "../../apps/web/src/lib/daytona/client"
 import {
   createSandboxOperations,
+  type Sandbox,
   type ToolOperations,
 } from "../../apps/web/src/lib/daytona/sandbox-operations"
 import { SANDBOX_WORKSPACE_ROOT } from "../../apps/web/src/lib/daytona/sandbox-prepare"
@@ -30,7 +31,6 @@ import {
   getCachedUserSandbox,
   type UserSandboxHandle,
 } from "../../apps/web/src/lib/daytona/user-sandbox"
-import type { Sandbox } from "@daytona/sdk"
 
 interface ActiveSandbox {
   sandbox: Sandbox

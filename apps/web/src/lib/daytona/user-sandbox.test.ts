@@ -22,6 +22,7 @@ import {
 } from "./client"
 import type { Daytona, Sandbox } from "@daytona/sdk"
 import type * as DaytonaClientModule from "./client"
+import type * as SandboxProviderSecretsModule from "./sandbox-provider-secrets"
 
 vi.mock("./sync-daytona-secrets", () => ({
   syncDaytonaSecrets: vi.fn().mockResolvedValue({
@@ -33,7 +34,7 @@ vi.mock("./sync-daytona-secrets", () => ({
 }))
 
 vi.mock("./sandbox-provider-secrets", async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal<typeof SandboxProviderSecretsModule>()
   return {
     ...actual,
     loadConfiguredProviderSecrets: vi
