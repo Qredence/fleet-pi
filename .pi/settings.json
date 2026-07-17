@@ -11,7 +11,11 @@
     "npm:pi-autoresearch",
     "npm:pi-autocontext"
   ],
-  "prompts": ["../agent-workspace/pi/prompts"],
+  "prompts": [
+    "../agent-workspace/pi/prompts",
+    "npm:pi-autocontext",
+    "workspace"
+  ],
   "extensions": [
     "extensions/bedrock-bearer-auth",
     "extensions/resource-install",
@@ -21,10 +25,11 @@
     "../agent-workspace/pi/extensions/enabled",
     "npm:@evo-hq/pi-evo",
     "local",
-    "npm:pi-autoresearch"
+    "npm:pi-autoresearch",
+    "npm:pi-web-access"
   ],
-  "defaultProvider": "google",
-  "defaultModel": "gemini-3.5-flash",
+  "defaultProvider": "openai",
+  "defaultModel": "deepseek-v4-flash-free",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "github-copilot/*",
