@@ -4,6 +4,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import { cn } from "./utils/cn"
 import { spiralFastData, spiralSlowData } from "./spiral-loader-data"
+import type { CSSProperties } from "react"
 import type { LottieComponentProps, LottieRefCurrentProps } from "lottie-react"
 
 const LottieLazy = lazy(() => import("./spiral-loader-lottie"))
@@ -73,8 +74,8 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
 
   return (
     <div
-      className={cn("relative shrink-0", className)}
-      style={{ width: size, height: size }}
+      className={cn("relative size-(--spiral-size) shrink-0", className)}
+      style={{ "--spiral-size": `${size}px` } as CSSProperties}
     >
       <div
         className={cn(
@@ -89,7 +90,7 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
           loop={false}
           autoplay={true}
           onComplete={handleFastComplete}
-          style={{ width: "100%", height: "100%" }}
+          className="size-full"
         />
       </div>
       <div
@@ -105,7 +106,7 @@ export function SpiralLoader({ size = 16, className }: SpiralLoaderProps) {
           loop={false}
           autoplay={false}
           onComplete={handleSlowComplete}
-          style={{ width: "100%", height: "100%" }}
+          className="size-full"
         />
       </div>
     </div>
