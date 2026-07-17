@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import { openUILibrary } from "../src/components/openui/openui-library.js"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
-const outPath = join(scriptDir, "../src/components/openui/openui-signatures.ts")
+const outPath = join(scriptDir, "../../pi-protocol/src/openui-signatures.ts")
 
 const spec = openUILibrary.toSpec()
 const content = `// @generated — do not edit
@@ -22,16 +22,12 @@ if (isCheck) {
   try {
     existing = readFileSync(outPath, "utf-8")
   } catch {
-    console.error(
-      "openui-signatures.ts is missing. Run pnpm generate:openui-signatures"
-    )
+    console.error(`${outPath} is missing. Run pnpm generate:openui-signatures`)
     process.exit(1)
   }
 
   if (existing !== content) {
-    console.error(
-      "openui-signatures.ts is stale. Run pnpm generate:openui-signatures"
-    )
+    console.error(`${outPath} is stale. Run pnpm generate:openui-signatures`)
     process.exit(1)
   }
 
