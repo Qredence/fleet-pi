@@ -1,4 +1,5 @@
 import { Check, Info, Loader2, RotateCcw, Save } from "lucide-react"
+import { useId } from "react"
 import { Button } from "../../../../button"
 import { Input } from "../../../../input"
 import { Select } from "../../../../select"
@@ -121,10 +122,13 @@ export function SelectField<T extends string>({
   value: T
   values: Array<T>
 }) {
+  const controlId = useId()
+
   return (
-    <FieldLabel label={label}>
+    <FieldLabel controlId={controlId} label={label}>
       <Select
         aria-label={label}
+        triggerId={controlId}
         value={value}
         onValueChange={(nextValue) => onChange(nextValue as T)}
         className={FIELD_CONTROL_CLASS}
@@ -145,9 +149,12 @@ export function NumberField({
   onChange: (value: number) => void
   value: number
 }) {
+  const controlId = useId()
+
   return (
-    <FieldLabel label={label}>
+    <FieldLabel controlId={controlId} label={label}>
       <Input
+        id={controlId}
         type="number"
         min={min}
         value={value}

@@ -1,6 +1,6 @@
 import { Folder, Library, Package, X } from "lucide-react"
 import { useEffect, useId, useMemo, useRef } from "react"
-import { DiscreteTabs } from "../primitives/discrete-tab"
+import { TabsSubtle, TabsSubtleItem } from "../../tabs-subtle"
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
 import { useRightPanelContext } from "../layout/right-panel-context"
 import { HIT_AREA_EXPAND_CLASS, PANEL_OVERLAY_CLASS } from "../styles/tokens"
@@ -70,6 +70,7 @@ export function RightPanelLauncher({
       {
         id: "workspace" as const,
         title: "Workspace",
+        ariaLabel: "Workspace",
         icon: Folder,
       },
       {
@@ -83,16 +84,33 @@ export function RightPanelLauncher({
     [totalArtifacts, totalResources]
   )
 
+  const selectedIndex = tabs.findIndex((tab) => tab.id === activePanel)
+
   return (
-    <DiscreteTabs
-      className="flex items-center gap-0"
+    <TabsSubtle
+      activeLabel
+      variant="pill"
+      className="flex items-center"
       data-testid="right-panel-inline-launcher"
-      tabs={tabs}
-      value={activePanel}
-      onValueChange={(next) =>
+      idPrefix="right-panel"
+      selectedIndex={selectedIndex}
+      onSelect={(index) => {
+        const next = tabs.at(index)?.id
+        if (!next) return
         onPanelChange(next === activePanel ? null : next)
-      }
-    />
+      }}
+    >
+      {tabs.map((tab, index) => (
+        <TabsSubtleItem
+          key={tab.id}
+          index={index}
+          icon={tab.icon}
+          label={tab.title}
+          badge={tab.badge}
+          aria-label={tab.ariaLabel}
+        />
+      ))}
+    </TabsSubtle>
   )
 }
 

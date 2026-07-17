@@ -9,13 +9,20 @@ import {
 } from "../../../../input-group"
 import { Select } from "../../../../select"
 import { ItemRow } from "../../../primitives/item-row"
-import { addUnique } from "./settings-mappers"
+import {
+  addUniqueSettingsResource,
+  resourceOptionValue,
+  settingsResourceListIncludes,
+  toSettingsResourcePath,
+} from "./settings-resource-path"
 import type { ChatResourceInfo } from "../../../../../lib/pi/chat-protocol"
 
-export function resourceOptionValue(item: ChatResourceInfo) {
-  // `name` is required on ChatResourceInfo, so this never trims undefined.
-  return (item.source ?? item.path ?? item.workspacePath ?? item.name).trim()
-}
+export {
+  addUniqueSettingsResource,
+  resourceOptionValue,
+  settingsResourceListIncludes,
+  toSettingsResourcePath,
+} from "./settings-resource-path"
 
 /**
  * List editor that prefers Select when catalog entries exist (e.g. detected
@@ -54,12 +61,16 @@ export function CatalogValueList({
   const labelByValue = new Map(
     options.map((option) => [option.value, option.label])
   )
-  const available = options.filter((option) => !values.includes(option.value))
+  const catalogLabelFor = (value: string) =>
+    labelByValue.get(value) ?? labelByValue.get(toSettingsResourcePath(value))
+  const available = options.filter(
+    (option) => !settingsResourceListIncludes(values, option.value)
+  )
 
   const addCustom = () => {
     const trimmed = custom.trim()
     if (!trimmed) return
-    onChange(addUnique(values, trimmed))
+    onChange(addUniqueSettingsResource(values, trimmed))
     setCustom("")
   }
 
@@ -70,42 +81,43 @@ export function CatalogValueList({
           Nothing selected yet.
         </p>
       ) : (
-        values.map((value) => (
-          <ItemRow
-            key={value}
-            interactive={false}
-            title={labelByValue.get(value) ?? value}
-            subtitle={
-              labelByValue.has(value) && labelByValue.get(value) !== value
-                ? value
-                : undefined
-            }
-            trailing={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Remove ${value}`}
-                onClick={() =>
-                  onChange(values.filter((entry) => entry !== value))
-                }
-              >
-                <Trash2 />
-              </Button>
-            }
-          />
-        ))
+        values.map((value) => {
+          const catalogLabel = catalogLabelFor(value)
+          return (
+            <ItemRow
+              key={value}
+              interactive={false}
+              title={catalogLabel ?? value}
+              subtitle={
+                catalogLabel && catalogLabel !== value ? value : undefined
+              }
+              trailing={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Remove ${value}`}
+                  onClick={() =>
+                    onChange(values.filter((entry) => entry !== value))
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              }
+            />
+          )
+        })
       )}
 
       {available.length > 0 ? (
         <Select
           aria-label={addLabel}
-          value=""
+          value={null}
           placeholder={addLabel}
           options={available}
           onValueChange={(next) => {
             if (!next) return
-            onChange(addUnique(values, next))
+            onChange(addUniqueSettingsResource(values, next))
           }}
         />
       ) : (
