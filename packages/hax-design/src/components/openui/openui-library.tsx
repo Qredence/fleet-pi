@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { useId } from "react"
 import { z } from "zod"
 import { Alert, AlertDescription, AlertTitle } from "../alert"
 import { Badge } from "../badge"
@@ -32,6 +33,7 @@ import {
   getChartColorVarName,
 } from "../chart"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog"
+import { Field, FieldLabel } from "../field"
 import { Input } from "../input"
 import { Progress, ProgressLabel, ProgressValue } from "../progress"
 import { Select } from "../select"
@@ -46,30 +48,14 @@ import {
   TableRow,
 } from "../table"
 import { cn } from "../../lib/utils"
-
-const toneClasses = {
-  default: "border-border bg-card text-card-foreground",
-  info: "border-border bg-muted text-foreground",
-  success: "border-border bg-muted text-foreground",
-  warning: "border-border bg-muted text-foreground",
-  danger: "border-destructive/30 bg-destructive/10 text-destructive",
-} as const
-
-const badgeVariantsByTone = {
-  default: "secondary",
-  info: "outline",
-  success: "secondary",
-  warning: "secondary",
-  danger: "destructive",
-} as const
-
-const textToneClasses = {
-  default: "text-foreground",
-  muted: "text-muted-foreground",
-  success: "text-foreground",
-  warning: "text-foreground",
-  danger: "text-destructive",
-} as const
+import {
+  badgeToneClasses,
+  badgeVariantsByTone,
+  openUITextToneSchema,
+  openUIToneSchema,
+  textToneClasses,
+  toneClasses,
+} from "./tones"
 
 const gapClasses = {
   sm: "gap-2",
@@ -85,10 +71,9 @@ const widthClasses = {
   full: "max-w-none",
 } as const
 
-const commonTone = z
-  .enum(["default", "info", "success", "warning", "danger"])
-  .optional()
-  .default("default")
+const commonTone = z.enum(openUIToneSchema).optional().default("default")
+
+const textTone = z.enum(openUITextToneSchema).optional().default("default")
 
 const gapSizeSchema = z.enum(["sm", "md", "lg", "xl"]).optional().default("md")
 
@@ -144,10 +129,7 @@ export const TextDef = defineComponent({
   description: "Short body text for cards, captions, and summaries.",
   props: z.object({
     text: z.string().describe("Text to display"),
-    tone: z
-      .enum(["default", "muted", "success", "warning", "danger"])
-      .optional()
-      .default("default"),
+    tone: textTone,
     size: z.enum(["sm", "md", "lg"]).optional().default("md"),
   }),
   component: ({ props: { text, tone, size } }) => {
@@ -186,7 +168,14 @@ export const BadgeDef = defineComponent({
     tone: commonTone,
   }),
   component: ({ props: { label, tone } }) => {
-    return <Badge variant={badgeVariantsByTone[tone]}>{label}</Badge>
+    return (
+      <Badge
+        variant={badgeVariantsByTone[tone]}
+        className={badgeToneClasses[tone]}
+      >
+        {label}
+      </Badge>
+    )
   },
 })
 
@@ -202,15 +191,22 @@ export const InputDef = defineComponent({
   }),
   component: ({ props: { name, value, placeholder, type, disabled } }) => {
     const field = useStateField(name, value)
+    const controlId = useId()
 
     return (
-      <Input
-        value={field.value}
-        onChange={(e) => field.setValue(e.target.value)}
-        disabled={disabled}
-        placeholder={placeholder}
-        type={type}
-      />
+      <Field orientation="vertical" className="gap-1.5">
+        <FieldLabel htmlFor={controlId} className="sr-only">
+          {name}
+        </FieldLabel>
+        <Input
+          id={controlId}
+          value={field.value}
+          onChange={(e) => field.setValue(e.target.value)}
+          disabled={disabled}
+          placeholder={placeholder}
+          type={type}
+        />
+      </Field>
     )
   },
 })
@@ -618,14 +614,21 @@ export const SelectDef = defineComponent({
   }),
   component: ({ props: { name, value, options, placeholder } }) => {
     const field = useStateField(name, value)
+    const controlId = useId()
 
     return (
-      <Select
-        options={options}
-        value={field.value}
-        onValueChange={(nextValue) => field.setValue(nextValue)}
-        placeholder={placeholder}
-      />
+      <Field orientation="vertical" className="gap-1.5">
+        <FieldLabel htmlFor={controlId} className="sr-only">
+          {name}
+        </FieldLabel>
+        <Select
+          options={options}
+          triggerId={controlId}
+          value={field.value}
+          onValueChange={(nextValue) => field.setValue(nextValue)}
+          placeholder={placeholder}
+        />
+      </Field>
     )
   },
 })
@@ -642,16 +645,19 @@ export const SwitchDef = defineComponent({
   component: ({ props: { name, checked, label, disabled } }) => {
     const field = useStateField(name, checked)
     const isChecked = Boolean(field.value)
+    const controlId = useId()
 
     return (
-      <div className="flex items-center gap-2">
+      <Field orientation="horizontal" className="items-center gap-2">
         <Switch
+          id={controlId}
           checked={isChecked}
           onCheckedChange={(nextChecked) => field.setValue(nextChecked)}
           disabled={disabled}
+          aria-label={label ? undefined : name}
         />
-        {label && <span className="text-sm font-medium">{label}</span>}
-      </div>
+        {label ? <FieldLabel htmlFor={controlId}>{label}</FieldLabel> : null}
+      </Field>
     )
   },
 })

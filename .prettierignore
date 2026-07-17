@@ -6,6 +6,6 @@ node_modules/
 .tanstack/
 .vinxi/
 coverage/
-packages/hax-design/src/components/openui/openui-signatures.ts
+packages/pi-protocol/src/openui-signatures.ts
 pnpm-lock.yaml
 .pnpm-store/

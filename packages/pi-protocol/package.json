@@ -15,7 +15,6 @@
   },
   "devDependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "@tanstack/eslint-config": "^0.4.0",
     "@types/node": "^25.8.0",
     "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.5.0",
