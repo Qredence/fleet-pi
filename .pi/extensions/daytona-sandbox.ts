@@ -47,12 +47,31 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
   // Set when this session was tracked for Daytona (warm-up gated). Tools must
   // fail closed instead of falling back to the host when attach misses.
   let daytonaSessionExpected = false
+  let expectedUserId: string | null = null
 
-  registerSandboxTools(
-    pi,
-    () => active,
-    () => daytonaSessionExpected
-  )
+  function tryAttachFromCache(userId: string): ActiveSandbox | null {
+    // Only attach a sandbox already warmed by gated server-runtime / workspace
+    // paths. Do not call getUserSandbox here — that would bypass BYOK checks.
+    const handle = getCachedUserSandbox(userId)
+    if (!handle) return null
+
+    active = {
+      sandbox: handle.sandbox,
+      cwd: SANDBOX_WORKSPACE_ROOT,
+      handle,
+      ops: createSandboxOperations(handle.sandbox, SANDBOX_WORKSPACE_ROOT),
+    }
+    return active
+  }
+
+  /** Attach now, or lazily once background warm-up populates the cache. */
+  function ensureActive(): ActiveSandbox | null {
+    if (active) return active
+    if (!expectedUserId) return null
+    return tryAttachFromCache(expectedUserId)
+  }
+
+  registerSandboxTools(pi, ensureActive, () => daytonaSessionExpected)
 
   pi.registerTool({
     name: "daytona_get_status",
@@ -117,34 +136,29 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
     if (!userId) {
       active = null
       daytonaSessionExpected = false
+      expectedUserId = null
       return
     }
 
     daytonaSessionExpected = true
+    expectedUserId = userId
 
-    // Only attach a sandbox already warmed by gated server-runtime / workspace
-    // paths. Do not call getUserSandbox here — that would bypass BYOK checks.
-    const handle = getCachedUserSandbox(userId)
-    if (!handle) {
+    const attached = tryAttachFromCache(userId)
+    if (!attached) {
       active = null
       return
     }
 
-    active = {
-      sandbox: handle.sandbox,
-      cwd: SANDBOX_WORKSPACE_ROOT,
-      handle,
-      ops: createSandboxOperations(handle.sandbox, SANDBOX_WORKSPACE_ROOT),
-    }
     ctx.ui.setStatus(
       "daytona",
-      `☁ daytona · ${shortId(handle.sandboxId)} · ${SANDBOX_WORKSPACE_ROOT}`
+      `☁ daytona · ${shortId(attached.handle.sandboxId)} · ${SANDBOX_WORKSPACE_ROOT}`
     )
   })
 
   pi.on("before_agent_start", (event) => {
-    if (!active) return
-    const cwdLine = `Current working directory: ${active.cwd} (Daytona sandbox ${shortId(active.sandbox.id)})`
+    const current = ensureActive()
+    if (!current) return
+    const cwdLine = `Current working directory: ${current.cwd} (Daytona sandbox ${shortId(current.sandbox.id)})`
     const systemPrompt = event.systemPrompt.replace(
       /Current working directory: .*/g,
       cwdLine
@@ -155,6 +169,7 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
   pi.on("session_shutdown", () => {
     active = null
     daytonaSessionExpected = false
+    expectedUserId = null
   })
 }
 
@@ -175,6 +190,7 @@ function registerSandboxTools(
   /**
    * Like stock `@daytona/pi`: sandbox active → remote; Daytona expected but
    * missing → throw (never host); otherwise dormant → local Pi tools.
+   * getActive may lazily attach once background warm-up fills the cache.
    */
   function requireSandbox(): ActiveSandbox | null {
     const current = getActive()

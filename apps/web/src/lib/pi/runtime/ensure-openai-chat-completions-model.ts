@@ -41,11 +41,37 @@ export async function ensureOpenAiChatCompletionsModelEnabled(
     },
     existing
   )
-  if (alreadyEnabled) return
+
+  const shouldAlignDefault =
+    typeof current.defaultModel === "string" &&
+    current.defaultModel.trim() === trimmedModelId &&
+    current.defaultProvider === "openai"
+
+  if (alreadyEnabled) {
+    if (shouldAlignDefault) {
+      await updateChatSettings(
+        context,
+        {
+          defaultProvider: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+          defaultModel: trimmedModelId,
+        },
+        { userId: options?.userId }
+      )
+    }
+    return
+  }
 
   await updateChatSettings(
     context,
-    { enabledModels: [...existing, pattern] },
+    {
+      enabledModels: [...existing, pattern],
+      ...(shouldAlignDefault
+        ? {
+            defaultProvider: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+            defaultModel: trimmedModelId,
+          }
+        : {}),
+    },
     { userId: options?.userId }
   )
 }

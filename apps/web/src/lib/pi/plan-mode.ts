@@ -39,7 +39,11 @@ export {
 export { createPlanEvent, createPlanToolPart, isPlanDecisionToolCall }
 export { resolveQuestionnaireAnswer }
 
-const PROJECT_RESOURCE_TOOLS = ["project_inventory", "workspace_index"]
+const PROJECT_RESOURCE_TOOLS = [
+  "project_inventory",
+  "workspace_index",
+  "workspace_improver",
+]
 const AUTOCONTEXT_STATUS_TOOLS = [
   "autocontext_status",
   "autocontext_scenarios",

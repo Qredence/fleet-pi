@@ -7,12 +7,15 @@
     "npm:@daytona/pi"
   ],
   "skills": [
-    "../agent-workspace/pi/skills",
+    "../agent-workspace/.pi/skills",
     "npm:pi-autoresearch",
-    "npm:pi-autocontext"
+    "npm:pi-autocontext",
+    "npm:@evo-hq/pi-evo",
+    "npm:pi-web-access",
+    "auto"
   ],
   "prompts": [
-    "../agent-workspace/pi/prompts",
+    "../agent-workspace/.pi/prompts",
     "npm:pi-autocontext",
     "workspace"
   ],
@@ -22,13 +25,17 @@
     "extensions/daytona-sandbox",
     "extensions/vendor/filechanges",
     "extensions/vendor/subagents",
-    "../agent-workspace/pi/extensions/enabled",
+    "../agent-workspace/.pi/extensions/enabled",
+    "../agent-workspace/.pi/extensions",
     "npm:@evo-hq/pi-evo",
     "local",
     "npm:pi-autoresearch",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "workspace",
+    "npm:pi-skill-palette",
+    "npm:pi-autocontext"
   ],
-  "defaultProvider": "openai",
+  "defaultProvider": "openai-chat-completions",
   "defaultModel": "deepseek-v4-flash-free",
   "defaultThinkingLevel": "high",
   "enabledModels": [
