@@ -42,7 +42,7 @@ vi.mock("../../../../../apps/web/src/lib/daytona/tool-context", () => ({
 
 vi.mock("../../../../../apps/web/src/lib/daytona/sandbox-operations", () => ({
   createSandboxOperations: vi.fn(() => ({
-    bash: {},
+    bash: { exec: vi.fn().mockResolvedValue({ output: "", exitCode: 0 }) },
     read: {},
     write: {},
     edit: {},
@@ -132,6 +132,36 @@ describe("daytona sandbox extension", () => {
     expect(() =>
       bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
     ).toThrow("NOT run on your host")
+  })
+
+  it("lazily attaches after background warm-up fills the cache", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue(undefined)
+
+    const { bash, sessionStart } = registerExtension()
+    await sessionStart({}, makeSessionStartContext())
+
+    expect(() =>
+      bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
+    ).toThrow("NOT run on your host")
+
+    const sandbox = {
+      id: "sandbox-1",
+      name: "fleet-pi-user-user-1",
+      public: false,
+      getPreviewLink: vi.fn(),
+    }
+    mockGetCachedUserSandbox.mockReturnValue({
+      sandbox,
+      sandboxId: "sandbox-1",
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      userId: "user-1",
+    })
+
+    await expect(
+      bash.execute("call-2", { command: "pwd" }, undefined, vi.fn())
+    ).resolves.not.toThrow()
   })
 
   it("omits preview tokens from private sandbox tool text", async () => {

@@ -100,8 +100,7 @@ interface SubagentsBridge {
 
 export default function (_pi: ExtensionAPI) {
   const subagents = (globalThis as any).__pi_subagents as
-    | SubagentsBridge
-    | undefined
+    SubagentsBridge | undefined
 
   if (!subagents?.registerAgent) {
     // Subagents extension not loaded — skip silently

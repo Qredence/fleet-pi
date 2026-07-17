@@ -191,6 +191,54 @@ describe("server catalog", () => {
     expect(response.diagnostics).toEqual(["runtime diagnostic"])
   })
 
+  it("selects OpenAI Chat Completions when configured default provider is stale openai", async () => {
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "openai",
+      defaultModel: "deepseek-v4-flash-free",
+    })
+    mocks.createSessionServices.mockResolvedValue(
+      createServices({
+        all: [
+          createModel("openai", "deepseek-v4-flash-free"),
+          createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        ],
+        available: [
+          createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        ],
+        enabledModels: ["openai-chat-completions/deepseek-v4-flash-free"],
+      })
+    )
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.selectedModelKey).toBe(
+      "openai-chat-completions/deepseek-v4-flash-free"
+    )
+    expect(response.models).toHaveLength(1)
+    expect(response.models[0]).toMatchObject({
+      provider: "openai-chat-completions",
+      available: true,
+    })
+  })
+
+  it("resolves structured selections to an available provider with the same model id", () => {
+    const occModel = createModel(
+      "openai-chat-completions",
+      "deepseek-v4-flash-free"
+    )
+    const services = createServices({
+      all: [createModel("openai", "deepseek-v4-flash-free"), occModel],
+      available: [occModel],
+    })
+
+    expect(
+      resolveModelSelection(services as never, {
+        provider: "openai",
+        id: "deepseek-v4-flash-free",
+      }).model
+    ).toBe(occModel)
+  })
+
   it("falls back to all models and prepends an unavailable configured default", async () => {
     mocks.resolveDefaultModelSelection.mockReturnValue({
       defaultProvider: "google",

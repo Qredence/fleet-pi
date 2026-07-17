@@ -53,6 +53,9 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
+import { executeCommand } from "@/lib/daytona/client"
+import { SANDBOX_WORKSPACE_ROOT } from "@/lib/daytona/sandbox-prepare"
+import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import {
   resolveDaytonaToolUser,
@@ -193,16 +196,25 @@ export async function createPiRuntime(
 ) {
   const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
   const daytonaEnabled = isDaytonaEnabled(metadata.userId, daytonaApiKey)
-  if (daytonaEnabled && !context.workspaceFS) {
-    const sandboxContext = await resolveUserSandboxContext({
-      userId: metadata.userId!,
-      userEmail: metadata.userEmail,
-      apiKey: daytonaApiKey!,
-      surface: "chat",
-    })
-    context.workspaceFS = sandboxContext.workspaceFS
-    context.workspaceRoot = sandboxContext.workspaceRoot
-    context.workspaceBootstrap = undefined
+  if (daytonaEnabled && !context.workspaceFS && metadata.userId) {
+    const cachedSandbox = getCachedUserSandbox(metadata.userId)
+    if (cachedSandbox) {
+      context.workspaceFS = createSandboxWorkspaceFS({
+        executeCommand: (cmd, cwd) =>
+          executeCommand(cachedSandbox.sandbox, cmd, cwd),
+      })
+      context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
+      context.workspaceBootstrap = undefined
+    } else {
+      // Never block chat streaming on cold Daytona warm-up; tools can use the
+      // local project root until the sandbox is ready in the background.
+      void resolveUserSandboxContext({
+        userId: metadata.userId,
+        userEmail: metadata.userEmail,
+        apiKey: daytonaApiKey!,
+        surface: "chat",
+      }).catch(() => undefined)
+    }
   }
 
   const services = await createSessionServices(context)

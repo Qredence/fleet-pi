@@ -49,7 +49,15 @@ export async function loadChatModels(
   const defaultModelExists = models.some(
     (model) => model.provider === defaultProvider && model.id === defaultModel
   )
-  if (!defaultModelExists && defaultProvider && defaultModel) {
+  const hasAvailableModelWithDefaultId = models.some(
+    (model) => model.id === defaultModel && model.available
+  )
+  if (
+    !defaultModelExists &&
+    defaultProvider &&
+    defaultModel &&
+    !hasAvailableModelWithDefaultId
+  ) {
     models.unshift({
       key: modelKeyFromParts(defaultProvider, defaultModel),
       provider: defaultProvider,
@@ -61,20 +69,7 @@ export async function loadChatModels(
       defaultThinkingLevel,
     })
   }
-  const selected =
-    models.length > 0
-      ? (models.find(
-          (model) =>
-            model.provider === defaultProvider && model.id === defaultModel
-        ) ??
-        (defaultProvider === "amazon-bedrock"
-          ? findChatModelByCandidates(
-              models,
-              bedrockModelCandidates(defaultModel)
-            )
-          : undefined) ??
-        models[0])
-      : undefined
+  const selected = pickSelectedChatModel(models, defaultProvider, defaultModel)
 
   return {
     models,
@@ -138,7 +133,11 @@ function resolveLegacyModelSelection(
 ) {
   const [provider, ...modelParts] = selection.split("/")
   if (provider && modelParts.length > 0) {
-    const model = services.modelRegistry.find(provider, modelParts.join("/"))
+    const model = resolveStructuredModelSelection(
+      services,
+      provider,
+      modelParts.join("/")
+    )
     if (model) return model
   }
 
@@ -151,6 +150,7 @@ function resolveLegacyModelSelection(
     normalized,
   ])
   const all = services.modelRegistry.getAll()
+  const available = services.modelRegistry.getAvailable()
 
   return (
     candidates
@@ -162,7 +162,11 @@ function resolveLegacyModelSelection(
       )
       .find((model): model is Model<any> => model !== undefined) ??
     candidates
-      .map((candidate) => all.find((model) => model.id === candidate))
+      .map(
+        (candidate) =>
+          available.find((model) => model.id === candidate) ??
+          all.find((model) => model.id === candidate)
+      )
       .find((model): model is Model<any> => model !== undefined)
   )
 }
@@ -173,7 +177,19 @@ function resolveStructuredModelSelection(
   id: string
 ) {
   if (provider !== "amazon-bedrock") {
-    return services.modelRegistry.find(provider, id)
+    const direct = services.modelRegistry.find(provider, id)
+    const available = services.modelRegistry.getAvailable()
+    if (
+      direct &&
+      available.some((model) => modelKey(model) === modelKey(direct))
+    ) {
+      return direct
+    }
+
+    const sameIdAvailable = available.find((model) => model.id === id)
+    if (sameIdAvailable) return sameIdAvailable
+
+    return direct
   }
 
   return bedrockModelCandidates(id)
@@ -188,6 +204,36 @@ function bedrockModelCandidates(id: string, extra: Array<string> = []) {
     ? [id, normalized, ...extra]
     : [`us.${id}`, `global.${id}`, id, ...extra]
   return [...new Set(candidates)]
+}
+
+function pickSelectedChatModel(
+  models: Array<ChatModelInfo>,
+  defaultProvider: string,
+  defaultModel: string
+) {
+  if (models.length === 0) return undefined
+
+  const exact = models.find(
+    (model) => model.provider === defaultProvider && model.id === defaultModel
+  )
+  if (exact?.available) return exact
+
+  const sameIdAvailable = models.find(
+    (model) => model.id === defaultModel && model.available
+  )
+  if (sameIdAvailable) return sameIdAvailable
+
+  if (exact) return exact
+
+  if (defaultProvider === "amazon-bedrock") {
+    const bedrockMatch = findChatModelByCandidates(
+      models,
+      bedrockModelCandidates(defaultModel)
+    )
+    if (bedrockMatch) return bedrockMatch
+  }
+
+  return models.find((model) => model.available) ?? models[0]
 }
 
 function findChatModelByCandidates(

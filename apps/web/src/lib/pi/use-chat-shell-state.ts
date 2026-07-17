@@ -58,8 +58,18 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   }, [mode])
 
   useEffect(() => {
-    if (models.length > 0 && !modelKey) {
-      setModelKey(modelsData?.selectedModelKey ?? models[0]?.id)
+    if (models.length === 0) return
+
+    const preferredKey = modelsData?.selectedModelKey ?? models[0].id
+
+    if (!modelKey) {
+      setModelKey(preferredKey)
+      return
+    }
+
+    const selected = models.find((model) => model.id === modelKey)
+    if (selected?.available === false) {
+      setModelKey(preferredKey)
     }
   }, [models, modelKey, modelsData])
 
