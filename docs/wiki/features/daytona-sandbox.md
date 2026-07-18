@@ -65,7 +65,7 @@ Ops live in `apps/web/src/lib/daytona/sandbox-operations.ts`. The Fleet adapter 
 
 Management tools (Agent/Harness only): `daytona_get_status`, `preview_url`.
 
-Stock `npm:@daytona/pi` is for local CLI (`pi --daytona`) and is excluded from the web resource loader.
+Stock `npm:@daytona/pi` is for local CLI (`pi --daytona`) via personal/global Pi packages (`~/.pi`), not project `.pi/settings.json` (which would collide with the Fleet adapter). The web resource loader also excludes that package.
 
 ## Volume mounts
 
