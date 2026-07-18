@@ -4,7 +4,10 @@ import {
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
 import { resolveUserProviderSecret } from "./user-provider-secrets"
-import type { AgentSessionServices, ProviderConfig  } from "@earendil-works/pi-coding-agent"
+import type {
+  AgentSessionServices,
+  ProviderConfig,
+} from "@earendil-works/pi-coding-agent"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
 const PROVIDER_ID = OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
@@ -224,14 +227,19 @@ export async function registerOpenAiChatCompletionsProvider(
   services: AgentSessionServices,
   userId: string | undefined
 ) {
-  const modelRegistry = services.modelRegistry as {
-    registerProvider?: (providerName: string, config: ProviderConfig) => void
-    unregisterProvider?: (providerName: string) => void
-  }
+  const modelRegistry = services.modelRegistry as
+    | {
+        registerProvider?: (
+          providerName: string,
+          config: ProviderConfig
+        ) => void
+        unregisterProvider?: (providerName: string) => void
+      }
+    | undefined
 
   const config = await resolveOpenAiChatCompletionsConfig(userId)
   if (!config) {
-    modelRegistry.unregisterProvider?.(PROVIDER_ID)
+    modelRegistry?.unregisterProvider?.(PROVIDER_ID)
     // Do not delete shared process.env — other sessions may still rely on it.
     return
   }
@@ -246,7 +254,7 @@ export async function registerOpenAiChatCompletionsProvider(
     models.push(entry)
   }
 
-  modelRegistry.registerProvider?.(PROVIDER_ID, {
+  modelRegistry?.registerProvider?.(PROVIDER_ID, {
     name: "OpenAI Chat Completions",
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
