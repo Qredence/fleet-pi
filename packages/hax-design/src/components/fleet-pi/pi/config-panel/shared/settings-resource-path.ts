@@ -30,10 +30,19 @@ export function resourceOptionValue(item: ChatResourceInfo) {
 
 /**
  * Map a discovered filesystem path to the form Pi settings usually stores:
- * `extensions/foo`, `../agent-workspace/.pi/…`, or a relative path as-is.
+ * `extensions/foo`, `../agent-workspace/pi/…`, or a relative path as-is.
+ * Absolute home-dir paths are rejected (return empty) so they cannot be
+ * committed for Vercel / shared deploys.
  */
 export function toSettingsResourcePath(path: string) {
   const normalized = path.replace(/\\/g, "/")
+
+  if (/^\/Users\//.test(normalized) || /^\/home\//.test(normalized)) {
+    return ""
+  }
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    return ""
+  }
 
   if (!normalized.startsWith("/") && !/^[A-Za-z]:\//.test(normalized)) {
     // Catalog workspacePath values are repo-relative; Pi settings resolve
@@ -41,12 +50,22 @@ export function toSettingsResourcePath(path: string) {
     if (normalized.startsWith("agent-workspace/")) {
       return stripResourceFileSuffix(`../${normalized}`)
     }
+    // Prefer canonical pi/ over legacy .pi/ under agent-workspace.
+    if (normalized.startsWith("../agent-workspace/.pi/")) {
+      return stripResourceFileSuffix(
+        normalized.replace("../agent-workspace/.pi/", "../agent-workspace/pi/")
+      )
+    }
     return stripResourceFileSuffix(normalized)
   }
 
   const workspaceMatch = normalized.match(/\/(agent-workspace\/.+)$/)
   if (workspaceMatch?.[1]) {
-    return stripResourceFileSuffix(`../${workspaceMatch[1]}`)
+    const workspacePath = workspaceMatch[1].replace(
+      /^agent-workspace\/\.pi\//,
+      "agent-workspace/pi/"
+    )
+    return stripResourceFileSuffix(`../${workspacePath}`)
   }
 
   const piMatch = normalized.match(
@@ -56,7 +75,8 @@ export function toSettingsResourcePath(path: string) {
     return stripResourceFileSuffix(piMatch[1])
   }
 
-  return stripResourceFileSuffix(normalized)
+  // Unrecognized absolute paths are not portable — do not persist them.
+  return ""
 }
 
 function stripResourceFileSuffix(path: string) {
@@ -84,6 +104,8 @@ export function addUniqueSettingsResource(
 ): Array<string> {
   const trimmed = next.trim()
   if (!trimmed) return values
-  if (settingsResourceListIncludes(values, trimmed)) return values
-  return [...values, toSettingsResourcePath(trimmed)]
+  const canonical = toSettingsResourcePath(trimmed)
+  if (!canonical) return values
+  if (settingsResourceListIncludes(values, canonical)) return values
+  return [...values, canonical]
 }

@@ -82,6 +82,48 @@ export async function updateEnvVars(
   }
 }
 
+/**
+ * Remove keys from `.env.local` and unset them in the current process.
+ */
+export async function removeEnvVars(projectRoot: string, keys: Array<string>) {
+  const uniqueKeys = [...new Set(keys.filter(Boolean))]
+  if (uniqueKeys.length === 0) return
+
+  const envPath = join(projectRoot, ".env.local")
+  let content = ""
+  try {
+    content = await readFile(envPath, "utf8")
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code !== "ENOENT"
+    ) {
+      throw error
+    }
+  }
+
+  if (content) {
+    const keyPattern = new RegExp(
+      `^\\s*(?:${uniqueKeys.map(escapeRegExp).join("|")})\\s*=`
+    )
+    const lines = content.split("\n").filter((line) => !keyPattern.test(line))
+    const newContent = lines.join("\n").replace(/\n+$/, "\n")
+    const tempPath = `${envPath}.${process.pid}.${Date.now()}.tmp`
+    await writeFile(tempPath, newContent, "utf8")
+    await rename(tempPath, envPath)
+  }
+
+  for (const key of uniqueKeys) {
+    delete process.env[key]
+  }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 export function isEnvVarConfigured(key: string): boolean {
   return typeof process.env[key] === "string" && process.env[key].length > 0
 }

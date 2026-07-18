@@ -10,6 +10,8 @@ import type {
   ChatMode,
   ChatPiSettingsUpdate,
   ChatProviderInfo,
+  ChatProviderRemoveRequest,
+  ChatProviderRemoveResponse,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatResourcesResponse,
@@ -28,7 +30,13 @@ export type RightPanelContentProps = {
   isUpdatingProvider?: boolean
   mode: ChatMode
   models: Array<ChatModelOption>
+  /** Full registry catalog for Settings model curation (unfiltered). */
+  modelCatalog?: Array<ChatModelOption>
+  onDiscoverModels?: (providerId: string) => Promise<Array<ChatModelOption>>
   onThemePreferenceChange: (preference: ThemePreference) => void
+  onRemoveProvider?: (
+    request: ChatProviderRemoveRequest
+  ) => Promise<ChatProviderRemoveResponse>
   onUpdateProvider?: (
     request: ChatProviderUpdateRequest
   ) => Promise<ChatProviderUpdateResponse>

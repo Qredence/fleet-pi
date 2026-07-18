@@ -13,9 +13,13 @@ import type { ChatResourcesResponse } from "@workspace/pi-protocol/chat-protocol
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function loadChatResources(
-  context: AppRuntimeContext
+  context: AppRuntimeContext,
+  options?: { userId?: string }
 ): Promise<ChatResourcesResponse> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
   const workspaceSettings = await readWorkspacePiSettings(context.projectRoot)
   const skills = services.resourceLoader.getSkills()
   const prompts = services.resourceLoader.getPrompts()

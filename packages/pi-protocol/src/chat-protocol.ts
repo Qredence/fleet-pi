@@ -229,6 +229,15 @@ export type ChatModelsResponse = {
   diagnostics: Array<string>
 }
 
+export type ChatModelsDiscoverRequest = {
+  providerId: string
+}
+
+export type ChatModelsDiscoverResponse = {
+  providerId: string
+  models: Array<ChatModelInfo>
+}
+
 export type ChatProviderInfo = {
   id: string
   name: string
@@ -251,6 +260,12 @@ export type ChatProviderUpdateResponse = {
   providers: Array<ChatProviderInfo>
   reloadRequired?: boolean
 }
+
+export type ChatProviderRemoveRequest = {
+  providerId: string
+}
+
+export type ChatProviderRemoveResponse = ChatProviderUpdateResponse
 
 export type ChatSessionResponse = {
   session: ChatSessionMetadata

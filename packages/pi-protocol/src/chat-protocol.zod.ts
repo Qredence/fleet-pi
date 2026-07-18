@@ -416,6 +416,19 @@ export const ChatModelsResponseSchema = z
   })
   .openapi({ description: "Chat models response" })
 
+export const ChatModelsDiscoverRequestSchema = z
+  .object({
+    providerId: z.string().min(1).max(128),
+  })
+  .openapi({ description: "Discover models for a provider" })
+
+export const ChatModelsDiscoverResponseSchema = z
+  .object({
+    providerId: z.string(),
+    models: z.array(ChatModelInfoSchema),
+  })
+  .openapi({ description: "Discovered models for a provider" })
+
 export const ChatSessionResponseSchema = z
   .object({
     session: ChatSessionMetadataSchema,
@@ -532,6 +545,17 @@ export const ChatProviderUpdateResponseSchema = z
     reloadRequired: z.boolean().optional(),
   })
   .openapi({ description: "Chat provider update response" })
+
+export const ChatProviderRemoveRequestSchema = z
+  .object({
+    providerId: z.string(),
+  })
+  .openapi({ description: "Chat provider remove request" })
+
+export const ChatProviderRemoveResponseSchema =
+  ChatProviderUpdateResponseSchema.openapi({
+    description: "Chat provider remove response",
+  })
 
 export const ChatSlashCommandInfoSchema = z.object({
   name: z.string(),

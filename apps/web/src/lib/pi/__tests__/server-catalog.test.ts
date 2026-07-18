@@ -367,4 +367,21 @@ describe("server catalog", () => {
       "resource expectation diagnostic",
     ])
   })
+
+  it("passes authenticated userId into session services for catalog loads", async () => {
+    mocks.createSessionServices.mockResolvedValue(createServices())
+
+    await loadChatModels({ projectRoot: "/repo" } as never, {
+      userId: "user-123",
+    })
+    await loadChatResources({ projectRoot: "/repo" } as never, {
+      userId: "user-123",
+    })
+
+    expect(mocks.createSessionServices).toHaveBeenCalledWith(
+      { projectRoot: "/repo" },
+      undefined,
+      { userId: "user-123", projectRoot: "/repo" }
+    )
+  })
 })

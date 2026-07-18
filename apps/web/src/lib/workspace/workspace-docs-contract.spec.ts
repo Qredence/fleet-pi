@@ -71,16 +71,16 @@ describe("adaptive workspace docs contract", () => {
   })
 
   it("keeps the Pi compatibility bridge pointed at workspace-native resources", async () => {
-    const settings = JSON.parse(await readRepoFile(".pi/settings.json")) as {
-      extensions?: Array<string>
-      prompts?: Array<string>
-      skills?: Array<string>
-    }
+    const { resolveProjectSettings } =
+      await import("@/lib/pi/runtime/durable-project-settings")
+    const settings = await resolveProjectSettings({
+      projectRoot: REPO_ROOT,
+    })
 
-    expect(settings.skills).toContain("../agent-workspace/.pi/skills")
-    expect(settings.prompts).toContain("../agent-workspace/.pi/prompts")
+    expect(settings.skills).toContain("../agent-workspace/pi/skills")
+    expect(settings.prompts).toContain("../agent-workspace/pi/prompts")
     expect(settings.extensions).toContain(
-      "../agent-workspace/.pi/extensions/enabled"
+      "../agent-workspace/pi/extensions/enabled"
     )
   })
 

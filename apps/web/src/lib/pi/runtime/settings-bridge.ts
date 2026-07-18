@@ -1,11 +1,20 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { dirname, join } from "node:path"
+import { mkdir, writeFile } from "node:fs/promises"
+import { dirname } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+import {
+  loadPersistedProjectSettingsOverrides,
+  sanitizePortableResourcePaths,
+} from "./durable-project-settings"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   hotReloadActiveRuntimes,
   hotReloadActiveRuntimesForUser,
 } from "./hot-reload"
+import { prepareProjectSettingsForPersist } from "./project-settings-persist"
+import {
+  PROJECT_SETTINGS_PATH,
+  projectSettingsPath,
+} from "./project-settings-file"
 import { createSessionServices } from "./session-factory"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -16,24 +25,38 @@ import type {
   ChatTransport,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import { upsertUserProjectSettings } from "@/lib/db/user-settings"
 
-const SETTINGS_PATH = ".pi/settings.json"
+export {
+  hydrateSessionServicesSettings,
+  isPortableSettingsResourcePath,
+  loadPersistedProjectSettingsOverrides,
+  resolveProjectSettings,
+  resolveDurableProjectSettings,
+  sanitizePortableResourcePaths,
+} from "./durable-project-settings"
+
+export { readProjectSettingsFile } from "./project-settings-file"
 
 export async function loadChatSettings(
-  context: AppRuntimeContext
+  context: AppRuntimeContext,
+  options?: { userId?: string }
 ): Promise<ChatSettingsResponse> {
-  const services = await createSessionServices(context)
-  const project = toEditableProjectSettings(
-    readProjectSettingsFromServices(
-      services.settingsManager.getProjectSettings()
-    )
-  )
+  const services = await createSessionServices(context, undefined, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+  const projectOverrides = await loadPersistedProjectSettingsOverrides({
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+  const project = toEditableProjectSettings(projectOverrides)
 
   return {
     diagnostics: collectDiagnostics(services),
     effective: toEffectiveSettings(services.settingsManager),
     project,
-    projectPath: SETTINGS_PATH,
+    projectPath: PROJECT_SETTINGS_PATH,
     updateImpact: {
       newSessionRecommended: false,
       resourceReloadRequired: false,
@@ -44,56 +67,74 @@ export async function loadChatSettings(
 export async function updateChatSettings(
   context: AppRuntimeContext,
   update: ChatPiSettingsUpdate,
-  options?: { userId?: string }
+  options?: { userId?: string; skipHotReload?: boolean }
 ): Promise<ChatSettingsResponse> {
   const parsedUpdate = ChatPiSettingsUpdateSchema.parse(update)
   const settingsPath = projectSettingsPath(context.projectRoot)
-  const current = await readProjectSettingsFile(context.projectRoot)
-  const next = mergeProjectSettings(current, parsedUpdate)
+  const currentOverrides = await loadPersistedProjectSettingsOverrides({
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+  const patchedOverrides = sanitizePortableResourcePaths(
+    patchProjectSettingsOverrides(currentOverrides, parsedUpdate)
+  )
+  const toPersist = prepareProjectSettingsForPersist(patchedOverrides)
 
-  if (process.env.VERCEL !== "1") {
-    await mkdir(dirname(settingsPath), { recursive: true })
-    await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
-  } else {
-    try {
-      await mkdir(dirname(settingsPath), { recursive: true })
-      await writeFile(
-        settingsPath,
-        `${JSON.stringify(next, null, 2)}\n`,
-        "utf8"
+  await persistCompactProjectSettings(settingsPath, toPersist, options?.userId)
+
+  if (!options?.skipHotReload) {
+    if (options?.userId) {
+      await hotReloadActiveRuntimesForUser(
+        options.userId,
+        parsedUpdate,
+        context.projectRoot
       )
-    } catch (error) {
-      if (!isNodeError(error) || error.code !== "EROFS") {
-        throw error
-      }
+    } else if (process.env.VERCEL !== "1") {
+      await hotReloadActiveRuntimes(parsedUpdate, context.projectRoot)
     }
   }
 
-  if (options?.userId) {
-    await hotReloadActiveRuntimesForUser(options.userId, parsedUpdate)
-  } else if (process.env.VERCEL !== "1") {
-    await hotReloadActiveRuntimes(parsedUpdate)
-  }
-
-  const response = await loadChatSettings(context)
+  const response = await loadChatSettings(context, { userId: options?.userId })
   return {
     ...response,
     updateImpact: impactForSettings(parsedUpdate),
   }
 }
 
-export async function readProjectSettingsFile(projectRoot: string) {
-  try {
-    const content = await readFile(projectSettingsPath(projectRoot), "utf8")
-    const parsed = JSON.parse(content) as unknown
-    return isRecord(parsed) ? parsed : {}
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return {}
-    throw error
-  }
+export async function saveProjectSettingsOverrides(
+  context: AppRuntimeContext,
+  overrides: Record<string, unknown>,
+  options?: { userId?: string }
+) {
+  const settingsPath = projectSettingsPath(context.projectRoot)
+  const toPersist = prepareProjectSettingsForPersist(overrides)
+  await persistCompactProjectSettings(settingsPath, toPersist, options?.userId)
 }
 
-export function mergeProjectSettings(
+async function persistCompactProjectSettings(
+  settingsPath: string,
+  toPersist: Record<string, unknown>,
+  userId?: string
+) {
+  if (process.env.VERCEL === "1") {
+    if (!userId) {
+      throw new Error(
+        "Authentication is required to save Pi settings on Vercel."
+      )
+    }
+    await upsertUserProjectSettings(userId, toPersist)
+    return
+  }
+
+  await mkdir(dirname(settingsPath), { recursive: true })
+  await writeFile(
+    settingsPath,
+    `${JSON.stringify(toPersist, null, 2)}\n`,
+    "utf8"
+  )
+}
+
+export function patchProjectSettingsOverrides(
   current: Record<string, unknown>,
   update: ChatPiSettingsUpdate
 ) {
@@ -130,6 +171,9 @@ export function mergeProjectSettings(
 
   return next
 }
+
+/** @deprecated Use patchProjectSettingsOverrides */
+export const mergeProjectSettings = patchProjectSettingsOverrides
 
 export function impactForSettings(settings: ChatPiSettingsUpdate) {
   return {
@@ -219,14 +263,6 @@ function toEditableProjectSettings(
   return project
 }
 
-function readProjectSettingsFromServices(settings: unknown) {
-  return isRecord(settings) ? settings : {}
-}
-
-function projectSettingsPath(projectRoot: string) {
-  return join(projectRoot, SETTINGS_PATH)
-}
-
 function assignString(
   target: Record<string, unknown>,
   key: string,
@@ -298,10 +334,6 @@ function copyNumber<T extends Record<string, unknown>>(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error
 }
 
 function normalizeTransport(value: string): ChatTransport {

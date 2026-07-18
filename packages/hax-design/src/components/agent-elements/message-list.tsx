@@ -527,7 +527,7 @@ export const MessageList = memo(function MessageList({
       )}
     >
       <div ref={contentWrapperRef} className="mx-auto max-w-an px-4 py-6">
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {turns.map((turn, turnIndex) => {
             const isLastTurn = turnIndex === turns.length - 1
             const turnKey = turn.userMsg?.id ?? `turn-${turnIndex}`
@@ -535,7 +535,7 @@ export const MessageList = memo(function MessageList({
             return (
               <motion.div
                 key={turnKey}
-                className="relative space-y-2"
+                className="relative flex flex-col gap-2"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}

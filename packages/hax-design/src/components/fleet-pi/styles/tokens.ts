@@ -55,7 +55,7 @@ export const FIELD_LABEL_CLASS =
   "text-[10px] font-bold tracking-wide text-foreground/45 uppercase"
 
 export const fleetPiSectionSurface = cva(
-  "space-y-3.5 rounded-[12px] border bg-background/30 backdrop-blur-md transition-[border-color,box-shadow,background-color] duration-300",
+  "flex flex-col gap-3.5 rounded-[12px] border bg-background/30 backdrop-blur-md transition-[border-color,box-shadow,background-color] duration-300",
   {
     variants: {
       padding: {

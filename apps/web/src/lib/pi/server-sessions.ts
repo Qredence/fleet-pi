@@ -35,7 +35,9 @@ export async function createNewChatSession(
   context: AppRuntimeContext,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   const sessionManager = SessionManager.create(
     context.projectRoot,
     getSessionDir(context.projectRoot, services, { userId: options.userId })
@@ -53,7 +55,9 @@ export async function hydrateChatSession(
   metadata: ChatSessionMetadata,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   const sessionDir = getSessionDir(context.projectRoot, services, {
     userId: options.userId,
   })
@@ -108,7 +112,9 @@ export async function listChatSessions(
   context: AppRuntimeContext,
   options: { userId?: string } = {}
 ): Promise<Array<ChatSessionInfo>> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   let sessions = await SessionManager.list(
     context.projectRoot,
     getSessionDir(context.projectRoot, services, { userId: options.userId })

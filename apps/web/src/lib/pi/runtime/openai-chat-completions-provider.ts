@@ -150,6 +150,24 @@ function buildModelEntry(modelId: string): RegisteredModels[number] {
   }
 }
 
+export async function discoverOpenAiChatCompletionsModels(
+  userId: string | undefined
+): Promise<Array<{ id: string; name: string }>> {
+  const config = await resolveOpenAiChatCompletionsConfig(userId)
+  if (!config) return []
+
+  const fetched = await fetchOpenAiCompatibleModels(
+    config.baseUrl,
+    config.apiKey
+  )
+  const models = new Map<string, { id: string; name: string }>()
+  models.set(config.modelId, { id: config.modelId, name: config.modelId })
+  for (const entry of fetched) {
+    models.set(entry.id, { id: entry.id, name: entry.name })
+  }
+  return [...models.values()]
+}
+
 async function fetchOpenAiCompatibleModels(
   baseUrl: string,
   apiKey: string

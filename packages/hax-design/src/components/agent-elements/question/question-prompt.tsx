@@ -203,7 +203,9 @@ export function QuestionPrompt({
   if (!activeQuestion) return null
 
   return (
-    <div className={cn("space-y-2 bg-background px-3 py-2", className)}>
+    <div
+      className={cn("flex flex-col gap-2 bg-background px-3 py-2", className)}
+    >
       <div
         className="flex items-center justify-between gap-px"
         data-total-questions={resolvedTotal}
@@ -218,7 +220,7 @@ export function QuestionPrompt({
 
       {activeQuestion.kind !== "text" &&
         (activeQuestion.options?.length ?? 0) > 0 && (
-          <div className="space-y-px">
+          <div className="flex flex-col gap-px">
             {activeQuestion.options!.map((option, idx) => {
               const optionId = option.id ?? option.value ?? option.label
               const checked = selectedIds.includes(optionId)

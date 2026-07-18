@@ -221,7 +221,7 @@ export const ToolGroup = memo(function ToolGroup({
         <div
           ref={listRef}
           className={cn(
-            nestedTools.length > 1 ? "space-y-2" : "space-y-0",
+            nestedTools.length > 1 ? "flex flex-col gap-2" : undefined,
             isPending &&
               expanded &&
               visibleToolCount > maskThreshold &&

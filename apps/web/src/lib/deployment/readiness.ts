@@ -4,6 +4,7 @@ import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../db/chat-postgres-rls-s
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../db/chat-postgres-session-ownership"
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../db/chat-postgres-provider-auth"
+import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../db/chat-postgres-user-settings"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
@@ -35,6 +36,7 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
   CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
   CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
+  CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
 ] as const
 
 function readEnv(name: string, env: NodeJS.ProcessEnv) {

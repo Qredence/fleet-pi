@@ -22,24 +22,40 @@ const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "xhigh",
 ])
 
+export type LoadChatModelsOptions = {
+  /**
+   * `enabled` (default): models allowed by `enabledModels` for the chat picker.
+   * `all`: full registry catalog for Settings discovery / curation (not filtered).
+   */
+  scope?: "enabled" | "all"
+  userId?: string
+}
+
 export async function loadChatModels(
-  context: Parameters<typeof createSessionServices>[0]
+  context: Parameters<typeof createSessionServices>[0],
+  options?: LoadChatModelsOptions
 ): Promise<ChatModelsResponse> {
-  const services = await createSessionServices(context)
+  const scope = options?.scope ?? "enabled"
+  const services = await createSessionServices(context, undefined, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
   const available = services.modelRegistry.getAvailable()
   const availableKeys = new Set(available.map(modelKey))
   const all = services.modelRegistry.getAll()
   const enabledPatterns = services.settingsManager.getEnabledModels()
   const sourceModels = available.length > 0 ? available : all
-  const models = sourceModels
-    .map((model) =>
-      toChatModelInfo(
-        model,
-        available.length === 0 || availableKeys.has(modelKey(model)),
-        services.settingsManager.getDefaultThinkingLevel()
-      )
+  const catalog = sourceModels.map((model) =>
+    toChatModelInfo(
+      model,
+      available.length === 0 || availableKeys.has(modelKey(model)),
+      services.settingsManager.getDefaultThinkingLevel()
     )
-    .filter((model) => isChatModelEnabled(model, enabledPatterns))
+  )
+  const models =
+    scope === "all"
+      ? catalog
+      : catalog.filter((model) => isChatModelEnabled(model, enabledPatterns))
   const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
     services.settingsManager
   )

@@ -29,9 +29,7 @@ export function SendButton({ state }: SendButtonProps) {
       <IconArrowUp
         className={cn(
           "size-4",
-          isTyping
-            ? "text-an-send-button-color"
-            : "text-neutral-400 dark:text-neutral-600"
+          isTyping ? "text-an-send-button-color" : "text-muted-foreground"
         )}
       />
     </div>

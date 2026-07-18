@@ -34,7 +34,8 @@ const bootstrapRetryStates = new WeakMap<
 
 export async function createSessionServices(
   context: AppRuntimeContext,
-  overrides?: Parameters<typeof createAgentSessionServices>[0]
+  overrides?: Parameters<typeof createAgentSessionServices>[0],
+  options?: { userId?: string; projectRoot?: string }
 ) {
   if (process.env.VERCEL === "1") {
     for (const envVarName of PROVIDER_ENV_SCRUB_VAR_NAMES) {
@@ -64,9 +65,19 @@ export async function createSessionServices(
     workspaceBootstrap
   )
 
+  const { hydrateSessionServicesSettings } =
+    await import("./durable-project-settings")
+  await hydrateSessionServicesSettings(servicesWithBootstrap, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+
   const { registerOpenAiChatCompletionsProvider } =
     await import("./openai-chat-completions-provider")
-  await registerOpenAiChatCompletionsProvider(servicesWithBootstrap, undefined)
+  await registerOpenAiChatCompletionsProvider(
+    servicesWithBootstrap,
+    options?.userId
+  )
 
   return servicesWithBootstrap
 }

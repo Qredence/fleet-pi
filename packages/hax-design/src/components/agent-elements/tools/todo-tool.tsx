@@ -143,7 +143,7 @@ export const TodoTool = memo(function TodoTool({
   // Streaming placeholder — always shimmer while in this transient state.
   if (isStreaming || newTodos.length === 0) {
     return (
-      <div className="space-y-2 text-sm leading-relaxed text-an-foreground/80">
+      <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
         <div className="text-an-foreground/60">
           <TextShimmer
             as="span"
@@ -160,7 +160,7 @@ export const TodoTool = memo(function TodoTool({
   // Single update - show full list for clarity
   if (changes.type === "single") {
     return (
-      <div className="space-y-2 text-sm leading-relaxed text-an-foreground/80">
+      <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
         {newTodos.map((todo, idx) => (
           <TodoListItem key={idx} todo={todo} isPending={isPending} />
         ))}
@@ -171,7 +171,7 @@ export const TodoTool = memo(function TodoTool({
   // Multiple updates - show full list for clarity
   if (changes.type === "multiple") {
     return (
-      <div className="space-y-2 text-sm leading-relaxed text-an-foreground/80">
+      <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
         {newTodos.map((todo, idx) => (
           <TodoListItem key={idx} todo={todo} isPending={isPending} />
         ))}
@@ -181,7 +181,7 @@ export const TodoTool = memo(function TodoTool({
 
   const displayTodos = newTodos
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-an-foreground/80">
+    <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
       {displayTodos.map((todo, idx) => (
         <TodoListItem key={idx} todo={todo} isPending={isPending} />
       ))}

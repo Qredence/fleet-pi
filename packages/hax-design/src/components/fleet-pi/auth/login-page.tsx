@@ -1,5 +1,9 @@
+import { useId } from "react"
 import { Button } from "../../button"
+import { Field, FieldError, FieldGroup, FieldLabel } from "../../field"
 import { Input } from "../../input"
+import { Separator } from "../../separator"
+import { Spinner } from "../../spinner"
 import { GoogleIcon } from "../icons/google-icon"
 import { CenteredLoader } from "../primitives/centered-loader"
 import type { FormEvent } from "react"
@@ -57,62 +61,87 @@ export function LoginPage({
   onGoogleSignIn,
   onContinueWithoutAuth,
 }: LoginPageProps) {
+  const nameId = useId()
+  const emailId = useId()
+  const passwordId = useId()
+  const formErrorId = useId()
+
   return (
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1 text-center">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="flex flex-col gap-1 text-center">
           <h1 className="text-lg font-semibold text-foreground">{title}</h1>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
 
-        <form onSubmit={onEmailSubmit} className="space-y-3">
-          {mode === "signup" && (
-            <Input
-              type="text"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
-              autoComplete="name"
-            />
-          )}
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            required
-            minLength={8}
-            autoComplete={
-              mode === "signup" ? "new-password" : "current-password"
-            }
-          />
+        <form
+          onSubmit={onEmailSubmit}
+          aria-describedby={error ? formErrorId : undefined}
+        >
+          <FieldGroup className="gap-3">
+            {mode === "signup" ? (
+              <Field>
+                <FieldLabel htmlFor={nameId}>Name</FieldLabel>
+                <Input
+                  id={nameId}
+                  type="text"
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => onNameChange(e.target.value)}
+                  autoComplete="name"
+                />
+              </Field>
+            ) : null}
+            <Field>
+              <FieldLabel htmlFor={emailId}>Email</FieldLabel>
+              <Input
+                id={emailId}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => onEmailChange(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={passwordId}>Password</FieldLabel>
+              <Input
+                id={passwordId}
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => onPasswordChange(e.target.value)}
+                required
+                minLength={8}
+                autoComplete={
+                  mode === "signup" ? "new-password" : "current-password"
+                }
+              />
+            </Field>
 
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+            {error ? (
+              <FieldError id={formErrorId} role="alert">
+                {error}
+              </FieldError>
+            ) : null}
 
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? loadingLabel : submitLabel}
-          </Button>
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={loading}
+            >
+              {loading ? <Spinner data-icon="inline-start" /> : null}
+              {loading ? loadingLabel : submitLabel}
+            </Button>
+          </FieldGroup>
         </form>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <Separator className="flex-1" />
         </div>
 
         <Button
@@ -122,11 +151,11 @@ export function LoginPage({
           size="lg"
           onClick={onGoogleSignIn}
         >
-          <GoogleIcon />
+          <GoogleIcon data-icon="inline-start" />
           {googleButtonLabel}
         </Button>
 
-        <div className="space-y-2 text-center text-sm">
+        <div className="flex flex-col gap-2 text-center text-sm">
           <button
             type="button"
             onClick={() => {

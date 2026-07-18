@@ -106,7 +106,12 @@ import { FIELD_CONTROL_CLASS } from "../styles/tokens"
 
 ## Adding components
 
-- **shadcn primitives**: `pnpm dlx shadcn@latest add <name> -c packages/hax-design` (writes into this package; use relative imports inside the package).
+- **shadcn primitives**: `pnpm dlx shadcn@latest add <name> -c packages/hax-design` (writes into this package; use relative imports inside the package). Canonical write target is `packages/hax-design`; keep `apps/web/components.json` mirrored for app-cwd tooling.
+- **Registry layering** (see `components.json` `registries`):
+  - `@shadcn` (base-nova) — core primitives (`button`, `dialog`, `field`, `sidebar`, …) on `@base-ui/react`
+  - `@agent-elements` — chat UI registry for discovery; in-repo `agent-elements/` is an owned fork (no blind `--overwrite` re-sync)
+  - `@fluid` — motion/interaction upgrades; prefer `*-base` variants when adding Fluid controls; existing Fluid-derived pieces include `tabs-subtle`, `lib/springs.ts`, `lib/font-weight.ts`
+- **Loading indicators**: `@shadcn` `Spinner` + `data-icon` for dense button loading; `agent-elements` `SpiralLoader` for chat/shell wait states.
 - **Fleet Pi surfaces**: add under `fleet-pi/`; reuse `primitives/` and `styles/tokens.ts` before inventing new class strings.
 - **Agent UI**: extend `agent-elements/` and tool registry first for new tool types.
 
