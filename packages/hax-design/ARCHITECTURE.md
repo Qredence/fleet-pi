@@ -10,12 +10,16 @@ apps/web (routes compose only — no local components)
 @workspace/hax-design/components/*
     ├── fleet-pi/          Product shell, panels, config, chat wiring
     ├── agent-elements/    Reusable agent chat UI (messages, tools, input)
-    ├── openui/            Generative UI (OpenUI Lang renderer + registry)
+    ├── openui/            Generative UI renderer + registry (prompt lives in pi-protocol)
     └── [primitives]       shadcn/base-nova (button, input, dialog, …)
     ↓
+@workspace/pi-protocol     Wire-format types, Zod, provider IDs, OpenUI prompt (no React)
+    ↓
 src/styles/globals.css     OKLCH tokens, Tailwind v4 theme, radius scale
-src/lib/                   Shared utilities (layout, canvas, protocol types)
+src/lib/                   Shell utilities (layout, canvas, chat-helpers); lib/pi/* shims protocol
 ```
+
+**Package exports:** Prefer `@workspace/pi-protocol` for server/wire types. Use curated `@workspace/hax-design/components/fleet-pi/*` and `@workspace/hax-design/components/agent-elements/*` entrypoints. `fleet-pi/pi/config-panel/` internals are not a supported public seam — compose via `SettingsDialog` and right-panel surfaces.
 
 ## fleet-pi/ layout
 
@@ -31,12 +35,14 @@ src/lib/                   Shared utilities (layout, canvas, protocol types)
 
 ## Design token hierarchy
 
-1. **Global primitives** — `globals.css` `:root` / `.dark`: `--background`, `--foreground`, `--primary`, `--sidebar`, `--radius`, etc.
-2. **Tailwind theme** — `@theme inline` maps CSS vars to Tailwind color/radius utilities.
+1. **Global primitives** — `globals.css` `:root` / `.dark`: `--background`, `--foreground`, `--primary`, `--sidebar`, `--radius`, plus status (`--success`, `--warning`, `--info`, `--destructive` and `*-foreground`).
+2. **Tailwind theme** — `@theme inline` maps CSS vars to utilities (`bg-success`, `text-warning-foreground`, `text-label`, `tracking-display`, `rounded-pill`, …). Typography scale tokens mirror root `DESIGN.md`.
 3. **Fleet Pi semantic tokens** — `fleet-pi/styles/tokens.ts`: chrome pills, panel overlay, field controls, `fleetPiSectionSurface` / `fleetPiRowSurface` CVA.
 4. **Component CVA** — shadcn `buttonVariants`, `discreteTabTriggerVariants`, etc.
 
 Prefer semantic tokens over inline `rounded-[10px] border-border/30 …` strings in new Fleet Pi code.
+
+**Inline `style`:** only for dynamic CSS custom properties or measured layout dimensions (panel width, sidebar width vars, chart series colors, diff theme vars). Do not use `style` for static colors, typography, or spacing.
 
 ## Layout system
 
@@ -100,7 +106,7 @@ import { FIELD_CONTROL_CLASS } from "../styles/tokens"
 
 ## Adding components
 
-- **shadcn primitives**: `pnpm dlx shadcn@latest add <name> -c apps/web` (writes into `packages/hax-design`).
+- **shadcn primitives**: `pnpm dlx shadcn@latest add <name> -c packages/hax-design` (writes into this package; use relative imports inside the package).
 - **Fleet Pi surfaces**: add under `fleet-pi/`; reuse `primitives/` and `styles/tokens.ts` before inventing new class strings.
 - **Agent UI**: extend `agent-elements/` and tool registry first for new tool types.
 

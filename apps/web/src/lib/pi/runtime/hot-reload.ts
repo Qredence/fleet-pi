@@ -1,13 +1,10 @@
 import { resolveDefaultModelSelection } from "./diagnostics"
-import {
-  
-  getActiveSessionRecords
-} from "./active-sessions"
+import { getActiveSessionRecords } from "./active-sessions"
 import { applyModelSelection } from "./model-catalog"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import { applyRuntimeAuth } from "./session-factory"
-import type {ActiveSessionRecord} from "./active-sessions";
-import type { ChatPiSettingsUpdate } from "@workspace/hax-design/lib/pi/chat-protocol"
+import type { ActiveSessionRecord } from "./active-sessions"
+import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
 
 async function reloadRuntimeForRecord(
   record: ActiveSessionRecord,

@@ -21,7 +21,8 @@ type SelectProps = Omit<
   onValueChange: (value: string) => void
   options: Array<SelectOption>
   placeholder?: string
-  value: string
+  triggerId?: string
+  value: string | null
 }
 
 function Select({
@@ -29,6 +30,7 @@ function Select({
   onValueChange,
   options,
   placeholder,
+  triggerId,
   value,
   ...props
 }: SelectProps) {
@@ -48,6 +50,7 @@ function Select({
       {...props}
     >
       <SelectPrimitive.Trigger
+        id={triggerId}
         aria-label={props["aria-label"]}
         className={cn(
           "group flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 data-placeholder:text-muted-foreground dark:bg-input/30 dark:disabled:bg-input/80",
@@ -58,9 +61,9 @@ function Select({
           {SelectedIcon ? (
             <SelectedIcon className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
           ) : null}
-          <SelectPrimitive.Value>
+          <SelectPrimitive.Value placeholder={placeholder}>
             <span className="truncate">
-              {selected?.label ?? placeholder ?? value}
+              {selected?.label ?? placeholder ?? value ?? ""}
             </span>
           </SelectPrimitive.Value>
         </span>
@@ -69,7 +72,8 @@ function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Positioner className="z-50" sideOffset={4}>
+        {/* Above Dialog (z-50) / AlertDialog (z-60) so catalog pickers work in Settings */}
+        <SelectPrimitive.Positioner className="z-[70]" sideOffset={4}>
           <SelectPrimitive.Popup className="max-h-72 min-w-(--anchor-width) overflow-y-auto rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-md outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
             <SelectPrimitive.List>
               {options.map((option) => {

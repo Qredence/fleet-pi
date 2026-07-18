@@ -11,7 +11,7 @@ import {
   ChatSettingsResponseSchema,
   ChatSettingsUpdateRequestSchema,
   WorkspaceTreeResponseSchema,
-} from "@workspace/hax-design/lib/pi/chat-protocol.zod"
+} from "@workspace/pi-protocol/chat-protocol.zod"
 import {
   ChatRequestError,
   fetchJson,
@@ -36,7 +36,7 @@ import type {
   ChatSettingsUpdateRequest,
   ChatStreamEvent,
   WorkspaceTreeResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>

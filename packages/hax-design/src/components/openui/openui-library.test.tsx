@@ -18,6 +18,15 @@ function renderOpenUI(response: string) {
   )
 }
 
+function expectLabelAssociation(html: string, label: string) {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const labelMatch = html.match(
+    new RegExp(`<label[^>]*for="([^"]+)"[^>]*>${escapedLabel}</label>`)
+  )
+  expect(labelMatch?.[1]).toBeTruthy()
+  expect(html).toContain(`id="${labelMatch?.[1]}"`)
+}
+
 describe("openUILibrary", () => {
   it("renders nested child components", () => {
     const html = renderOpenUI(`
@@ -66,6 +75,47 @@ chart = BarChart("Coverage", "OpenUI checks", "area", [{dataKey: "value/%", labe
 
     expect(html).toContain("--color-value__")
     expect(getChartColorVarName("value/%")).toBe("--color-value__")
+  })
+
+  it("applies semantic status tone classes for badges and metrics", () => {
+    const html = renderOpenUI(`
+root = Root([stack])
+stack = Stack([badge, metric, callout])
+badge = Badge("ready", "success")
+metric = Metric("Tests", "241", "passing", "success")
+callout = Callout("Note", Text("Heads up"), "warning")
+`)
+
+    expect(html).toContain("bg-success/10")
+    expect(html).toContain("text-success-foreground")
+    expect(html).toContain("bg-warning/10")
+  })
+
+  it("wraps interactive inputs in Field structure", () => {
+    const html = renderOpenUI(`
+$query = "fleet"
+$showAdvanced = false
+
+root = Root([form])
+form = Card("Controls", Stack([search, toggle]))
+search = Input("searchQuery", $query, "Search term...")
+toggle = Switch("advanced", $showAdvanced, "Show advanced details")
+`)
+
+    expect(html).toContain('data-slot="field"')
+    expect(html).toContain("searchQuery")
+    expect(html).toContain("Show advanced details")
+    expectLabelAssociation(html, "searchQuery")
+  })
+
+  it("associates generated select labels with their triggers", () => {
+    const html = renderOpenUI(`
+$timeframe = "7"
+root = Root([timeframeSelect])
+timeframeSelect = Select("timeframe", $timeframe, [{ value: "7", label: "7 Days" }])
+`)
+
+    expectLabelAssociation(html, "timeframe")
   })
 
   it("renders interactive inputs, selects, switches and modals with reactive bindings", () => {

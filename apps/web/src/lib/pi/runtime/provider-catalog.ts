@@ -1,5 +1,10 @@
-import { KNOWN_PROVIDERS } from "@workspace/hax-design/lib/pi/provider-catalog"
-import type { ChatProviderInfo } from "@workspace/hax-design/lib/pi/chat-protocol"
+import {
+  KNOWN_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+} from "@workspace/pi-protocol/provider-catalog"
+import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { listConfiguredProviderIds } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
@@ -31,7 +36,9 @@ async function getVercelProviderConfigStatus(userId?: string) {
     id: provider.id,
     name: provider.name,
     envVarName: provider.envVarName,
-    isConfigured: configuredProviderIds.has(provider.id),
+    isConfigured: isProviderConfigured(provider.id, {
+      configuredProviderIds,
+    }),
   }))
 }
 
@@ -40,10 +47,53 @@ function getLocalProviderConfigStatus(services?: AgentSessionServices) {
     id: provider.id,
     name: provider.name,
     envVarName: provider.envVarName,
-    isConfigured:
-      isEnvVarConfigured(provider.envVarName) ||
-      hasRuntimeApiKey(services, provider.id),
+    isConfigured: isProviderConfigured(provider.id, { services }),
   }))
+}
+
+function isProviderConfigured(
+  providerId: string,
+  options: {
+    configuredProviderIds?: Set<string>
+    services?: AgentSessionServices
+  }
+): boolean {
+  if (providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) {
+    if (options.configuredProviderIds) {
+      return (
+        options.configuredProviderIds.has(
+          OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+        ) &&
+        options.configuredProviderIds.has(
+          OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+        ) &&
+        options.configuredProviderIds.has(
+          OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID
+        )
+      )
+    }
+
+    const keyConfigured =
+      isEnvVarConfigured("OPENAI_CHAT_COMPLETIONS_API_KEY") ||
+      hasRuntimeApiKey(options.services, OPENAI_CHAT_COMPLETIONS_PROVIDER_ID)
+    const baseUrlConfigured = isEnvVarConfigured(
+      "OPENAI_CHAT_COMPLETIONS_BASE_URL"
+    )
+    const modelConfigured = isEnvVarConfigured("OPENAI_CHAT_COMPLETIONS_MODEL")
+    return keyConfigured && baseUrlConfigured && modelConfigured
+  }
+
+  if (options.configuredProviderIds) {
+    return options.configuredProviderIds.has(providerId)
+  }
+
+  const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
+  if (!provider) return false
+
+  return (
+    isEnvVarConfigured(provider.envVarName) ||
+    hasRuntimeApiKey(options.services, provider.id)
+  )
 }
 
 function hasRuntimeApiKey(

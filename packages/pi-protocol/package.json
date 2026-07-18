@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/pi-protocol",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openuidev/lang-core": "^0.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./chat-types": "./src/chat-types.ts",
+    "./chat-protocol": "./src/chat-protocol.ts",
+    "./chat-protocol.zod": "./src/chat-protocol.zod.ts",
+    "./model-patterns": "./src/model-patterns.ts",
+    "./provider-catalog": "./src/provider-catalog.ts",
+    "./openui-prompt": "./src/openui-prompt.ts"
+  }
+}

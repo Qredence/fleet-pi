@@ -1,7 +1,10 @@
 import {
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
-} from "@workspace/hax-design/lib/pi/provider-catalog"
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+  INFRA_PROVIDER_IDS as PROTOCOL_INFRA_PROVIDER_IDS,
+} from "@workspace/pi-protocol/provider-catalog"
 import { loadDecryptedUserProviderSecrets } from "../db/user-providers"
 import { isEnvVarConfigured } from "../env-manager"
 import { fingerprintProviderSecrets } from "./sandbox-prepare"
@@ -39,6 +42,28 @@ export async function loadSandboxProviderSecrets(
     authJson[provider.id] = { type: "api_key", key: secret }
   }
 
+  const baseUrlSecret = configured.get(
+    OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+  )
+  if (baseUrlSecret) {
+    const baseUrlProvider = KNOWN_PROVIDERS.find(
+      (entry) => entry.id === OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+    )
+    if (baseUrlProvider) {
+      envVars[baseUrlProvider.envVarName] = baseUrlSecret
+    }
+  }
+
+  const modelSecret = configured.get(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)
+  if (modelSecret) {
+    const modelProvider = KNOWN_PROVIDERS.find(
+      (entry) => entry.id === OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID
+    )
+    if (modelProvider) {
+      envVars[modelProvider.envVarName] = modelSecret
+    }
+  }
+
   const payload = { envVars, authJson }
   return {
     ...payload,
@@ -73,7 +98,31 @@ async function loadAllProviderSecrets(
     }
   }
 
+  if (!secrets.has(OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID)) {
+    const baseUrlProvider = KNOWN_PROVIDERS.find(
+      (entry) => entry.id === OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+    )
+    if (baseUrlProvider && isEnvVarConfigured(baseUrlProvider.envVarName)) {
+      secrets.set(
+        OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+        process.env[baseUrlProvider.envVarName]!
+      )
+    }
+  }
+
+  if (!secrets.has(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)) {
+    const modelProvider = KNOWN_PROVIDERS.find(
+      (entry) => entry.id === OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID
+    )
+    if (modelProvider && isEnvVarConfigured(modelProvider.envVarName)) {
+      secrets.set(
+        OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+        process.env[modelProvider.envVarName]!
+      )
+    }
+  }
+
   return secrets
 }
 
-const INFRA_PROVIDER_IDS = new Set(["daytona", "daytona-target"])
+const INFRA_PROVIDER_IDS = new Set<string>(PROTOCOL_INFRA_PROVIDER_IDS)

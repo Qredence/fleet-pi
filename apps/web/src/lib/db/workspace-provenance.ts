@@ -6,7 +6,7 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { WorkspaceProjectionConnection } from "./workspace-projection"
 import type Database from "better-sqlite3"
 
@@ -827,24 +827,21 @@ function normalizeProjectRelativePath(
 function getRunCounts(db: Database.Database, runId: string) {
   const eventCount =
     db
-      .prepare<
-        [string],
-        { count: number }
-      >("SELECT COUNT(*) AS count FROM provenance_run_events WHERE run_id = ?")
+      .prepare<[string], { count: number }>(
+        "SELECT COUNT(*) AS count FROM provenance_run_events WHERE run_id = ?"
+      )
       .get(runId)?.count ?? 0
   const toolCallCount =
     db
-      .prepare<
-        [string],
-        { count: number }
-      >("SELECT COUNT(*) AS count FROM provenance_tool_calls WHERE run_id = ?")
+      .prepare<[string], { count: number }>(
+        "SELECT COUNT(*) AS count FROM provenance_tool_calls WHERE run_id = ?"
+      )
       .get(runId)?.count ?? 0
   const mutationCount =
     db
-      .prepare<
-        [string],
-        { count: number }
-      >("SELECT COUNT(*) AS count FROM provenance_mutations WHERE run_id = ?")
+      .prepare<[string], { count: number }>(
+        "SELECT COUNT(*) AS count FROM provenance_mutations WHERE run_id = ?"
+      )
       .get(runId)?.count ?? 0
 
   return {

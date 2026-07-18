@@ -10,7 +10,8 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"],
     "paths": {
-      "@workspace/hax-design/*": ["./src/*"]
+      "@workspace/hax-design/*": ["./src/*"],
+      "@workspace/pi-protocol/*": ["../pi-protocol/src/*"]
     }
   },
   "include": ["."],

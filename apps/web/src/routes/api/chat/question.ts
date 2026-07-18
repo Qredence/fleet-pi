@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ChatQuestionAnswerRequestSchema } from "@workspace/hax-design/lib/pi/chat-protocol.zod"
-import type { ChatQuestionAnswerResponse } from "@workspace/hax-design/lib/pi/chat-protocol"
+import { ChatQuestionAnswerRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+import type { ChatQuestionAnswerResponse } from "@workspace/pi-protocol/chat-protocol"
 import { createRequestLogger } from "@/lib/logger"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {

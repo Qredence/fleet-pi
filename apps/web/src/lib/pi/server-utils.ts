@@ -6,7 +6,7 @@ import {
 import type {
   ChatMessage,
   ChatToolPart,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+} from "@workspace/pi-protocol/chat-types"
 import type {
   AgentSessionEvent,
   SessionEntry,
@@ -20,9 +20,7 @@ export function toToolPart(
     AgentSessionEvent,
     {
       type:
-        | "tool_execution_start"
-        | "tool_execution_update"
-        | "tool_execution_end"
+        "tool_execution_start" | "tool_execution_update" | "tool_execution_end"
     }
   >,
   fallbackInput?: Record<string, unknown>

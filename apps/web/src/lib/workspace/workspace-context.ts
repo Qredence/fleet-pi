@@ -1,10 +1,9 @@
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
+import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
-
-const SANDBOX_WORKSPACE_ROOT = "/home/daytona/fleet-pi/agent-workspace"
 
 export async function resolveWorkspaceContext(
   request: Request
@@ -39,25 +38,15 @@ export async function resolveWorkspaceContext(
     return context
   }
 
-  const { getUserSandbox } = await import("@/lib/daytona/user-sandbox")
-  const { executeCommand: daytonaExecuteCommand } =
-    await import("@/lib/daytona/client")
-
-  const handle = await getUserSandbox({
+  const sandboxContext = await resolveUserSandboxContext({
     userId,
     userEmail: user.email,
     apiKey: resolvedDaytonaApiKey,
+    surface: "workspace",
   })
-  const sb = handle.sandbox
 
-  await daytonaExecuteCommand(sb, `mkdir -p ${SANDBOX_WORKSPACE_ROOT}`)
-
-  const { createSandboxWorkspaceFS } = await import("./workspace-fs")
-
-  context.workspaceFS = createSandboxWorkspaceFS({
-    executeCommand: (cmd, cwd) => daytonaExecuteCommand(sb, cmd, cwd),
-  })
-  context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
+  context.workspaceFS = sandboxContext.workspaceFS
+  context.workspaceRoot = sandboxContext.workspaceRoot
 
   return context
 }

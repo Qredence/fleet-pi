@@ -10,7 +10,7 @@ import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 const WORKSPACE_PREVIEW_MAX_BYTES = 256 * 1024
 const BINARY_SAMPLE_BYTES = 8 * 1024

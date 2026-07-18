@@ -1,0 +1,51 @@
+import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
+import { readProjectSettingsFile, updateChatSettings } from "./settings-bridge"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+
+/**
+ * When Settings → Providers saves an OpenAI Chat Completions model, ensure
+ * that model is allowlisted in `.pi/settings.json` `enabledModels`.
+ *
+ * Restrictive allowlists like `["github-copilot/*"]` otherwise hide the
+ * newly configured model from `/api/chat/models` and the InputBar picker.
+ */
+export async function ensureOpenAiChatCompletionsModelEnabled(
+  context: AppRuntimeContext,
+  modelId: string,
+  options?: { userId?: string }
+) {
+  const trimmedModelId = modelId.trim()
+  if (!trimmedModelId) return
+
+  const pattern = `${OPENAI_CHAT_COMPLETIONS_PROVIDER_ID}/${trimmedModelId}`
+  const current = await readProjectSettingsFile(context.projectRoot)
+
+  // Missing enabledModels means allow-all — nothing to change.
+  if (!Object.prototype.hasOwnProperty.call(current, "enabledModels")) {
+    return
+  }
+
+  const existing = Array.isArray(current.enabledModels)
+    ? current.enabledModels.filter(
+        (entry): entry is string => typeof entry === "string"
+      )
+    : []
+
+  const alreadyEnabled = isModelPatternEnabled(
+    {
+      id: trimmedModelId,
+      modelId: trimmedModelId,
+      provider: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+      key: pattern,
+    },
+    existing
+  )
+  if (alreadyEnabled) return
+
+  await updateChatSettings(
+    context,
+    { enabledModels: [...existing, pattern] },
+    { userId: options?.userId }
+  )
+}

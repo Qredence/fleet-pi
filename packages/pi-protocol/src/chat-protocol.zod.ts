@@ -520,6 +520,8 @@ export const ChatProviderUpdateRequestSchema = z
   .object({
     providerId: z.string(),
     apiKey: z.string().max(4096),
+    baseUrl: z.string().max(4096).optional(),
+    modelId: z.string().max(4096).optional(),
   })
   .openapi({ description: "Chat provider update request" })
 

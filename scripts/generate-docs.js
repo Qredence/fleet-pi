@@ -115,12 +115,14 @@ graph TD
         Vite[Vite Dev Server]
         API[API Routes]
         ChatRoute[/api/chat]
+        HandleChatTurn[handleChatTurn]
         HealthRoute[/api/health]
         ModelsRoute[/api/chat/models]
         ResourcesRoute[/api/chat/resources]
         SessionRoute[/api/chat/session]
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
+        SandboxContext[resolveUserSandboxContext]
         PlanMode[Plan Mode Extension]
         WorkspaceServer[Workspace Server]
         ResourceCatalog[Workspace Resource Catalog]
@@ -143,14 +145,24 @@ graph TD
         PiSkills[Committed Pi Skills]
     end
 
-    subgraph UI["packages/ui — Shared Components"]
+    subgraph Protocol["packages/pi-protocol — Wire format"]
+        ChatTypes[ChatMessage and ChatStreamEvent]
+        ZodSchemas[Zod schemas and model patterns]
+        ProviderIds[Provider credential IDs]
+        OpenUIPrompt[buildOpenUIPrompt]
+    end
+
+    subgraph UI["packages/hax-design — Shared UI"]
+        FleetPi[fleet-pi shell and panels]
         AgentElements[agent-elements]
-        Shadcn[shadcn/ui Components]
+        OpenUIRenderer[openui renderer]
+        Shadcn[shadcn/base-nova primitives]
         Styles[Tailwind CSS v4]
     end
 
     subgraph External["External Services"]
-        Bedrock[Amazon Bedrock]
+        GoogleGemini[Google Gemini via Pi google provider]
+        Daytona[Daytona per-user sandboxes]
     end
 
     React --> AgentChat
@@ -165,27 +177,34 @@ graph TD
     API --> ResourcesRoute
     API --> SessionRoute
     API --> WorkspaceRoutes
-    ChatRoute --> PiServer
+    ChatRoute --> HandleChatTurn
+    HandleChatTurn --> PiServer
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> Bedrock
+    CircuitBreaker --> GoogleGemini
+    PiServer --> SandboxContext
+    SandboxContext --> Daytona
     PiServer --> PlanMode
     PiServer --> PiConfig
     PiServer --> PiExtensions
     PiServer --> PiSkills
     ResourcesRoute --> ResourceCatalog
+    WorkspaceRoutes --> SandboxContext
     WorkspaceRoutes --> WorkspaceServer
     ResourceCatalog --> PiResources
     WorkspaceServer --> Memory
     WorkspaceServer --> Plans
     WorkspaceServer --> Skills
     WorkspaceServer --> Artifacts
-    AgentChat --> AgentElements
+    AgentChat --> FleetPi
+    FleetPi --> AgentElements
     AgentElements --> Shadcn
     AgentElements --> Styles
-    InputBar --> AgentElements
-    MessageList --> AgentElements
+    AgentElements --> ChatTypes
+    PiServer --> ChatTypes
+    HandleChatTurn --> ChatTypes
+    OpenUIRenderer --> OpenUIPrompt
 `
 
 writeFileSync(join(docsDir, "architecture.mmd"), mermaid)
@@ -218,14 +237,17 @@ structMd += `├── .pi/                      # Committed Pi config, skills, 
 structMd += `├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs\n`
 structMd += `├── apps/web/                 # TanStack Start application\n`
 structMd += `│   ├── src/routes/           # File-based API and page routes\n`
-structMd += `│   ├── src/lib/pi/           # Pi runtime integration (server.ts, plan-mode.ts, chat-protocol)\n`
+structMd += `│   ├── src/lib/pi/           # Pi runtime (handleChatTurn, server-runtime, plan-mode)\n`
+structMd += `│   ├── src/lib/daytona/      # resolveUserSandboxContext and sandbox adapters\n`
 structMd += `│   ├── src/lib/workspace/    # agent-workspace tree and file helpers\n`
 structMd += `│   ├── src/lib/pii/          # PII sanitization module\n`
 structMd += `│   ├── src/lib/logger.ts     # Pino logger with redaction\n`
-structMd += `│   └── packages/hax-design/src/components/fleet-pi/    # Right-panel resources, workspace, and config UI\n`
-structMd += `├── packages/ui/              # Shared React component library\n`
+structMd += `│   └── (routes compose hax-design only — no app-local components)\n`
+structMd += `├── packages/hax-design/      # Shared React UI (fleet-pi, agent-elements, openui)\n`
 structMd += `│   └── src/components/\n`
+structMd += `│       ├── fleet-pi/         # Product shell, panels, Settings\n`
 structMd += `│       └── agent-elements/   # Reusable chat and tool UI\n`
+structMd += `├── packages/pi-protocol/     # Wire-format types, Zod, provider IDs, OpenUI prompt\n`
 structMd += `├── docs/                     # Generated and hand-written documentation\n`
 structMd += `├── scripts/                  # Build and utility scripts\n`
 structMd += `└── .github/workflows/        # CI/CD automation\n`
@@ -237,7 +259,9 @@ structMd += `|---------|---------|\n`
 structMd += `| @tanstack/react-start | Full-stack React framework |\n`
 structMd += `| @earendil-works/pi-coding-agent | Pi coding-agent runtime |\n`
 structMd += `| @earendil-works/pi-ai | Pi AI primitives |\n`
-structMd += `| Amazon Bedrock | Primary LLM provider |\n`
+structMd += `| @workspace/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |\n`
+structMd += `| @workspace/hax-design | Fleet Pi UI shell, agent-elements, openui renderer |\n`
+structMd += `| Google Gemini (Pi google provider) | Primary LLM provider (default: gemini-3.5-flash) |\n`
 structMd += `| pino + pino-pretty | Structured logging |\n`
 structMd += `| opossum | Circuit breaker pattern |\n`
 structMd += `| zod + @asteasolutions/zod-to-openapi | Schema validation & OpenAPI generation |\n`
@@ -247,8 +271,8 @@ structMd += `\n`
 
 structMd += `## Data Flow\n\n`
 structMd += `1. The **Browser** sends a user message to \`/api/chat\` via NDJSON stream.\n`
-structMd += `2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and creates or resumes a Pi session.\n`
-structMd += `3. The **Pi Server Module** invokes Amazon Bedrock through a circuit breaker.\n`
+structMd += `2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and delegates to \`handleChatTurn\`.\n`
+structMd += `3. The **Pi Server Module** invokes the configured Pi provider (default Google Gemini) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.\n`
 structMd += `4. Streaming events (\`start\`, \`delta\`, \`tool\`, \`done\`, \`error\`) flow back to the client.\n`
 structMd += `5. The **Client** hydrates messages from the Pi session file on reload and opens supporting resources/workspace panels on demand.\n`
 structMd += `6. Supporting endpoints expose models, resources, workspace files, sessions, and health checks.\n`

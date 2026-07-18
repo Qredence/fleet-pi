@@ -11,13 +11,13 @@ import type {
   QueueState,
   WorkspaceFileResponse,
   WorkspaceTreeResponse,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
 import type {
   RightPanel,
   ThemePreference,
 } from "@workspace/hax-design/lib/canvas-utils"
-import type { ChatStatus } from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 type UseRightPanelContextValueArgs = {
   activityLabel?: string

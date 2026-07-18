@@ -4,7 +4,7 @@ import type {
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatSettingsUpdateRequest,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 const keys = {
   models: ["chat", "models"] as const,
@@ -83,8 +83,9 @@ export function useUpdateChatProvider() {
   >({
     mutationFn: (request) => chatClient.updateProvider(request),
     onSuccess: (data) => {
-      queryClient.setQueryData(keys.providers, data)
+      queryClient.setQueryData(keys.providers, { providers: data.providers })
       void queryClient.invalidateQueries({ queryKey: keys.models })
+      void queryClient.invalidateQueries({ queryKey: keys.settings })
     },
   })
 }

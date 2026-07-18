@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { collectCompletedResourceInstallToolCallIds } from "./resource-install-refresh"
-import type { ChatMessage } from "@workspace/hax-design/components/agent-elements/chat-types"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 describe("resource install refresh signals", () => {
   it("collects successful resource_install tool calls", () => {

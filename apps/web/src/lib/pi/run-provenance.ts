@@ -31,7 +31,7 @@ import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
-} from "@workspace/hax-design/lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type {
   ProvenanceMutationKind,
   WorkspaceProvenanceConnection,
@@ -39,7 +39,7 @@ import type {
 import type {
   ChatMessage,
   ChatToolPart,
-} from "@workspace/hax-design/components/agent-elements/chat-types"
+} from "@workspace/pi-protocol/chat-types"
 
 type RecorderOptions = {
   mode?: ChatMode

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
   Cpu,
@@ -277,9 +277,12 @@ function MobileTabButton({
 export function SettingsDialog({
   open,
   onOpenChange,
+  initialTab,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** When provided, selects this nav tab each time the dialog opens. */
+  initialTab?: string
 }) {
   const {
     isLoadingProviders,
@@ -310,6 +313,14 @@ export function SettingsDialog({
     setModelEnabled,
     saveSection,
   } = useSettingsForm()
+
+  const wasOpenRef = useRef(false)
+  useEffect(() => {
+    if (open && !wasOpenRef.current && initialTab) {
+      setActiveTab(initialTab)
+    }
+    wasOpenRef.current = open
+  }, [initialTab, open, setActiveTab])
 
   const resourcesPane = (scope: "skills" | "harness") => (
     <ResourcesSection
@@ -505,40 +516,21 @@ export function SettingsDialog({
                 )}
 
                 {activeTab === "sandbox" && (
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium">Sandbox</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Configure isolated execution environments.
-                      </p>
-                    </div>
-                    <SandboxProviderSection
-                      isLoading={isLoadingProviders ?? false}
-                      isPending={isUpdatingProvider ?? false}
-                      providers={providers}
-                      onUpdateProvider={onUpdateProvider}
-                    />
-                  </div>
+                  <SandboxProviderSection
+                    isLoading={isLoadingProviders ?? false}
+                    isPending={isUpdatingProvider ?? false}
+                    providers={providers}
+                    onUpdateProvider={onUpdateProvider}
+                  />
                 )}
 
                 {activeTab === "providers" && (
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium text-balance">
-                        Providers
-                      </h3>
-                      <p className="text-sm text-pretty text-muted-foreground">
-                        API keys are stored in `.env.local` for the active
-                        workspace.
-                      </p>
-                    </div>
-                    <ProviderCredentialsSection
-                      isLoading={isLoadingProviders ?? false}
-                      isPending={isUpdatingProvider ?? false}
-                      providers={providers}
-                      onUpdateProvider={onUpdateProvider}
-                    />
-                  </div>
+                  <ProviderCredentialsSection
+                    isLoading={isLoadingProviders ?? false}
+                    isPending={isUpdatingProvider ?? false}
+                    providers={providers}
+                    onUpdateProvider={onUpdateProvider}
+                  />
                 )}
 
                 {activeTab === "llm-models" && (
