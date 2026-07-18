@@ -18,7 +18,7 @@ Authenticated user → POST /api/chat (with session cookie)
 
 **Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Vercel, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
 
-**CLI:** `npm:@daytona/pi` is installed for local `pi --daytona`. The web resource loader excludes that package so it does not collide with the Fleet adapter.
+**CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter.
 
 ## Tenancy model
 
