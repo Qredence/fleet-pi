@@ -1,0 +1,8 @@
+{
+  "default_scenario": "grid_ctf",
+  "provider": "openai",
+  "model": "deepseek-v4-flash-free",
+  "gens": 3,
+  "knowledge_dir": "./knowledge",
+  "runs_dir": "./runs"
+}
