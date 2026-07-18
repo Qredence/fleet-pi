@@ -5,11 +5,7 @@
     "npm:pi-autocontext",
     "npm:pi-web-access"
   ],
-  "skills": [
-    "../agent-workspace/pi/skills",
-    "npm:pi-autoresearch",
-    "npm:pi-autocontext"
-  ],
+  "skills": ["../agent-workspace/pi/skills"],
   "prompts": ["../agent-workspace/pi/prompts"],
   "extensions": [
     "extensions/bedrock-bearer-auth",
@@ -17,18 +13,11 @@
     "extensions/daytona-sandbox",
     "extensions/vendor/filechanges",
     "extensions/vendor/subagents",
-    "../agent-workspace/pi/extensions/enabled",
-    "npm:@evo-hq/pi-evo",
-    "local",
-    "npm:pi-autoresearch"
+    "../agent-workspace/pi/extensions/enabled"
   ],
   "defaultProvider": "google",
   "defaultModel": "gemini-3.5-flash",
   "defaultThinkingLevel": "high",
-  "enabledModels": [
-    "github-copilot/*",
-    "openai-chat-completions/deepseek-v4-flash-free"
-  ],
-  "enableSkillCommands": true,
-  "themes": []
+  "enabledModels": ["google/*", "github-copilot/*"],
+  "enableSkillCommands": true
 }
