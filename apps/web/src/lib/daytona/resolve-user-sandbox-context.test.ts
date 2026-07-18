@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { resolveUserSandboxContext } from "./resolve-user-sandbox-context"
-import { SANDBOX_PROJECT_ROOT, SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
+import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 import type * as UserSandboxModule from "./user-sandbox"
 
 const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =
@@ -53,7 +53,6 @@ describe("resolveUserSandboxContext", () => {
       `mkdir -p ${SANDBOX_WORKSPACE_ROOT}`
     )
     expect(context.workspaceRoot).toBe(SANDBOX_WORKSPACE_ROOT)
-    expect(context.sandboxProjectRoot).toBe(SANDBOX_PROJECT_ROOT)
     expect(context.sandbox).toBe(sandbox)
     expect(context.workspaceFS).toBeDefined()
 

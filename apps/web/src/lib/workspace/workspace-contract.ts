@@ -17,6 +17,37 @@ export const WORKSPACE_TOP_LEVEL_SECTIONS = [
   "indexes",
 ] as const
 
+/** Known root-level docs/files allowed at the agent-workspace volume root. */
+export const WORKSPACE_ROOT_FILE_ALLOWLIST = [
+  "manifest.json",
+  "README.md",
+  "AGENTS.md",
+  "ARCHITECTURE.md",
+  "index.md",
+] as const
+
+export function isWorkspaceContractTopLevelName(name: string): boolean {
+  return (
+    (WORKSPACE_TOP_LEVEL_SECTIONS as ReadonlyArray<string>).includes(name) ||
+    (WORKSPACE_ROOT_FILE_ALLOWLIST as ReadonlyArray<string>).includes(name)
+  )
+}
+
+/**
+ * Shell `case` pattern for volume migration: keep contract entries and
+ * on-volume quarantine. Nested `agent-workspace` is handled by flatten.
+ */
+export const WORKSPACE_VOLUME_QUARANTINE_DIRECTORY = ".fleet-pi-quarantine"
+
+export function workspaceVolumeShellKeepPattern(): string {
+  return [
+    "agent-workspace",
+    WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+    ...WORKSPACE_TOP_LEVEL_SECTIONS,
+    ...WORKSPACE_ROOT_FILE_ALLOWLIST,
+  ].join("|")
+}
+
 export const WORKSPACE_SECTION_KINDS = [
   "canonical",
   "temporary",

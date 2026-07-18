@@ -105,8 +105,8 @@ The factory is invoked by `pi-coding-agent` with `cwd`, `agentDir`, `sessionMana
    }
    ```
 2. Resolves the model and thinking level via `resolveModelSelection()`.
-3. If Daytona is enabled, builds `customTools` — sandbox-scoped versions of `bash`, `read`, `write`, `edit`, `grep`, `find`, `ls`.
-4. Fires through the **session creation circuit breaker** (`sessionCircuitBreaker.fire(...)`) which wraps `createAgentSessionFromServices`.
+3. Fires through the **session creation circuit breaker** (`sessionCircuitBreaker.fire(...)`) which wraps `createAgentSessionFromServices`.
+   Sandbox-backed tools are registered by the Fleet Daytona adapter extension (`.pi/extensions/daytona-sandbox`) when a sandbox was eagerly warmed — not via `customTools`.
 
 ### Tool allowlist
 
@@ -117,7 +117,7 @@ read, bash, edit, write, workspace_write, resource_install, questionnaire,
 web_fetch, grep, find, ls,
 project_inventory, workspace_index,
 autocontext_*, autoresearch_*, subagent,
-daytona_*, web_search, code_search, get_search_content, fetch_content
+daytona_get_status, preview_url, web_search, code_search, get_search_content, fetch_content
 ```
 
 The active subset is then narrowed per-turn by `session.setActiveToolsByName()` based on mode (agent / plan / harness). See [Plan mode](./plan-mode.md) for the per-mode allowlists.
@@ -238,12 +238,12 @@ On reload, `hydrateChatSession()` reads the JSONL file, converts entries to mess
 
 **Directory:** `apps/web/src/lib/daytona/`
 
-When `isDaytonaEnabled(userId)` returns true (based on env vars), `createPiRuntime()`:
+When `isDaytonaEnabled(userId, resolvedKey)` returns true (BYOK Daytona key on Vercel; env fallback locally), `createPiRuntime()`:
 
-1. Calls `getUserSandbox({ userId, userEmail })` to acquire or create a Daytona sandbox.
+1. Calls `resolveUserSandboxContext` to acquire or create a Daytona sandbox (eager warm-up into the per-user cache).
 2. Sets `context.workspaceFS` to a sandbox-backed filesystem.
-3. Sets `context.workspaceRoot` to `/home/daytona/fleet-pi/agent-workspace`.
-4. Builds `customTools` — thin wrappers around Daytona sandbox operations — to replace the default file system tools. This means Pi's `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls` operations execute inside the sandbox rather than the host.
+3. Sets `context.workspaceRoot` to `/home/daytona/agent-workspace`.
+4. Tracks the session user so `.pi/extensions/daytona-sandbox` can attach the **cached** sandbox on `session_start` and register sandbox-backed `bash` / `read` / `write` / `edit` / `ls` / `find` / `grep`. The adapter never provisions without that gated warm-up.
 
 The sandbox is released (`releaseUserSandbox`) when all runtimes for a user are disposed.
 

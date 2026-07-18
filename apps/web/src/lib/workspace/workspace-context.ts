@@ -1,8 +1,7 @@
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
-
+import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 
 export async function resolveWorkspaceContext(
@@ -47,6 +46,6 @@ export async function resolveWorkspaceContext(
 
   context.workspaceFS = sandboxContext.workspaceFS
   context.workspaceRoot = sandboxContext.workspaceRoot
-
+  context.workspaceBootstrap = undefined
   return context
 }

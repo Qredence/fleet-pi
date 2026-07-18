@@ -1,13 +1,6 @@
 import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
-  createBashToolDefinition,
-  createEditToolDefinition,
-  createFindToolDefinition,
-  createGrepToolDefinition,
-  createLsToolDefinition,
-  createReadToolDefinition,
-  createWriteToolDefinition,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import {
@@ -45,7 +38,6 @@ import type { ActiveSessionRecord } from "./runtime/active-sessions"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
-  ToolDefinition,
 } from "@earendil-works/pi-coding-agent"
 import type {
   ChatMode,
@@ -57,15 +49,20 @@ import type {
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import {
+  getCachedUserSandbox,
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
+import { executeCommand } from "@/lib/daytona/client"
+import { SANDBOX_WORKSPACE_ROOT } from "@/lib/daytona/sandbox-prepare"
+import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
-import { createSandboxOperations } from "@/lib/daytona/sandbox-operations"
 import {
+  resolveDaytonaToolUser,
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "@/lib/daytona/tool-context"
+import { logger } from "@/lib/logger"
 
 const DEFAULT_RUNTIME_TTL_MS = 600_000
 
@@ -199,19 +196,25 @@ export async function createPiRuntime(
   modelSelection?: ChatModelSelection
 ) {
   const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
-  if (
-    isDaytonaEnabled(metadata.userId, daytonaApiKey) &&
-    !context.workspaceFS
-  ) {
-    const sandboxContext = await resolveUserSandboxContext({
-      userId: metadata.userId!,
-      userEmail: metadata.userEmail,
-      apiKey: daytonaApiKey!,
-      surface: "chat",
-    })
-    context.workspaceFS = sandboxContext.workspaceFS
-    context.workspaceRoot = sandboxContext.workspaceRoot
-    context.workspaceBootstrap = undefined
+  const daytonaEnabled = isDaytonaEnabled(metadata.userId, daytonaApiKey)
+  let pendingWarmUp: Promise<unknown> | undefined
+  if (daytonaEnabled && !context.workspaceFS && metadata.userId) {
+    const cachedSandbox = getCachedUserSandbox(metadata.userId)
+    if (cachedSandbox) {
+      context.workspaceFS = createSandboxWorkspaceFS({
+        executeCommand: (cmd, cwd) =>
+          executeCommand(cachedSandbox.sandbox, cmd, cwd),
+      })
+      context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
+      context.workspaceBootstrap = undefined
+    } else {
+      pendingWarmUp = resolveUserSandboxContext({
+        userId: metadata.userId,
+        userEmail: metadata.userEmail,
+        apiKey: daytonaApiKey!,
+        surface: "chat",
+      })
+    }
   }
 
   const services = await createSessionServices(context)
@@ -256,6 +259,26 @@ export async function createPiRuntime(
     sessionDir,
     { userId: metadata.userId }
   )
+  // Only track Daytona sessions when enabled — adapter fail-closed uses this.
+  if (daytonaEnabled) {
+    trackDaytonaToolSession(
+      sessionManager.getSessionId(),
+      sessionManager.getSessionFile(),
+      metadata.userId
+    )
+    if (pendingWarmUp) {
+      void pendingWarmUp.catch((error) => {
+        logger.warn(
+          { error, userId: metadata.userId },
+          "[daytona] background warm-up failed; clearing fail-closed tracking"
+        )
+        untrackDaytonaToolSession(
+          sessionManager.getSessionId(),
+          sessionManager.getSessionFile()
+        )
+      })
+    }
+  }
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd,
     agentDir: runtimeAgentDir,
@@ -276,30 +299,9 @@ export async function createPiRuntime(
 
     await applyRuntimeAuth(runtimeServices, { userId: metadata.userId })
 
-    let customTools: Array<ToolDefinition> | undefined
-    const runtimeDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
-      metadata.userId
-    )
-    if (isDaytonaEnabled(metadata.userId, runtimeDaytonaApiKey)) {
-      const sandboxContext = await resolveUserSandboxContext({
-        userId: metadata.userId!,
-        userEmail: metadata.userEmail,
-        apiKey: runtimeDaytonaApiKey!,
-        surface: "chat",
-      })
-      const sandboxCwd = sandboxContext.sandboxProjectRoot
-      const s = sandboxContext.sandbox
-      const ops = createSandboxOperations(s)
-      customTools = [
-        createBashToolDefinition(sandboxCwd, { operations: ops.bash }),
-        createReadToolDefinition(sandboxCwd, { operations: ops.read }),
-        createWriteToolDefinition(sandboxCwd, { operations: ops.write }),
-        createEditToolDefinition(sandboxCwd, { operations: ops.edit }),
-        createGrepToolDefinition(sandboxCwd, { operations: ops.grep }),
-        createFindToolDefinition(sandboxCwd, { operations: ops.find }),
-        createLsToolDefinition(sandboxCwd, { operations: ops.ls }),
-      ] as Array<ToolDefinition>
-    }
+    // Eager warm-up ran above when Daytona is enabled. Fleet adapter extension
+    // owns sandbox tool registration (not customTools). Stock npm:@daytona/pi
+    // is excluded from the web resource loader.
 
     const result = await sessionCircuitBreaker.fire({
       services: runtimeServices,
@@ -308,7 +310,6 @@ export async function createPiRuntime(
       model,
       thinkingLevel,
       tools: CHAT_TOOL_ALLOWLIST,
-      customTools,
     })
 
     return {
@@ -422,7 +423,14 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   record.sessionId = session.sessionId
   record.lastUsedAt = Date.now()
   if (userId) record.userId = userId
-  trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
+  // Re-bind only for Daytona sessions (warm cache or already tracked).
+  if (
+    userId &&
+    (getCachedUserSandbox(userId) ||
+      resolveDaytonaToolUser(session.sessionId, session.sessionFile))
+  ) {
+    trackDaytonaToolSession(session.sessionId, session.sessionFile, userId)
+  }
   setActiveSessionRecord(session.sessionId, record)
   return record
 }

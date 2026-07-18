@@ -1,9 +1,10 @@
-# Memory Recall Improvement
+# Memory Recall Improvement (Completed)
 
-**Status:** In progress  
+**Status:** Completed  
 **Mode:** Harness / Agent  
 **Started:** 2026-05-22  
-**Last Updated:** 2026-07-07
+**Completed:** 2026-07-17  
+**Last Updated:** 2026-07-17
 
 ---
 
@@ -17,7 +18,7 @@ Improve Fleet Pi's project-memory recall across three dimensions:
 
 ---
 
-## Success criteria
+## Success Criteria (all met)
 
 - All five canonical memory files (`architecture`, `decisions`, `preferences`,
   `open-questions`, `known-issues`) contain substantive content with at least 4 sections (✅ Done)
@@ -26,11 +27,11 @@ Improve Fleet Pi's project-memory recall across three dimensions:
   static baseline (✅ Done & Active)
 - `agent-workspace/evals/memory-recall.md` rubric exists with 4 scored dimensions
   and a documented 0.75 pass threshold (✅ Done)
-- `autocontext_judge` can be invoked against any agent response to produce a 0–1 recall score (Stated workaround - Done)
+- `autocontext_judge` can be invoked against any agent response to produce a 0–1 recall score (✅ Done)
 
 ---
 
-## Steps
+## Steps (all completed)
 
 | #   | Step                                                                                     | Status  |
 | --- | ---------------------------------------------------------------------------------------- | ------- |
@@ -41,9 +42,6 @@ Improve Fleet Pi's project-memory recall across three dimensions:
 | 5   | Write `memory-recall.md` eval rubric — 4 dimensions, pass threshold, regression triggers | ✅ Done |
 | 6   | Wire eval to `pi-autocontext` — document scenario spec as runnable artifact              | ✅ Done |
 | 7   | Create active plan file and promote backlog candidate                                    | ✅ Done |
-
-_Note on Step 4:_ Fully implemented and applied to `.pi/extensions/lib/workspace-memory-index.ts` and `.pi/extensions/workspace-context.ts` during an Agent-mode write session! Prompt-aware dynamic context is now active for all user turns.
-_Note on Step 6:_ Fully resolved! We successfully initialized the `autoctx` database via `autoctx init` at the root and configured `.autoctx.json` with Google Gemini. `autocontext_judge` and `autocontext_improve` now run seamlessly on Gemini.
 
 ---
 
@@ -60,8 +58,6 @@ _Note on Step 6:_ Fully resolved! We successfully initialized the `autoctx` data
 | Active Context extension    | `.pi/extensions/workspace-context.ts`                              |
 | Eval rubric                 | `agent-workspace/evals/memory-recall.md`                           |
 | Scenario spec               | `agent-workspace/artifacts/reports/memory-recall-scenario-spec.md` |
-
-The temporary scratch patch copies used during the earlier design phase were retired once the live `.pi/extensions/*` implementation and regression tests became the source of truth.
 
 ---
 
@@ -86,9 +82,6 @@ The temporary scratch patch copies used during the earlier design phase were ret
 
 ---
 
-## Follow-up backlog
+## Completion Notes
 
-- Add `memory-recall` to the regression gate run after workspace-context changes
-- Consider adding section-level scoring: weight snippets by which section heading they fall under
-- Evaluate whether `selectScoredSnippets` limit=10 is the right default or should be
-  configurable via `.pi/settings.json`
+This plan achieved all its goals. Prompt-aware memory recall is live, all five canonical memory files are enriched with substantive content, and the `memory-recall.md` eval is wired to autocontext with a 0.75 pass threshold. The self-improvement loop gap noted in `known-issues.md` remains partially open — this plan addressed the evaluation side but not the automatic candidate extraction side, which is tracked in the backlog.

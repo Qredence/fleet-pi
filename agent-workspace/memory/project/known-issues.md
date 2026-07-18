@@ -52,7 +52,7 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Issue: When provisioning a fresh Daytona sandbox, the mounted project workspace FUSE volume may be uninitialized or empty initially, leading to missing workspace files in sandbox sessions.
 - Affected area: `apps/web/src/lib/pi/server-runtime.ts` (sandbox workspace filesystem setup).
 - Symptoms: The workspace directory inside the sandbox is missing or fails to resolve during the first runtime creation.
-- Current status: **Mitigated.** We explicitly execute a self-healing setup command (`mkdir -p /home/daytona/fleet-pi/agent-workspace`) during runtime creation to guarantee the workspace path exists in the sandbox before initialization.
+- Current status: **Mitigated.** We explicitly execute a self-healing setup command (`mkdir -p /home/daytona/agent-workspace`) during runtime creation to guarantee the workspace path exists in the sandbox before initialization.
 - Workaround: Self-healing mkdir during first runtime creation.
 - Follow-up: Integrate a full volume check/seeding script if needed.
 

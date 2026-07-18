@@ -42,6 +42,10 @@ describe("session factory", () => {
     vi.clearAllMocks()
     mocks.createAgentSessionServices.mockResolvedValue({
       authStorage: { setRuntimeApiKey: vi.fn() },
+      modelRegistry: {
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+      },
       diagnostics: [],
     })
     mocks.bootstrapAgentWorkspace.mockResolvedValue({
@@ -81,6 +85,10 @@ describe("session factory", () => {
         setRuntimeApiKey: vi.fn(),
         removeRuntimeApiKey,
       },
+      modelRegistry: {
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+      },
     }
 
     await applyRuntimeAuth(services as never, { userId: "user-1" })
@@ -103,6 +111,10 @@ describe("session factory", () => {
       authStorage: {
         setRuntimeApiKey,
         removeRuntimeApiKey,
+      },
+      modelRegistry: {
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
       },
     }
 

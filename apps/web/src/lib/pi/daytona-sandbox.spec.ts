@@ -6,10 +6,10 @@ interface RegisteredTool {
   name: string
   execute: (
     toolCallId: string,
-    params: { path: string; sandboxId: string },
+    params: Record<string, unknown>,
     signal: AbortSignal | undefined,
     onUpdate: (update: unknown) => void,
-    ctx: unknown
+    ctx?: unknown
   ) => Promise<{
     content: Array<{ text: string; type: "text" }>
     details?: unknown
@@ -18,57 +18,64 @@ interface RegisteredTool {
 }
 
 const {
-  mockCreateDaytonaClient,
-  mockDownloadFile,
   mockGetCachedUserSandbox,
-  mockGetUserSandbox,
+  mockGetSandboxStatus,
   mockResolveDaytonaToolUser,
 } = vi.hoisted(() => ({
-  mockCreateDaytonaClient: vi.fn(),
-  mockDownloadFile: vi.fn(),
   mockGetCachedUserSandbox: vi.fn(),
-  mockGetUserSandbox: vi.fn(),
+  mockGetSandboxStatus: vi.fn(),
   mockResolveDaytonaToolUser: vi.fn(),
 }))
 
-vi.mock("@/lib/daytona/client", () => ({
-  createDaytonaClient: mockCreateDaytonaClient,
-  createSandbox: vi.fn(),
-  executeCommand: vi.fn(),
-  runCode: vi.fn(),
-  uploadFile: vi.fn(),
-  downloadFile: mockDownloadFile,
-  listFiles: vi.fn(),
-  stopSandbox: vi.fn(),
-  startSandbox: vi.fn(),
-  deleteSandbox: vi.fn(),
-  getSandboxStatus: vi.fn(),
-  createSnapshot: vi.fn(),
-  deleteSnapshot: vi.fn(),
-  createVolumeMount: vi.fn(),
-  deleteVolume: vi.fn(),
-  getOrCreateVolume: vi.fn(),
-  listVolumes: vi.fn(),
+vi.mock("../../../../../apps/web/src/lib/daytona/client", () => ({
+  getSandboxStatus: mockGetSandboxStatus,
 }))
 
-vi.mock("@/lib/daytona/user-sandbox", () => ({
+vi.mock("../../../../../apps/web/src/lib/daytona/user-sandbox", () => ({
   getCachedUserSandbox: mockGetCachedUserSandbox,
-  getSessionVolumeName: (userId: string) => `fleet-pi-sessions-${userId}`,
-  getUserSandbox: mockGetUserSandbox,
   getVolumeName: (userId: string) => `fleet-pi-ws-${userId}`,
 }))
 
-vi.mock("@/lib/daytona/tool-context", () => ({
+vi.mock("../../../../../apps/web/src/lib/daytona/tool-context", () => ({
   resolveDaytonaToolUser: mockResolveDaytonaToolUser,
 }))
 
-const client = { get: vi.fn() }
+vi.mock("../../../../../apps/web/src/lib/daytona/sandbox-operations", () => ({
+  createSandboxOperations: vi.fn(() => ({
+    bash: { exec: vi.fn().mockResolvedValue({ output: "", exitCode: 0 }) },
+    read: {},
+    write: {},
+    edit: {},
+    grep: {},
+    find: {},
+    ls: {},
+  })),
+}))
 
 describe("daytona sandbox extension", () => {
-  it("truncates downloaded file content in chat output and details", async () => {
-    const sandbox = { id: "sandbox-1", name: "fleet-pi-user-user-1" }
-    mockCreateDaytonaClient.mockReturnValue(client)
-    mockDownloadFile.mockResolvedValue(Buffer.alloc(70 * 1024, "a"))
+  it("registers slim management tools only", () => {
+    const names: Array<string> = []
+    daytonaSandboxExtension({
+      registerTool: (tool: { name?: string }) => {
+        if (tool.name) names.push(tool.name)
+      },
+      on: vi.fn(),
+    } as never)
+
+    expect(names).toContain("daytona_get_status")
+    expect(names).toContain("preview_url")
+    expect(names).not.toContain("daytona_download_file")
+    expect(names).not.toContain("daytona_create_sandbox")
+    expect(names).not.toContain("daytona_delete_volume")
+  })
+
+  it("returns status for the authenticated user sandbox", async () => {
+    const sandbox = {
+      id: "sandbox-1",
+      name: "fleet-pi-user-user-1",
+      public: false,
+      getPreviewLink: vi.fn(),
+    }
     mockResolveDaytonaToolUser.mockReturnValue("user-1")
     mockGetCachedUserSandbox.mockReturnValue({
       sandbox,
@@ -77,30 +84,96 @@ describe("daytona sandbox extension", () => {
       volumeName: "fleet-pi-ws-user-1",
       userId: "user-1",
     })
+    mockGetSandboxStatus.mockResolvedValue({
+      id: "sandbox-1",
+      name: "fleet-pi-user-user-1",
+      state: "started",
+    })
 
-    const tool = registerTool("daytona_download_file")
+    const tool = registerTool("daytona_get_status")
     const result = await tool.execute(
       "call-1",
-      { path: "/tmp/large.txt", sandboxId: "sandbox-1" },
+      {},
       undefined,
       vi.fn(),
       makeToolContext()
     )
 
-    expect(mockDownloadFile).toHaveBeenCalledWith(sandbox, "/tmp/large.txt")
-    expect(result.content[0]?.text).toContain("truncated after 65536 bytes")
-    expect(result.content[0]?.text.length).toBeLessThan(67_000)
-    expect(result.details).toMatchObject({
-      path: "/tmp/large.txt",
-      previewBytes: 65_536,
-      size: 71_680,
-      truncated: true,
-    })
-    expect((result.details as { content?: string }).content).toBeUndefined()
+    expect(result.content[0]?.text).toContain("State: started")
+    expect(result.content[0]?.text).toContain("/home/daytona/agent-workspace")
   })
 
-  it("rejects sandbox access outside the authenticated user's sandbox", async () => {
-    const sandbox = { id: "sandbox-1", name: "fleet-pi-user-user-1" }
+  it("requires a warmed sandbox cache for status", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue(undefined)
+    const tool = registerTool("daytona_get_status")
+
+    await expect(
+      tool.execute("call-1", {}, undefined, vi.fn(), makeToolContext())
+    ).rejects.toThrow("No active Daytona sandbox")
+  })
+
+  it("requires an authenticated session for status", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue(undefined)
+    const tool = registerTool("daytona_get_status")
+
+    await expect(
+      tool.execute("call-1", {}, undefined, vi.fn(), makeToolContext())
+    ).rejects.toThrow("authenticated Fleet Pi session")
+  })
+
+  it("fails closed when Daytona is expected but sandbox is missing", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue(undefined)
+
+    const { bash, sessionStart } = registerExtension()
+    await sessionStart({}, makeSessionStartContext())
+
+    expect(() =>
+      bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
+    ).toThrow("NOT run on your host")
+  })
+
+  it("lazily attaches after background warm-up fills the cache", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue(undefined)
+
+    const { bash, sessionStart } = registerExtension()
+    await sessionStart({}, makeSessionStartContext())
+
+    expect(() =>
+      bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
+    ).toThrow("NOT run on your host")
+
+    const sandbox = {
+      id: "sandbox-1",
+      name: "fleet-pi-user-user-1",
+      public: false,
+      getPreviewLink: vi.fn(),
+    }
+    mockGetCachedUserSandbox.mockReturnValue({
+      sandbox,
+      sandboxId: "sandbox-1",
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      userId: "user-1",
+    })
+
+    await expect(
+      bash.execute("call-2", { command: "pwd" }, undefined, vi.fn())
+    ).resolves.not.toThrow()
+  })
+
+  it("omits preview tokens from private sandbox tool text", async () => {
+    const sandbox = {
+      id: "sandbox-1",
+      name: "fleet-pi-user-user-1",
+      public: false,
+      getPreviewLink: vi.fn().mockResolvedValue({
+        url: "https://preview.example/3000",
+        token: "secret-preview-token",
+      }),
+    }
     mockResolveDaytonaToolUser.mockReturnValue("user-1")
     mockGetCachedUserSandbox.mockReturnValue({
       sandbox,
@@ -110,17 +183,18 @@ describe("daytona sandbox extension", () => {
       userId: "user-1",
     })
 
-    const tool = registerTool("daytona_download_file")
+    const tool = registerTool("preview_url")
+    const result = await tool.execute(
+      "call-1",
+      { port: 3000 },
+      undefined,
+      vi.fn(),
+      makeToolContext()
+    )
 
-    await expect(
-      tool.execute(
-        "call-1",
-        { path: "/tmp/large.txt", sandboxId: "sandbox-2" },
-        undefined,
-        vi.fn(),
-        makeToolContext()
-      )
-    ).rejects.toThrow("limited to your Fleet Pi sandbox")
+    expect(result.content[0]?.text).toContain("https://preview.example/3000")
+    expect(result.content[0]?.text).toContain("/api/sandbox/preview?port=3000")
+    expect(result.content[0]?.text).not.toContain("secret-preview-token")
   })
 })
 
@@ -128,11 +202,12 @@ function registerTool(name: string) {
   let registered: RegisteredTool | undefined
 
   daytonaSandboxExtension({
-    registerTool: (tool: RegisteredTool) => {
+    registerTool: (tool: RegisteredTool & { name?: string }) => {
       if (tool.name === name) {
         registered = tool
       }
     },
+    on: vi.fn(),
   } as never)
 
   if (!registered) {
@@ -142,11 +217,52 @@ function registerTool(name: string) {
   return registered
 }
 
+function registerExtension() {
+  let bash: RegisteredTool | undefined
+  let sessionStart:
+    | ((
+        event: unknown,
+        ctx: ReturnType<typeof makeSessionStartContext>
+      ) => void | Promise<void>)
+    | undefined
+
+  daytonaSandboxExtension({
+    registerTool: (tool: RegisteredTool & { name?: string }) => {
+      if (tool.name === "bash") {
+        bash = tool
+      }
+    },
+    on: (event: string, handler: (event: unknown, ctx: unknown) => unknown) => {
+      if (event === "session_start") {
+        sessionStart = handler as typeof sessionStart
+      }
+    },
+  } as never)
+
+  if (!bash || !sessionStart) {
+    throw new Error("bash tool or session_start was not registered")
+  }
+
+  return { bash, sessionStart }
+}
+
 function makeToolContext() {
   return {
     sessionManager: {
       getSessionId: () => "session-1",
       getSessionFile: () => "/tmp/session.jsonl",
+    },
+  } as never
+}
+
+function makeSessionStartContext() {
+  return {
+    sessionManager: {
+      getSessionId: () => "session-1",
+      getSessionFile: () => "/tmp/session.jsonl",
+    },
+    ui: {
+      setStatus: vi.fn(),
     },
   } as never
 }

@@ -17,6 +17,7 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
 }))
 
 vi.mock("@/lib/daytona/user-sandbox", () => ({
+  getCachedUserSandbox: vi.fn(() => undefined),
   getUserSandbox: vi.fn(),
   isDaytonaEnabled: vi.fn(() => false),
   releaseUserSandbox,

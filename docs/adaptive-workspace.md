@@ -62,12 +62,12 @@ sections above.
 
 ## Workspace-installed Pi resources
 
-The canonical home for chat-installed Pi resources is inside `agent-workspace/pi/`:
+The canonical home for chat-installed Pi resources is inside `agent-workspace/.pi/`:
 
-- `agent-workspace/pi/skills`
-- `agent-workspace/pi/prompts`
-- `agent-workspace/pi/extensions`
-- `agent-workspace/pi/packages`
+- `agent-workspace/.pi/skills`
+- `agent-workspace/.pi/prompts`
+- `agent-workspace/.pi/extensions`
+- `agent-workspace/.pi/packages`
 
 These directories stay canonical because the installed resource itself is a
 reviewable file or directory in the repository.
@@ -75,13 +75,13 @@ reviewable file or directory in the repository.
 ## `.pi/settings.json` compatibility bridge
 
 `.pi/settings.json` remains the compatibility bridge between the Pi runtime and
-workspace-native resources. It may point Pi at `agent-workspace/pi/*`, but it
+workspace-native resources. It may point Pi at `agent-workspace/.pi/*`, but it
 does not replace the workspace as the durable store.
 
 That means:
 
 - committed `.pi/` configuration can keep loading project-local built-ins
-- workspace-installed resources still live under `agent-workspace/pi/`
+- workspace-installed resources still live under `agent-workspace/.pi/`
 - changing the bridge must not imply changing where the canonical resource
   content lives
 

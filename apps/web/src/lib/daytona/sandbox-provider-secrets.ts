@@ -8,14 +8,32 @@ import {
 import { loadDecryptedUserProviderSecrets } from "../db/user-providers"
 import { isEnvVarConfigured } from "../env-manager"
 import { fingerprintProviderSecrets } from "./sandbox-prepare"
+import { isDaytonaSecretsEligibleProvider } from "./secret-hosts"
 import type { PiAuthFile, SandboxProviderSecrets } from "./sandbox-prepare"
 
 export type { PiAuthFile, SandboxProviderSecrets }
 
+/**
+ * Load provider secrets for sandbox inject, omitting Daytona Secrets-backed
+ * API keys (those mount via createSandbox `secrets` placeholders).
+ */
 export async function loadSandboxProviderSecrets(
   userId: string | undefined
 ): Promise<SandboxProviderSecrets> {
-  const configured = await loadAllProviderSecrets(userId)
+  const configured = await loadConfiguredProviderSecrets(userId)
+  return buildPlaintextSandboxCredentials(configured)
+}
+
+/**
+ * Build auth.json + plain env for providers that cannot use Daytona Secrets.
+ */
+export function buildPlaintextSandboxCredentials(
+  configured: Map<string, string>,
+  mountedSecretEnvVars: ReadonlySet<string> = new Set()
+): SandboxProviderSecrets {
+  const occBaseUrl = configured.get(
+    OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+  )
   const envVars: Record<string, string> = {}
   const authJson: PiAuthFile = {}
 
@@ -35,6 +53,15 @@ export async function loadSandboxProviderSecrets(
           credentials: { token: secret },
         }
       }
+      continue
+    }
+
+    if (
+      isDaytonaSecretsEligibleProvider(provider, { occBaseUrl }) &&
+      mountedSecretEnvVars.has(provider.envVarName)
+    ) {
+      // Mounted via Daytona Secrets placeholders — do not put plaintext in
+      // sandbox env or auth.json.
       continue
     }
 
@@ -71,7 +98,7 @@ export async function loadSandboxProviderSecrets(
   }
 }
 
-async function loadAllProviderSecrets(
+export async function loadConfiguredProviderSecrets(
   userId: string | undefined
 ): Promise<Map<string, string>> {
   if (process.env.VERCEL === "1") {

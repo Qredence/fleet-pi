@@ -1,12 +1,16 @@
 import { createHash } from "node:crypto"
+import {
+  WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+  workspaceVolumeShellKeepPattern,
+} from "../workspace/workspace-contract"
 import { executeCommand, uploadFile } from "./client"
 import type { Sandbox } from "@daytona/sdk"
 
-export const SANDBOX_PROJECT_ROOT = "/home/daytona/fleet-pi"
-export const SANDBOX_WORKSPACE_ROOT = `${SANDBOX_PROJECT_ROOT}/agent-workspace`
-export const SANDBOX_SESSION_MOUNT_PATH = `${SANDBOX_PROJECT_ROOT}/.fleet`
+/** Durable agent-workspace volume mount (only durable FS on the sandbox). */
+export const SANDBOX_WORKSPACE_ROOT = "/home/daytona/agent-workspace"
+/** Pre-adapter full-repo checkout path — remove on every prepare. */
+export const LEGACY_SANDBOX_ROOT = "/home/daytona/fleet-pi"
 export const SANDBOX_PI_AUTH_PATH = "/home/daytona/.pi/agent/auth.json"
-export const SANDBOX_SETTINGS_PATH = `${SANDBOX_PROJECT_ROOT}/.pi/settings.json`
 export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 
 const WORKSPACE_PI_DIRS = [
@@ -49,9 +53,7 @@ export function resolveRepositoryUrl(value: string | undefined): string {
 }
 
 export function buildPrepareSandboxCommand(repoUrl: string): string {
-  const repo = shellEscape(SANDBOX_PROJECT_ROOT)
   const workspace = shellEscape(SANDBOX_WORKSPACE_ROOT)
-  const session = shellEscape(SANDBOX_SESSION_MOUNT_PATH)
   const url = shellEscape(repoUrl)
   const piDirs = WORKSPACE_PI_DIRS.map(
     (dir) => `mkdir -p ${shellEscape(`${SANDBOX_WORKSPACE_ROOT}/${dir}`)}`
@@ -62,11 +64,30 @@ export function buildPrepareSandboxCommand(repoUrl: string): string {
   return [
     "set -euo pipefail",
     ensureGitInstalledCommand(),
-    migrateLegacyWorkspaceVolumeCommand(repo, workspace),
-    ensureProjectCheckoutCommand(repo, url),
+    removeLegacySandboxRootsCommand(),
+    migrateLegacyWorkspaceVolumeCommand(workspace),
     ensureAgentWorkspaceSeedCommand(workspace, url),
     piDirs,
-    `mkdir -p ${workspace} ${session}`,
+    `mkdir -p ${workspace}`,
+  ].join("\n")
+}
+
+/**
+ * Drop ephemeral leftover full-repo trees from older Fleet layouts / snapshots.
+ * Never delete a path that is (or contains) a volume mount — recreate instead.
+ */
+export function removeLegacySandboxRootsCommand(): string {
+  const legacy = shellEscape(LEGACY_SANDBOX_ROOT)
+  const legacyWorkspace = shellEscape(`${LEGACY_SANDBOX_ROOT}/agent-workspace`)
+  return [
+    `# Remove legacy full-repo path only when it is not a volume mount`,
+    `if [ -e ${legacy} ]; then`,
+    `if mountpoint -q ${legacy} 2>/dev/null || mountpoint -q ${legacyWorkspace} 2>/dev/null; then`,
+    `: # mounted legacy layout — sandbox will be recreated by the host`,
+    "else",
+    `rm -rf ${legacy}`,
+    "fi",
+    "fi",
   ].join("\n")
 }
 
@@ -142,49 +163,53 @@ function ensureGitInstalledCommand(): string {
   ].join("\n")
 }
 
-function migrateLegacyWorkspaceVolumeCommand(
-  repo: string,
-  workspace: string
-): string {
+/**
+ * Heal polluted volumes. Nested agent-workspace wins over root stubs.
+ * Foreign entries are quarantined on the durable volume.
+ * Exported for unit tests.
+ */
+export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
+  const keepPattern = workspaceVolumeShellKeepPattern()
+  const quarantine = `${workspace}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}`
   return [
-    `if [ -f ${workspace}/.git/config ] && [ -f ${workspace}/package.json ]; then`,
+    "polluted=0",
+    // Nested real workspace is always treated as pollution to flatten.
+    `if [ -f ${workspace}/agent-workspace/manifest.json ]; then polluted=1; fi`,
+    // Tighten monorepo fingerprints: require package.json with apps|packages,
+    // or .git with package.json — avoid false positives on lone user dirs.
+    `if { [ -d ${workspace}/apps ] || [ -d ${workspace}/packages ]; } && [ -f ${workspace}/package.json ]; then polluted=1; fi`,
+    `if [ -d ${workspace}/.git ] && [ -f ${workspace}/package.json ]; then polluted=1; fi`,
+    'if [ "$polluted" = "1" ]; then',
+    `mkdir -p ${quarantine}`,
+    // Nested wins: snapshot nested, quarantine foreign, then force-copy nested onto root.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
     `cp -a ${workspace}/agent-workspace/. "$tmpdir"/`,
-    `find ${workspace} -mindepth 1 -maxdepth 1 ! -name agent-workspace -exec rm -rf {} +`,
-    `cp -a "$tmpdir"/. ${workspace}/`,
-    'rm -rf "$tmpdir"',
-    "fi",
-    `mkdir -p ${repo}`,
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
-    'case "$(basename "$item")" in agent-workspace|manifest.json|instructions|system|memory|plans|skills|evals|artifacts|scratch|pi|indexes) continue;; esac',
-    'if [ -e "$item" ]; then',
-    `mv "$item" ${repo}/ 2>/dev/null || true`,
-    "fi",
+    `[ -e "$item" ] || continue`,
+    `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
+    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
     "done",
+    `cp -a "$tmpdir"/. ${workspace}/`,
+    `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
+    "else",
+    // No nested workspace: quarantine foreign only; keep contract entries.
+    `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
+    `[ -e "$item" ] || continue`,
+    `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
+    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    "done",
+    "fi",
     "fi",
   ].join("\n")
 }
 
-function ensureProjectCheckoutCommand(repo: string, url: string): string {
-  return [
-    `if [ ! -d ${repo}/.git ]; then`,
-    "tmpdir=$(mktemp -d)",
-    `git clone --depth 1 ${url} "$tmpdir"`,
-    `mkdir -p ${repo}`,
-    `for item in "$tmpdir"/* "$tmpdir"/.[!.]* "$tmpdir"/..?*; do`,
-    'name=$(basename "$item")',
-    'if [ "$name" = "agent-workspace" ]; then continue; fi',
-    'if [ -e "$item" ]; then',
-    `cp -a "$item" ${repo}/`,
-    "fi",
-    "done",
-    'rm -rf "$tmpdir"',
-    "fi",
-  ].join("\n")
-}
-
-function ensureAgentWorkspaceSeedCommand(
+/**
+ * Sparse-seed only when manifest.json is missing. Non-clobber copy preserves
+ * any existing files; bootstrap fills remaining stubs.
+ * Exported for unit tests.
+ */
+export function ensureAgentWorkspaceSeedCommand(
   workspace: string,
   url: string
 ): string {
@@ -195,7 +220,8 @@ function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd.
     '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
     `mkdir -p ${workspace}`,
-    `cp -a "$tmpdir/agent-workspace/." ${workspace}/`,
+    // Non-clobber: preserve any existing files on a partially filled volume.
+    `cp -an "$tmpdir/agent-workspace/." ${workspace}/`,
     'rm -rf "$tmpdir"',
     "fi",
   ].join("\n")

@@ -1,101 +1,114 @@
 # Daytona Stateful Sandbox
 
-This runbook describes Fleet Pi's Daytona sandbox integration: per-user isolated sandboxes with persistent workspace volumes, gated by Better Auth sessions.
+This runbook describes Fleet Pi's Daytona sandbox integration: per-user isolated sandboxes with a durable agent-workspace volume, gated by Better Auth and **BYOK Daytona API keys**.
 
 ## Architecture
 
-Fleet Pi provisions per-user Daytona sandboxes for authenticated users. The server holds a single org-level `DAYTONA_API_KEY` and manages sandboxes on behalf of users.
+Fleet Pi provisions one Daytona sandbox per authenticated user, using **that user's** Daytona API key (Settings → Providers → Daytona / `pi_user_providers`). The agent runs on the host; tools run in the sandbox via the Fleet adapter extension (`.pi/extensions/daytona-sandbox`), aligned with `@daytona/pi` ops patterns.
 
 ```
 Authenticated user → POST /api/chat (with session cookie)
   → Better Auth extracts userId
-  → isDaytonaEnabled(userId) → true
+  → resolveDaytonaRuntimeApiKey(userId) → user BYOK key (Vercel) or env fallback (local)
+  → isDaytonaEnabled(userId, key) → true
   → getUserSandbox(userId) → provisions or resumes per-user sandbox
-  → Pi tool operations (bash/read/write/edit) route to sandbox
+  → Fleet adapter registers sandbox-backed bash/read/write/edit/ls/find/grep
   → agent-workspace volume persists across sandbox restarts
 ```
 
-**Graceful degradation:** When `DAYTONA_API_KEY` is unset or user is unauthenticated, all operations fall back to host-local execution.
+**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Vercel, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
+
+**CLI:** `npm:@daytona/pi` is installed for local `pi --daytona`. The web resource loader excludes that package so it does not collide with the Fleet adapter.
 
 ## Tenancy model
 
-| Resource         | Naming Convention            | Lifecycle                                              |
-| ---------------- | ---------------------------- | ------------------------------------------------------ |
-| Sandbox          | `fleet-pi-user-{userId}`     | Stopped on runtime TTL expiry, resumed on next session |
-| Workspace volume | `fleet-pi-ws-{userId}`       | Persists across sandbox restarts/deletions             |
-| Session volume   | `fleet-pi-sessions-{userId}` | Optional, gated by `FLEET_PI_PERSIST_SESSIONS=true`    |
-| Snapshot         | `fleet-pi-v{version}`        | Shared across users, speeds up sandbox creation        |
+| Resource         | Naming Convention        | Lifecycle                                              |
+| ---------------- | ------------------------ | ------------------------------------------------------ |
+| Sandbox          | `fleet-pi-user-{userId}` | Stopped on runtime TTL expiry, resumed on next session |
+| Workspace volume | `fleet-pi-ws-{userId}`   | Persists across sandbox restarts/deletions             |
+| Snapshot         | `fleet-pi-v{version}`    | Shared when available; speeds up sandbox creation      |
+
+**Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an`. Do not delete the workspace volume unless intentionally resetting that user.
+
+**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Do not auto-delete volumes.
 
 Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 
 ## Environment
 
 ```bash
-# Required for Daytona features
-DAYTONA_API_KEY=...          # Org-level API key from app.daytona.io/dashboard/keys
+# Local/dev fallback only (ignored as sole key source on Vercel)
+DAYTONA_API_KEY=...          # Optional local fallback
 BETTER_AUTH_SECRET=...       # Required for user authentication
 
 # Optional
 DAYTONA_TARGET=us            # Region (us or eu)
 DAYTONA_API_URL=...          # Defaults to Daytona Cloud
 DAYTONA_WEBHOOK_SECRET=...   # Required before webhook events mutate local cache
-FLEET_PI_PERSIST_SESSIONS=true  # Enable .fleet/ session volume persistence
+FLEET_PI_REPOSITORY_URL=...  # HTTPS repo used to sparse-seed agent-workspace
 AWS_REGION=us-east-1         # For Bedrock (LLM provider)
 ```
 
+On Vercel, each logged-in user must store their Daytona API key as the `daytona` provider secret.
+
 ## Sandbox paths
 
-| Purpose                         | Path                                     |
-| ------------------------------- | ---------------------------------------- |
-| Repo root                       | `/home/daytona/fleet-pi`                 |
-| Workspace volume mount          | `/home/daytona/fleet-pi/agent-workspace` |
-| Session volume mount (optional) | `/home/daytona/fleet-pi/.fleet`          |
-| Web preview port                | `3000`                                   |
+| Purpose                | Path                                |
+| ---------------------- | ----------------------------------- |
+| Workspace volume mount | `/home/daytona/agent-workspace`     |
+| Pi auth (non-Secrets)  | `/home/daytona/.pi/agent/auth.json` |
+| Web preview port       | `3000`                              |
+
+## Provider credentials (Daytona Secrets)
+
+LLM API keys that have known HTTPS API hosts are synced into the **user's** Daytona organization as Secrets (`fleet_pi_<providerId>`) and mounted on sandbox create via the `secrets` map. The sandbox only sees opaque placeholders (`dtn_secret_*`); Daytona substitutes the real value on egress to the allowlisted hosts.
+
+| Provider                                 | Hosts (examples)                    |
+| ---------------------------------------- | ----------------------------------- |
+| Google Gemini                            | `generativelanguage.googleapis.com` |
+| OpenAI                                   | `api.openai.com`                    |
+| Anthropic                                | `api.anthropic.com`                 |
+| Mistral / Groq / OpenRouter / AI Gateway | their public API hosts              |
+| OpenAI Chat Completions                  | hostname from HTTPS base URL        |
+
+**Still injected as plaintext** (cannot use Secrets egress): OAuth (GitHub Copilot), Google Vertex ADC, Bedrock signing keys, Ollama base URL, OCC base URL / model ID.
+
+When Secrets-backed credentials change while a sandbox is cached, Fleet **recreates** the sandbox (same volume) so placeholders remount. Plaintext `auth.json` sync alone cannot update create-time Secrets.
+
+If the Daytona Secrets API is unavailable for the user's org (for example `Access denied` on list/create), Fleet falls back to the pre-Phase-2 behavior: inject eligible API keys as plaintext in sandbox `auth.json` / env instead of failing sandbox provision. If sync fails partway through upserts, Fleet keeps the partial `secrets` map for providers that succeeded and recreates sandboxes that still have stale Secret placeholders when falling back to plaintext.
 
 ## How it works
 
-### Tool execution routing (Phase 2)
+### Tool execution (Fleet adapter)
 
-When Daytona is enabled for a user, the Pi runtime creates custom tool definitions backed by sandbox operations:
+When Daytona is enabled, `.pi/extensions/daytona-sandbox` registers sandbox-backed tools using `createSandboxOperations` from `apps/web`:
 
-- `BashOperations` → `sandbox.process.executeCommand()`
-- `ReadOperations` → `sandbox.fs.downloadFile()`
-- `WriteOperations` → `sandbox.fs.uploadFile()`
-- `EditOperations` → download + apply diff + upload
-- `GrepOperations`, `FindOperations`, `LsOperations` → sandbox shell commands
+- `bash`, `read`, `write`, `edit`, `ls`, `find`, `grep` → Daytona sandbox FS/process
+- `daytona_get_status` — read-only status of the user's managed sandbox
+- `preview_url` — preview link for a port in the sandbox
 
-These replace the built-in host-local tools via the Pi SDK's `customTools` mechanism.
+These replace host-local builtins when a sandbox is attached on `session_start`. Plan mode does not allow Daytona status/preview tools.
 
-### Workspace bootstrap (Phase 3)
+### Workspace bootstrap
 
 Bootstrap uses a `WorkspaceFS` abstraction that dispatches to either:
 
 - `createLocalWorkspaceFS()` — wraps `node:fs/promises` (default)
 - `createSandboxWorkspaceFS(sandbox)` — wraps Daytona SDK operations
 
-The volume content persists across sandbox restarts. Bootstrap only seeds missing files through the workspace API (`bootstrapAgentWorkspace()`), not through sandbox prep shell commands.
+The volume content persists across sandbox restarts. Prepare seeds only empty volumes (no `manifest.json`) using non-clobber copy; bootstrap then fills missing stubs without overwriting user-authored files.
 
-### Snapshot optimization (Phase 4)
+### Snapshot optimization
 
-Snapshots can pre-bake the Fleet Pi environment (Node 22, pnpm, system deps). When creating a new sandbox, the system tries the latest available `fleet-pi-v*` snapshot first. If none exists, new sandboxes fall back to the `node:22-bookworm` image. Shared across all users.
+Snapshots can pre-bake the Fleet Pi environment (Node 22, pnpm, system deps). When creating a new sandbox, the system tries the latest available `fleet-pi-v*` snapshot first. If none exists, new sandboxes fall back to the `node:22-bookworm` image.
 
-### Preview URLs (Phase 4)
+### Preview URLs
 
 `GET /api/sandbox/preview?port=3000` returns a Daytona preview URL for the authenticated user's sandbox. Requires an active sandbox.
 
-### Session persistence (Phase 5)
-
-When `FLEET_PI_PERSIST_SESSIONS=true`, a second volume (`fleet-pi-sessions-{userId}`) is mounted at `/home/daytona/fleet-pi/.fleet` to persist chat transcripts across sandbox restarts.
-
-## Chat tool workflow
-
-The `.pi/extensions/daytona-sandbox` extension still provides 15 explicit tools for direct sandbox management (Agent/Harness mode only). These are separate from the transparent tool routing above — they let the agent manage the authenticated user's sandbox, volumes, and snapshots explicitly.
-
-Plan mode remains read-only and does not allow Daytona sandbox tools.
-
 ## Safety notes
 
-- Per-user volumes guarantee workspace isolation between users
+- Per-user volumes (under each user's Daytona account / BYOK key) isolate workspaces
 - Deleting a sandbox does NOT delete volumes
 - Deleting a volume permanently removes all data
 - FUSE volumes support one writer per path — one sandbox per user enforces this naturally
@@ -114,18 +127,13 @@ Each user (default): 1 vCPU + 1 GB RAM + 3 GB disk when running.
 
 ## Key files
 
-| File                                             | Purpose                                             |
-| ------------------------------------------------ | --------------------------------------------------- |
-| `apps/web/src/lib/daytona/user-sandbox.ts`       | Per-user sandbox lifecycle manager                  |
-| `apps/web/src/lib/daytona/sandbox-operations.ts` | Pi SDK operations backed by Daytona                 |
-| `apps/web/src/lib/daytona/snapshot-config.ts`    | Snapshot management                                 |
-| `apps/web/src/lib/daytona/client.ts`             | Low-level Daytona SDK wrapper                       |
-| `apps/web/src/lib/workspace/workspace-fs.ts`     | WorkspaceFS abstraction (local/sandbox)             |
-| `apps/web/src/lib/pi/server-runtime.ts`          | Runtime wiring (sandbox provisioning + customTools) |
-| `apps/web/src/routes/api/sandbox/preview.ts`     | Auth-gated preview URL endpoint                     |
-| `apps/web/src/routes/api/webhooks/daytona.ts`    | Webhook lifecycle event handler                     |
-| `.pi/extensions/daytona-sandbox.ts`              | 15 explicit Daytona tools for agent                 |
-
-Webhook lifecycle events are accepted for observability without a secret, but
-cache-mutating side effects only run when `x-daytona-signature` matches
-`DAYTONA_WEBHOOK_SECRET`.
+| File                                               | Purpose                                           |
+| -------------------------------------------------- | ------------------------------------------------- |
+| `apps/web/src/lib/daytona/user-sandbox.ts`         | Per-user sandbox + volume provisioning            |
+| `apps/web/src/lib/daytona/sandbox-prepare.ts`      | Sparse seed + volume migration                    |
+| `apps/web/src/lib/daytona/sandbox-operations.ts`   | Tool ops for bash/read/write/edit/grep/find/ls    |
+| `apps/web/src/lib/daytona/secret-hosts.ts`         | HTTPS allowlists for Secrets-eligible providers   |
+| `apps/web/src/lib/daytona/sync-daytona-secrets.ts` | Upsert org Secrets + createSandbox secrets map    |
+| `.pi/extensions/daytona-sandbox.ts`                | Fleet adapter: tool registration + status/preview |
+| `apps/web/src/lib/pi/exclude-stock-daytona-pi.ts`  | Exclude `npm:@daytona/pi` from web loader         |
+| `apps/web/src/lib/pi/server-runtime.ts`            | Eager warm-up; no customTools                     |

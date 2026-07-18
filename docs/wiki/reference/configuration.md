@@ -67,14 +67,13 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ### Daytona Sandboxes (optional)
 
-| Variable                    | Default                                    | Description                                                                                                                                                                                                                   |
-| --------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DAYTONA_API_KEY`           | —                                          | Org-level Daytona API key fallback. On Vercel, authenticated users can also store a per-user `daytona` provider secret in `pi_user_providers`; chat and sandbox preview resolve that key before falling back to this env var. |
-| `DAYTONA_API_URL`           | `https://app.daytona.io/api`               | Daytona API base URL. The SDK default is used when unset.                                                                                                                                                                     |
-| `DAYTONA_TARGET`            | —                                          | Daytona target (region/runner). Leave unset to use the Daytona default.                                                                                                                                                       |
-| `DAYTONA_WEBHOOK_SECRET`    | —                                          | Shared secret expected in the `x-daytona-signature` header for incoming Daytona webhooks. When unset, webhook side effects are skipped but requests are still accepted.                                                       |
-| `FLEET_PI_REPOSITORY_URL`   | `https://github.com/Qredence/fleet-pi.git` | HTTPS repo URL shallow-cloned into new Daytona sandboxes on first launch.                                                                                                                                                     |
-| `FLEET_PI_PERSIST_SESSIONS` | —                                          | Set to `true` to mount a per-user `.fleet` session volume in Daytona sandboxes.                                                                                                                                               |
+| Variable                  | Default                                    | Description                                                                                                                                                             |
+| ------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DAYTONA_API_KEY`         | —                                          | Local/dev Daytona API key fallback. On Vercel, each user must BYOK a `daytona` provider secret in `pi_user_providers` — env alone does not enable Daytona.              |
+| `DAYTONA_API_URL`         | `https://app.daytona.io/api`               | Daytona API base URL. The SDK default is used when unset.                                                                                                               |
+| `DAYTONA_TARGET`          | —                                          | Daytona target (region/runner). Leave unset to use the Daytona default.                                                                                                 |
+| `DAYTONA_WEBHOOK_SECRET`  | —                                          | Shared secret expected in the `x-daytona-signature` header for incoming Daytona webhooks. When unset, webhook side effects are skipped but requests are still accepted. |
+| `FLEET_PI_REPOSITORY_URL` | `https://github.com/Qredence/fleet-pi.git` | HTTPS repo URL used to sparse-seed `agent-workspace/` into empty Daytona volumes.                                                                                       |
 
 ---
 

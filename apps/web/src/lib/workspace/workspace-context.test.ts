@@ -5,13 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { resolveWorkspaceContext } from "./workspace-context"
 
-const { mockExecuteCommand, mockGetSession, mockGetUserSandbox } = vi.hoisted(
-  () => ({
+const { mockExecuteCommand, mockGetSession, mockResolveUserSandboxContext } =
+  vi.hoisted(() => ({
     mockExecuteCommand: vi.fn(),
     mockGetSession: vi.fn(),
-    mockGetUserSandbox: vi.fn(),
-  })
-)
+    mockResolveUserSandboxContext: vi.fn(),
+  }))
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {
@@ -21,12 +20,15 @@ vi.mock("@/lib/auth/server", () => ({
   },
 }))
 
+vi.mock("@/lib/daytona/resolve-user-sandbox-context", () => ({
+  resolveUserSandboxContext: mockResolveUserSandboxContext,
+}))
+
 vi.mock("@/lib/daytona/client", () => ({
   executeCommand: mockExecuteCommand,
 }))
 
 vi.mock("@/lib/daytona/user-sandbox", () => ({
-  getUserSandbox: mockGetUserSandbox,
   isDaytonaEnabled: (userId?: string) =>
     Boolean(userId) && Boolean(process.env.DAYTONA_API_KEY),
 }))
@@ -42,7 +44,7 @@ beforeEach(() => {
   delete process.env.FLEET_PI_REPO_ROOT
   mockExecuteCommand.mockReset()
   mockGetSession.mockReset()
-  mockGetUserSandbox.mockReset()
+  mockResolveUserSandboxContext.mockReset()
 })
 
 afterEach(() => {
@@ -56,7 +58,7 @@ afterEach(() => {
 })
 
 describe("resolveWorkspaceContext", () => {
-  it("uses Daytona workspace filesystem with local SQLite auth fallback", async () => {
+  it("uses the authenticated Daytona workspace context", async () => {
     const projectRoot = mkdtempSync(
       join(tmpdir(), "fleet-pi-workspace-context-")
     )
@@ -66,25 +68,24 @@ describe("resolveWorkspaceContext", () => {
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },
     })
-    const sandbox = {}
-    mockGetUserSandbox.mockResolvedValue({ sandbox })
-    mockExecuteCommand.mockResolvedValue({ exitCode: 0, result: "" })
+    const workspaceFS = {}
+    mockResolveUserSandboxContext.mockResolvedValue({
+      workspaceFS,
+      workspaceRoot: "/home/daytona/agent-workspace",
+    })
 
     const context = await resolveWorkspaceContext(
       new Request("http://localhost:3000/api/workspace/tree")
     )
 
-    expect(mockGetUserSandbox).toHaveBeenCalledWith({
+    expect(mockResolveUserSandboxContext).toHaveBeenCalledWith({
       userEmail: "user@example.test",
       userId: "user-1",
       apiKey: "daytona-test-key",
+      surface: "workspace",
     })
-    expect(mockExecuteCommand).toHaveBeenCalledWith(
-      sandbox,
-      "mkdir -p /home/daytona/fleet-pi/agent-workspace"
-    )
-    expect(context.workspaceRoot).toBe("/home/daytona/fleet-pi/agent-workspace")
-    expect(context.workspaceFS).toBeDefined()
+    expect(context.workspaceRoot).toBe("/home/daytona/agent-workspace")
+    expect(context.workspaceFS).toBe(workspaceFS)
   })
 })
 

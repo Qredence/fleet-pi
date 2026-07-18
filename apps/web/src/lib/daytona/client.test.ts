@@ -43,12 +43,12 @@ describe("Daytona client", () => {
     expect(
       createVolumeMount({
         volumeId: "vol-1",
-        mountPath: "/home/daytona/fleet-pi/agent-workspace",
+        mountPath: "/home/daytona/agent-workspace",
         subpath: "projects/fleet-pi",
       })
     ).toEqual({
       volumeId: "vol-1",
-      mountPath: "/home/daytona/fleet-pi/agent-workspace",
+      mountPath: "/home/daytona/agent-workspace",
       subpath: "projects/fleet-pi",
     })
   })
@@ -81,7 +81,7 @@ describe("Daytona client", () => {
       volumes: [
         createVolumeMount({
           volumeId: "vol-1",
-          mountPath: "/home/daytona/fleet-pi/agent-workspace",
+          mountPath: "/home/daytona/agent-workspace",
         }),
       ],
     })
@@ -95,9 +95,31 @@ describe("Daytona client", () => {
       volumes: [
         {
           volumeId: "vol-1",
-          mountPath: "/home/daytona/fleet-pi/agent-workspace",
+          mountPath: "/home/daytona/agent-workspace",
         },
       ],
+    })
+  })
+
+  it("passes Daytona Secrets map into sandbox creation", async () => {
+    const calls: Array<unknown> = []
+    const sandbox = { id: "sandbox-1" } as Sandbox
+    const client = {
+      create: (params: unknown) => {
+        calls.push(params)
+        return Promise.resolve(sandbox)
+      },
+    } as unknown as Daytona
+
+    await createSandbox(client, {
+      name: "fleet-pi",
+      image: "node:22-bookworm",
+      secrets: { GEMINI_API_KEY: "fleet_pi_google" },
+    })
+
+    expect(calls[0]).toMatchObject({
+      name: "fleet-pi",
+      secrets: { GEMINI_API_KEY: "fleet_pi_google" },
     })
   })
 
