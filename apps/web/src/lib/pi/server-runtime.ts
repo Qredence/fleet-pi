@@ -62,6 +62,7 @@ import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "@/lib/daytona/tool-context"
+import { logger } from "@/lib/logger"
 
 const DEFAULT_RUNTIME_TTL_MS = 600_000
 
@@ -196,6 +197,7 @@ export async function createPiRuntime(
 ) {
   const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
   const daytonaEnabled = isDaytonaEnabled(metadata.userId, daytonaApiKey)
+  let pendingWarmUp: Promise<unknown> | undefined
   if (daytonaEnabled && !context.workspaceFS && metadata.userId) {
     const cachedSandbox = getCachedUserSandbox(metadata.userId)
     if (cachedSandbox) {
@@ -206,14 +208,12 @@ export async function createPiRuntime(
       context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
       context.workspaceBootstrap = undefined
     } else {
-      // Never block chat streaming on cold Daytona warm-up; tools can use the
-      // local project root until the sandbox is ready in the background.
-      void resolveUserSandboxContext({
+      pendingWarmUp = resolveUserSandboxContext({
         userId: metadata.userId,
         userEmail: metadata.userEmail,
         apiKey: daytonaApiKey!,
         surface: "chat",
-      }).catch(() => undefined)
+      })
     }
   }
 
@@ -266,6 +266,18 @@ export async function createPiRuntime(
       sessionManager.getSessionFile(),
       metadata.userId
     )
+    if (pendingWarmUp) {
+      void pendingWarmUp.catch((error) => {
+        logger.warn(
+          { error, userId: metadata.userId },
+          "[daytona] background warm-up failed; clearing fail-closed tracking"
+        )
+        untrackDaytonaToolSession(
+          sessionManager.getSessionId(),
+          sessionManager.getSessionFile()
+        )
+      })
+    }
   }
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd,
