@@ -19,6 +19,12 @@
       "skillPath": "skills/daytona/SKILL.md",
       "computedHash": "5ddd9f9edddefb8e950e900e2d038f01f1efb8f6273d4df29dbfebfcc438e37c"
     },
+    "domain-modeling": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/domain-modeling/SKILL.md",
+      "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
@@ -35,7 +41,13 @@
       "source": "thesysdev/openui",
       "sourceType": "github",
       "skillPath": "skills/openui/SKILL.md",
-      "computedHash": "4c9c63ba16d3ec875f16c3232e95e949561633cf1e8507f89ca3868422f97fad"
+      "computedHash": "5b337cac238a31210016dec987aca7bc1713ec2310f4c72291802b9c7a105ba3"
+    },
+    "ui-skills-root": {
+      "source": "ibelick/ui-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-skills-root/SKILL.md",
+      "computedHash": "e3120361faa5a0ef5fba9b67d91e00c90002f3c9ca092c5325d2391dab8c619e"
     }
   }
 }

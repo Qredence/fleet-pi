@@ -57,4 +57,4 @@ Most endpoints accept an optional Better Auth session cookie. When a valid sessi
 
 The primary chat endpoint (`POST /api/chat`) accepts a JSON body and returns newline-delimited JSON (`application/x-ndjson`). All other endpoints accept and return `application/json`.
 
-Detailed type definitions are in [`apps/web/src/lib/pi/chat-protocol.ts`](../../../apps/web/src/lib/pi/chat-protocol.ts). See [endpoints.md](./endpoints.md) for per-endpoint documentation.
+Detailed type definitions are in [`packages/pi-protocol/src/chat-protocol.ts`](../../../packages/pi-protocol/src/chat-protocol.ts). See [endpoints.md](./endpoints.md) for per-endpoint documentation.

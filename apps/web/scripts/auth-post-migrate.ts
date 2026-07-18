@@ -4,6 +4,8 @@ import { Pool } from "@neondatabase/serverless"
 import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../src/lib/db/auth-postgres-post-migrate"
 
 const cwd = process.cwd()
+const preservedMigrationDatabaseUrl =
+  process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL
 dotenv.config({ path: path.resolve(cwd, ".env") })
 dotenv.config({ path: path.resolve(cwd, ".env.local"), override: true })
 dotenv.config({ path: path.resolve(cwd, "../..", ".env") })
@@ -11,6 +13,10 @@ dotenv.config({
   path: path.resolve(cwd, "../..", ".env.local"),
   override: true,
 })
+if (preservedMigrationDatabaseUrl) {
+  process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL =
+    preservedMigrationDatabaseUrl
+}
 
 async function main() {
   const connectionString = process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL

@@ -13,7 +13,7 @@ Durable candidate plans for Fleet Pi self-improvement and Pi-native alignment.
 
 - Goal: Extend resource management toward Pi package lifecycle parity: npm/git specs, pinning, updates, package filters, trust metadata, and activation state.
 - Why now: The package catalog has useful memory/orchestration packages, but `resource_install` currently covers a narrower local-resource flow.
-- Inputs: `.pi/extensions/resource-install.ts`, `.pi/extensions/lib/resource-install.ts`, `apps/web/src/lib/pi/server-catalog.ts`, Resources panel.
+- Inputs: `.pi/extensions/resource-install.ts`, `.pi/extensions/lib/resource-install.ts`, `apps/web/src/lib/pi/runtime/model-catalog.ts`, Resources panel.
 - Next step: Design a package trust/activation policy before adding install/update commands.
 
 ## Candidate plan: reasoning controls UI

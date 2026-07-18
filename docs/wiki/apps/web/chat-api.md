@@ -33,7 +33,7 @@ type ChatRequest = {
 }
 ```
 
-Defined in `packages/hax-design/src/lib/pi/chat-protocol.ts`, validated at runtime with the Zod schema in `packages/hax-design/src/lib/pi/chat-protocol.zod.ts`.
+Defined in `packages/pi-protocol/src/chat-protocol.ts`, validated at runtime with the Zod schema in `packages/pi-protocol/src/chat-protocol.zod.ts`.
 
 ### Follow-up queuing
 
@@ -75,7 +75,7 @@ Each line in the response body is a JSON-encoded `ChatStreamEvent`. The client r
 | `done`       | Turn complete                        | `runId`, `message: ChatMessage`, `sessionId`, `sessionFile`, `sessionReset?` |
 | `error`      | Fatal or turn error                  | `message`, `runId?`                                                          |
 
-Types are defined in `apps/web/src/lib/pi/chat-protocol.ts`.
+Types are defined in `packages/pi-protocol/src/chat-protocol.ts`.
 
 ---
 
@@ -182,14 +182,14 @@ Delivers a user's answer to an in-progress `questionnaire` tool call or a plan-m
 Returns available models from Pi's `ModelRegistry`, the selected model key, and any diagnostics.
 
 **File:** `apps/web/src/routes/api/chat/models.ts`
-**Logic:** `apps/web/src/lib/pi/server-catalog.ts` → `loadChatModels()`
+**Logic:** `apps/web/src/lib/pi/runtime/model-catalog.ts` → `loadChatModels()`
 
 ### GET /api/chat/resources
 
 Returns loaded skills, prompts, extensions, themes, and diagnostics from Pi's `ResourceLoader` merged with workspace-local resources.
 
 **File:** `apps/web/src/routes/api/chat/resources.ts`
-**Logic:** `apps/web/src/lib/pi/server-catalog.ts` → `loadChatResources()`
+**Logic:** `apps/web/src/lib/pi/runtime/resource-catalog.ts` → `loadChatResources()`
 
 ### GET /api/chat/settings (+ PUT)
 

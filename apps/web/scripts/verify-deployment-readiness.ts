@@ -14,6 +14,26 @@ import { resolveDeploymentTrustZone } from "../src/lib/deployment/trust-zone"
 import type { DeploymentReadinessInput } from "../src/lib/deployment/readiness"
 
 const cwd = process.cwd()
+const preservedDeploymentEnv = {
+  FLEET_PI_AUTH_DATABASE_URL: process.env.FLEET_PI_AUTH_DATABASE_URL,
+  FLEET_PI_CHAT_DATABASE_URL: process.env.FLEET_PI_CHAT_DATABASE_URL,
+  FLEET_PI_AUTH_MIGRATION_DATABASE_URL:
+    process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL,
+  FLEET_PI_CHAT_MIGRATION_DATABASE_URL:
+    process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL,
+  FLEET_PI_DEPLOYMENT_TRUST_ZONE: process.env.FLEET_PI_DEPLOYMENT_TRUST_ZONE,
+  FLEET_PI_PREVIEW_DATABASE_MARKER:
+    process.env.FLEET_PI_PREVIEW_DATABASE_MARKER,
+  FLEET_PI_PRODUCTION_DATABASE_MARKER:
+    process.env.FLEET_PI_PRODUCTION_DATABASE_MARKER,
+  FLEET_PI_PRODUCTION_AUTH_DATABASE_URL:
+    process.env.FLEET_PI_PRODUCTION_AUTH_DATABASE_URL,
+  FLEET_PI_PRODUCTION_CHAT_DATABASE_URL:
+    process.env.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL,
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  BETTER_AUTH_TRUSTED_ORIGINS: process.env.BETTER_AUTH_TRUSTED_ORIGINS,
+}
 dotenv.config({ path: path.resolve(cwd, ".env") })
 dotenv.config({ path: path.resolve(cwd, ".env.local"), override: true })
 dotenv.config({ path: path.resolve(cwd, "../..", ".env") })
@@ -21,6 +41,11 @@ dotenv.config({
   path: path.resolve(cwd, "../..", ".env.local"),
   override: true,
 })
+for (const [key, value] of Object.entries(preservedDeploymentEnv)) {
+  if (value !== undefined && value !== "") {
+    process.env[key] = value
+  }
+}
 
 async function queryAuthDatabaseState(connectionString: string) {
   const pool = new Pool({ connectionString })

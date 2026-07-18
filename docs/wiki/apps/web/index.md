@@ -54,26 +54,24 @@ apps/web/
 │   │       └── webhooks/
 │   └── lib/
 │       ├── pi/                  # Pi client + server integration
-│       │   ├── chat-protocol.ts         # Re-exported from @workspace/hax-design
+│       │   ├── runtime/                 # Session factory, catalogs, hot reload
 │       │   ├── server-runtime.ts        # Runtime cache, session lifecycle
 │       │   ├── server-chat-stream.ts    # Event normalization
 │       │   ├── server-sessions.ts       # Session creation & hydration
-│       │   ├── server-catalog.ts        # Model & resource loading
 │       │   ├── server-shared.ts         # Session services helpers
-│       │   ├── server-settings.ts       # Settings read/write
 │       │   ├── server.ts                # Re-exports for server handlers
 │       │   ├── plan-mode.ts             # Plan mode logic & extension
 │       │   ├── plan-state.ts            # Plan state machine
 │       │   ├── plan-parser.ts           # Plan: / [DONE:n] parsing
 │       │   ├── plan-questionnaire.ts    # questionnaire tool registration
 │       │   ├── command-policy.ts        # Bash allowlist for Plan mode
-│       │   ├── circuit-breaker.ts       # Bedrock circuit breaker
+│       │   ├── circuit-breaker.ts       # Configured-provider circuit breaker
 │       │   ├── use-pi-chat.ts           # React hook — chat state
 │       │   ├── use-chat-shell-state.ts  # React hook — shell state
 │       │   ├── use-chat-view.ts         # React hooks — session labels, suggestions
 │       │   ├── use-pending-question-bar.ts
 │       │   ├── chat-queries.ts          # TanStack Query wrappers
-│       │   └── chat-helpers.ts
+│       │   └── handle-chat-turn.ts      # Stream turn ownership
 │       ├── auth/                # Better Auth setup
 │       ├── daytona/             # Daytona sandbox integration
 │       ├── workspace/           # agent-workspace file access
@@ -87,20 +85,20 @@ apps/web/
 
 ## Tech stack
 
-| Layer                | Choice                                                                   |
-| -------------------- | ------------------------------------------------------------------------ |
-| Framework            | TanStack Start (file-based SSR + API routes via Nitro)                   |
-| UI                   | React 19                                                                 |
-| Bundler              | Vite                                                                     |
-| Routing              | TanStack Router (auto-generated `routeTree.gen.ts`)                      |
-| Styling              | Tailwind CSS v4 (config in `packages/hax-design/src/styles/globals.css`) |
-| Server runtime       | Nitro (Node adapter)                                                     |
-| LLM integration      | `@earendil-works/pi-coding-agent` + Amazon Bedrock                       |
-| Auth                 | Better Auth                                                              |
-| Database (optional)  | Neon Postgres (`FLEET_PI_CHAT_DATABASE_URL`)                             |
-| Sandboxes (optional) | Daytona (`FLEET_PI_DAYTONA_*`)                                           |
-| Data fetching        | TanStack Query                                                           |
-| Component library    | `@workspace/hax-design` (packages/hax-design)                            |
+| Layer                | Choice                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Framework            | TanStack Start (file-based SSR + API routes via Nitro)                                                            |
+| UI                   | React 19                                                                                                          |
+| Bundler              | Vite                                                                                                              |
+| Routing              | TanStack Router (auto-generated `routeTree.gen.ts`)                                                               |
+| Styling              | Tailwind CSS v4 (config in `packages/hax-design/src/styles/globals.css`)                                          |
+| Server runtime       | Nitro (Node adapter)                                                                                              |
+| LLM integration      | `@earendil-works/pi-coding-agent` + configured Pi provider (default: OpenAI-compatible `openai-chat-completions`) |
+| Auth                 | Better Auth                                                                                                       |
+| Database (optional)  | Neon Postgres (`FLEET_PI_CHAT_DATABASE_URL`)                                                                      |
+| Sandboxes (optional) | Daytona (`FLEET_PI_DAYTONA_*`)                                                                                    |
+| Data fetching        | TanStack Query                                                                                                    |
+| Component library    | `@workspace/hax-design` (packages/hax-design)                                                                     |
 
 ---
 

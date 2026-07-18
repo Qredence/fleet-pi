@@ -24,6 +24,8 @@ import {
 import type { PoolClient } from "@neondatabase/serverless"
 
 const cwd = process.cwd()
+const preservedMigrationDatabaseUrl =
+  process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL
 dotenv.config({ path: path.resolve(cwd, ".env") })
 dotenv.config({ path: path.resolve(cwd, ".env.local"), override: true })
 dotenv.config({ path: path.resolve(cwd, "../..", ".env") })
@@ -31,6 +33,10 @@ dotenv.config({
   path: path.resolve(cwd, "../..", ".env.local"),
   override: true,
 })
+if (preservedMigrationDatabaseUrl) {
+  process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL =
+    preservedMigrationDatabaseUrl
+}
 
 async function isMigrationApplied(client: PoolClient, migrationId: string) {
   const result = await client.query<{ id: string }>(

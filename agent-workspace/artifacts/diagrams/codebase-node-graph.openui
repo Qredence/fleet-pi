@@ -88,7 +88,7 @@ webDetails = Card("Role & Graph Integration", Stack([
   Divider("Graph Relationships"),
   KeyValue("Incoming Nodes (In-edges)", "User Client, Daytona Webhooks, Better Auth Callback"),
   KeyValue("Outgoing Nodes (Out-edges)", "packages/hax-design, .pi Runtime, agent-workspace/"),
-  KeyValue("Critical Shared Types", "packages/hax-design/src/lib/pi/chat-protocol.ts")
+  KeyValue("Critical Shared Types", "packages/pi-protocol/src/chat-protocol.ts")
 ], "column", "sm"), "info", "full")
 
 webEndpointsTable = Card("Key Module Entries", Table(

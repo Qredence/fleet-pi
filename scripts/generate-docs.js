@@ -161,7 +161,7 @@ graph TD
     end
 
     subgraph External["External Services"]
-        GoogleGemini[Google Gemini via Pi google provider]
+        ConfiguredProvider[OpenAI-compatible provider via Pi openai-chat-completions]
         Daytona[Daytona per-user sandboxes]
     end
 
@@ -182,7 +182,7 @@ graph TD
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> GoogleGemini
+    CircuitBreaker --> ConfiguredProvider
     PiServer --> SandboxContext
     SandboxContext --> Daytona
     PiServer --> PlanMode
@@ -232,7 +232,6 @@ structMd += `Start with [docs/README.md](README.md) and [docs/quickstart.md](qui
 structMd += `## Workspace Layout\n\n`
 structMd += "\`\`\`text\n"
 structMd += `fleet-pi/\n`
-structMd += `├── .codex/                   # Codex local environment and bootstrap scripts\n`
 structMd += `├── .pi/                      # Committed Pi config, skills, and built-in extensions\n`
 structMd += `├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs\n`
 structMd += `├── apps/web/                 # TanStack Start application\n`
@@ -261,7 +260,7 @@ structMd += `| @earendil-works/pi-coding-agent | Pi coding-agent runtime |\n`
 structMd += `| @earendil-works/pi-ai | Pi AI primitives |\n`
 structMd += `| @workspace/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |\n`
 structMd += `| @workspace/hax-design | Fleet Pi UI shell, agent-elements, openui renderer |\n`
-structMd += `| Google Gemini (Pi google provider) | Primary LLM provider (default: gemini-3.5-flash) |\n`
+structMd += `| OpenAI-compatible provider (Pi openai-chat-completions) | Current default (deepseek-v4-flash-free) |\n`
 structMd += `| pino + pino-pretty | Structured logging |\n`
 structMd += `| opossum | Circuit breaker pattern |\n`
 structMd += `| zod + @asteasolutions/zod-to-openapi | Schema validation & OpenAPI generation |\n`
@@ -272,8 +271,8 @@ structMd += `\n`
 structMd += `## Data Flow\n\n`
 structMd += `1. The **Browser** sends a user message to \`/api/chat\` via NDJSON stream.\n`
 structMd += `2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and delegates to \`handleChatTurn\`.\n`
-structMd += `3. The **Pi Server Module** invokes the configured Pi provider (default Google Gemini) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.\n`
-structMd += `4. Streaming events (\`start\`, \`delta\`, \`tool\`, \`done\`, \`error\`) flow back to the client.\n`
+structMd += `3. The **Pi Server Module** invokes the configured Pi provider (currently OpenAI-compatible \`openai-chat-completions\` with \`deepseek-v4-flash-free\`) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.\n`
+structMd += `4. Streaming events (\`start\`, \`delta\`, \`tool\`, \`plan\`, \`state\`, \`queue\`, \`thinking\`, \`compaction\`, \`retry\`, \`done\`, \`error\`) flow back to the client.\n`
 structMd += `5. The **Client** hydrates messages from the Pi session file on reload and opens supporting resources/workspace panels on demand.\n`
 structMd += `6. Supporting endpoints expose models, resources, workspace files, sessions, and health checks.\n`
 structMd += `7. Durable agent context lives in \`agent-workspace/\`, including project memory, plans, artifacts, and workspace-installed Pi resources.\n`

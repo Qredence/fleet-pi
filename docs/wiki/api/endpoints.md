@@ -1,6 +1,6 @@
 # API Endpoints
 
-All types referenced below are defined in [`apps/web/src/lib/pi/chat-protocol.ts`](../../../apps/web/src/lib/pi/chat-protocol.ts) unless noted otherwise.
+All types referenced below are defined in [`packages/pi-protocol/src/chat-protocol.ts`](../../../packages/pi-protocol/src/chat-protocol.ts) unless noted otherwise.
 
 ---
 
