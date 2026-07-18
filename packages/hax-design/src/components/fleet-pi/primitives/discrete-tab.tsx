@@ -7,13 +7,15 @@ import {
   CHROME_PILL_CLASS,
   DISCRETE_TAB_ACTIVE_CLASS,
   DISCRETE_TAB_INACTIVE_CLASS,
+  HIT_AREA_EXPAND_DENSE_CLASS,
 } from "../styles/tokens"
 import type { ComponentType, SVGProps } from "react"
 
 const discreteTabTriggerVariants = cva(
   cn(
     CHROME_PILL_CLASS,
-    "discrete-tab-trigger justify-center transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+    HIT_AREA_EXPAND_DENSE_CLASS,
+    "discrete-tab-trigger justify-center transition-[background-color,color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
   ),
   {
     variants: {
@@ -196,7 +198,7 @@ const DiscreteTabTrigger = React.memo(function DiscreteTabTrigger({
       <span
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow-md",
+          "pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-md bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow-md",
           "opacity-0 transition-[opacity,transform] duration-150 ease-out",
           "-translate-y-0.5 scale-[0.98]",
           "group-hover/tab:translate-y-0 group-hover/tab:scale-100 group-hover/tab:opacity-100",

@@ -1,9 +1,9 @@
 import { Folder, Library, Package, X } from "lucide-react"
 import { useEffect, useId, useMemo, useRef } from "react"
-import { DiscreteTabs } from "../primitives/discrete-tab"
+import { TabsSubtle, TabsSubtleItem } from "../../tabs-subtle"
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
 import { useRightPanelContext } from "../layout/right-panel-context"
-import { PANEL_OVERLAY_CLASS } from "../styles/tokens"
+import { HIT_AREA_EXPAND_CLASS, PANEL_OVERLAY_CLASS } from "../styles/tokens"
 import { getArtifactsScopePath } from "./artifacts-panel"
 import {
   countWorkspaceFiles,
@@ -70,6 +70,7 @@ export function RightPanelLauncher({
       {
         id: "workspace" as const,
         title: "Workspace",
+        ariaLabel: "Workspace",
         icon: Folder,
       },
       {
@@ -83,16 +84,33 @@ export function RightPanelLauncher({
     [totalArtifacts, totalResources]
   )
 
+  const selectedIndex = tabs.findIndex((tab) => tab.id === activePanel)
+
   return (
-    <DiscreteTabs
-      className="flex items-center gap-0"
+    <TabsSubtle
+      activeLabel
+      variant="pill"
+      className="flex items-center"
       data-testid="right-panel-inline-launcher"
-      tabs={tabs}
-      value={activePanel}
-      onValueChange={(next) =>
+      idPrefix="right-panel"
+      selectedIndex={selectedIndex}
+      onSelect={(index) => {
+        const next = tabs.at(index)?.id
+        if (!next) return
         onPanelChange(next === activePanel ? null : next)
-      }
-    />
+      }}
+    >
+      {tabs.map((tab, index) => (
+        <TabsSubtleItem
+          key={tab.id}
+          index={index}
+          icon={tab.icon}
+          label={tab.title}
+          badge={tab.badge}
+          aria-label={tab.ariaLabel}
+        />
+      ))}
+    </TabsSubtle>
   )
 }
 
@@ -176,7 +194,7 @@ export function MobilePanel({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-colors hover:bg-foreground/6 hover:text-foreground/70"
+                      className={`${HIT_AREA_EXPAND_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
                       aria-label="Close panel"
                       title="Close panel"
                     >

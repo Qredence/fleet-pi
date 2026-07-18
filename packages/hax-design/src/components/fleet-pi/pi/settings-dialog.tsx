@@ -15,12 +15,19 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "../../alert-dialog"
 import { ScrollArea } from "../../scroll-area"
-import { cn } from "../../../lib/utils"
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -37,6 +44,7 @@ import {
 } from "../../ui/sidebar"
 
 import { useRightPanelContext } from "../layout/right-panel-context"
+import { DiscreteTabs } from "../primitives/discrete-tab"
 import { PersonalizationSection } from "./config-panel/sections/personalization-section"
 import { ProviderCredentialsSection } from "./config-panel/sections/provider-credentials-section"
 import { ModelDefaultsSection } from "./config-panel/sections/model-defaults-section"
@@ -62,6 +70,35 @@ import type {
 } from "../../../lib/pi/chat-protocol"
 import type { ConfigModelInfo } from "./config-panel/shared/types"
 
+type LucideIcon = typeof Cpu
+
+type SettingsSectionId =
+  | "appearance"
+  | "sandbox"
+  | "providers"
+  | "llm-models"
+  | "skills"
+  | "pi-harness"
+
+type SettingsSection = {
+  id: SettingsSectionId
+  title: string
+  icon: LucideIcon
+}
+
+const SETTINGS_SECTIONS: Array<SettingsSection> = [
+  { id: "appearance", title: "Appearance", icon: Paintbrush },
+  { id: "sandbox", title: "Sandbox", icon: HardDrive },
+  { id: "providers", title: "Providers", icon: KeyRound },
+  { id: "llm-models", title: "LLM Models", icon: Cpu },
+  { id: "skills", title: "Skills", icon: Sparkles },
+  { id: "pi-harness", title: "Pi Harness", icon: Settings },
+]
+
+function isSettingsSectionId(value: string): value is SettingsSectionId {
+  return SETTINGS_SECTIONS.some((section) => section.id === value)
+}
+
 /**
  * Custom hook to encapsulate the settings dialog state logic, satisfying ESLint function line limits.
  */
@@ -85,7 +122,7 @@ function useSettingsForm() {
   const [packageRows, setPackageRows] = useState<Array<string>>([])
   const [packageError, setPackageError] = useState<string | undefined>()
   const [modelFilter, setModelFilter] = useState("")
-  const [activeTab, setActiveTab] = useState("appearance")
+  const [activeTab, setActiveTab] = useState<SettingsSectionId>("appearance")
 
   const resourceSummary = summarizeResources(resources)
 
@@ -128,6 +165,14 @@ function useSettingsForm() {
       ))
 
   const hasUnsavedChanges = modelDirty || resourceDirty
+
+  const resetDraft = () => {
+    if (!settings) return
+    const nextDraft = settings.effective
+    setDraft(nextDraft)
+    setPackageRows(formatPackageSourceRows(nextDraft.packages))
+    setPackageError(undefined)
+  }
 
   useEffect(() => {
     if (!settings) return
@@ -219,14 +264,14 @@ function useSettingsForm() {
     modelOptions,
     modelDirty,
     resourceDirty,
+    hasUnsavedChanges,
+    resetDraft,
     updateDraft,
     handlePackageRowsChange,
     setModelEnabled,
     saveSection,
   }
 }
-
-type LucideIcon = typeof Cpu
 
 function SidebarNavItem({
   active,
@@ -249,31 +294,6 @@ function SidebarNavItem({
   )
 }
 
-function MobileTabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
-        active
-          ? "bg-foreground font-bold text-background"
-          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
 export function SettingsDialog({
   open,
   onOpenChange,
@@ -282,7 +302,7 @@ export function SettingsDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   /** When provided, selects this nav tab each time the dialog opens. */
-  initialTab?: string
+  initialTab?: SettingsSectionId
 }) {
   const {
     isLoadingProviders,
@@ -308,11 +328,37 @@ export function SettingsDialog({
     modelOptions,
     modelDirty,
     resourceDirty,
+    hasUnsavedChanges,
+    resetDraft,
     updateDraft,
     handlePackageRowsChange,
     setModelEnabled,
     saveSection,
   } = useSettingsForm()
+
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const activeSection =
+    SETTINGS_SECTIONS.find((section) => section.id === activeTab) ??
+    SETTINGS_SECTIONS[0]
+
+  const handleOpenChange = (
+    nextOpen: boolean,
+    eventDetails?: { cancel: () => void }
+  ) => {
+    if (!nextOpen && hasUnsavedChanges) {
+      eventDetails?.cancel()
+      setDiscardDialogOpen(true)
+      return
+    }
+
+    onOpenChange(nextOpen)
+  }
+
+  const handleDiscardChanges = () => {
+    resetDraft()
+    setDiscardDialogOpen(false)
+    onOpenChange(false)
+  }
 
   const wasOpenRef = useRef(false)
   useEffect(() => {
@@ -370,8 +416,73 @@ export function SettingsDialog({
     />
   )
 
+  const panes: Record<SettingsSectionId, () => ReactNode> = {
+    appearance: () => (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h3 className="text-lg font-medium">Appearance</h3>
+          <p className="text-sm text-muted-foreground">
+            Customize the look and feel of the interface.
+          </p>
+        </div>
+        <PersonalizationSection
+          onThemePreferenceChange={onThemePreferenceChange}
+          themePreference={themePreference}
+        />
+      </div>
+    ),
+    sandbox: () => (
+      <SandboxProviderSection
+        isLoading={isLoadingProviders ?? false}
+        isPending={isUpdatingProvider ?? false}
+        providers={providers}
+        onUpdateProvider={onUpdateProvider}
+      />
+    ),
+    providers: () => (
+      <ProviderCredentialsSection
+        isLoading={isLoadingProviders ?? false}
+        isPending={isUpdatingProvider ?? false}
+        providers={providers}
+        onUpdateProvider={onUpdateProvider}
+      />
+    ),
+    "llm-models": () => (
+      <ModelDefaultsSection
+        draft={draft}
+        modelDirty={modelDirty}
+        modelFilter={modelFilter}
+        modelOptions={modelOptions}
+        onModelFilterChange={setModelFilter}
+        onModelToggle={setModelEnabled}
+        onRevert={() => {
+          if (!settings) return
+          updateDraft((current) => ({
+            ...current,
+            defaultProvider: settings.effective.defaultProvider,
+            defaultModel: settings.effective.defaultModel,
+            defaultThinkingLevel: settings.effective.defaultThinkingLevel,
+            enabledModels: settings.effective.enabledModels,
+          }))
+        }}
+        onSave={() => draft && saveSection("models", modelSettings(draft))}
+        saving={savingSection === "models"}
+        settingsLoading={settingsLoading}
+      />
+    ),
+    skills: () => resourcesPane("skills"),
+    "pi-harness": () => resourcesPane("harness"),
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // Nest AlertDialog under Dialog.Root so Base UI tracks nested open
+    // dialogs (Esc / isTopmost). Sibling roots fight Esc and re-prompt.
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, eventDetails) =>
+        handleOpenChange(nextOpen, eventDetails)
+      }
+    >
       <DialogContent className="w-full max-w-[calc(100%-2rem)] overflow-hidden p-0 sm:max-w-[650px] md:h-[650px] md:max-h-[85vh] md:max-w-[760px] lg:max-w-[860px]">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
@@ -391,42 +502,15 @@ export function SettingsDialog({
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarNavItem
-                      active={activeTab === "appearance"}
-                      onClick={() => setActiveTab("appearance")}
-                      icon={Paintbrush}
-                      label="Appearance"
-                    />
-                    <SidebarNavItem
-                      active={activeTab === "sandbox"}
-                      onClick={() => setActiveTab("sandbox")}
-                      icon={HardDrive}
-                      label="Sandbox"
-                    />
-                    <SidebarNavItem
-                      active={activeTab === "providers"}
-                      onClick={() => setActiveTab("providers")}
-                      icon={KeyRound}
-                      label="Providers"
-                    />
-                    <SidebarNavItem
-                      active={activeTab === "llm-models"}
-                      onClick={() => setActiveTab("llm-models")}
-                      icon={Cpu}
-                      label="LLM Models"
-                    />
-                    <SidebarNavItem
-                      active={activeTab === "skills"}
-                      onClick={() => setActiveTab("skills")}
-                      icon={Sparkles}
-                      label="Skills"
-                    />
-                    <SidebarNavItem
-                      active={activeTab === "pi-harness"}
-                      onClick={() => setActiveTab("pi-harness")}
-                      icon={Settings}
-                      label="Pi Harness"
-                    />
+                    {SETTINGS_SECTIONS.map((section) => (
+                      <SidebarNavItem
+                        key={section.id}
+                        active={activeTab === section.id}
+                        onClick={() => setActiveTab(section.id)}
+                        icon={section.icon}
+                        label={section.title}
+                      />
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -440,134 +524,62 @@ export function SettingsDialog({
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="#">Settings</BreadcrumbLink>
+                      Settings
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      <BreadcrumbPage>
-                        {activeTab === "appearance" && "Appearance"}
-                        {activeTab === "sandbox" && "Sandbox"}
-                        {activeTab === "providers" && "Providers"}
-                        {activeTab === "llm-models" && "LLM Models"}
-                        {activeTab === "skills" && "Skills"}
-                        {activeTab === "pi-harness" && "Pi Harness"}
-                      </BreadcrumbPage>
+                      <BreadcrumbPage>{activeSection.title}</BreadcrumbPage>
                     </BreadcrumbItem>
                   </BreadcrumbList>
                 </Breadcrumb>
               </div>
             </header>
 
-            {/* Mobile Navigation Tabs */}
-            <div className="flex shrink-0 scrollbar-none gap-2 overflow-x-auto border-b border-border/10 bg-muted/5 px-6 py-2.5 md:hidden">
-              <MobileTabButton
-                active={activeTab === "appearance"}
-                onClick={() => setActiveTab("appearance")}
-              >
-                Appearance
-              </MobileTabButton>
-              <MobileTabButton
-                active={activeTab === "sandbox"}
-                onClick={() => setActiveTab("sandbox")}
-              >
-                Sandbox
-              </MobileTabButton>
-              <MobileTabButton
-                active={activeTab === "providers"}
-                onClick={() => setActiveTab("providers")}
-              >
-                Providers
-              </MobileTabButton>
-              <MobileTabButton
-                active={activeTab === "llm-models"}
-                onClick={() => setActiveTab("llm-models")}
-              >
-                LLM Models
-              </MobileTabButton>
-              <MobileTabButton
-                active={activeTab === "skills"}
-                onClick={() => setActiveTab("skills")}
-              >
-                Skills
-              </MobileTabButton>
-              <MobileTabButton
-                active={activeTab === "pi-harness"}
-                onClick={() => setActiveTab("pi-harness")}
-              >
-                Pi Harness
-              </MobileTabButton>
+            <div className="flex min-w-0 shrink-0 overflow-x-auto overscroll-x-contain border-b border-border/10 bg-muted/5 px-4 py-2.5 md:hidden">
+              <DiscreteTabs
+                aria-label="Settings sections"
+                className="min-w-max"
+                size="compact"
+                tabs={SETTINGS_SECTIONS}
+                value={activeTab}
+                onValueChange={(next) => {
+                  if (isSettingsSectionId(next)) setActiveTab(next)
+                }}
+              />
             </div>
 
             <ScrollArea className="min-h-0 flex-1">
-              <div className="p-6">
-                {activeTab === "appearance" && (
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium">Appearance</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Customize the look and feel of the interface.
-                      </p>
-                    </div>
-                    <PersonalizationSection
-                      onThemePreferenceChange={onThemePreferenceChange}
-                      themePreference={themePreference}
-                    />
-                  </div>
-                )}
-
-                {activeTab === "sandbox" && (
-                  <SandboxProviderSection
-                    isLoading={isLoadingProviders ?? false}
-                    isPending={isUpdatingProvider ?? false}
-                    providers={providers}
-                    onUpdateProvider={onUpdateProvider}
-                  />
-                )}
-
-                {activeTab === "providers" && (
-                  <ProviderCredentialsSection
-                    isLoading={isLoadingProviders ?? false}
-                    isPending={isUpdatingProvider ?? false}
-                    providers={providers}
-                    onUpdateProvider={onUpdateProvider}
-                  />
-                )}
-
-                {activeTab === "llm-models" && (
-                  <ModelDefaultsSection
-                    draft={draft}
-                    modelDirty={modelDirty}
-                    modelFilter={modelFilter}
-                    modelOptions={modelOptions}
-                    onModelFilterChange={setModelFilter}
-                    onModelToggle={setModelEnabled}
-                    onRevert={() => {
-                      if (!settings) return
-                      updateDraft((current) => ({
-                        ...current,
-                        defaultProvider: settings.effective.defaultProvider,
-                        defaultModel: settings.effective.defaultModel,
-                        defaultThinkingLevel:
-                          settings.effective.defaultThinkingLevel,
-                        enabledModels: settings.effective.enabledModels,
-                      }))
-                    }}
-                    onSave={() =>
-                      draft && saveSection("models", modelSettings(draft))
-                    }
-                    saving={savingSection === "models"}
-                    settingsLoading={settingsLoading}
-                  />
-                )}
-
-                {activeTab === "skills" && resourcesPane("skills")}
-
-                {activeTab === "pi-harness" && resourcesPane("harness")}
+              <div
+                id={`panel-${activeTab}`}
+                role="tabpanel"
+                aria-label={activeSection.title}
+                tabIndex={0}
+                className="p-6 outline-none"
+              >
+                {panes[activeTab]()}
               </div>
             </ScrollArea>
           </main>
         </SidebarProvider>
       </DialogContent>
+
+      <AlertDialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2">
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your model and resource changes have not been committed. If you
+              leave settings now, those changes will be lost.
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDiscardChanges}>
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

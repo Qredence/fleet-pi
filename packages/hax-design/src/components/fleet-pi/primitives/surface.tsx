@@ -1,4 +1,5 @@
 import { cn } from "../../../lib/utils"
+import { Field, FieldLabel as ShadcnFieldLabel } from "../../field"
 import {
   FIELD_LABEL_CLASS,
   fleetPiRowSurface,
@@ -49,18 +50,23 @@ export function RowSurface({
   )
 }
 
+/** Fleet-compatible Field wrapper; composes shadcn Field + FieldLabel. */
 export function FieldLabel({
   children,
+  controlId,
   label,
 }: {
   children: ReactNode
+  controlId?: string
   label: string
 }) {
   return (
-    <label className="block space-y-1">
-      <span className={FIELD_LABEL_CLASS}>{label}</span>
+    <Field orientation="vertical" className="gap-1">
+      <ShadcnFieldLabel htmlFor={controlId} className={FIELD_LABEL_CLASS}>
+        {label}
+      </ShadcnFieldLabel>
       {children}
-    </label>
+    </Field>
   )
 }
 
