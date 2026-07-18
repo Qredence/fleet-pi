@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { resolveUserSandboxContext } from "./resolve-user-sandbox-context"
 import { SANDBOX_PROJECT_ROOT, SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
+import type * as UserSandboxModule from "./user-sandbox"
 
 const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =
   vi.hoisted(() => ({
@@ -11,7 +12,7 @@ const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =
   }))
 
 vi.mock("./user-sandbox", async (importOriginal) => {
-  const actual = (await importOriginal())
+  const actual = await importOriginal<typeof UserSandboxModule>()
   return {
     ...actual,
     getUserSandbox: mockGetUserSandbox,
