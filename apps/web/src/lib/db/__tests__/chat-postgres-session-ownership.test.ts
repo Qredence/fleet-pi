@@ -13,5 +13,11 @@ describe("chat-postgres-session-ownership", () => {
     expect(CHAT_POSTGRES_SESSION_OWNERSHIP_SQL).toContain(
       "GRANT EXECUTE ON FUNCTION fleet_pi_check_session_owner"
     )
+    expect(CHAT_POSTGRES_SESSION_OWNERSHIP_SQL).toContain(
+      "REVOKE ALL ON FUNCTION fleet_pi_check_session_owner(TEXT, TEXT) FROM PUBLIC"
+    )
+    expect(CHAT_POSTGRES_SESSION_OWNERSHIP_SQL).toContain(
+      "REVOKE ALL ON FUNCTION fleet_pi_check_session_owner(TEXT, TEXT) FROM authenticated"
+    )
   })
 })

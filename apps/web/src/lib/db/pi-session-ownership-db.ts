@@ -1,11 +1,11 @@
 import { existsSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 import { Pool } from "@neondatabase/serverless"
+import { isVercelDeployment } from "../deployment/environment"
 import {
-  isVercelDeployment,
+  requiresAuthenticatedMirrorOwner,
   shouldFailClosedOnMirrorError,
-} from "../deployment/environment"
-import { requiresAuthenticatedMirrorOwner } from "../deployment/trust-zone"
+} from "../deployment/trust-zone"
 import { logger } from "../logger"
 import { resolveVercelUserSessionDir } from "../pi/session-paths"
 import {

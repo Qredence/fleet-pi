@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { shouldFailClosedOnMirrorError } from "../deployment/environment"
+import { shouldFailClosedOnMirrorError } from "../deployment/trust-zone"
 import { logger } from "../logger"
 import {
   PI_SESSION_USER_ID_ON_CONFLICT_SQL,

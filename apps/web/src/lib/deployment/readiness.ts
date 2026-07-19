@@ -5,6 +5,8 @@ import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../db/chat-postgre
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../db/chat-postgres-provider-auth"
 import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../db/chat-postgres-user-settings"
+import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke"
+import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
@@ -41,6 +43,8 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
   CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
   CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
+  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
 ] as const
 
 function readEnv(name: string, env: NodeJS.ProcessEnv) {
@@ -121,6 +125,15 @@ export function validateDeploymentReadiness(
       viteNeonAuthUrl.length > 0
         ? "VITE_NEON_AUTH_URL is set for the browser auth client."
         : "VITE_NEON_AUTH_URL is required for client sign-in (server NEON_AUTH_URL alone is not enough)."
+    )
+
+    const neonAuthIssuer = readEnv("NEON_AUTH_ISSUER", env)
+    push(
+      "env:NEON_AUTH_ISSUER",
+      neonAuthIssuer.length > 0,
+      neonAuthIssuer.length > 0
+        ? "NEON_AUTH_ISSUER is set so bearer JWTs fail closed."
+        : "NEON_AUTH_ISSUER is required when Neon Managed Auth is configured."
     )
   } else {
     for (const name of LEGACY_REQUIRED_VERCEL_ENV_VARS) {
@@ -252,14 +265,18 @@ export function validateDeploymentReadiness(
         : "Set FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS when VITE_FLEET_PI_CHAT_RUNTIME_URL is set."
     )
 
-    const neonAuthIssuer = readEnv("NEON_AUTH_ISSUER", env)
-    push(
-      "env:NEON_AUTH_ISSUER",
-      neonAuthIssuer.length > 0,
-      neonAuthIssuer.length > 0
-        ? "NEON_AUTH_ISSUER is set for dual-host JWT verification."
-        : "Set NEON_AUTH_ISSUER when VITE_FLEET_PI_CHAT_RUNTIME_URL is set so bearer JWTs fail closed."
-    )
+    // Issuer is already required under Neon Managed Auth above; when dual-host
+    // runs without Managed Auth env on this host, still require issuer.
+    if (!neonManagedAuth) {
+      const neonAuthIssuer = readEnv("NEON_AUTH_ISSUER", env)
+      push(
+        "env:NEON_AUTH_ISSUER",
+        neonAuthIssuer.length > 0,
+        neonAuthIssuer.length > 0
+          ? "NEON_AUTH_ISSUER is set for dual-host JWT verification."
+          : "Set NEON_AUTH_ISSUER when VITE_FLEET_PI_CHAT_RUNTIME_URL is set so bearer JWTs fail closed."
+      )
+    }
   }
   if (input.chatMigrationsApplied) {
     for (const migrationId of CHAT_MIGRATION_IDS) {

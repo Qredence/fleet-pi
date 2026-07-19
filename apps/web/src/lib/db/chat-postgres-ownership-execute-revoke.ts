@@ -1,38 +1,14 @@
-export const CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID =
-  "20260710_pi_session_ownership_probe"
+export const CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID =
+  "20260719_revoke_ownership_probe_execute"
 
-export const CHAT_POSTGRES_SESSION_OWNERSHIP_SQL = `
-CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner(
-  p_session_id TEXT,
-  p_user_id TEXT
-)
-RETURNS TEXT
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT CASE
-    WHEN NOT EXISTS (SELECT 1 FROM pi_sessions WHERE id = p_session_id) THEN 'missing'
-    WHEN (SELECT user_id FROM pi_sessions WHERE id = p_session_id) IS NULL THEN 'orphan'
-    WHEN (SELECT user_id FROM pi_sessions WHERE id = p_session_id) = p_user_id THEN 'owned'
-    ELSE 'foreign'
-  END
-$$;
-
-CREATE OR REPLACE FUNCTION fleet_pi_lookup_session_id_by_file(
-  p_session_file_path TEXT
-)
-RETURNS TEXT
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT id
-  FROM pi_sessions
-  WHERE session_file_path = p_session_file_path
-  LIMIT 1
-$$;
-
+/**
+ * Ownership probes are SECURITY DEFINER. Postgres defaults EXECUTE to PUBLIC;
+ * table Data API revokes do not remove RPC. Lock EXECUTE to `fleet_pi_app` only
+ * so `authenticated`/`anonymous` cannot enumerate session ownership via Data API.
+ *
+ * Idempotent for databases that already applied the ownership probe migration.
+ */
+export const CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL = `
 REVOKE ALL ON FUNCTION fleet_pi_check_session_owner(TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION fleet_pi_lookup_session_id_by_file(TEXT) FROM PUBLIC;
 

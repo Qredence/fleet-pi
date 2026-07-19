@@ -109,7 +109,7 @@ function prepareDownstreamHeaders(response: Response) {
   return headers
 }
 
-export function extractAuthProxyPath(request: Request) {
+export function extractAuthProxyPath(request: Request): Array<string> | null {
   const url = new URL(request.url)
   const prefix = "/api/auth"
   const pathname = url.pathname
@@ -120,7 +120,11 @@ export function extractAuthProxyPath(request: Request) {
   if (!remainder) {
     return []
   }
-  return remainder.split("/").filter(Boolean)
+  const segments = remainder.split("/").filter(Boolean)
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    return null
+  }
+  return segments
 }
 
 /**
@@ -141,6 +145,9 @@ export async function handleNeonManagedAuthRequest(request: Request) {
 
   const baseUrl = requireNeonAuthBaseUrl()
   const path = extractAuthProxyPath(request)
+  if (path === null) {
+    return new Response("Bad Request", { status: 400 })
+  }
   const upstreamUrl = buildUpstreamUrl(baseUrl, path, request)
   const headers = prepareUpstreamHeaders(request)
   const body = request.method === "GET" ? undefined : await request.text()

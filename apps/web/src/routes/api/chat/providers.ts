@@ -18,8 +18,10 @@ import {
 } from "@/lib/env-manager"
 import {
   getChatAuthSession,
+  isChatAuthRequired,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
 import {
@@ -122,22 +124,23 @@ export const Route = createFileRoute("/api/chat/providers")({
 
               const context = resolveAppRuntimeContext()
 
-              if (process.env.VERCEL === "1") {
-                if (!userId) {
-                  return Response.json(
-                    { message: "Unauthorized" },
-                    { status: 401 }
-                  )
-                }
-                await storeUserProviderApiKey(userId, provider.id, apiKey)
+              if (isChatAuthRequired() && !userId) {
+                return Response.json(
+                  { message: "Unauthorized" },
+                  { status: 401 }
+                )
+              }
+
+              if (isVercelDeployment()) {
+                await storeUserProviderApiKey(userId!, provider.id, apiKey)
                 if (isOpenAiChatCompletions && baseUrl && modelId) {
                   await storeUserProviderApiKey(
-                    userId,
+                    userId!,
                     OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
                     baseUrl
                   )
                   await storeUserProviderApiKey(
-                    userId,
+                    userId!,
                     OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
                     modelId
                   )
@@ -236,7 +239,7 @@ export const Route = createFileRoute("/api/chat/providers")({
                 )
               }
 
-              if (process.env.VERCEL === "1" && !userId) {
+              if (isChatAuthRequired() && !userId) {
                 return Response.json(
                   { message: "Unauthorized" },
                   { status: 401 }

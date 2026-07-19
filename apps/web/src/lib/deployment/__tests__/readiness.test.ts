@@ -68,6 +68,8 @@ describe("validateDeploymentReadiness", () => {
         "20260711_pi_session_tombstones",
         "20260711_pi_user_providers_auth_type",
         "20260718_pi_user_settings",
+        "20260719_revoke_data_api_pi_grants",
+        "20260719_revoke_ownership_probe_execute",
       ],
       piSessionsRlsEnabled: true,
       ownershipProbePresent: true,
@@ -98,6 +100,8 @@ describe("validateDeploymentReadiness", () => {
         "20260711_pi_session_tombstones",
         "20260711_pi_user_providers_auth_type",
         "20260718_pi_user_settings",
+        "20260719_revoke_data_api_pi_grants",
+        "20260719_revoke_ownership_probe_execute",
       ],
       piSessionsRlsEnabled: true,
       ownershipProbePresent: true,
@@ -107,6 +111,24 @@ describe("validateDeploymentReadiness", () => {
       result.checks.find((check) => check.id === "env:BETTER_AUTH_URL")?.ok
     ).toBe(true)
     expect(result.ok).toBe(true)
+  })
+
+  it("requires NEON_AUTH_ISSUER when Neon Managed Auth is configured", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "vercel-production",
+      env: {
+        NEON_AUTH_URL: "https://auth.example",
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        VITE_NEON_AUTH_URL: "https://auth.example",
+        FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://app.example",
+      },
+    })
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.checks.find((check) => check.id === "env:NEON_AUTH_ISSUER")?.ok
+    ).toBe(false)
   })
 
   it("fails when preview database URLs omit the preview marker", () => {

@@ -7,7 +7,7 @@ import {
   writeSync,
 } from "node:fs"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
-import { shouldFailClosedOnMirrorError } from "../deployment/environment"
+import { shouldFailClosedOnMirrorError } from "../deployment/trust-zone"
 import { logger } from "../logger"
 import {
   getChatPostgresPool,

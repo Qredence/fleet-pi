@@ -1,5 +1,8 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import { resolveNeonAuthBaseUrl } from "@/lib/auth/auth-mode"
+import {
+  isNeonManagedAuthConfigured,
+  resolveNeonAuthBaseUrl,
+} from "@/lib/auth/auth-mode"
 
 export type VerifiedNeonAuthToken = {
   sub: string
@@ -17,6 +20,10 @@ function resolveJwksUrl(env: NodeJS.ProcessEnv = process.env) {
   if (!base) return ""
 
   return `${base.replace(/\/+$/, "")}/.well-known/jwks.json`
+}
+
+function resolveNeonAuthIssuer(env: NodeJS.ProcessEnv = process.env) {
+  return env.NEON_AUTH_ISSUER?.trim() || ""
 }
 
 function getJwks() {
@@ -42,16 +49,24 @@ export function parseBearerToken(request: Request) {
 }
 
 export async function verifyNeonAuthAccessToken(
-  token: string
+  token: string,
+  env: NodeJS.ProcessEnv = process.env
 ): Promise<VerifiedNeonAuthToken | null> {
-  if (!resolveJwksUrl()) {
+  if (!resolveJwksUrl(env)) {
+    return null
+  }
+
+  const issuer = resolveNeonAuthIssuer(env)
+  // Fail closed: Neon Managed Auth (and dual-host) must pin issuer so JWKS-only
+  // tokens from unexpected issuers are rejected.
+  if (isNeonManagedAuthConfigured(env) && !issuer) {
     return null
   }
 
   try {
     const { payload } = await jwtVerify(token, getJwks(), {
-      issuer: process.env.NEON_AUTH_ISSUER?.trim() || undefined,
-      audience: process.env.NEON_AUTH_AUDIENCE?.trim() || undefined,
+      issuer: issuer || undefined,
+      audience: env.NEON_AUTH_AUDIENCE?.trim() || undefined,
     })
 
     const sub = typeof payload.sub === "string" ? payload.sub : null

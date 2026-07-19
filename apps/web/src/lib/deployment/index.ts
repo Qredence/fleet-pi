@@ -1,7 +1,4 @@
-export {
-  isVercelDeployment,
-  shouldFailClosedOnMirrorError,
-} from "./environment"
+export { isVercelDeployment } from "./environment"
 export {
   assertDeploymentReadyOnBoot,
   formatReadinessFailure,
@@ -15,5 +12,6 @@ export {
   isVercelPreviewDeployment,
   requiresAuthenticatedMirrorOwner,
   resolveDeploymentTrustZone,
+  shouldFailClosedOnMirrorError,
   type DeploymentTrustZone,
 } from "./trust-zone"
