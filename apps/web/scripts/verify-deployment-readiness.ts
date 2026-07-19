@@ -9,6 +9,7 @@ import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../src/lib/db/chat-postgr
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-ownership"
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../src/lib/db/chat-postgres-provider-auth"
+import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../src/lib/db/chat-postgres-user-settings"
 import { validateDeploymentReadiness } from "../src/lib/deployment/readiness"
 import { resolveDeploymentTrustZone } from "../src/lib/deployment/trust-zone"
 import type { DeploymentReadinessInput } from "../src/lib/deployment/readiness"
@@ -214,6 +215,7 @@ async function main() {
     CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
     CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
     CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
+    CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
   ]
   console.log(
     `INFO migrations: expected chat migration ids: ${expectedMigrations.join(", ")}`

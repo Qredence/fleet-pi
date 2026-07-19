@@ -216,9 +216,9 @@ export function WorkspacePanelContent({
   if (error) {
     if (error.message.includes("daytona_credential_required")) {
       return (
-        <div className="flex h-full flex-col items-center justify-center space-y-4 p-6 text-center">
-          <HardDrive className="h-12 w-12 text-muted-foreground/50" />
-          <div className="space-y-2">
+        <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+          <HardDrive className="size-12 text-muted-foreground/50" />
+          <div className="flex flex-col gap-2">
             <h3 className="text-lg font-semibold">Daytona Sandbox Required</h3>
             <p className="text-sm text-muted-foreground">
               To access the workspace, you need to provide a Daytona API key.
@@ -309,7 +309,7 @@ export function WorkspacePanelContent({
               {scopedView.headerLabel}
             </span>
           </div>
-          <div className="space-y-0.5">
+          <div className="flex flex-col gap-0.5">
             {scopedView.nodes.map((node) => (
               <WorkspaceNode
                 key={node.path}

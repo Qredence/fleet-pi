@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import {
+  ChatProviderRemoveRequestSchema,
   ChatProviderUpdateRequestSchema,
   ChatProviderUpdateResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
@@ -24,7 +25,12 @@ import {
   hotReloadProviderAuthForActiveRuntimes,
 } from "@/lib/pi/runtime"
 import { ensureOpenAiChatCompletionsModelEnabled } from "@/lib/pi/runtime/ensure-openai-chat-completions-model"
+import { removeProviderBundle } from "@/lib/pi/runtime/remove-provider-bundle"
 import { assertSafeOpenAiCompatibleBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-provider"
+import {
+  isRemovableCredentialProvider,
+  resolveProviderCredentialBundle,
+} from "@/lib/pi/runtime/provider-credential-bundle"
 
 export const Route = createFileRoute("/api/chat/providers")({
   server: {
@@ -157,11 +163,16 @@ export const Route = createFileRoute("/api/chat/providers")({
           if (isOpenAiChatCompletions && modelId) {
             await ensureOpenAiChatCompletionsModelEnabled(context, modelId, {
               userId,
+              skipSettingsHotReload: true,
             })
           }
 
           if (userId) {
-            await hotReloadActiveRuntimesForUser(userId)
+            await hotReloadActiveRuntimesForUser(
+              userId,
+              undefined,
+              context.projectRoot
+            )
             try {
               await refreshSandboxProviderCredentials(userId)
             } catch {
@@ -173,6 +184,72 @@ export const Route = createFileRoute("/api/chat/providers")({
 
           const updatedProviders = await getProviderConfigStatus({ userId })
 
+          const response = ChatProviderUpdateResponseSchema.parse({
+            success: true,
+            providers: updatedProviders,
+            reloadRequired: false,
+          })
+          return Response.json(response)
+        } catch (error) {
+          return Response.json(
+            { message: getErrorMessage(error) },
+            { status: getResponseStatus(error) }
+          )
+        }
+      },
+      DELETE: async ({ request }) => {
+        try {
+          const rawBody = await request.json()
+          const body = ChatProviderRemoveRequestSchema.parse(rawBody)
+          if (!isRemovableCredentialProvider(body.providerId)) {
+            return Response.json(
+              { message: "This provider cannot be removed here." },
+              { status: 400 }
+            )
+          }
+
+          const authSession = await auth.api
+            .getSession({ headers: request.headers })
+            .catch(() => null)
+          const userId = authSession?.user.id
+          const context = resolveAppRuntimeContext()
+          const { providerIds } = resolveProviderCredentialBundle(
+            body.providerId
+          )
+
+          if (providerIds.length === 0) {
+            return Response.json(
+              { message: "Unknown provider" },
+              { status: 400 }
+            )
+          }
+
+          if (process.env.VERCEL === "1" && !userId) {
+            return Response.json({ message: "Unauthorized" }, { status: 401 })
+          }
+
+          await removeProviderBundle({
+            context,
+            providerId: body.providerId,
+            userId,
+          })
+
+          if (userId) {
+            await hotReloadActiveRuntimesForUser(
+              userId,
+              undefined,
+              context.projectRoot
+            )
+            try {
+              await refreshSandboxProviderCredentials(userId)
+            } catch {
+              // Sandbox may be offline or disabled; credentials still removed.
+            }
+          } else {
+            await hotReloadProviderAuthForActiveRuntimes()
+          }
+
+          const updatedProviders = await getProviderConfigStatus({ userId })
           const response = ChatProviderUpdateResponseSchema.parse({
             success: true,
             providers: updatedProviders,

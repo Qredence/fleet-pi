@@ -14,8 +14,10 @@ export {
 export {
   impactForSettings,
   loadChatSettings,
-  mergeProjectSettings,
+  loadPersistedProjectSettingsOverrides,
+  patchProjectSettingsOverrides,
   readProjectSettingsFile,
+  saveProjectSettingsOverrides,
   updateChatSettings,
 } from "./settings-bridge"
 export { applyRuntimeAuth, createSessionServices } from "./session-factory"

@@ -34,7 +34,7 @@ describe("resourceOptionValue", () => {
         source: "local",
         path: "/Volumes/fleet-pi/agent-workspace/.pi/extensions/enabled/explorator-agent.ts",
       })
-    ).toBe("../agent-workspace/.pi/extensions/enabled/explorator-agent.ts")
+    ).toBe("../agent-workspace/pi/extensions/enabled/explorator-agent.ts")
   })
 
   it("prefers workspacePath over absolute path", () => {
@@ -87,6 +87,21 @@ describe("toSettingsResourcePath", () => {
   it("preserves direct prompt filenames", () => {
     expect(toSettingsResourcePath("/repo/.pi/prompts/release-check.md")).toBe(
       "prompts/release-check.md"
+    )
+  })
+
+  it("rejects absolute home-directory paths", () => {
+    expect(
+      toSettingsResourcePath("/Users/zocho/.pi/agent/skills/foo/SKILL.md")
+    ).toBe("")
+    expect(
+      toSettingsResourcePath("/home/runner/.pi/agent/skills/foo/SKILL.md")
+    ).toBe("")
+  })
+
+  it("rewrites legacy agent-workspace/.pi paths to pi/", () => {
+    expect(toSettingsResourcePath("../agent-workspace/.pi/skills/helper")).toBe(
+      "../agent-workspace/pi/skills/helper"
     )
   })
 })

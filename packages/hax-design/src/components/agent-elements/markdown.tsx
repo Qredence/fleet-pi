@@ -83,7 +83,7 @@ export function Markdown({ content, className }: MarkdownProps) {
     ),
     ul: ({ children, ...props }) => (
       <ul
-        className="an-md-ul mb-2 list-outside list-disc space-y-0.5 pl-4 text-sm text-an-foreground/80"
+        className="an-md-ul mb-2 flex list-outside list-disc flex-col gap-0.5 pl-4 text-sm text-an-foreground/80"
         {...props}
       >
         {children}
@@ -91,7 +91,7 @@ export function Markdown({ content, className }: MarkdownProps) {
     ),
     ol: ({ children, ...props }) => (
       <ol
-        className="an-md-ol mb-2 list-outside list-decimal space-y-0.5 pl-5 text-sm text-an-foreground/80"
+        className="an-md-ol mb-2 flex list-outside list-decimal flex-col gap-0.5 pl-5 text-sm text-an-foreground/80"
         {...props}
       >
         {children}

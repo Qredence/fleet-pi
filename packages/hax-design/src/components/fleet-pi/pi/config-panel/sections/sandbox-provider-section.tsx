@@ -1,30 +1,19 @@
-import {
-  Eye,
-  EyeOff,
-  Globe,
-  HardDrive,
-  Info,
-  Loader2,
-  Lock,
-} from "lucide-react"
+import { Globe, HardDrive, Info } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "../../../../input-group"
+import { FieldGroup } from "../../../../field"
+import { Spinner } from "../../../../spinner"
 import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
 import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
+import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import {
-  HIT_AREA_EXPAND_CLASS,
-  HIT_AREA_EXPAND_DENSE_CLASS,
-} from "../../../styles/tokens"
+  SecretCredentialField,
+  TextCredentialField,
+} from "../shared/credential-fields"
 import type {
   ChatProviderInfo,
   ChatProviderUpdateRequest,
@@ -48,6 +37,7 @@ export function SandboxProviderSection({
   const [apiKey, setApiKey] = useState("")
   const [target, setTarget] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [attemptedSave, setAttemptedSave] = useState(false)
 
   const daytonaProvider = useMemo(
     () => providers.find((p) => p.id === "daytona"),
@@ -66,6 +56,7 @@ export function SandboxProviderSection({
     setApiKey("")
     setTarget("")
     setShowPassword(false)
+    setAttemptedSave(false)
   }
 
   const closeEditor = () => {
@@ -75,6 +66,7 @@ export function SandboxProviderSection({
 
   const handleSave = async () => {
     if (!onUpdateProvider) return
+    setAttemptedSave(true)
     if (!apiKey.trim() && !target.trim()) return
 
     try {
@@ -109,7 +101,7 @@ export function SandboxProviderSection({
     >
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
-          <Loader2 className="size-3 animate-spin" />
+          <Spinner />
           <span>Loading...</span>
         </div>
       ) : (
@@ -148,50 +140,35 @@ export function SandboxProviderSection({
               padding="md"
               className="flex flex-col gap-2 border-t border-border/30"
             >
-              <InputGroup>
-                <InputGroupAddon align="inline-start">
-                  <Lock />
-                </InputGroupAddon>
-                <InputGroupInput
-                  type={showPassword ? "text" : "password"}
+              <FieldGroup className="gap-2">
+                <SecretCredentialField
+                  attemptedSave={attemptedSave}
+                  label="Daytona API key"
                   placeholder="Enter Daytona API Key..."
                   value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  aria-label="Daytona API key"
+                  showPassword={showPassword}
+                  required={false}
+                  onChange={setApiKey}
+                  onToggleVisibility={() =>
+                    setShowPassword((current) => !current)
+                  }
                 />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    className={cn(
-                      HIT_AREA_EXPAND_CLASS,
-                      "transition-[background-color,transform] duration-150 active:scale-[0.96]"
-                    )}
-                    aria-label={showPassword ? "Hide API key" : "Show API key"}
-                    onClick={() => setShowPassword((current) => !current)}
-                  >
-                    {showPassword ? <EyeOff /> : <Eye />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-
-              <InputGroup>
-                <InputGroupAddon align="inline-start">
-                  <Globe />
-                </InputGroupAddon>
-                <InputGroupInput
-                  type="text"
+                <TextCredentialField
+                  attemptedSave={attemptedSave}
+                  icon={Globe}
+                  label="Region / target"
                   placeholder="e.g. us-east"
                   value={target}
-                  onChange={(event) => setTarget(event.target.value)}
-                  aria-label="Daytona region or target"
+                  required={false}
+                  onChange={setTarget}
                 />
-              </InputGroup>
+              </FieldGroup>
 
               <Alert className="px-3 py-2">
                 <Info />
                 <AlertDescription className="text-xs text-pretty">
                   Settings are stored securely in your local environment
-                  overrides.
+                  overrides. Provide at least one value to save.
                 </AlertDescription>
               </Alert>
 
@@ -202,12 +179,7 @@ export function SandboxProviderSection({
                   disabled={isPending || !canSave}
                   onClick={() => void handleSave()}
                 >
-                  {isPending ? (
-                    <Loader2
-                      className="animate-spin"
-                      data-icon="inline-start"
-                    />
-                  ) : null}
+                  {isPending ? <Spinner data-icon="inline-start" /> : null}
                   Save
                 </Button>
               </div>

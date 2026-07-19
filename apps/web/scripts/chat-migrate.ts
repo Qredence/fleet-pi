@@ -18,6 +18,10 @@ import {
   CHAT_POSTGRES_PROVIDER_AUTH_SQL,
 } from "../src/lib/db/chat-postgres-provider-auth"
 import {
+  CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
+  CHAT_POSTGRES_USER_SETTINGS_SQL,
+} from "../src/lib/db/chat-postgres-user-settings"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -107,6 +111,11 @@ async function main() {
       client,
       CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
       CHAT_POSTGRES_PROVIDER_AUTH_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
+      CHAT_POSTGRES_USER_SETTINGS_SQL
     )
 
     await client.query("COMMIT")

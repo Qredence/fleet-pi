@@ -19,5 +19,9 @@
   },
   "rtl": false,
   "menuColor": "default",
-  "menuAccent": "subtle"
+  "menuAccent": "subtle",
+  "registries": {
+    "@fluid": "https://www.fluidfunctionalism.com/r/{name}.json",
+    "@agent-elements": "https://agent-elements.21st.dev/r/{name}.json"
+  }
 }

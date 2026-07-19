@@ -1,6 +1,9 @@
 import {
   ChatCommandsResponseSchema,
+  ChatModelsDiscoverRequestSchema,
+  ChatModelsDiscoverResponseSchema,
   ChatModelsResponseSchema,
+  ChatProviderRemoveRequestSchema,
   ChatProviderUpdateRequestSchema,
   ChatProviderUpdateResponseSchema,
   ChatProvidersResponseSchema,
@@ -19,10 +22,15 @@ import {
   metadataUrl,
   readChatStream,
 } from "./chat-fetch"
+import { resolveChatApiUrl } from "./chat-runtime-url"
 import type {
   ChatCommandsResponse,
+  ChatModelsDiscoverRequest,
+  ChatModelsDiscoverResponse,
   ChatModelsResponse,
   ChatProviderInfo,
+  ChatProviderRemoveRequest,
+  ChatProviderRemoveResponse,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatQuestionAnswerRequest,
@@ -37,6 +45,7 @@ import type {
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import { getChatAuthBearerToken } from "@/lib/auth/use-auth"
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>
@@ -44,7 +53,12 @@ export type ChatClient = {
     request: ChatQuestionAnswerRequest
   ) => Promise<ChatQuestionAnswerResponse>
   createSession: () => Promise<ChatSessionResponse>
-  getModels: () => Promise<ChatModelsResponse>
+  getModels: (options?: {
+    scope?: "enabled" | "all"
+  }) => Promise<ChatModelsResponse>
+  discoverModels: (
+    request: ChatModelsDiscoverRequest
+  ) => Promise<ChatModelsDiscoverResponse>
   getResources: () => Promise<ChatResourcesResponse>
   getCommands: () => Promise<ChatCommandsResponse>
   getSettings: () => Promise<ChatSettingsResponse>
@@ -64,6 +78,9 @@ export type ChatClient = {
   updateProvider: (
     request: ChatProviderUpdateRequest
   ) => Promise<ChatProviderUpdateResponse>
+  removeProvider: (
+    request: ChatProviderRemoveRequest
+  ) => Promise<ChatProviderRemoveResponse>
 }
 
 export const chatClient: ChatClient = {
@@ -93,8 +110,24 @@ export const chatClient: ChatClient = {
     })
   },
 
-  async getModels() {
-    return fetchValidatedJson("/api/chat/models", ChatModelsResponseSchema)
+  async getModels(options) {
+    const params = options?.scope === "all" ? "?scope=all" : ""
+    return fetchValidatedJson(
+      `/api/chat/models${params}`,
+      ChatModelsResponseSchema
+    )
+  },
+
+  async discoverModels(request) {
+    return fetchValidatedJson(
+      "/api/chat/models/discover",
+      ChatModelsDiscoverResponseSchema,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ChatModelsDiscoverRequestSchema.parse(request)),
+      }
+    )
   },
 
   async getResources() {
@@ -156,16 +189,20 @@ export const chatClient: ChatClient = {
   },
 
   async streamMessage(request, onEvent, signal) {
+    const headers = new Headers({ "Content-Type": "application/json" })
     const daytonaKey =
       typeof window !== "undefined"
         ? localStorage.getItem("daytonaApiKey")
         : null
-    const headers = new Headers({ "Content-Type": "application/json" })
     if (daytonaKey) {
       headers.set("x-daytona-api-key", daytonaKey)
     }
+    const bearer = await getChatAuthBearerToken()
+    if (bearer) {
+      headers.set("Authorization", `Bearer ${bearer}`)
+    }
 
-    const response = await fetch("/api/chat", {
+    const response = await fetch(resolveChatApiUrl("/api/chat"), {
       method: "POST",
       headers,
       body: JSON.stringify(request),
@@ -194,6 +231,19 @@ export const chatClient: ChatClient = {
       ChatProviderUpdateResponseSchema,
       {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    )
+  },
+
+  async removeProvider(request) {
+    const body = ChatProviderRemoveRequestSchema.parse(request)
+    return fetchValidatedJson(
+      "/api/chat/providers",
+      ChatProviderUpdateResponseSchema,
+      {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }

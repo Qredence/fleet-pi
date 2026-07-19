@@ -57,12 +57,12 @@ export const PROVIDER_METADATA: Record<string, PiProviderUiMetadata> = {
   "openai-chat-completions": {
     icon: Sparkles,
     placeholder: "sk-... or nvapi-...",
-    help: "OpenAI-compatible Chat Completions root (e.g. https://opencode.ai/zen/v1). Paste …/chat/completions if you want — it is normalized. Requires API key, base URL, and model ID.",
+    help: "OpenAI-compatible Chat Completions root (e.g. https://opencode.ai/zen/v1). Paste …/chat/completions if you want — it is normalized. Requires API key, base URL, and model name.",
   },
   "openai-chat-completions-model": {
     icon: Sparkles,
     placeholder: "meta/llama-3.1-70b-instruct",
-    help: "Gateway model slug registered when /models is empty or incomplete.",
+    help: "Gateway model name registered when /models is empty or incomplete.",
   },
   anthropic: {
     icon: Bot,

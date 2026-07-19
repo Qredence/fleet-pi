@@ -6,8 +6,14 @@ import { createSessionServices } from "./session-factory"
 import type { ChatSlashCommandInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
-export async function loadChatCommands(context: AppRuntimeContext) {
-  const services = await createSessionServices(context)
+export async function loadChatCommands(
+  context: AppRuntimeContext,
+  options?: { userId?: string }
+) {
+  const services = await createSessionServices(context, undefined, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
   const diagnostics: Array<string> = []
   const commands = new Map<string, ChatSlashCommandInfo>()
 

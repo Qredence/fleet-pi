@@ -2,9 +2,12 @@ node_modules
 **/node_modules
 .git
 .fleet
-.pi
+.pi/npm
 .husky
 terminals
 dist
 .vercel
-agent-workspace
+agent-workspace/indexes
+agent-workspace/artifacts
+agent-workspace/scratch
+agent-workspace/evals

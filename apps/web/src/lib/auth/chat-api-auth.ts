@@ -1,5 +1,9 @@
 import { auth } from "@/lib/auth/server"
-import { isVercelDeployment } from "@/lib/deployment"
+import { isChatAuthRequired } from "@/lib/auth/auth-mode"
+import {
+  parseBearerToken,
+  verifyNeonAuthAccessToken,
+} from "@/lib/auth/jwt-verify"
 import {
   isUserScopedEphemeralSessionFile,
   lookupSessionIdBySessionFile,
@@ -14,12 +18,29 @@ export type AuthenticatedChatContext = {
   userId: string | undefined
 }
 
-export function isVercelChatDeployment() {
-  return isVercelDeployment()
-}
+export { isChatAuthRequired } from "@/lib/auth/auth-mode"
 
 export async function getChatAuthSession(request: Request) {
-  return auth.api.getSession({ headers: request.headers }).catch(() => null)
+  const bearer = parseBearerToken(request)
+  if (bearer) {
+    const verified = await verifyNeonAuthAccessToken(bearer)
+    if (verified) {
+      return {
+        user: {
+          id: verified.sub,
+          email: verified.email ?? "",
+          name: verified.email?.split("@")[0] ?? "User",
+        },
+        session: {
+          id: verified.sub,
+          userId: verified.sub,
+          token: bearer,
+        },
+      }
+    }
+  }
+
+  return auth.api.getSession(request).catch(() => null)
 }
 
 export function unauthorizedChatResponse() {
@@ -35,7 +56,7 @@ export function forbiddenSessionResponse() {
 
 export async function requireVercelChatAuth(request: Request) {
   const authSession = await getChatAuthSession(request)
-  if (isVercelChatDeployment() && !authSession?.user.id) {
+  if (isChatAuthRequired() && !authSession?.user.id) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
   return { ok: true as const, authSession }
@@ -66,7 +87,7 @@ export async function enforceChatSessionOwnership(input: {
     return { ok: true as const }
   }
 
-  if (isVercelChatDeployment() && !input.userId) {
+  if (isChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
 
@@ -77,7 +98,7 @@ export async function enforceChatSessionOwnership(input: {
   let sessionId = input.sessionId
 
   if (!sessionId && input.sessionFile) {
-    if (isVercelChatDeployment()) {
+    if (isChatAuthRequired()) {
       sessionId = await lookupSessionIdBySessionFile(input.sessionFile)
       if (
         !sessionId &&
@@ -113,7 +134,7 @@ export async function enforceRunOwnership(input: {
     return { ok: true as const }
   }
 
-  if (isVercelChatDeployment() && !input.userId) {
+  if (isChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
 

@@ -189,7 +189,7 @@ function RuntimeToolCard({
         <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground/6">
           <Icon className="size-4" />
         </span>
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2">
             <div className="min-w-0 flex-1 truncate text-[13px] font-medium">
               {title}
@@ -199,7 +199,7 @@ function RuntimeToolCard({
             </span>
           </div>
           <p className="text-[12px] leading-4 text-foreground/60">{summary}</p>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             {details.filter(Boolean).map((detail, index) =>
               typeof detail === "string" ? (
                 <div

@@ -1,10 +1,11 @@
-import { Check, Info, Loader2, RotateCcw, Save } from "lucide-react"
+import { Check, Info, RotateCcw, Save } from "lucide-react"
 import { useId } from "react"
 import { Button } from "../../../../button"
 import { Input } from "../../../../input"
 import { Select } from "../../../../select"
 import { Switch } from "../../../../switch"
 import { Badge } from "../../../../badge"
+import { Spinner } from "../../../../spinner"
 import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
 import {
@@ -77,7 +78,7 @@ export function EditableSection({
             aria-label={`Revert ${title}`}
             title="Revert changes"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw data-icon="inline-start" />
           </Button>
           <Button
             type="button"
@@ -93,15 +94,15 @@ export function EditableSection({
             onClick={onSave}
           >
             {saving ? (
-              <span className="flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin text-foreground/50" />
+              <>
+                <Spinner data-icon="inline-start" />
                 Saving
-              </span>
+              </>
             ) : (
-              <span className="flex items-center gap-1">
-                <Save className="h-3 w-3" />
+              <>
+                <Save data-icon="inline-start" />
                 Commit
-              </span>
+              </>
             )}
           </Button>
         </div>

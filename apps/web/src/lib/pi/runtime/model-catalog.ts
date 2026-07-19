@@ -1,6 +1,7 @@
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import { createSessionServices } from "./session-factory"
+import { normalizeChatThinkingLevel } from "./thinking-level"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
@@ -10,40 +11,46 @@ import type {
   ChatModelInfo,
   ChatModelSelection,
   ChatModelsResponse,
-  ChatThinkingLevel,
 } from "@workspace/pi-protocol/chat-protocol"
 
-const THINKING_LEVELS = new Set<ChatThinkingLevel>([
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-])
+export type LoadChatModelsOptions = {
+  /**
+   * `enabled` (default): models allowed by `enabledModels` for the chat picker.
+   * `all`: full registry catalog for Settings discovery / curation (not filtered).
+   */
+  scope?: "enabled" | "all"
+  userId?: string
+}
 
 export async function loadChatModels(
-  context: Parameters<typeof createSessionServices>[0]
+  context: Parameters<typeof createSessionServices>[0],
+  options?: LoadChatModelsOptions
 ): Promise<ChatModelsResponse> {
-  const services = await createSessionServices(context)
-  const available = services.modelRegistry.getAvailable()
+  const scope = options?.scope ?? "enabled"
+  const services = await createSessionServices(context, undefined, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+  const available = await services.modelRuntime.getAvailable()
   const availableKeys = new Set(available.map(modelKey))
-  const all = services.modelRegistry.getAll()
+  const all = services.modelRuntime.getModels()
   const enabledPatterns = services.settingsManager.getEnabledModels()
   const sourceModels = available.length > 0 ? available : all
-  const models = sourceModels
-    .map((model) =>
-      toChatModelInfo(
-        model,
-        available.length === 0 || availableKeys.has(modelKey(model)),
-        services.settingsManager.getDefaultThinkingLevel()
-      )
+  const catalog = sourceModels.map((model) =>
+    toChatModelInfo(
+      model,
+      available.length === 0 || availableKeys.has(modelKey(model)),
+      services.settingsManager.getDefaultThinkingLevel()
     )
-    .filter((model) => isChatModelEnabled(model, enabledPatterns))
+  )
+  const models =
+    scope === "all"
+      ? catalog
+      : catalog.filter((model) => isChatModelEnabled(model, enabledPatterns))
   const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
     services.settingsManager
   )
-  const defaultThinkingLevel = normalizeThinkingLevel(
+  const defaultThinkingLevel = normalizeChatThinkingLevel(
     services.settingsManager.getDefaultThinkingLevel()
   )
   const defaultModelExists = models.some(
@@ -113,7 +120,7 @@ export function resolveModelSelection(
 
   const thinkingLevel =
     typeof selection === "object"
-      ? normalizeThinkingLevel(selection.thinkingLevel)
+      ? normalizeChatThinkingLevel(selection.thinkingLevel)
       : undefined
   const model =
     typeof selection === "string"
@@ -149,8 +156,8 @@ function resolveLegacyModelSelection(
     withoutRegionPrefix,
     normalized,
   ])
-  const all = services.modelRegistry.getAll()
-  const available = services.modelRegistry.getAvailable()
+  const all = services.modelRuntime.getModels()
+  const available = services.modelRuntime.getAvailableSnapshot()
 
   return (
     candidates
@@ -177,8 +184,8 @@ function resolveStructuredModelSelection(
   id: string
 ) {
   if (provider !== "amazon-bedrock") {
-    const direct = services.modelRegistry.find(provider, id)
-    const available = services.modelRegistry.getAvailable()
+    const direct = services.modelRuntime.getModel(provider, id)
+    const available = services.modelRuntime.getAvailableSnapshot()
     if (
       direct &&
       available.some((model) => modelKey(model) === modelKey(direct))
@@ -186,14 +193,18 @@ function resolveStructuredModelSelection(
       return direct
     }
 
-    const sameIdAvailable = available.find((model) => model.id === id)
-    if (sameIdAvailable) return sameIdAvailable
+    if (provider === "openai") {
+      const occ = services.modelRuntime.getModel("openai-chat-completions", id)
+      if (occ && available.some((model) => modelKey(model) === modelKey(occ))) {
+        return occ
+      }
+    }
 
     return direct
   }
 
   return bedrockModelCandidates(id)
-    .map((candidate) => services.modelRegistry.find(provider, candidate))
+    .map((candidate) => services.modelRuntime.getModel(provider, candidate))
     .find((model): model is Model<any> => model !== undefined)
 }
 
@@ -218,10 +229,15 @@ function pickSelectedChatModel(
   )
   if (exact?.available) return exact
 
-  const sameIdAvailable = models.find(
-    (model) => model.id === defaultModel && model.available
-  )
-  if (sameIdAvailable) return sameIdAvailable
+  if (defaultProvider === "openai") {
+    const occMatch = models.find(
+      (model) =>
+        model.provider === "openai-chat-completions" &&
+        model.id === defaultModel &&
+        model.available
+    )
+    if (occMatch) return occMatch
+  }
 
   if (exact) return exact
 
@@ -243,13 +259,6 @@ function findChatModelByCandidates(
   return candidates
     .map((candidate) => models.find((model) => model.id === candidate))
     .find((model): model is ChatModelInfo => model !== undefined)
-}
-
-function normalizeThinkingLevel(value: unknown): ChatThinkingLevel | undefined {
-  return typeof value === "string" &&
-    THINKING_LEVELS.has(value as ChatThinkingLevel)
-    ? (value as ChatThinkingLevel)
-    : undefined
 }
 
 function modelKey(model: Pick<Model<any>, "provider" | "id">) {
@@ -275,7 +284,7 @@ function toChatModelInfo(
     contextWindow: model.contextWindow,
     maxTokens: model.maxTokens,
     available,
-    defaultThinkingLevel: normalizeThinkingLevel(defaultThinkingLevel),
+    defaultThinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
   }
 }
 

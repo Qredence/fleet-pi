@@ -19,6 +19,11 @@ import type {
   ChatSessionResponse,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import {
+  hydrateSessionFileFromObjectStorage,
+  inferSessionIdFromFile,
+  persistSessionFileToObjectStorage,
+} from "@/lib/storage/session-blob-store"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import {
@@ -31,16 +36,36 @@ export type SessionManagerResult = {
   sessionReset: boolean
 }
 
+export function scheduleSessionBlobPersist(input: {
+  userId?: string
+  sessionManager: SessionManager
+}) {
+  const sessionFile = input.sessionManager.getSessionFile()
+  const sessionId = input.sessionManager.getSessionId()
+  if (!input.userId || !sessionFile || !sessionId) {
+    return
+  }
+
+  void persistSessionFileToObjectStorage({
+    userId: input.userId,
+    sessionId,
+    sessionFile,
+  })
+}
+
 export async function createNewChatSession(
   context: AppRuntimeContext,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   const sessionManager = SessionManager.create(
     context.projectRoot,
     getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
   await syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
+  // Do not upload empty JSONL blobs on create — that poisons cold hydrate.
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -53,7 +78,9 @@ export async function hydrateChatSession(
   metadata: ChatSessionMetadata,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   const sessionDir = getSessionDir(context.projectRoot, services, {
     userId: options.userId,
   })
@@ -94,6 +121,7 @@ export async function hydrateChatSession(
   }
 
   void syncPiSessionMirrorSafely(sessionManager, options)
+  scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -108,7 +136,9 @@ export async function listChatSessions(
   context: AppRuntimeContext,
   options: { userId?: string } = {}
 ): Promise<Array<ChatSessionInfo>> {
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: options.userId,
+  })
   let sessions = await SessionManager.list(
     context.projectRoot,
     getSessionDir(context.projectRoot, services, { userId: options.userId })
@@ -184,6 +214,48 @@ export async function resolveSessionFile(
   return match.path
 }
 
+async function tryHydrateSessionFromObjectStorage(input: {
+  metadata: ChatSessionMetadata
+  repoRoot: string
+  sessionDir: string
+  userId: string
+}) {
+  const rawSessionId =
+    input.metadata.sessionId ??
+    (input.metadata.sessionFile
+      ? inferSessionIdFromFile(input.metadata.sessionFile)
+      : undefined)
+  const candidateSessionId =
+    rawSessionId && /^[A-Za-z0-9._-]+$/.test(rawSessionId)
+      ? rawSessionId
+      : undefined
+  // Never trust client sessionFile as a download destination — only write
+  // under the resolved sessionDir.
+  if (!candidateSessionId) {
+    return undefined
+  }
+
+  const candidateSessionFile = resolve(
+    input.sessionDir,
+    `${candidateSessionId}.jsonl`
+  )
+  await hydrateSessionFileFromObjectStorage({
+    userId: input.userId,
+    sessionId: candidateSessionId,
+    sessionFile: candidateSessionFile,
+  })
+
+  return resolveSessionFile(
+    {
+      ...input.metadata,
+      sessionFile: candidateSessionFile,
+      sessionId: candidateSessionId,
+    },
+    input.repoRoot,
+    input.sessionDir
+  )
+}
+
 export async function resolveSessionFileWithRecovery(
   metadata: ChatSessionMetadata,
   repoRoot: string,
@@ -191,10 +263,16 @@ export async function resolveSessionFileWithRecovery(
   options: { userId?: string } = {}
 ) {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
-  if (sessionFile || !options.userId) {
+  if (sessionFile) {
     return sessionFile
   }
 
+  if (!options.userId) {
+    return undefined
+  }
+
+  // Prefer Neon mirror recovery before object-storage hydrate so a stale/empty
+  // blob cannot short-circuit a populated mirror.
   const recovery = await recoverOwnedSessionFile({
     sessionId: metadata.sessionId,
     sessionFile: metadata.sessionFile,
@@ -206,7 +284,12 @@ export async function resolveSessionFileWithRecovery(
     return recovery.sessionFile
   }
 
-  return undefined
+  return tryHydrateSessionFromObjectStorage({
+    metadata,
+    repoRoot,
+    sessionDir,
+    userId: options.userId,
+  })
 }
 
 function didRequestedSessionReset(

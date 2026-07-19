@@ -99,7 +99,20 @@ describe("settings bridge", () => {
     ).toBe(true)
   })
 
-  it("loads effective and project settings with reload impact metadata", async () => {
+  it("loads effective settings and persisted project overrides", async () => {
+    const projectRoot = createProjectRoot()
+    mkdirSync(join(projectRoot, ".pi"), { recursive: true })
+    writeFileSync(
+      join(projectRoot, ".pi/settings.json"),
+      JSON.stringify(
+        {
+          packages: ["npm:pi-autocontext", { source: "npm:team-pack" }],
+        },
+        null,
+        2
+      )
+    )
+
     mocks.createSessionServices.mockResolvedValue({
       settingsManager: createSettingsManager({
         defaultProvider: "google",
@@ -113,7 +126,7 @@ describe("settings bridge", () => {
     })
 
     const response = await loadChatSettings({
-      projectRoot: createProjectRoot(),
+      projectRoot,
     } as never)
 
     expect(response.projectPath).toBe(".pi/settings.json")
@@ -121,6 +134,7 @@ describe("settings bridge", () => {
       "npm:pi-autocontext",
       { source: "npm:team-pack" },
     ])
+    expect(response.effective.defaultProvider).toBe("google")
     expect(response.updateImpact).toEqual({
       newSessionRecommended: false,
       resourceReloadRequired: false,
@@ -146,7 +160,6 @@ describe("settings bridge", () => {
 
     expect(persisted).toEqual({
       packages: ["npm:pi-web-access"],
-      defaultProvider: "google",
     })
     expect(mocks.hotReloadActiveRuntimes).toHaveBeenCalled()
   })

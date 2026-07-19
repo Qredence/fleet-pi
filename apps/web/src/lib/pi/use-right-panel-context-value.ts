@@ -4,6 +4,8 @@ import type {
   ChatMode,
   ChatPiSettingsUpdate,
   ChatProviderInfo,
+  ChatProviderRemoveRequest,
+  ChatProviderRemoveResponse,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatResourcesResponse,
@@ -28,6 +30,11 @@ type UseRightPanelContextValueArgs = {
   mode: ChatMode
   modelKey?: string
   models: Array<ChatModelOption>
+  modelCatalog?: Array<ChatModelOption>
+  onDiscoverModels?: (providerId: string) => Promise<Array<ChatModelOption>>
+  onRemoveProvider?: (
+    request: ChatProviderRemoveRequest
+  ) => Promise<ChatProviderRemoveResponse>
   onUpdateProvider?: (
     request: ChatProviderUpdateRequest
   ) => Promise<ChatProviderUpdateResponse>
@@ -64,6 +71,9 @@ export function useRightPanelContextValue({
   mode,
   modelKey,
   models,
+  modelCatalog,
+  onDiscoverModels,
+  onRemoveProvider,
   onUpdateProvider,
   openWorkspacePath,
   planLabel,
@@ -96,7 +106,10 @@ export function useRightPanelContextValue({
       loadWorkspaceFile,
       mode,
       models,
+      modelCatalog,
+      onDiscoverModels,
       onThemePreferenceChange: handleThemePreferenceChange,
+      onRemoveProvider,
       onUpdateProvider,
       openWorkspacePath,
       planLabel,
@@ -131,6 +144,9 @@ export function useRightPanelContextValue({
       mode,
       modelKey,
       models,
+      modelCatalog,
+      onDiscoverModels,
+      onRemoveProvider,
       onUpdateProvider,
       openWorkspacePath,
       planLabel,

@@ -139,7 +139,7 @@ export const PlanTool = memo(function PlanTool({
       </div>
 
       <div className="border-t border-border bg-background pt-2">
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2 px-3">
             <div className="text-sm text-an-tool-color">{plan.title}</div>
             {actionLabel ? (
@@ -205,7 +205,7 @@ export const PlanTool = memo(function PlanTool({
         )}
 
         {canAct ? (
-          <div className="space-y-2 border-t border-border bg-an-tool-background px-3 py-2.5">
+          <div className="flex flex-col gap-2 border-t border-border bg-an-tool-background px-3 py-2.5">
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -238,7 +238,7 @@ export const PlanTool = memo(function PlanTool({
             </div>
 
             {isRefining ? (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <textarea
                   value={refineText}
                   onChange={(event) => setRefineText(event.target.value)}

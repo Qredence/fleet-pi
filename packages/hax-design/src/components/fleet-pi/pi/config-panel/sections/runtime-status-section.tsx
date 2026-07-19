@@ -36,7 +36,7 @@ export function RuntimeStatusSection({
       <SectionSurface
         elevation="raised"
         padding="compact"
-        className="space-y-3"
+        className="flex flex-col gap-3"
       >
         <div className="flex min-w-0 items-start gap-3">
           <div className="shrink-0 rounded-lg border border-border/15 bg-foreground/5 p-1.5 text-foreground/50 shadow-sm transition-transform duration-300 hover:scale-105">

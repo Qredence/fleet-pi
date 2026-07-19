@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { hotReloadActiveRuntimes, retainPiRuntime } from "../server"
+import { createMockSettingsManager } from "../runtime/__tests__/mock-settings-manager"
 
 const mocks = vi.hoisted(() => ({
   applyRuntimeAuth: vi.fn(),
@@ -27,12 +28,11 @@ describe("settings hot-reload runtime mechanism", () => {
   it("reloads settings, resources, model defaults, and BYOK for active runtimes", async () => {
     const mockReload = vi.fn(async () => undefined)
     const mockResourceReload = vi.fn(async () => undefined)
-    const mockSettingsManager = {
-      reload: mockReload,
-      getDefaultProvider: () => "google",
-      getDefaultModel: () => "gemini-3.5-flash-new",
-      getDefaultThinkingLevel: () => "high",
-    }
+    const mockSettingsManager = createMockSettingsManager()
+    mockSettingsManager.reload = mockReload
+    mockSettingsManager.getDefaultProvider = vi.fn(() => "google")
+    mockSettingsManager.getDefaultModel = vi.fn(() => "gemini-3.5-flash-new")
+    mockSettingsManager.getDefaultThinkingLevel = vi.fn(() => "high")
     const mockRuntime = {
       session: {
         sessionId: "test-session-id",
@@ -42,7 +42,7 @@ describe("settings hot-reload runtime mechanism", () => {
         settingsManager: mockSettingsManager,
         resourceLoader: { reload: mockResourceReload },
       },
-    } as any
+    } as never
 
     const release = retainPiRuntime(mockRuntime, "user-1")
 
@@ -65,7 +65,7 @@ describe("settings hot-reload runtime mechanism", () => {
         thinkingLevel: "high",
       })
       expect(mocks.applyRuntimeAuth).toHaveBeenCalledWith(
-        mockRuntime.services,
+        (mockRuntime as { services: unknown }).services,
         {
           userId: "user-1",
         }

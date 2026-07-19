@@ -79,7 +79,7 @@ export const SubagentTool = memo(function SubagentTool({
           )}
           <div
             className={cn(
-              nestedTools.length > 1 ? "space-y-2" : "space-y-0",
+              nestedTools.length > 1 ? "flex flex-col gap-2" : undefined,
               isPending &&
                 nestedTools.length > MAX_VISIBLE_TOOLS &&
                 "max-h-[120px] overflow-y-auto"

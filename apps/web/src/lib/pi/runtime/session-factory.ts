@@ -34,7 +34,8 @@ const bootstrapRetryStates = new WeakMap<
 
 export async function createSessionServices(
   context: AppRuntimeContext,
-  overrides?: Parameters<typeof createAgentSessionServices>[0]
+  overrides?: Parameters<typeof createAgentSessionServices>[0],
+  options?: { userId?: string; projectRoot?: string }
 ) {
   if (process.env.VERCEL === "1") {
     for (const envVarName of PROVIDER_ENV_SCRUB_VAR_NAMES) {
@@ -64,9 +65,19 @@ export async function createSessionServices(
     workspaceBootstrap
   )
 
+  const { hydrateSessionServicesSettings } =
+    await import("./durable-project-settings")
+  await hydrateSessionServicesSettings(servicesWithBootstrap, {
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
+
   const { registerOpenAiChatCompletionsProvider } =
     await import("./openai-chat-completions-provider")
-  await registerOpenAiChatCompletionsProvider(servicesWithBootstrap, undefined)
+  await registerOpenAiChatCompletionsProvider(
+    servicesWithBootstrap,
+    options?.userId
+  )
 
   return servicesWithBootstrap
 }
@@ -78,17 +89,14 @@ export async function applyRuntimeAuth(
   const { loadLlmProviderSecrets } = await import("./user-provider-secrets")
   const configured = await loadLlmProviderSecrets(options.userId)
 
-  const authStorage = services.authStorage as {
-    setRuntimeApiKey: (providerId: string, apiKey: string) => void
-    removeRuntimeApiKey?: (providerId: string) => void
-  }
+  const { modelRuntime } = services
 
   for (const providerId of LLM_PROVIDER_ENV_SCRUB_IDS) {
     const apiKey = configured.get(providerId)
     if (apiKey) {
-      authStorage.setRuntimeApiKey(providerId, apiKey)
+      await modelRuntime.setRuntimeApiKey(providerId, apiKey)
     } else {
-      authStorage.removeRuntimeApiKey?.(providerId)
+      await modelRuntime.removeRuntimeApiKey(providerId)
     }
   }
 

@@ -9,7 +9,7 @@ Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) i
 ```text
 fleet-pi/
 ├── .pi/                      # Committed Pi config, skills, and built-in extensions
-├── agent-workspace/          # Canonical adaptive state: memory, plans, skills, artifacts, installs
+├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs
 ├── apps/web/                 # TanStack Start application
 │   ├── src/routes/           # File-based API and page routes
 │   ├── src/lib/pi/           # Pi runtime (handleChatTurn, server-runtime, plan-mode)

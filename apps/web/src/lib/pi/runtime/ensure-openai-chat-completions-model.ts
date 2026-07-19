@@ -1,6 +1,9 @@
 import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
-import { readProjectSettingsFile, updateChatSettings } from "./settings-bridge"
+import {
+  loadPersistedProjectSettingsOverrides,
+  updateChatSettings,
+} from "./settings-bridge"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 /**
@@ -13,13 +16,16 @@ import type { AppRuntimeContext } from "@/lib/app-runtime"
 export async function ensureOpenAiChatCompletionsModelEnabled(
   context: AppRuntimeContext,
   modelId: string,
-  options?: { userId?: string }
+  options?: { userId?: string; skipSettingsHotReload?: boolean }
 ) {
   const trimmedModelId = modelId.trim()
   if (!trimmedModelId) return
 
   const pattern = `${OPENAI_CHAT_COMPLETIONS_PROVIDER_ID}/${trimmedModelId}`
-  const current = await readProjectSettingsFile(context.projectRoot)
+  const current = await loadPersistedProjectSettingsOverrides({
+    userId: options?.userId,
+    projectRoot: context.projectRoot,
+  })
 
   // Missing enabledModels means allow-all — nothing to change.
   if (!Object.prototype.hasOwnProperty.call(current, "enabledModels")) {
@@ -55,7 +61,10 @@ export async function ensureOpenAiChatCompletionsModelEnabled(
           defaultProvider: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
           defaultModel: trimmedModelId,
         },
-        { userId: options?.userId }
+        {
+          userId: options?.userId,
+          skipHotReload: options?.skipSettingsHotReload,
+        }
       )
     }
     return
@@ -72,6 +81,6 @@ export async function ensureOpenAiChatCompletionsModelEnabled(
           }
         : {}),
     },
-    { userId: options?.userId }
+    { userId: options?.userId, skipHotReload: options?.skipSettingsHotReload }
   )
 }

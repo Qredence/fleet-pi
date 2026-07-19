@@ -79,30 +79,32 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ## `.pi/settings.json`
 
-Project-local Pi settings are stored in `.pi/settings.json` at the repo root. These override the global Pi defaults. The file is read at runtime and can be edited through the Configurations tab in the UI or by patching `PATCH /api/chat/settings`.
+Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file is usually `{}` — it holds **overrides only**. Fleet Pi merges code defaults (`apps/web/src/lib/pi/runtime/fleet-default-project-settings.ts`) with this file at runtime. On Vercel, per-user overrides live in Neon `pi_user_settings` instead.
 
-Supported fields:
+Edit overrides through the Settings dialog or `PATCH /api/chat/settings`. Saves compact values that differ from Fleet base defaults (auto-discovered `.pi/skills` and `.pi/extensions` paths are not re-written).
 
-| Field                         | Type                                                           | Description                                                                       |
-| ----------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `defaultProvider`             | `string`                                                       | Default Pi provider (e.g. `"amazon-bedrock"`).                                    |
-| `defaultModel`                | `string`                                                       | Default model ID within the provider.                                             |
-| `defaultThinkingLevel`        | `"off" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh"` | Default reasoning/thinking level for models that support it.                      |
-| `enabledModels`               | `string[]`                                                     | Allowlist of model keys. When set, only listed models appear in the model picker. |
-| `enableSkillCommands`         | `boolean`                                                      | Whether Pi skill slash commands are enabled.                                      |
-| `skills`                      | `string[]`                                                     | Paths or names of Pi skills to load.                                              |
-| `prompts`                     | `string[]`                                                     | Paths or names of Pi prompt files to load.                                        |
-| `extensions`                  | `string[]`                                                     | Paths to Pi extension directories to load.                                        |
-| `packages`                    | `string[] \| object[]`                                         | Pi packages to activate (npm package names or objects with config).               |
-| `themes`                      | `string[]`                                                     | Pi theme files to load.                                                           |
-| `transport`                   | `"auto" \| "sse" \| "websocket"`                               | Streaming transport preference.                                                   |
-| `steeringMode`                | `"all" \| "one-at-a-time"`                                     | How steering prompts are delivered to the agent.                                  |
-| `followUpMode`                | `"all" \| "one-at-a-time"`                                     | How follow-up prompts are delivered.                                              |
-| `compaction.enabled`          | `boolean`                                                      | Whether context compaction is enabled.                                            |
-| `compaction.reserveTokens`    | `number`                                                       | Token budget reserved after compaction.                                           |
-| `compaction.keepRecentTokens` | `number`                                                       | Recent token window kept verbatim during compaction.                              |
-| `retry.enabled`               | `boolean`                                                      | Whether automatic retry on transient errors is enabled.                           |
-| `retry.maxRetries`            | `number`                                                       | Maximum number of retry attempts.                                                 |
-| `retry.baseDelayMs`           | `number`                                                       | Base delay in milliseconds between retries (exponential backoff).                 |
+Supported override fields:
+
+| Field                         | Type                                                                    | Description                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `defaultProvider`             | `string`                                                                | Default Pi provider (e.g. `"amazon-bedrock"`).                                                                             |
+| `defaultModel`                | `string`                                                                | Default model ID within the provider.                                                                                      |
+| `defaultThinkingLevel`        | `"off" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh" \| "max"` | Default reasoning/thinking level for models that support it.                                                               |
+| `enabledModels`               | `string[]`                                                              | Model allowlist glob patterns. **Omit** for allow-all (default). `[]` denies all models. Curate via Settings → LLM Models. |
+| `enableSkillCommands`         | `boolean`                                                               | Whether Pi skill slash commands are enabled.                                                                               |
+| `skills`                      | `string[]`                                                              | Paths or names of Pi skills to load.                                                                                       |
+| `prompts`                     | `string[]`                                                              | Paths or names of Pi prompt files to load.                                                                                 |
+| `extensions`                  | `string[]`                                                              | Paths to Pi extension directories to load.                                                                                 |
+| `packages`                    | `string[] \| object[]`                                                  | Pi packages to activate (npm package names or objects with config).                                                        |
+| `themes`                      | `string[]`                                                              | Pi theme files to load.                                                                                                    |
+| `transport`                   | `"auto" \| "sse" \| "websocket"`                                        | Streaming transport preference.                                                                                            |
+| `steeringMode`                | `"all" \| "one-at-a-time"`                                              | How steering prompts are delivered to the agent.                                                                           |
+| `followUpMode`                | `"all" \| "one-at-a-time"`                                              | How follow-up prompts are delivered.                                                                                       |
+| `compaction.enabled`          | `boolean`                                                               | Whether context compaction is enabled.                                                                                     |
+| `compaction.reserveTokens`    | `number`                                                                | Token budget reserved after compaction.                                                                                    |
+| `compaction.keepRecentTokens` | `number`                                                                | Recent token window kept verbatim during compaction.                                                                       |
+| `retry.enabled`               | `boolean`                                                               | Whether automatic retry on transient errors is enabled.                                                                    |
+| `retry.maxRetries`            | `number`                                                                | Maximum number of retry attempts.                                                                                          |
+| `retry.baseDelayMs`           | `number`                                                                | Base delay in milliseconds between retries (exponential backoff).                                                          |
 
 Provider credentials (AWS keys, etc.) belong in environment variables, not in `.pi/settings.json`.

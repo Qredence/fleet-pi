@@ -40,6 +40,7 @@ import { Route as ApiChatAccountRouteImport } from './routes/api/chat/account'
 import { Route as ApiChatAbortRouteImport } from './routes/api/chat/abort'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiChatModelsDiscoverRouteImport } from './routes/api/chat/models.discover'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -196,6 +197,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatModelsDiscoverRoute = ApiChatModelsDiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => ApiChatModelsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -207,7 +213,7 @@ export interface FileRoutesByFullPath {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/commands': typeof ApiChatCommandsRoute
-  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/models': typeof ApiChatModelsRouteWithChildren
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/providers': typeof ApiChatProvidersRoute
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
   '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
+  '/api/chat/models/discover': typeof ApiChatModelsDiscoverRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -240,7 +247,7 @@ export interface FileRoutesByTo {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/commands': typeof ApiChatCommandsRoute
-  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/models': typeof ApiChatModelsRouteWithChildren
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/providers': typeof ApiChatProvidersRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
   '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
+  '/api/chat/models/discover': typeof ApiChatModelsDiscoverRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -274,7 +282,7 @@ export interface FileRoutesById {
   '/api/chat/abort': typeof ApiChatAbortRoute
   '/api/chat/account': typeof ApiChatAccountRoute
   '/api/chat/commands': typeof ApiChatCommandsRoute
-  '/api/chat/models': typeof ApiChatModelsRoute
+  '/api/chat/models': typeof ApiChatModelsRouteWithChildren
   '/api/chat/new': typeof ApiChatNewRoute
   '/api/chat/provenance': typeof ApiChatProvenanceRoute
   '/api/chat/providers': typeof ApiChatProvidersRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/api/workspace/reindex': typeof ApiWorkspaceReindexRoute
   '/api/workspace/search': typeof ApiWorkspaceSearchRoute
   '/api/workspace/tree': typeof ApiWorkspaceTreeRoute
+  '/api/chat/models/discover': typeof ApiChatModelsDiscoverRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/api/workspace/reindex'
     | '/api/workspace/search'
     | '/api/workspace/tree'
+    | '/api/chat/models/discover'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/api/workspace/reindex'
     | '/api/workspace/search'
     | '/api/workspace/tree'
+    | '/api/chat/models/discover'
   id:
     | '__root__'
     | '/'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/workspace/reindex'
     | '/api/workspace/search'
     | '/api/workspace/tree'
+    | '/api/chat/models/discover'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -637,14 +649,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/models/discover': {
+      id: '/api/chat/models/discover'
+      path: '/discover'
+      fullPath: '/api/chat/models/discover'
+      preLoaderRoute: typeof ApiChatModelsDiscoverRouteImport
+      parentRoute: typeof ApiChatModelsRoute
+    }
   }
 }
+
+interface ApiChatModelsRouteChildren {
+  ApiChatModelsDiscoverRoute: typeof ApiChatModelsDiscoverRoute
+}
+
+const ApiChatModelsRouteChildren: ApiChatModelsRouteChildren = {
+  ApiChatModelsDiscoverRoute: ApiChatModelsDiscoverRoute,
+}
+
+const ApiChatModelsRouteWithChildren = ApiChatModelsRoute._addFileChildren(
+  ApiChatModelsRouteChildren,
+)
 
 interface ApiChatRouteChildren {
   ApiChatAbortRoute: typeof ApiChatAbortRoute
   ApiChatAccountRoute: typeof ApiChatAccountRoute
   ApiChatCommandsRoute: typeof ApiChatCommandsRoute
-  ApiChatModelsRoute: typeof ApiChatModelsRoute
+  ApiChatModelsRoute: typeof ApiChatModelsRouteWithChildren
   ApiChatNewRoute: typeof ApiChatNewRoute
   ApiChatProvenanceRoute: typeof ApiChatProvenanceRoute
   ApiChatProvidersRoute: typeof ApiChatProvidersRoute
@@ -662,7 +693,7 @@ const ApiChatRouteChildren: ApiChatRouteChildren = {
   ApiChatAbortRoute: ApiChatAbortRoute,
   ApiChatAccountRoute: ApiChatAccountRoute,
   ApiChatCommandsRoute: ApiChatCommandsRoute,
-  ApiChatModelsRoute: ApiChatModelsRoute,
+  ApiChatModelsRoute: ApiChatModelsRouteWithChildren,
   ApiChatNewRoute: ApiChatNewRoute,
   ApiChatProvenanceRoute: ApiChatProvenanceRoute,
   ApiChatProvidersRoute: ApiChatProvidersRoute,

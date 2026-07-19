@@ -1,4 +1,4 @@
-import { authClient } from "./client"
+import { authClient, getChatAuthBearerToken } from "./client"
 
 export const useSession = authClient.useSession
 export const signIn = authClient.signIn
@@ -9,3 +9,5 @@ export function useOptionalUser() {
   const { data } = useSession()
   return data?.user ?? null
 }
+
+export { getChatAuthBearerToken }

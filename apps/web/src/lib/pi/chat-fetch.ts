@@ -4,6 +4,8 @@ import type {
   ChatSessionMetadata,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
+import { getChatAuthBearerToken } from "@/lib/auth/use-auth"
+import { resolveChatApiUrl } from "@/lib/pi/chat-runtime-url"
 
 export class ChatRequestError extends Error {
   readonly status: number
@@ -27,10 +29,7 @@ export function isForbiddenSessionError(error: unknown) {
   return body.includes("Session belongs to another user")
 }
 
-export async function fetchJson<T>(
-  url: string,
-  init?: RequestInit
-): Promise<T> {
+async function withChatRequestHeaders(init?: RequestInit) {
   const daytonaKey =
     typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
   const headers = new Headers(init?.headers)
@@ -38,7 +37,22 @@ export async function fetchJson<T>(
     headers.set("x-daytona-api-key", daytonaKey)
   }
 
-  const response = await fetch(url, { ...init, headers })
+  const bearer = await getChatAuthBearerToken()
+  if (bearer) {
+    headers.set("Authorization", `Bearer ${bearer}`)
+  }
+
+  return headers
+}
+
+export async function fetchJson<T>(
+  url: string,
+  init?: RequestInit
+): Promise<T> {
+  const headers = await withChatRequestHeaders(init)
+  const resolvedUrl = resolveChatApiUrl(url)
+
+  const response = await fetch(resolvedUrl, { ...init, headers })
   if (!response.ok) {
     const body = await response.text()
     throw new ChatRequestError(response.status, body)
@@ -51,14 +65,7 @@ export async function fetchValidatedJson<T>(
   schema: ZodType<T>,
   init?: RequestInit
 ): Promise<T> {
-  const daytonaKey =
-    typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
-  const headers = new Headers(init?.headers)
-  if (daytonaKey) {
-    headers.set("x-daytona-api-key", daytonaKey)
-  }
-
-  const data = await fetchJson<unknown>(url, { ...init, headers })
+  const data = await fetchJson<unknown>(url, init)
   return parseWithSchema(schema, data, `Response from ${url}`)
 }
 

@@ -6,6 +6,7 @@ import {
 } from "@workspace/hax-design/components/fleet-pi/auth/login-page"
 import { toast } from "sonner"
 import { signIn, signUp, useSession } from "@/lib/auth/use-auth"
+import { isLocalAnonymousAuthAllowed } from "@/lib/auth/auth-mode"
 
 export const Route = createFileRoute("/login")({ component: LoginRoute })
 
@@ -100,7 +101,11 @@ function LoginRoute() {
       onNameChange={setName}
       onEmailSubmit={handleEmailSubmit}
       onGoogleSignIn={handleGoogleSignIn}
-      onContinueWithoutAuth={() => void navigate({ to: "/" })}
+      onContinueWithoutAuth={
+        isLocalAnonymousAuthAllowed()
+          ? () => void navigate({ to: "/" })
+          : undefined
+      }
     />
   )
 }

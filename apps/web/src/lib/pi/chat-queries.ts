@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { chatClient } from "./chat-client"
 import type {
+  ChatProviderRemoveRequest,
+  ChatProviderRemoveResponse,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   ChatSettingsUpdateRequest,
@@ -8,6 +10,7 @@ import type {
 
 const keys = {
   models: ["chat", "models"] as const,
+  modelCatalog: ["chat", "models", "catalog"] as const,
   providers: ["chat", "providers"] as const,
   resources: ["chat", "resources"] as const,
   commands: ["chat", "commands"] as const,
@@ -19,6 +22,27 @@ export function useChatModels() {
   return useQuery({
     queryKey: keys.models,
     queryFn: () => chatClient.getModels(),
+  })
+}
+
+export function useChatModelCatalog(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: keys.modelCatalog,
+    queryFn: () => chatClient.getModels({ scope: "all" }),
+    enabled: options?.enabled,
+  })
+}
+
+export function useDiscoverChatModels() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (providerId: string) =>
+      chatClient.discoverModels({ providerId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
+      void queryClient.invalidateQueries({ queryKey: keys.models })
+    },
   })
 }
 
@@ -52,6 +76,7 @@ export function useUpdateChatSettings() {
     onSuccess: (settings) => {
       queryClient.setQueryData(keys.settings, settings)
       void queryClient.invalidateQueries({ queryKey: keys.models })
+      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
       void queryClient.invalidateQueries({ queryKey: keys.resources })
       void queryClient.invalidateQueries({ queryKey: keys.commands })
     },
@@ -85,6 +110,25 @@ export function useUpdateChatProvider() {
     onSuccess: (data) => {
       queryClient.setQueryData(keys.providers, { providers: data.providers })
       void queryClient.invalidateQueries({ queryKey: keys.models })
+      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
+      void queryClient.invalidateQueries({ queryKey: keys.settings })
+    },
+  })
+}
+
+export function useRemoveChatProvider() {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    ChatProviderRemoveResponse,
+    Error,
+    ChatProviderRemoveRequest
+  >({
+    mutationFn: (request) => chatClient.removeProvider(request),
+    onSuccess: (data) => {
+      queryClient.setQueryData(keys.providers, { providers: data.providers })
+      void queryClient.invalidateQueries({ queryKey: keys.models })
+      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
       void queryClient.invalidateQueries({ queryKey: keys.settings })
     },
   })

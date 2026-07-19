@@ -10,7 +10,7 @@ export type ChatMode = "agent" | "plan" | "harness"
 export type ChatPlanAction = "execute" | "refine"
 
 export type ChatThinkingLevel =
-  "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+  "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
 
 export type ChatTransport = "auto" | "sse" | "websocket"
 
@@ -199,6 +199,7 @@ type ChatStateEvent = {
   name:
     | "agent_start"
     | "agent_end"
+    | "agent_settled"
     | "turn_start"
     | "turn_end"
     | "message_start"
@@ -229,6 +230,15 @@ export type ChatModelsResponse = {
   diagnostics: Array<string>
 }
 
+export type ChatModelsDiscoverRequest = {
+  providerId: string
+}
+
+export type ChatModelsDiscoverResponse = {
+  providerId: string
+  models: Array<ChatModelInfo>
+}
+
 export type ChatProviderInfo = {
   id: string
   name: string
@@ -251,6 +261,12 @@ export type ChatProviderUpdateResponse = {
   providers: Array<ChatProviderInfo>
   reloadRequired?: boolean
 }
+
+export type ChatProviderRemoveRequest = {
+  providerId: string
+}
+
+export type ChatProviderRemoveResponse = ChatProviderUpdateResponse
 
 export type ChatSessionResponse = {
   session: ChatSessionMetadata

@@ -217,7 +217,9 @@ export async function createPiRuntime(
     }
   }
 
-  const services = await createSessionServices(context)
+  const services = await createSessionServices(context, undefined, {
+    userId: metadata.userId,
+  })
   const requestDiagnostics = collectDiagnostics(services)
   const sessionDir = getSessionDir(context.projectRoot, services, {
     userId: metadata.userId,
@@ -285,13 +287,17 @@ export async function createPiRuntime(
     sessionManager: runtimeSessionManager,
     sessionStartEvent,
   }) => {
-    const runtimeServices = await createSessionServices(context, {
-      cwd,
-      agentDir: runtimeAgentDir,
-      resourceLoaderOptions: {
-        extensionFactories: [createPlanModeExtension()],
+    const runtimeServices = await createSessionServices(
+      context,
+      {
+        cwd,
+        agentDir: runtimeAgentDir,
+        resourceLoaderOptions: {
+          extensionFactories: [createPlanModeExtension()],
+        },
       },
-    })
+      { userId: metadata.userId }
+    )
     const { model, thinkingLevel } = resolveModelSelection(
       runtimeServices,
       modelSelection

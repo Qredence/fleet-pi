@@ -27,7 +27,7 @@ export function collectDiagnostics(
     diagnostics.add(diagnostic.message)
   }
 
-  const modelError = services.modelRegistry.getError()
+  const modelError = services.modelRuntime.getError()
   if (modelError) diagnostics.add(modelError)
 
   for (const { scope, error } of services.settingsManager.drainErrors()) {

@@ -31,7 +31,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "../../ui/breadcrumb"
+} from "../../breadcrumb"
 import {
   Sidebar,
   SidebarContent,
@@ -41,7 +41,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from "../../ui/sidebar"
+} from "../../sidebar"
 
 import { useRightPanelContext } from "../layout/right-panel-context"
 import { DiscreteTabs } from "../primitives/discrete-tab"
@@ -107,6 +107,9 @@ function useSettingsForm() {
     isLoadingProviders,
     isUpdatingProvider,
     models,
+    modelCatalog,
+    onDiscoverModels,
+    onRemoveProvider,
     onThemePreferenceChange,
     onUpdateProvider,
     providers = [],
@@ -123,19 +126,35 @@ function useSettingsForm() {
   const [packageError, setPackageError] = useState<string | undefined>()
   const [modelFilter, setModelFilter] = useState("")
   const [activeTab, setActiveTab] = useState<SettingsSectionId>("appearance")
+  const [discoveredModels, setDiscoveredModels] = useState<
+    Array<ConfigModelInfo>
+  >([])
+  const [discoveringProviderId, setDiscoveringProviderId] = useState<
+    string | null
+  >(null)
 
   const resourceSummary = summarizeResources(resources)
 
+  const catalogModels = modelCatalog ?? models
+
   const modelOptions = useMemo(() => {
-    if (!draft?.defaultProvider || !draft.defaultModel) return models
+    const byId = new Map<string, ConfigModelInfo>()
+    for (const model of catalogModels) {
+      byId.set(model.id, model)
+    }
+    for (const model of discoveredModels) {
+      byId.set(model.id, model)
+    }
+    const merged = [...byId.values()]
+    if (!draft?.defaultProvider || !draft.defaultModel) return merged
     if (
-      models.some(
+      merged.some(
         (model) =>
           model.provider === draft.defaultProvider &&
           model.modelId === draft.defaultModel
       )
     ) {
-      return models
+      return merged
     }
 
     return [
@@ -146,9 +165,9 @@ function useSettingsForm() {
         modelId: draft.defaultModel,
         available: false,
       },
-      ...models,
+      ...merged,
     ]
-  }, [draft, models])
+  }, [catalogModels, discoveredModels, draft])
 
   const modelDirty =
     !!draft &&
@@ -226,6 +245,42 @@ function useSettingsForm() {
     }))
   }
 
+  const addModels = (modelsToAdd: Array<ConfigModelInfo>) => {
+    updateDraft((current) => {
+      let patterns = current.enabledModels
+      for (const model of modelsToAdd) {
+        patterns = nextEnabledModelPatterns({
+          currentPatterns: patterns,
+          enabled: true,
+          model,
+          models: modelOptions,
+        })
+      }
+      return { ...current, enabledModels: patterns }
+    })
+  }
+
+  const removeModel = (model: ConfigModelInfo) => {
+    setModelEnabled(model, false)
+  }
+
+  const discoverProvider = async (providerId: string) => {
+    if (!onDiscoverModels) return
+    setDiscoveringProviderId(providerId)
+    try {
+      const discovered = await onDiscoverModels(providerId)
+      setDiscoveredModels((current) => {
+        const byId = new Map(current.map((model) => [model.id, model]))
+        for (const model of discovered) {
+          byId.set(model.id, model)
+        }
+        return [...byId.values()]
+      })
+    } finally {
+      setDiscoveringProviderId(null)
+    }
+  }
+
   const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
     setSavingSection(section)
     try {
@@ -244,6 +299,7 @@ function useSettingsForm() {
     isLoadingProviders,
     isUpdatingProvider,
     onThemePreferenceChange,
+    onRemoveProvider,
     onUpdateProvider,
     providers,
     resources,
@@ -268,7 +324,10 @@ function useSettingsForm() {
     resetDraft,
     updateDraft,
     handlePackageRowsChange,
-    setModelEnabled,
+    addModels,
+    removeModel,
+    discoverProvider,
+    discoveringProviderId,
     saveSection,
   }
 }
@@ -308,6 +367,7 @@ export function SettingsDialog({
     isLoadingProviders,
     isUpdatingProvider,
     onThemePreferenceChange,
+    onRemoveProvider,
     onUpdateProvider,
     providers,
     resources,
@@ -332,7 +392,10 @@ export function SettingsDialog({
     resetDraft,
     updateDraft,
     handlePackageRowsChange,
-    setModelEnabled,
+    addModels,
+    removeModel,
+    discoverProvider,
+    discoveringProviderId,
     saveSection,
   } = useSettingsForm()
 
@@ -444,17 +507,22 @@ export function SettingsDialog({
         isLoading={isLoadingProviders ?? false}
         isPending={isUpdatingProvider ?? false}
         providers={providers}
+        onRemoveProvider={onRemoveProvider}
         onUpdateProvider={onUpdateProvider}
       />
     ),
     "llm-models": () => (
       <ModelDefaultsSection
         draft={draft}
+        discoveringProviderId={discoveringProviderId}
         modelDirty={modelDirty}
         modelFilter={modelFilter}
         modelOptions={modelOptions}
+        onAddModels={addModels}
+        onDiscoverProvider={discoverProvider}
         onModelFilterChange={setModelFilter}
-        onModelToggle={setModelEnabled}
+        onRemoveModel={removeModel}
+        providers={providers}
         onRevert={() => {
           if (!settings) return
           updateDraft((current) => ({
@@ -489,14 +557,19 @@ export function SettingsDialog({
           Customize your settings here.
         </DialogDescription>
 
-        <SidebarProvider className="h-full min-h-0">
+        <SidebarProvider
+          className="h-full min-h-0"
+          enableKeyboardShortcut={false}
+          persistState={false}
+        >
           {/* Left Sidebar */}
           <Sidebar
             collapsible="none"
             className="hidden h-full shrink-0 flex-col border-r border-border/40 bg-muted/20 md:flex md:w-[240px]"
           >
             <div className="flex h-14 shrink-0 items-center border-b border-border/40 p-4">
-              <h2 className="text-sm font-semibold">Settings</h2>
+              {/* Visual only — DialogTitle (sr-only) is the accessible name */}
+              <span className="text-sm font-semibold">Settings</span>
             </div>
             <SidebarContent>
               <SidebarGroup>

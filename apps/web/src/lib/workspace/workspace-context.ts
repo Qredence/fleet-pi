@@ -10,9 +10,9 @@ export async function resolveWorkspaceContext(
   const context = resolveAppRuntimeContext()
 
   const { auth } = await import("@/lib/auth/server")
-  const session = await Promise.resolve(
-    auth.api.getSession({ headers: request.headers })
-  ).catch(() => null)
+  const session = await Promise.resolve(auth.api.getSession(request)).catch(
+    () => null
+  )
   const user = session?.user
   const userId = user?.id
 
@@ -39,7 +39,7 @@ export async function resolveWorkspaceContext(
 
   const sandboxContext = await resolveUserSandboxContext({
     userId,
-    userEmail: user.email,
+    userEmail: user.email ?? undefined,
     apiKey: resolvedDaytonaApiKey,
     surface: "workspace",
   })

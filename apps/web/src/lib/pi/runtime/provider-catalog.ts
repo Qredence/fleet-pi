@@ -101,10 +101,5 @@ function hasRuntimeApiKey(
   providerId: string
 ) {
   if (!services) return false
-
-  const authStorage = services.authStorage as {
-    getRuntimeApiKey?: (providerId: string) => string | undefined
-  }
-  const runtimeKey = authStorage.getRuntimeApiKey?.(providerId)
-  return typeof runtimeKey === "string" && runtimeKey.length > 0
+  return services.modelRuntime.hasConfiguredAuth(providerId)
 }

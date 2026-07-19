@@ -13,10 +13,16 @@ import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/la
 import { RightPanelLauncherFromContext } from "@workspace/hax-design/components/fleet-pi/pi/right-panel-launcher"
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
 import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
-import { queueLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
+import {
+  queueLabel,
+  toModelOption,
+} from "@workspace/hax-design/lib/pi/chat-helpers"
 import type { SuggestionItem } from "@workspace/hax-design/components/agent-elements/input/suggestions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
-import type {LocalSlashAction, SettingsSlashTab} from "@/lib/pi/slash-commands";
+import type {
+  LocalSlashAction,
+  SettingsSlashTab,
+} from "@/lib/pi/slash-commands"
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
 import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
@@ -24,20 +30,21 @@ import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
 import { identifyAnalyticsUser, resetAnalytics } from "@/lib/analytics/posthog"
 import {
   useChatCommands,
+  useChatModelCatalog,
   useChatModels,
   useChatProviders,
   useChatResources,
   useChatSettings,
+  useDiscoverChatModels,
+  useRemoveChatProvider,
   useUpdateChatProvider,
   useUpdateChatSettings,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
 import {
-  
-  
   buildSlashCommands,
   parseSlashInput,
-  resolveLocalSlashAction
+  resolveLocalSlashAction,
 } from "@/lib/pi/slash-commands"
 import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
@@ -67,7 +74,13 @@ function ChatWorkspaceShell() {
     useChatProviders()
   const { mutateAsync: onUpdateProvider, isPending: isUpdatingProvider } =
     useUpdateChatProvider()
+  const { mutateAsync: onRemoveProvider, isPending: isRemovingProvider } =
+    useRemoveChatProvider()
   const { data: modelsData } = useChatModels()
+  const { data: modelCatalogData } = useChatModelCatalog({
+    enabled: settingsDialogOpen,
+  })
+  const discoverModelsMutation = useDiscoverChatModels()
   const {
     commandPaletteOpen,
     handleModeChange,
@@ -304,15 +317,31 @@ function ChatWorkspaceShell() {
     [applyLocalSlashAction]
   )
 
+  const modelCatalog = useMemo(
+    () => modelCatalogData?.models.map(toModelOption) ?? models,
+    [modelCatalogData, models]
+  )
+
+  const onDiscoverModels = useCallback(
+    async (providerId: string) => {
+      const response = await discoverModelsMutation.mutateAsync(providerId)
+      return response.models.map(toModelOption)
+    },
+    [discoverModelsMutation]
+  )
+
   const rightPanelContextValue = useRightPanelContextValue({
     activityLabel,
     handleThemePreferenceChange,
     isLoadingProviders,
-    isUpdatingProvider,
+    isUpdatingProvider: isUpdatingProvider || isRemovingProvider,
     loadWorkspaceFile,
     mode,
     modelKey,
     models,
+    modelCatalog,
+    onDiscoverModels,
+    onRemoveProvider,
     onUpdateProvider,
     openWorkspacePath,
     planLabel,
