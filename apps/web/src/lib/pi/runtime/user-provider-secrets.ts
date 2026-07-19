@@ -13,6 +13,9 @@ let vercelEnvProviderSnapshot: Map<string, string> | null = null
 
 export function snapshotVercelProviderEnvSecrets() {
   if (process.env.VERCEL !== "1") return
+  // createSessionServices can run twice per chat turn (catalog + runtime).
+  // Keep the first pre-scrub snapshot; a later call would see empty env.
+  if (vercelEnvProviderSnapshot) return
   vercelEnvProviderSnapshot = readEnvLlmProviderSecrets()
 }
 

@@ -153,8 +153,14 @@ describe("session factory", () => {
       }
     )
 
+    const { resetVercelProviderEnvSnapshotForTests } =
+      await import("../user-provider-secrets")
+    resetVercelProviderEnvSnapshotForTests()
+
     const { createSessionServices, applyRuntimeAuth } =
       await import("../session-factory")
+    // Mirrors production: services are created twice per turn (dir probe + runtime).
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
     await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
 
     const setRuntimeApiKey = vi.fn()
