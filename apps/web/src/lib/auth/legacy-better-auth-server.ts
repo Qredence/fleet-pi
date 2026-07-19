@@ -1,7 +1,6 @@
 import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { betterAuth } from "better-auth"
-import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { Pool } from "@neondatabase/serverless"
 import Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
@@ -131,30 +130,36 @@ const betterAuthSecret = requiredVercelEnv("BETTER_AUTH_SECRET")
 const authSecret =
   betterAuthSecret ?? "fleet-pi-local-development-secret-change-in-production"
 
-export const legacyBetterAuth = betterAuth({
-  database: openAuthDatabase(),
-  basePath: "/api/auth",
-  secret: authSecret,
-  baseURL: resolveAuthBaseURL(),
-  trustedOrigins: resolveTrustedOrigins(),
-  account: {
-    accountLinking: {
-      enabled: true,
-      trustedProviders: ["google"],
+export function createLegacyBetterAuth(
+  plugins: Parameters<typeof betterAuth>[0]["plugins"] = []
+) {
+  return betterAuth({
+    database: openAuthDatabase(),
+    basePath: "/api/auth",
+    secret: authSecret,
+    baseURL: resolveAuthBaseURL(),
+    trustedOrigins: resolveTrustedOrigins(),
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["google"],
+      },
     },
-  },
-  emailAndPassword: {
-    enabled: true,
-  },
-  socialProviders: {
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          },
-        }
-      : {}),
-  },
-  plugins: [tanstackStartCookies()],
-})
+    emailAndPassword: {
+      enabled: true,
+    },
+    socialProviders: {
+      ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+        ? {
+            google: {
+              clientId: process.env.GOOGLE_CLIENT_ID,
+              clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            },
+          }
+        : {}),
+    },
+    plugins,
+  })
+}
+
+export const legacyBetterAuth = createLegacyBetterAuth()

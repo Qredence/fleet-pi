@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { shouldFailClosedOnMirrorError } from "../deployment/trust-zone"
 import { logger } from "../logger"
+import { resolveChatDatabaseUrl } from "./chat-database-url"
 import {
   PI_SESSION_USER_ID_ON_CONFLICT_SQL,
   assertMirrorOwnerForPersistence,
@@ -560,7 +561,7 @@ export async function finalizePiRun(
 }
 
 export function createChatPostgresOperationQueue() {
-  const connectionString = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
+  const connectionString = resolveChatDatabaseUrl()
   if (!connectionString) {
     return {
       enabled: false,

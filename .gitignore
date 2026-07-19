@@ -69,3 +69,4 @@ tempo/.tempo/
 .agents/skills/**
 skills-lock.json
 droid-wiki/
+.neon

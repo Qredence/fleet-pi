@@ -12,6 +12,7 @@ import {
   isSessionAccessAllowed,
   isSessionOwnershipStatus,
 } from "./session-ownership"
+import { resolveChatDatabaseUrl } from "./chat-database-url"
 import { isPiSessionDeleted } from "./pi-session-tombstones"
 
 export type PostgresQueryClient = {
@@ -24,11 +25,11 @@ export type PostgresQueryClient = {
 let sharedPool: InstanceType<typeof Pool> | undefined
 
 export function isPiSessionMirrorEnabled() {
-  return Boolean(process.env.FLEET_PI_CHAT_DATABASE_URL?.trim())
+  return Boolean(resolveChatDatabaseUrl())
 }
 
 export function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
-  const connectionString = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
+  const connectionString = resolveChatDatabaseUrl()
   if (!connectionString) return undefined
   if (!sharedPool) {
     sharedPool = new Pool({ connectionString })

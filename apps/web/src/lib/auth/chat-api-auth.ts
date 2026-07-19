@@ -1,6 +1,5 @@
 import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
 import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
-import { auth } from "@/lib/auth/server"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 import {
   parseBearerToken,
@@ -58,6 +57,11 @@ export async function getChatAuthSession(request: Request) {
     }
   }
 
+  if (getChatAuthSurface() === "neon-function") {
+    return null
+  }
+
+  const { auth } = await import("@/lib/auth/server")
   return auth.api.getSession(request).catch(() => null)
 }
 
