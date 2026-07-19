@@ -8,14 +8,16 @@ import {
 
 type BetterAuthReactClient = ReturnType<typeof createBetterAuthClient>
 
-type NeonJwtCapableClient = BetterAuthReactClient & {
-  getJWTToken?: () => Promise<string | null>
-}
-
 /**
  * Neon Auth's React adapter mirrors Better Auth's client surface
  * (`useSession`, `signIn`, …). Cast once at this boundary rather than
  * forcing a union through every consumer.
+ *
+ * Important: `@neondatabase/auth`'s `createAuthClient()` returns only the
+ * Better Auth adapter instance, not the NeonAuth wrapper that owns
+ * `getJWTToken`. Calling `authClient.getJWTToken()` is therefore treated as
+ * a Better Auth path proxy and hits `/get-j-w-t-token` (404). Fetch `/token`
+ * directly instead.
  */
 function createFleetAuthClient(): BetterAuthReactClient {
   if (isNeonManagedAuthClientEnabled()) {
@@ -29,12 +31,38 @@ function createFleetAuthClient(): BetterAuthReactClient {
 
 export const authClient = createFleetAuthClient()
 
-export async function getChatAuthBearerToken() {
+type NeonTokenResponse = {
+  token?: unknown
+}
+
+/**
+ * Returns a Neon Auth JWT for cross-origin chat APIs (Vercel → Neon cookies
+ * are not sent to fleet-pi-web). Never throws — callers must tolerate null.
+ */
+export async function getChatAuthBearerToken(): Promise<string | null> {
   if (!isNeonManagedAuthClientEnabled()) {
     return null
   }
 
-  const neonClient = authClient as NeonJwtCapableClient
-  const token = await neonClient.getJWTToken?.()
-  return token ?? null
+  const base = resolveClientNeonAuthUrl().replace(/\/+$/, "")
+  if (!base) {
+    return null
+  }
+
+  try {
+    const response = await fetch(`${base}/token`, {
+      credentials: "include",
+      method: "GET",
+    })
+    if (!response.ok) {
+      return null
+    }
+
+    const data = (await response.json()) as NeonTokenResponse
+    return typeof data.token === "string" && data.token.length > 0
+      ? data.token
+      : null
+  } catch {
+    return null
+  }
 }
