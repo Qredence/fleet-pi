@@ -21,7 +21,7 @@ const reindexCleanup = setInterval(() => {
     else reindexAttempts.set(key, recent)
   }
 }, REINDEX_WINDOW_MS)
-reindexCleanup.unref?.()
+reindexCleanup.unref()
 
 function takeReindexPermit(key: string, now = Date.now()) {
   const cutoff = now - REINDEX_WINDOW_MS
