@@ -201,12 +201,19 @@ export function validateDeploymentReadiness(
         : "FLEET_PI_CHAT_DATABASE_URL must include FLEET_PI_PREVIEW_DATABASE_MARKER."
     )
 
+    const authUrlForPreviewMarker =
+      authDatabaseUrl.length > 0 ? authDatabaseUrl : chatDatabaseUrl
+    const neonManagedAuthPreview =
+      readEnv("NEON_AUTH_BASE_URL", env).length > 0 ||
+      readEnv("NEON_AUTH_URL", env).length > 0
     push(
       "preview:auth-url-marker",
-      databaseUrlContainsMarker(authDatabaseUrl, previewDbMarker),
-      databaseUrlContainsMarker(authDatabaseUrl, previewDbMarker)
-        ? "FLEET_PI_AUTH_DATABASE_URL includes the preview database marker."
-        : "FLEET_PI_AUTH_DATABASE_URL must include FLEET_PI_PREVIEW_DATABASE_MARKER."
+      databaseUrlContainsMarker(authUrlForPreviewMarker, previewDbMarker),
+      databaseUrlContainsMarker(authUrlForPreviewMarker, previewDbMarker)
+        ? neonManagedAuthPreview && authDatabaseUrl.length === 0
+          ? "Auth DB omitted under Managed Auth; chat URL carries the preview marker."
+          : "FLEET_PI_AUTH_DATABASE_URL includes the preview database marker."
+        : "FLEET_PI_AUTH_DATABASE_URL (or chat URL when auth URL is omitted under Managed Auth) must include FLEET_PI_PREVIEW_DATABASE_MARKER."
     )
 
     const chatMatchesProduction =
@@ -220,7 +227,9 @@ export function validateDeploymentReadiness(
     )
 
     const authMatchesProduction =
-      productionAuthUrl.length > 0 && authDatabaseUrl === productionAuthUrl
+      productionAuthUrl.length > 0 &&
+      authDatabaseUrl.length > 0 &&
+      authDatabaseUrl === productionAuthUrl
     push(
       "preview:auth-url-not-production",
       !authMatchesProduction,
@@ -230,6 +239,28 @@ export function validateDeploymentReadiness(
     )
   }
 
+  const chatRuntimeUrl =
+    readEnv("VITE_FLEET_PI_CHAT_RUNTIME_URL", env) ||
+    readEnv("FLEET_PI_CHAT_RUNTIME_URL", env)
+  if (chatRuntimeUrl.length > 0) {
+    const corsOrigins = readEnv("FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS", env)
+    push(
+      "env:FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS",
+      corsOrigins.length > 0,
+      corsOrigins.length > 0
+        ? "Chat runtime CORS allowlist is configured for dual-host chat."
+        : "Set FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS when VITE_FLEET_PI_CHAT_RUNTIME_URL is set."
+    )
+
+    const neonAuthIssuer = readEnv("NEON_AUTH_ISSUER", env)
+    push(
+      "env:NEON_AUTH_ISSUER",
+      neonAuthIssuer.length > 0,
+      neonAuthIssuer.length > 0
+        ? "NEON_AUTH_ISSUER is set for dual-host JWT verification."
+        : "Set NEON_AUTH_ISSUER when VITE_FLEET_PI_CHAT_RUNTIME_URL is set so bearer JWTs fail closed."
+    )
+  }
   if (input.chatMigrationsApplied) {
     for (const migrationId of CHAT_MIGRATION_IDS) {
       const applied = input.chatMigrationsApplied.includes(migrationId)
