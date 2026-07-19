@@ -1,23 +1,14 @@
 {
-  "skills": [
-    "../agent-workspace/pi/skills",
-    "npm:pi-autocontext"
-  ],
+  "skills": ["../agent-workspace/pi/skills"],
   "defaultProvider": "openai-chat-completions",
   "defaultModel": "deepseek-v4-flash-free",
-  "enabledModels": [
-    "openai-chat-completions/deepseek-v4-flash-free"
-  ],
+  "enabledModels": ["openai-chat-completions/deepseek-v4-flash-free"],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
     "npm:pi-web-access"
   ],
-  "extensions": [
-    "../agent-workspace/pi/extensions/enabled"
-  ],
-  "prompts": [
-    "../agent-workspace/pi/prompts"
-  ]
+  "extensions": ["../agent-workspace/pi/extensions/enabled"],
+  "prompts": ["../agent-workspace/pi/prompts"]
 }
