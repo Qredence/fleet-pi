@@ -13,8 +13,8 @@ ALTER TABLE pi_session_tombstones ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS pi_session_tombstones_user_isolation ON pi_session_tombstones;
 CREATE POLICY pi_session_tombstones_user_isolation ON pi_session_tombstones
   FOR ALL
-  USING (user_id = current_setting('app.current_user_id', true))
-  WITH CHECK (user_id = current_setting('app.current_user_id', true));
+  USING (user_id = (SELECT current_setting('app.current_user_id', true)))
+  WITH CHECK (user_id = (SELECT current_setting('app.current_user_id', true)));
 
 CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner(
   p_session_id TEXT,

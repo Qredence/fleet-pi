@@ -323,8 +323,9 @@ export function validateDeploymentReadiness(
 
   push(
     "artifact:auth-post-migrate-sql",
-    AUTH_POSTGRES_POST_MIGRATE_SQL.includes("DISABLE ROW LEVEL SECURITY"),
-    "Auth post-migrate SQL disables RLS on Better Auth tables."
+    AUTH_POSTGRES_POST_MIGRATE_SQL.includes("ENABLE ROW LEVEL SECURITY") &&
+      AUTH_POSTGRES_POST_MIGRATE_SQL.includes("fleet_pi_app_auth_access"),
+    "Auth post-migrate SQL enables RLS on Better Auth tables for fleet_pi_app only."
   )
 
   return { ok: checks.every((check) => check.ok), checks }

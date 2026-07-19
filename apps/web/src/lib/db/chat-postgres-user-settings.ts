@@ -24,8 +24,8 @@ BEGIN
   ) THEN
     CREATE POLICY pi_user_settings_isolation ON pi_user_settings
       FOR ALL
-      USING (user_id = current_setting('app.current_user_id', true))
-      WITH CHECK (user_id = current_setting('app.current_user_id', true));
+      USING (user_id = (SELECT current_setting('app.current_user_id', true)))
+      WITH CHECK (user_id = (SELECT current_setting('app.current_user_id', true)));
   END IF;
 END $$;
 

@@ -203,10 +203,14 @@ string).
 
 ### Current auth tables
 
-- `public."user"` — User accounts
-- `public."session"` — Active sessions
-- `public."account"` — OAuth/credential accounts
-- `public."verification"` — Email verification tokens
+- `public."user"` — User accounts (RLS on; `fleet_pi_app` only)
+- `public."session"` — Active sessions (RLS on; `fleet_pi_app` only)
+- `public."account"` — OAuth/credential accounts (RLS on; `fleet_pi_app` only)
+- `public."verification"` — Email verification tokens (RLS on; `fleet_pi_app` only)
+
+Auth post-migrate enables RLS on these tables and grants DML only to
+`fleet_pi_app`. Data API roles (`authenticated` / `anonymous`) stay revoked so
+the tables fail closed under Neon Console / Data API Advisors.
 
 ---
 

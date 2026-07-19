@@ -3,25 +3,80 @@
  *
  * Better Auth / Neon Managed Auth operate as the auth authority — auth tables
  * must not use user-scoped RLS (that pattern is reserved for `pi_*` mirror
- * tables). Drop leftover isolation policies, disable RLS on legacy `public`
- * auth tables and any Neon Auth tables left with RLS-on / zero-policies (a
- * deny-all trap for non-owners), grant DML to `fleet_pi_app`, and revoke Data
- * API roles that should not touch auth tables without dedicated JWT policies.
+ * tables). Instead:
+ * - Enable RLS so Neon Console / Data API Advisors fail closed by default
+ * - Allow only `fleet_pi_app` (app DML role) via a dedicated policy
+ * - Keep Data API roles (`authenticated` / `anonymous`) revoked and without
+ *   permissive policies (deny-all under RLS)
  *
- * Neon Managed Auth stores identity in `neon_auth`; `user` / `session` /
- * `verification` already ship with RLS off. Keep `account` / `invitation`
- * aligned so app/owner tooling is not locked out by empty policy sets.
+ * Neon Managed Auth stores identity in `neon_auth`. Leave `neon_auth` RLS off
+ * for Neon-owned roles (those tables are not in the Data API public surface);
+ * empty policy sets there are a deny-all trap for non-owners.
  */
 export const AUTH_POSTGRES_POST_MIGRATE_SQL = `
 DROP POLICY IF EXISTS user_self_access ON public."user";
 DROP POLICY IF EXISTS session_user_isolation ON public."session";
 DROP POLICY IF EXISTS account_user_isolation ON public."account";
 DROP POLICY IF EXISTS verification_user_isolation ON public."verification";
+DROP POLICY IF EXISTS fleet_pi_app_auth_access ON public."user";
+DROP POLICY IF EXISTS fleet_pi_app_auth_access ON public."session";
+DROP POLICY IF EXISTS fleet_pi_app_auth_access ON public."account";
+DROP POLICY IF EXISTS fleet_pi_app_auth_access ON public."verification";
 
-ALTER TABLE IF EXISTS public."user" DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public."session" DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public."account" DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public."verification" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public."user" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public."session" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public."account" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public."verification" ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fleet_pi_app') THEN
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'user'
+    ) THEN
+      CREATE POLICY fleet_pi_app_auth_access ON public."user"
+        FOR ALL
+        TO fleet_pi_app
+        USING (true)
+        WITH CHECK (true);
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'session'
+    ) THEN
+      CREATE POLICY fleet_pi_app_auth_access ON public."session"
+        FOR ALL
+        TO fleet_pi_app
+        USING (true)
+        WITH CHECK (true);
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'account'
+    ) THEN
+      CREATE POLICY fleet_pi_app_auth_access ON public."account"
+        FOR ALL
+        TO fleet_pi_app
+        USING (true)
+        WITH CHECK (true);
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'verification'
+    ) THEN
+      CREATE POLICY fleet_pi_app_auth_access ON public."verification"
+        FOR ALL
+        TO fleet_pi_app
+        USING (true)
+        WITH CHECK (true);
+    END IF;
+  END IF;
+END $$;
 
 DO $$
 BEGIN
