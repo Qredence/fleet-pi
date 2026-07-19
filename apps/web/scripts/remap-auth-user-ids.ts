@@ -1,7 +1,7 @@
 import path from "node:path"
 import dotenv from "dotenv"
-import { Pool  } from "@neondatabase/serverless"
-import type {PoolClient} from "@neondatabase/serverless";
+import { Pool } from "@neondatabase/serverless"
+import type { PoolClient } from "@neondatabase/serverless"
 
 const cwd = process.cwd()
 dotenv.config({ path: path.resolve(cwd, ".env") })
@@ -81,17 +81,14 @@ async function remapUserId(
     `UPDATE pi_session_tombstones SET user_id = $2 WHERE user_id = $1`,
     [oldUserId, newUserId]
   )
-  await client.query(`UPDATE pi_runs SET user_id = $2 WHERE user_id = $1`, [
-    oldUserId,
-    newUserId,
-  ])
+  // pi_runs ownership is via session_id → pi_sessions; no user_id column.
 }
 
 async function main() {
   const { dryRun, filePath } = parseArgs(process.argv.slice(2))
   if (!filePath) {
     throw new Error(
-      "Usage: pnpm --filter web remap-auth-user-ids -- --file=remap.csv [--dry-run]"
+      "Usage: pnpm remap-auth-user-ids -- --file=remap.csv [--dry-run]"
     )
   }
 

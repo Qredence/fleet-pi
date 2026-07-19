@@ -58,7 +58,8 @@
                               "low",
                               "medium",
                               "high",
-                              "xhigh"
+                              "xhigh",
+                              "max"
                             ],
                             "description": "Thinking level"
                           }
@@ -283,6 +284,7 @@
                               "enum": [
                                 "agent_start",
                                 "agent_end",
+                                "agent_settled",
                                 "turn_start",
                                 "turn_end",
                                 "message_start",
@@ -668,7 +670,8 @@
                               "low",
                               "medium",
                               "high",
-                              "xhigh"
+                              "xhigh",
+                              "max"
                             ],
                             "description": "Thinking level"
                           }
@@ -702,7 +705,8 @@
                         "low",
                         "medium",
                         "high",
-                        "xhigh"
+                        "xhigh",
+                        "max"
                       ],
                       "description": "Thinking level"
                     },

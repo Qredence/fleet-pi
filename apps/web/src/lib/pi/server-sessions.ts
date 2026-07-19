@@ -36,7 +36,7 @@ export type SessionManagerResult = {
   sessionReset: boolean
 }
 
-function scheduleSessionBlobPersist(input: {
+export function scheduleSessionBlobPersist(input: {
   userId?: string
   sessionManager: SessionManager
 }) {
@@ -65,7 +65,7 @@ export async function createNewChatSession(
     getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
   await syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
-  scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
+  // Do not upload empty JSONL blobs on create — that poisons cold hydrate.
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -263,22 +263,16 @@ export async function resolveSessionFileWithRecovery(
   options: { userId?: string } = {}
 ) {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
-  if (!sessionFile && options.userId) {
-    const hydrated = await tryHydrateSessionFromObjectStorage({
-      metadata,
-      repoRoot,
-      sessionDir,
-      userId: options.userId,
-    })
-    if (hydrated) {
-      return hydrated
-    }
-  }
-
-  if (sessionFile || !options.userId) {
+  if (sessionFile) {
     return sessionFile
   }
 
+  if (!options.userId) {
+    return undefined
+  }
+
+  // Prefer Neon mirror recovery before object-storage hydrate so a stale/empty
+  // blob cannot short-circuit a populated mirror.
   const recovery = await recoverOwnedSessionFile({
     sessionId: metadata.sessionId,
     sessionFile: metadata.sessionFile,
@@ -290,7 +284,12 @@ export async function resolveSessionFileWithRecovery(
     return recovery.sessionFile
   }
 
-  return undefined
+  return tryHydrateSessionFromObjectStorage({
+    metadata,
+    repoRoot,
+    sessionDir,
+    userId: options.userId,
+  })
 }
 
 function didRequestedSessionReset(

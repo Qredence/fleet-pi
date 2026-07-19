@@ -9,6 +9,7 @@ import type {
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
+import { scheduleSessionBlobPersist } from "@/lib/pi/server-sessions"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
 import {
   createPiRuntime,
@@ -168,6 +169,10 @@ async function runChatTurn({
 
     void syncPiSessionMirrorSafely(result.runtime.session.sessionManager, {
       userId: body.userId,
+    })
+    scheduleSessionBlobPersist({
+      userId: body.userId,
+      sessionManager: result.runtime.session.sessionManager,
     })
   } catch (error) {
     if (!signal.aborted) {

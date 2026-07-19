@@ -1,35 +1,29 @@
+import { parseCookies } from "better-auth/cookies"
 import {
   resolveNeonAuthBaseUrl,
   resolveNeonAuthCookieSecret,
 } from "@/lib/auth/auth-mode"
 
-type NeonAuthInstance = {
-  handler: () => {
-    GET: (
-      request: Request,
-      context: { params: Promise<{ path: Array<string> }> }
-    ) => Promise<Response>
-    POST: (
-      request: Request,
-      context: { params: Promise<{ path: Array<string> }> }
-    ) => Promise<Response>
-    PUT: (
-      request: Request,
-      context: { params: Promise<{ path: Array<string> }> }
-    ) => Promise<Response>
-    DELETE: (
-      request: Request,
-      context: { params: Promise<{ path: Array<string> }> }
-    ) => Promise<Response>
-    PATCH: (
-      request: Request,
-      context: { params: Promise<{ path: Array<string> }> }
-    ) => Promise<Response>
-  }
-}
-
-let neonAuthSingleton: NeonAuthInstance | null = null
-let neonAuthLoader: Promise<NeonAuthInstance> | null = null
+const NEON_AUTH_COOKIE_PREFIX = "__Secure-neon-auth"
+const NEON_AUTH_MIDDLEWARE_HEADER = "x-neon-auth-middleware"
+const PROXY_REQUEST_HEADERS = [
+  "user-agent",
+  "authorization",
+  "referer",
+  "content-type",
+] as const
+const PROXY_RESPONSE_HEADERS = [
+  "content-type",
+  "content-length",
+  "content-encoding",
+  "transfer-encoding",
+  "connection",
+  "date",
+  "set-cookie",
+  "set-auth-jwt",
+  "set-auth-token",
+  "x-neon-ret-request-id",
+] as const
 
 function validateNeonCookieSecret(secret: string) {
   if (secret.length < 32) {
@@ -39,32 +33,80 @@ function validateNeonCookieSecret(secret: string) {
   }
 }
 
-async function loadNeonManagedAuth() {
-  if (neonAuthSingleton) {
-    return neonAuthSingleton
-  }
-
-  if (!neonAuthLoader) {
-    neonAuthLoader = import("@neondatabase/auth/next/server").then(
-      ({ createNeonAuth }) => {
-        const baseUrl = resolveNeonAuthBaseUrl()
-        const secret = resolveNeonAuthCookieSecret()
-        validateNeonCookieSecret(secret)
-
-        neonAuthSingleton = createNeonAuth({
-          baseUrl,
-          cookies: {
-            secret,
-            sessionDataTtl: 300,
-          },
-        })
-
-        return neonAuthSingleton
-      }
+function requireNeonAuthBaseUrl() {
+  const baseUrl = resolveNeonAuthBaseUrl()
+  if (!baseUrl) {
+    throw new Error(
+      "NEON_AUTH_BASE_URL (or NEON_AUTH_URL) is required for Neon Managed Auth."
     )
   }
+  validateNeonCookieSecret(resolveNeonAuthCookieSecret())
+  return baseUrl.replace(/\/$/, "")
+}
 
-  return neonAuthLoader
+function extractNeonAuthCookies(cookieHeader: string | null) {
+  if (!cookieHeader) {
+    return ""
+  }
+
+  const parsed = parseCookies(cookieHeader)
+  const parts: Array<string> = []
+  for (const [name, value] of parsed.entries()) {
+    if (name.startsWith(NEON_AUTH_COOKIE_PREFIX)) {
+      parts.push(`${name}=${value}`)
+    }
+  }
+  return parts.join("; ")
+}
+
+function resolveRequestOrigin(request: Request) {
+  return (
+    request.headers.get("origin") ||
+    request.headers.get("referer")?.split("/").slice(0, 3).join("/") ||
+    new URL(request.url).origin
+  )
+}
+
+function buildUpstreamUrl(
+  baseUrl: string,
+  path: Array<string>,
+  request: Request
+) {
+  const joined = path.join("/")
+  const upstream = new URL(`${baseUrl}/${joined}`)
+  upstream.search = new URL(request.url).search
+  return upstream
+}
+
+function prepareUpstreamHeaders(request: Request) {
+  const headers = new Headers()
+  for (const header of PROXY_REQUEST_HEADERS) {
+    const value = request.headers.get(header)
+    if (value) {
+      headers.set(header, value)
+    }
+  }
+  headers.set("Origin", resolveRequestOrigin(request))
+  headers.set("Cookie", extractNeonAuthCookies(request.headers.get("cookie")))
+  headers.set(NEON_AUTH_MIDDLEWARE_HEADER, "true")
+  return headers
+}
+
+function prepareDownstreamHeaders(response: Response) {
+  const headers = new Headers()
+  for (const header of PROXY_RESPONSE_HEADERS) {
+    if (header === "set-cookie") {
+      for (const cookie of response.headers.getSetCookie()) {
+        headers.append("Set-Cookie", cookie)
+      }
+      continue
+    }
+    const value = response.headers.get(header)
+    if (value) {
+      headers.set(header, value)
+    }
+  }
+  return headers
 }
 
 export function extractAuthProxyPath(request: Request) {
@@ -81,25 +123,48 @@ export function extractAuthProxyPath(request: Request) {
   return remainder.split("/").filter(Boolean)
 }
 
+/**
+ * Framework-agnostic reverse proxy to Neon Auth (no Next.js adapter).
+ * Mirrors the upstream proxy behavior of `@neondatabase/auth/next/server`
+ * without importing `next/headers` or `next/server`.
+ */
 export async function handleNeonManagedAuthRequest(request: Request) {
-  const neonAuth = await loadNeonManagedAuth()
-  const handlers = neonAuth.handler()
-  const path = extractAuthProxyPath(request)
-  const params = Promise.resolve({ path })
+  if (
+    request.method !== "GET" &&
+    request.method !== "POST" &&
+    request.method !== "PUT" &&
+    request.method !== "DELETE" &&
+    request.method !== "PATCH"
+  ) {
+    return new Response("Method Not Allowed", { status: 405 })
+  }
 
-  switch (request.method) {
-    case "GET":
-      return handlers.GET(request, { params })
-    case "POST":
-      return handlers.POST(request, { params })
-    case "PUT":
-      return handlers.PUT(request, { params })
-    case "DELETE":
-      return handlers.DELETE(request, { params })
-    case "PATCH":
-      return handlers.PATCH(request, { params })
-    default:
-      return new Response("Method Not Allowed", { status: 405 })
+  const baseUrl = requireNeonAuthBaseUrl()
+  const path = extractAuthProxyPath(request)
+  const upstreamUrl = buildUpstreamUrl(baseUrl, path, request)
+  const headers = prepareUpstreamHeaders(request)
+  const body = request.method === "GET" ? undefined : await request.text()
+
+  try {
+    const upstream = await fetch(upstreamUrl.toString(), {
+      method: request.method,
+      headers,
+      body,
+    })
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: prepareDownstreamHeaders(upstream),
+    })
+  } catch (error) {
+    return Response.json(
+      {
+        error: "Failed to reach Neon Auth upstream.",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 502 }
+    )
   }
 }
 
@@ -117,18 +182,18 @@ type SessionPayload = {
 }
 
 export async function getNeonManagedSessionFromRequest(request: Request) {
-  const neonAuth = await loadNeonManagedAuth()
-  const handlers = neonAuth.handler()
-  const sessionRequest = new Request(
-    new URL("/api/auth/get-session", request.url),
-    {
-      method: "GET",
-      headers: request.headers,
-    }
-  )
-  const response = await handlers.GET(sessionRequest, {
-    params: Promise.resolve({ path: ["get-session"] }),
+  const baseUrl = requireNeonAuthBaseUrl()
+  const sessionRequest = new Request(`${baseUrl}/get-session`, {
+    method: "GET",
+    headers: prepareUpstreamHeaders(request),
   })
+
+  let response: Response
+  try {
+    response = await fetch(sessionRequest)
+  } catch {
+    return null
+  }
 
   if (!response.ok) {
     return null
