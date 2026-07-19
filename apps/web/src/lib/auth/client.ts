@@ -1,4 +1,4 @@
-import { createAuthClient } from "@neondatabase/auth"
+import { createAuthClient as createNeonAuthClient } from "@neondatabase/auth"
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react/adapters"
 import { createAuthClient as createBetterAuthClient } from "better-auth/react"
 import {
@@ -8,9 +8,18 @@ import {
 
 type BetterAuthReactClient = ReturnType<typeof createBetterAuthClient>
 
+type NeonJwtCapableClient = BetterAuthReactClient & {
+  getJWTToken?: () => Promise<string | null>
+}
+
+/**
+ * Neon Auth's React adapter mirrors Better Auth's client surface
+ * (`useSession`, `signIn`, …). Cast once at this boundary rather than
+ * forcing a union through every consumer.
+ */
 function createFleetAuthClient(): BetterAuthReactClient {
   if (isNeonManagedAuthClientEnabled()) {
-    return createAuthClient(resolveClientNeonAuthUrl(), {
+    return createNeonAuthClient(resolveClientNeonAuthUrl(), {
       adapter: BetterAuthReactAdapter(),
     }) as unknown as BetterAuthReactClient
   }
@@ -25,9 +34,7 @@ export async function getChatAuthBearerToken() {
     return null
   }
 
-  const neonClient = authClient as BetterAuthReactClient & {
-    getJWTToken?: () => Promise<string | null>
-  }
+  const neonClient = authClient as NeonJwtCapableClient
   const token = await neonClient.getJWTToken?.()
   return token ?? null
 }

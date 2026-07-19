@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   enforceChatSessionOwnership,
   enforceRunOwnership,
-  isVercelChatDeployment,
+  isChatAuthRequired,
   requireVercelChatAuth,
   unauthorizedChatResponse,
   withAuthenticatedChatRequest,
@@ -225,7 +225,7 @@ describe("chat-api-auth", () => {
   it("exposes deployment detection for tests", () => {
     clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
-    expect(isVercelChatDeployment()).toBe(true)
+    expect(isChatAuthRequired()).toBe(true)
     expect(unauthorizedChatResponse().status).toBe(401)
   })
 

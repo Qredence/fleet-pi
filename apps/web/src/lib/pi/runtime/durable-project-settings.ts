@@ -31,11 +31,6 @@ export async function resolveProjectSettings(
   return mergeProjectSettingsRecords(FLEET_PI_BASE_PROJECT_SETTINGS, overrides)
 }
 
-/** @deprecated Use resolveProjectSettings */
-export async function resolveDurableProjectSettings(userId?: string) {
-  return resolveProjectSettings({ userId })
-}
-
 /** Drop absolute machine paths that cannot work on Vercel. */
 export function sanitizePortableResourcePaths(
   settings: Record<string, unknown>

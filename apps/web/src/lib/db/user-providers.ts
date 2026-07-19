@@ -115,25 +115,6 @@ export async function storeUserProviderApiKey(
   )
 }
 
-export async function deleteUserProviderCredentials(
-  userId: string,
-  providerIds: Array<string>
-) {
-  const ids = [...new Set(providerIds.filter(Boolean))]
-  if (ids.length === 0) return
-
-  await withUserProvidersTransaction(userId, async (client) => {
-    await client.query(
-      `
-      DELETE FROM pi_user_providers
-      WHERE user_id = $1
-        AND provider_id = ANY($2::text[])
-    `,
-      [userId, ids]
-    )
-  })
-}
-
 async function loadEncryptedUserProviders(
   userId: string,
   providerId?: string

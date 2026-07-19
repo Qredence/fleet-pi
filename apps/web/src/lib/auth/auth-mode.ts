@@ -1,12 +1,7 @@
 import { isVercelDeployment } from "@/lib/deployment/environment"
+import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 export type AuthBackend = "local-better-auth" | "neon-managed"
-
-const NEON_PROJECT_ID = "jolly-lab-20094853"
-
-export function resolveNeonProjectId() {
-  return process.env.FLEET_PI_NEON_PROJECT_ID?.trim() || NEON_PROJECT_ID
-}
 
 /**
  * Neon Auth base URL. Prefer Fleet Pi's `NEON_AUTH_BASE_URL`; fall back to
@@ -60,14 +55,20 @@ export function isLocalAnonymousAuthAllowed(
   return !isNeonManagedAuthConfigured(env)
 }
 
-export function isDeployedAuthRequired(env: NodeJS.ProcessEnv = process.env) {
-  return isVercelDeployment() && isNeonManagedAuthConfigured(env)
-}
-
-export function usesConsolidatedNeonDatabase(
-  env: NodeJS.ProcessEnv = process.env
-) {
-  const chatUrl = env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  const authUrl = env.FLEET_PI_AUTH_DATABASE_URL?.trim()
-  return Boolean(chatUrl && authUrl && chatUrl === authUrl)
+/**
+ * Single chat-auth policy:
+ * - Neon Function surface always requires auth
+ * - Vercel deployments require auth
+ * - Neon Managed Auth configured (web) requires auth
+ * - Optional `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1` for explicit gates
+ */
+export function isChatAuthRequired(env: NodeJS.ProcessEnv = process.env) {
+  if (getChatAuthSurface() === "neon-function") {
+    return true
+  }
+  return (
+    isVercelDeployment() ||
+    isNeonManagedAuthConfigured(env) ||
+    env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1"
+  )
 }

@@ -19,6 +19,3 @@ export const FLEET_PI_BASE_PROJECT_SETTINGS: Record<string, unknown> = {
   // Omit enabledModels for allow-all discovery. Users persist overrides when
   // curating models in Settings; an empty array means deny-all.
 }
-
-/** @deprecated Use FLEET_PI_BASE_PROJECT_SETTINGS */
-export const VERCEL_DEFAULT_PROJECT_SETTINGS = FLEET_PI_BASE_PROJECT_SETTINGS

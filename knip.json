@@ -3,10 +3,16 @@
   "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
-      "entry": ["eslint.config.js", ".pi/extensions/**/*.ts"],
+      "entry": [
+        "eslint.config.js",
+        ".pi/extensions/**/*.ts",
+        "neon.ts",
+        "functions/**/*.ts"
+      ],
       "project": [
         "scripts/**/*.js",
         ".pi/extensions/**/*.ts",
+        "functions/**/*.ts",
         "!agent-workspace/pi/**"
       ],
       "ignoreDependencies": ["zod"]
@@ -18,6 +24,7 @@
         "src/routes/__root.tsx",
         "src/routes/**/*.tsx",
         "src/routes/api/**/*.ts",
+        "src/lib/pi/chat-runtime/router.ts",
         "src/lib/**/*.test.ts",
         "src/lib/**/*.spec.ts"
       ],

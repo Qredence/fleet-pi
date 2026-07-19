@@ -15,7 +15,7 @@ export {
   impactForSettings,
   loadChatSettings,
   loadPersistedProjectSettingsOverrides,
-  mergeProjectSettings,
+  patchProjectSettingsOverrides,
   readProjectSettingsFile,
   saveProjectSettingsOverrides,
   updateChatSettings,

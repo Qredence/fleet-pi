@@ -1,10 +1,10 @@
 import { createReadStream, createWriteStream, promises as fs } from "node:fs"
-import { dirname } from "node:path"
+import { dirname, isAbsolute, relative, resolve } from "node:path"
+import { tmpdir } from "node:os"
 import { pipeline } from "node:stream/promises"
 import { Readable } from "node:stream"
 import {
   GetObjectCommand,
-  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3"
@@ -59,36 +59,15 @@ export function buildSessionObjectKey(userId: string, sessionId: string) {
   return `users/${userId}/sessions/${sessionId}.jsonl`
 }
 
-export function buildArtifactObjectKey(userId: string, relativePath: string) {
-  const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/, "")
+function assertDurableDestinationPath(destinationPath: string) {
+  const resolved = resolve(destinationPath)
+  const tempRoot = resolve(tmpdir())
+  const relativeToTemp = relative(tempRoot, resolved)
   if (
-    !normalized ||
-    normalized.includes("\0") ||
-    normalized.split("/").some((segment) => segment === ".." || segment === "")
+    relativeToTemp === "" ||
+    (!relativeToTemp.startsWith("..") && !isAbsolute(relativeToTemp))
   ) {
-    throw new Error("Invalid artifact object path.")
-  }
-  return `users/${userId}/artifacts/${normalized}`
-}
-
-export async function objectExists(
-  bucket: ObjectStorageBucket,
-  key: string
-): Promise<boolean> {
-  if (!isObjectStorageEnabled()) {
-    return false
-  }
-
-  try {
-    await getObjectStorageClient().send(
-      new HeadObjectCommand({
-        Bucket: resolveBucketName(bucket),
-        Key: key,
-      })
-    )
-    return true
-  } catch {
-    return false
+    throw new Error("Refusing to write object storage downloads under OS temp.")
   }
 }
 
@@ -100,6 +79,8 @@ export async function downloadObjectToFile(input: {
   if (!isObjectStorageEnabled()) {
     return false
   }
+
+  assertDurableDestinationPath(input.destinationPath)
 
   const response = await getObjectStorageClient().send(
     new GetObjectCommand({
@@ -141,28 +122,6 @@ export async function uploadFileToObjectStorage(input: {
       Key: input.key,
       Body: createReadStream(input.sourcePath),
       ContentType: input.contentType ?? "application/x-ndjson",
-    })
-  )
-
-  return true
-}
-
-export async function uploadBufferToObjectStorage(input: {
-  bucket: ObjectStorageBucket
-  key: string
-  body: Uint8Array | string
-  contentType?: string
-}) {
-  if (!isObjectStorageEnabled()) {
-    return false
-  }
-
-  await getObjectStorageClient().send(
-    new PutObjectCommand({
-      Bucket: resolveBucketName(input.bucket),
-      Key: input.key,
-      Body: input.body,
-      ContentType: input.contentType ?? "application/octet-stream",
     })
   )
 

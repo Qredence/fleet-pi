@@ -33,7 +33,6 @@ export {
   isPortableSettingsResourcePath,
   loadPersistedProjectSettingsOverrides,
   resolveProjectSettings,
-  resolveDurableProjectSettings,
   sanitizePortableResourcePaths,
 } from "./durable-project-settings"
 
@@ -172,9 +171,6 @@ export function patchProjectSettingsOverrides(
 
   return next
 }
-
-/** @deprecated Use patchProjectSettingsOverrides */
-export const mergeProjectSettings = patchProjectSettingsOverrides
 
 export function impactForSettings(settings: ChatPiSettingsUpdate) {
   return {

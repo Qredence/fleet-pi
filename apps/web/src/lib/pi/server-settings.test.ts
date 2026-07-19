@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { mergeProjectSettings } from "./runtime"
+import { patchProjectSettingsOverrides } from "./runtime"
 
 describe("project Pi settings merge", () => {
   it("preserves unknown fields and nested siblings", () => {
-    const result = mergeProjectSettings(
+    const result = patchProjectSettingsOverrides(
       {
         customProviderConfig: { enabled: true },
         compaction: { enabled: true, reserveTokens: 100, custom: "keep" },
@@ -33,7 +33,7 @@ describe("project Pi settings merge", () => {
   })
 
   it("replaces project-scoped resource arrays without touching other keys", () => {
-    const result = mergeProjectSettings(
+    const result = patchProjectSettingsOverrides(
       {
         packages: ["npm:old"],
         skills: ["../agent-workspace/pi/skills"],
@@ -56,7 +56,7 @@ describe("project Pi settings merge", () => {
   })
 
   it("clears optional model allowlists when requested", () => {
-    const result = mergeProjectSettings(
+    const result = patchProjectSettingsOverrides(
       {
         enabledModels: ["github-copilot/*", "amazon-bedrock/*"],
         packages: ["npm:pi-autocontext"],

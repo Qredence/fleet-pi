@@ -18,10 +18,6 @@ export function resolveChatRuntimeBaseUrl() {
   return ""
 }
 
-export function isExternalChatRuntimeEnabled() {
-  return resolveChatRuntimeBaseUrl().length > 0
-}
-
 export function isChatRuntimePath(path: string) {
   return RUNTIME_API_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}?`)

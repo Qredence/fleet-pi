@@ -7,7 +7,7 @@ export {
   loadChatModels,
   loadChatResources,
   loadChatSettings,
-  mergeProjectSettings,
+  patchProjectSettingsOverrides,
   readProjectSettingsFile,
   resolveModelSelection,
   updateChatSettings,

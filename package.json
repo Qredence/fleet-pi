@@ -18,6 +18,7 @@
     "chat:migrate": "pnpm --filter web chat:migrate",
     "verify-deployment-readiness": "pnpm --filter web verify-deployment-readiness",
     "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
+    "remap-auth-user-ids": "pnpm --filter web remap-auth-user-ids",
     "dev": "turbo dev --filter=web",
     "lint": "turbo lint",
     "format": "turbo format",

@@ -214,6 +214,48 @@ export async function resolveSessionFile(
   return match.path
 }
 
+async function tryHydrateSessionFromObjectStorage(input: {
+  metadata: ChatSessionMetadata
+  repoRoot: string
+  sessionDir: string
+  userId: string
+}) {
+  const rawSessionId =
+    input.metadata.sessionId ??
+    (input.metadata.sessionFile
+      ? inferSessionIdFromFile(input.metadata.sessionFile)
+      : undefined)
+  const candidateSessionId =
+    rawSessionId && /^[A-Za-z0-9._-]+$/.test(rawSessionId)
+      ? rawSessionId
+      : undefined
+  // Never trust client sessionFile as a download destination — only write
+  // under the resolved sessionDir.
+  if (!candidateSessionId) {
+    return undefined
+  }
+
+  const candidateSessionFile = resolve(
+    input.sessionDir,
+    `${candidateSessionId}.jsonl`
+  )
+  await hydrateSessionFileFromObjectStorage({
+    userId: input.userId,
+    sessionId: candidateSessionId,
+    sessionFile: candidateSessionFile,
+  })
+
+  return resolveSessionFile(
+    {
+      ...input.metadata,
+      sessionFile: candidateSessionFile,
+      sessionId: candidateSessionId,
+    },
+    input.repoRoot,
+    input.sessionDir
+  )
+}
+
 export async function resolveSessionFileWithRecovery(
   metadata: ChatSessionMetadata,
   repoRoot: string,
@@ -222,39 +264,14 @@ export async function resolveSessionFileWithRecovery(
 ) {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
   if (!sessionFile && options.userId) {
-    const rawSessionId =
-      metadata.sessionId ??
-      (metadata.sessionFile
-        ? inferSessionIdFromFile(metadata.sessionFile)
-        : undefined)
-    const candidateSessionId =
-      rawSessionId && /^[A-Za-z0-9._-]+$/.test(rawSessionId)
-        ? rawSessionId
-        : undefined
-    // Never trust client sessionFile as a download destination — only write
-    // under the resolved sessionDir.
-    const candidateSessionFile = candidateSessionId
-      ? resolve(sessionDir, `${candidateSessionId}.jsonl`)
-      : undefined
-
-    if (candidateSessionFile && candidateSessionId) {
-      await hydrateSessionFileFromObjectStorage({
-        userId: options.userId,
-        sessionId: candidateSessionId,
-        sessionFile: candidateSessionFile,
-      })
-      const hydrated = await resolveSessionFile(
-        {
-          ...metadata,
-          sessionFile: candidateSessionFile,
-          sessionId: candidateSessionId,
-        },
-        repoRoot,
-        sessionDir
-      )
-      if (hydrated) {
-        return hydrated
-      }
+    const hydrated = await tryHydrateSessionFromObjectStorage({
+      metadata,
+      repoRoot,
+      sessionDir,
+      userId: options.userId,
+    })
+    if (hydrated) {
+      return hydrated
     }
   }
 
