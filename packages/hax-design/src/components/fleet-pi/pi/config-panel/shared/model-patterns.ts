@@ -61,7 +61,10 @@ export function nextEnabledModelPatterns({
   })
   const next = [...preservedPatterns, ...activeKnown]
 
+  // Only collapse to allow-all when enabling every catalog model — not after
+  // removals, or a curated deny-list would snap back to allow-all on reopen.
   if (
+    enabled &&
     preservedPatterns.length === 0 &&
     models.every((item) => activeKnown.has(modelPatternFor(item)))
   ) {

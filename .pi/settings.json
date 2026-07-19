@@ -1,8 +1,5 @@
 {
   "skills": ["../agent-workspace/pi/skills"],
-  "defaultProvider": "openai-chat-completions",
-  "defaultModel": "deepseek-v4-flash-free",
-  "enabledModels": ["openai-chat-completions/deepseek-v4-flash-free"],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",

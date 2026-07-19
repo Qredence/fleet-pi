@@ -54,7 +54,7 @@ export async function loadChatSettings(
 
   return {
     diagnostics: collectDiagnostics(services),
-    effective: toEffectiveSettings(services.settingsManager),
+    effective: toEffectiveSettings(services.settingsManager, projectOverrides),
     project,
     projectPath: PROJECT_SETTINGS_PATH,
     updateImpact: {
@@ -182,12 +182,20 @@ export function impactForSettings(settings: ChatPiSettingsUpdate) {
 }
 
 function toEffectiveSettings(
-  settingsManager: AgentSessionServices["settingsManager"]
+  settingsManager: AgentSessionServices["settingsManager"],
+  projectOverrides: Record<string, unknown> = {}
 ): ChatPiSettings {
   const compaction = settingsManager.getCompactionSettings()
   const retry = settingsManager.getRetrySettings()
   const { defaultModel, defaultProvider } =
     resolveDefaultModelSelection(settingsManager)
+
+  const enabledFromManager = settingsManager.getEnabledModels()
+  const enabledFromProject = Array.isArray(projectOverrides.enabledModels)
+    ? projectOverrides.enabledModels.filter(
+        (item): item is string => typeof item === "string"
+      )
+    : undefined
 
   return {
     compaction: {
@@ -195,13 +203,23 @@ function toEffectiveSettings(
       reserveTokens: compaction.reserveTokens,
       keepRecentTokens: compaction.keepRecentTokens,
     },
-    defaultModel,
-    defaultProvider,
+    defaultModel:
+      typeof projectOverrides.defaultModel === "string"
+        ? projectOverrides.defaultModel
+        : defaultModel,
+    defaultProvider:
+      typeof projectOverrides.defaultProvider === "string"
+        ? projectOverrides.defaultProvider
+        : defaultProvider,
     defaultThinkingLevel: normalizeChatThinkingLevel(
-      settingsManager.getDefaultThinkingLevel()
+      typeof projectOverrides.defaultThinkingLevel === "string"
+        ? projectOverrides.defaultThinkingLevel
+        : settingsManager.getDefaultThinkingLevel()
     ),
     enableSkillCommands: settingsManager.getEnableSkillCommands(),
-    enabledModels: settingsManager.getEnabledModels(),
+    // Neon / file overrides win when present — SettingsManager can still
+    // surface a stale shipped `.pi/settings.json` project allowlist.
+    enabledModels: enabledFromProject ?? enabledFromManager,
     extensions: settingsManager.getExtensionPaths(),
     followUpMode: settingsManager.getFollowUpMode(),
     packages: settingsManager.getPackages(),

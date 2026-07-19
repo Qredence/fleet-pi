@@ -48,7 +48,9 @@ export type RightPanelContentProps = {
   resources: ChatResourcesResponse | null
   resourcesError: Error | null
   resourcesLoading: boolean
-  saveSettings: (settings: ChatPiSettingsUpdate) => Promise<void>
+  saveSettings: (
+    settings: ChatPiSettingsUpdate
+  ) => Promise<ChatSettingsResponse>
   selectedModelKey?: string
   settings: ChatSettingsResponse | null
   settingsError: Error | null

@@ -56,6 +56,7 @@ import {
   nextEnabledModelPatterns,
 } from "./config-panel/shared/model-patterns"
 import {
+  comparableModelSettings,
   formatPackageSourceRows,
   modelSettings,
   parsePackageSourceRows,
@@ -132,6 +133,7 @@ function useSettingsForm() {
   const [discoveringProviderId, setDiscoveringProviderId] = useState<
     string | null
   >(null)
+  const lastCommittedModelSettings = useRef<ChatPiSettingsUpdate | null>(null)
 
   const resourceSummary = summarizeResources(resources)
 
@@ -169,10 +171,14 @@ function useSettingsForm() {
     ]
   }, [catalogModels, discoveredModels, draft])
 
+  const modelBaseline =
+    lastCommittedModelSettings.current ??
+    (settings ? comparableModelSettings(settings.effective) : null)
+
   const modelDirty =
     !!draft &&
-    !!settings &&
-    !sameJson(modelSettings(draft), modelSettings(settings.effective))
+    !!modelBaseline &&
+    !sameJson(comparableModelSettings(draft), modelBaseline)
 
   const resourceDirty =
     !!draft &&
@@ -184,6 +190,10 @@ function useSettingsForm() {
       ))
 
   const hasUnsavedChanges = modelDirty || resourceDirty
+
+  const resetCommittedModelBaseline = () => {
+    lastCommittedModelSettings.current = null
+  }
 
   const resetDraft = () => {
     if (!settings) return
@@ -233,31 +243,79 @@ function useSettingsForm() {
     }
   }
 
+  const commitModelSettings = async (
+    nextDraft: ChatPiSettings,
+    options?: { silent?: boolean }
+  ): Promise<boolean> => {
+    setDraft(nextDraft)
+    setSavingSection("models")
+    try {
+      const response = await saveSettings(modelSettings(nextDraft))
+      const committed: ChatPiSettings = {
+        ...response.effective,
+        enabledModels:
+          response.project.enabledModels ??
+          nextDraft.enabledModels ??
+          response.effective.enabledModels,
+        defaultProvider:
+          response.project.defaultProvider ??
+          nextDraft.defaultProvider ??
+          response.effective.defaultProvider,
+        defaultModel:
+          response.project.defaultModel ??
+          nextDraft.defaultModel ??
+          response.effective.defaultModel,
+        defaultThinkingLevel:
+          response.project.defaultThinkingLevel ??
+          nextDraft.defaultThinkingLevel ??
+          response.effective.defaultThinkingLevel,
+      }
+      lastCommittedModelSettings.current = comparableModelSettings(committed)
+      setDraft(committed)
+      if (!options?.silent) {
+        toast.success("Pi settings saved")
+      }
+      return true
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Settings save failed"
+      )
+      return false
+    } finally {
+      setSavingSection(null)
+    }
+  }
+
+  const persistModelSettings = (nextDraft: ChatPiSettings) => {
+    void commitModelSettings(nextDraft)
+  }
+
   const setModelEnabled = (model: ConfigModelInfo, enabled: boolean) => {
-    updateDraft((current) => ({
-      ...current,
+    if (!draft) return
+    const nextDraft: ChatPiSettings = {
+      ...draft,
       enabledModels: nextEnabledModelPatterns({
-        currentPatterns: current.enabledModels,
+        currentPatterns: draft.enabledModels,
         enabled,
         model,
         models: modelOptions,
       }),
-    }))
+    }
+    void persistModelSettings(nextDraft)
   }
 
   const addModels = (modelsToAdd: Array<ConfigModelInfo>) => {
-    updateDraft((current) => {
-      let patterns = current.enabledModels
-      for (const model of modelsToAdd) {
-        patterns = nextEnabledModelPatterns({
-          currentPatterns: patterns,
-          enabled: true,
-          model,
-          models: modelOptions,
-        })
-      }
-      return { ...current, enabledModels: patterns }
-    })
+    if (!draft || modelsToAdd.length === 0) return
+    let patterns = draft.enabledModels
+    for (const model of modelsToAdd) {
+      patterns = nextEnabledModelPatterns({
+        currentPatterns: patterns,
+        enabled: true,
+        model,
+        models: modelOptions,
+      })
+    }
+    void persistModelSettings({ ...draft, enabledModels: patterns })
   }
 
   const removeModel = (model: ConfigModelInfo) => {
@@ -282,6 +340,14 @@ function useSettingsForm() {
   }
 
   const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
+    if (section === "models" && draft) {
+      const saved = await commitModelSettings(draft)
+      if (!saved) {
+        throw new Error("Settings save failed")
+      }
+      return
+    }
+
     setSavingSection(section)
     try {
       await saveSettings(update)
@@ -290,9 +356,24 @@ function useSettingsForm() {
       toast.error(
         error instanceof Error ? error.message : "Settings save failed"
       )
+      throw error
     } finally {
       setSavingSection(null)
     }
+  }
+
+  const requestCloseSettings = async (): Promise<
+    "close" | "discard-prompt" | "wait"
+  > => {
+    if (savingSection === "models") return "wait"
+    if (resourceDirty) return "discard-prompt"
+    // modelDirty already requires a non-null draft
+    if (modelDirty) {
+      return (await commitModelSettings(draft, { silent: true }))
+        ? "close"
+        : "discard-prompt"
+    }
+    return "close"
   }
 
   return {
@@ -329,6 +410,8 @@ function useSettingsForm() {
     discoverProvider,
     discoveringProviderId,
     saveSection,
+    requestCloseSettings,
+    resetCommittedModelBaseline,
   }
 }
 
@@ -388,7 +471,6 @@ export function SettingsDialog({
     modelOptions,
     modelDirty,
     resourceDirty,
-    hasUnsavedChanges,
     resetDraft,
     updateDraft,
     handlePackageRowsChange,
@@ -397,9 +479,14 @@ export function SettingsDialog({
     discoverProvider,
     discoveringProviderId,
     saveSection,
+    requestCloseSettings,
+    resetCommittedModelBaseline,
   } = useSettingsForm()
 
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const [discardReason, setDiscardReason] = useState<"resource" | "model">(
+    "resource"
+  )
   const activeSection =
     SETTINGS_SECTIONS.find((section) => section.id === activeTab) ??
     SETTINGS_SECTIONS[0]
@@ -408,28 +495,42 @@ export function SettingsDialog({
     nextOpen: boolean,
     eventDetails?: { cancel: () => void }
   ) => {
-    if (!nextOpen && hasUnsavedChanges) {
-      eventDetails?.cancel()
-      setDiscardDialogOpen(true)
+    if (nextOpen) {
+      onOpenChange(true)
       return
     }
 
-    onOpenChange(nextOpen)
+    eventDetails?.cancel()
+    void (async () => {
+      const result = await requestCloseSettings()
+      if (result === "close") {
+        onOpenChange(false)
+        return
+      }
+      if (result === "wait") {
+        toast.message("Saving model list…")
+        return
+      }
+      setDiscardReason(resourceDirty ? "resource" : "model")
+      setDiscardDialogOpen(true)
+    })()
   }
 
   const handleDiscardChanges = () => {
     resetDraft()
+    resetCommittedModelBaseline()
     setDiscardDialogOpen(false)
     onOpenChange(false)
   }
 
   const wasOpenRef = useRef(false)
   useEffect(() => {
-    if (open && !wasOpenRef.current && initialTab) {
-      setActiveTab(initialTab)
+    if (open && !wasOpenRef.current) {
+      resetCommittedModelBaseline()
+      if (initialTab) setActiveTab(initialTab)
     }
     wasOpenRef.current = open
-  }, [initialTab, open, setActiveTab])
+  }, [initialTab, open, resetCommittedModelBaseline, setActiveTab])
 
   const resourcesPane = (scope: "skills" | "harness") => (
     <ResourcesSection
@@ -641,8 +742,9 @@ export function SettingsDialog({
           <div className="flex flex-col gap-2">
             <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your model and resource changes have not been committed. If you
-              leave settings now, those changes will be lost.
+              {discardReason === "resource"
+                ? "Your resource changes have not been committed. If you leave settings now, those changes will be lost."
+                : "Your model list could not be saved. If you leave settings now, those changes will be lost."}
             </AlertDialogDescription>
           </div>
           <AlertDialogFooter>

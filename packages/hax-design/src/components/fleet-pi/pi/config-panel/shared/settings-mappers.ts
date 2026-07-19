@@ -19,6 +19,31 @@ export function modelSettings(settings: ChatPiSettings): ChatPiSettingsUpdate {
   }
 }
 
+export function comparableModelSettings(
+  settings:
+    | Pick<
+        ChatPiSettings,
+        | "defaultProvider"
+        | "defaultModel"
+        | "defaultThinkingLevel"
+        | "enabledModels"
+      >
+    | ChatPiSettingsUpdate
+): ChatPiSettingsUpdate {
+  const enabledRaw = settings.enabledModels
+  const enabledModels =
+    enabledRaw === undefined || enabledRaw === null
+      ? null
+      : [...sanitizeStringList(enabledRaw)].sort()
+
+  return {
+    defaultProvider: settings.defaultProvider,
+    defaultModel: settings.defaultModel,
+    defaultThinkingLevel: settings.defaultThinkingLevel,
+    enabledModels,
+  }
+}
+
 export function runtimeSettings(
   settings: ChatPiSettings
 ): ChatPiSettingsUpdate {

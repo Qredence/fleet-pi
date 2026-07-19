@@ -17,12 +17,12 @@ describe("auth-postgres-post-migrate", () => {
     )
   })
 
-  it("grants DML on auth tables to fleet_pi_app", () => {
+  it("drops leftover public auth isolation policies", () => {
     expect(AUTH_POSTGRES_POST_MIGRATE_SQL).toContain(
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."user" TO fleet_pi_app'
+      'DROP POLICY IF EXISTS user_self_access ON public."user"'
     )
     expect(AUTH_POSTGRES_POST_MIGRATE_SQL).toContain(
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."verification" TO fleet_pi_app'
+      'REVOKE ALL ON TABLE public."user" FROM authenticated'
     )
   })
 })

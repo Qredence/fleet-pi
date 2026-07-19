@@ -185,7 +185,8 @@ export function ModelDefaultsSection({
       description={
         <>
           Models available in chat. Discover from configured providers, add the
-          ones you want, and remove any you do not need.{" "}
+          ones you want, and remove any you do not need — changes save
+          automatically.{" "}
           <span className="tabular-nums">{listedModels.length}</span> in list
           {modelOptions.length > 0 ? (
             <>

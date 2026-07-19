@@ -148,6 +148,7 @@ function ChatWorkspaceShell() {
           ? `${response.effective.defaultProvider}/${response.effective.defaultModel}`
           : undefined)
       if (nextModelKey) setModelKey(nextModelKey)
+      return response
     },
     [models, setModelKey, updateSettings]
   )

@@ -48,7 +48,9 @@ type UseRightPanelContextValueArgs = {
   resourcesError: Error | null
   resourcesLoading: boolean
   rightPanel: RightPanel
-  saveSettings: (settings: ChatPiSettingsUpdate) => Promise<void>
+  saveSettings: (
+    settings: ChatPiSettingsUpdate
+  ) => Promise<ChatSettingsResponse>
   selectedWorkspacePath: string | null
   setRightPanel: (panel: RightPanel) => void
   setSelectedWorkspacePath: (path: string | null) => void

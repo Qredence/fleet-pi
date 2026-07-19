@@ -5,6 +5,15 @@ import type {
   RetrySettings,
 } from "@earendil-works/pi-coding-agent"
 
+type SettingsManager = AgentSessionServices["settingsManager"]
+
+type ProjectSettingsWriter = {
+  updateProjectSettings: (
+    field: string,
+    update: (settings: Record<string, unknown>) => void
+  ) => void
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -19,6 +28,36 @@ function asPackageSources(value: unknown): Array<PackageSource> | undefined {
   return value.filter(
     (item): item is PackageSource => typeof item === "string" || isRecord(item)
   )
+}
+
+/**
+ * Pi merges project settings over global. Durable Neon/Fleet overrides must
+ * land in project scope, or a shipped `.pi/settings.json` (e.g. a single OCC
+ * model) permanently masks hydrated `enabledModels` / defaults on Vercel.
+ */
+function assignProjectSetting(
+  manager: SettingsManager,
+  field: string,
+  value: unknown,
+  fallback: () => void
+) {
+  const writer = manager as unknown as Partial<ProjectSettingsWriter>
+  if (typeof writer.updateProjectSettings !== "function") {
+    fallback()
+    return
+  }
+
+  try {
+    writer.updateProjectSettings(field, (projectSettings) => {
+      if (value === undefined) {
+        delete projectSettings[field]
+        return
+      }
+      projectSettings[field] = value
+    })
+  } catch {
+    fallback()
+  }
 }
 
 /**
@@ -51,17 +90,30 @@ export function applyProjectSettingsToServices(
   }
 
   if (settings.enabledModels === null) {
-    manager.setEnabledModels(undefined)
+    assignProjectSetting(manager, "enabledModels", undefined, () => {
+      manager.setEnabledModels(undefined)
+    })
   } else {
     const enabledModels = asStringArray(settings.enabledModels)
-    if (enabledModels) manager.setEnabledModels(enabledModels)
+    if (enabledModels) {
+      assignProjectSetting(manager, "enabledModels", enabledModels, () => {
+        manager.setEnabledModels(enabledModels)
+      })
+    }
   }
 
   if (typeof settings.defaultProvider === "string") {
-    manager.setDefaultProvider(settings.defaultProvider)
+    assignProjectSetting(
+      manager,
+      "defaultProvider",
+      settings.defaultProvider,
+      () => manager.setDefaultProvider(settings.defaultProvider as string)
+    )
   }
   if (typeof settings.defaultModel === "string") {
-    manager.setDefaultModel(settings.defaultModel)
+    assignProjectSetting(manager, "defaultModel", settings.defaultModel, () =>
+      manager.setDefaultModel(settings.defaultModel as string)
+    )
   }
   if (
     typeof settings.defaultThinkingLevel === "string" &&
@@ -69,10 +121,11 @@ export function applyProjectSettingsToServices(
       settings.defaultThinkingLevel
     )
   ) {
-    manager.setDefaultThinkingLevel(
-      settings.defaultThinkingLevel as
-        "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
-    )
+    const level = settings.defaultThinkingLevel as
+      "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+    assignProjectSetting(manager, "defaultThinkingLevel", level, () => {
+      manager.setDefaultThinkingLevel(level)
+    })
   }
 
   if (
