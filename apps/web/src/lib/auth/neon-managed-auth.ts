@@ -206,8 +206,9 @@ export async function getNeonManagedSessionFromRequest(request: Request) {
     return null
   }
 
-  const payload = (await response.json()) as SessionPayload
-  if (!payload.user?.id) {
+  const payload = (await response.json()) as SessionPayload | null
+  // Neon Auth may return HTTP 200 with a literal `null` body when signed out.
+  if (!payload?.user?.id) {
     return null
   }
 
