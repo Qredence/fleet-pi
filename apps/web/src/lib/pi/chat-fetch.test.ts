@@ -124,6 +124,14 @@ describe("chat-fetch", () => {
     ).rejects.toBeInstanceOf(ChatRequestError)
   })
 
+  it("surfaces JSON error messages from ChatRequestError", () => {
+    const error = new ChatRequestError(
+      401,
+      JSON.stringify({ message: "Unauthorized" })
+    )
+    expect(error.message).toBe("Unauthorized")
+  })
+
   it("detects forbidden session ownership errors", () => {
     expect(
       isForbiddenSessionError(

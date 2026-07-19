@@ -12,11 +12,25 @@ export class ChatRequestError extends Error {
   readonly body: string
 
   constructor(status: number, body: string) {
-    super(body || `Request failed (${status})`)
+    super(formatChatRequestErrorMessage(status, body))
     this.name = "ChatRequestError"
     this.status = status
     this.body = body
   }
+}
+
+function formatChatRequestErrorMessage(status: number, body: string) {
+  const trimmed = body.trim()
+  if (!trimmed) return `Request failed (${status})`
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: unknown }
+    if (typeof parsed.message === "string" && parsed.message.length > 0) {
+      return parsed.message
+    }
+  } catch {
+    // Keep raw body when the server did not return JSON.
+  }
+  return trimmed
 }
 
 export function isForbiddenSessionError(error: unknown) {
