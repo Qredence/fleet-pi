@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import { validatePublicHttpsUrl } from "./lib/url-security"
+import { fetchPublicHttpsUrl, validatePublicHttpsUrl } from "./lib/url-security"
 
 const DEFAULT_MAX_BYTES = 100_000
 const FETCH_TIMEOUT_MS = 15_000
@@ -30,9 +30,7 @@ export default function webFetchExtension(pi: ExtensionAPI) {
       const rawUrl = rewriteUrl(params.url)
 
       try {
-        await validatePublicHttpsUrl(rawUrl, "URL", {
-          allowExplicitLoopback: true,
-        })
+        await validatePublicHttpsUrl(rawUrl, "URL")
       } catch (error) {
         const message =
           error instanceof Error ? error.message : `Invalid URL: ${rawUrl}`
@@ -50,9 +48,8 @@ export default function webFetchExtension(pi: ExtensionAPI) {
 
       let response: Response
       try {
-        response = await fetch(rawUrl, {
+        response = await fetchPublicHttpsUrl(rawUrl, "URL", {
           signal: combinedSignal,
-          redirect: "error",
           headers: { "User-Agent": "fleet-pi-agent/1.0" },
         })
       } catch (err) {

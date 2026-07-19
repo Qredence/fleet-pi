@@ -1,4 +1,4 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -35,17 +35,15 @@ describe("GET /api/workspace/health", () => {
     )
     const body = (await response.json()) as {
       status: string
-      workspaceRoot: string
-      manifest: { valid: boolean }
+      workspaceAvailable: boolean
+      bootstrapComplete: boolean
     }
 
     expect(response.status).toBe(200)
     expect(response.headers.get("content-type")).toBe("application/json")
     expect(body.status).toBe("ok")
-    expect(body.workspaceRoot).toBe(
-      join(realpathSync(projectRoot), "agent-workspace")
-    )
-    expect(body.manifest.valid).toBe(true)
+    expect(body.workspaceAvailable).toBe(true)
+    expect(body.bootstrapComplete).toBe(true)
   })
 
   it("returns degraded json when the workspace root is blocked", async () => {
@@ -58,19 +56,13 @@ describe("GET /api/workspace/health", () => {
     )
     const body = (await response.json()) as {
       status: string
-      workspace: { available: boolean }
-      diagnostics: Array<{ scope: string }>
+      workspaceAvailable: boolean
+      bootstrapComplete: boolean
     }
 
     expect(response.status).toBe(200)
     expect(body.status).toBe("degraded")
-    expect(body.workspace.available).toBe(false)
-    expect(body.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          scope: "filesystem",
-        }),
-      ])
-    )
+    expect(body.workspaceAvailable).toBe(false)
+    expect(body.bootstrapComplete).toBe(false)
   })
 })

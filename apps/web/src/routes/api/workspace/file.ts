@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getResponseStatus } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import {
@@ -8,24 +9,26 @@ import {
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 export async function workspaceFileHandler(request: Request) {
-  const url = new URL(request.url)
+  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
+    const url = new URL(request.url)
 
-  try {
-    const context = await resolveWorkspaceContext(request)
-    return Response.json(
-      await loadAgentWorkspaceFile(context, url.searchParams.get("path"))
-    )
-  } catch (error) {
-    return Response.json(
-      { message: getErrorMessage(error) },
-      {
-        status:
-          error instanceof WorkspaceFileError
-            ? error.status
-            : getResponseStatus(error),
-      }
-    )
-  }
+    try {
+      const context = await resolveWorkspaceContext(request, authSession?.user)
+      return Response.json(
+        await loadAgentWorkspaceFile(context, url.searchParams.get("path"))
+      )
+    } catch (error) {
+      return Response.json(
+        { message: getErrorMessage(error) },
+        {
+          status:
+            error instanceof WorkspaceFileError
+              ? error.status
+              : getResponseStatus(error),
+        }
+      )
+    }
+  })
 }
 
 export const Route = createFileRoute("/api/workspace/file")({

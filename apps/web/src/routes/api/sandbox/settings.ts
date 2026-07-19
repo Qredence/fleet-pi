@@ -4,6 +4,7 @@ import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import { isEnvVarConfigured, updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
+import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
 
 const SandboxSettingsUpdateSchema = z.object({
   daytonaApiKey: z.string().optional(),
@@ -31,11 +32,18 @@ export const Route = createFileRoute("/api/sandbox/settings")({
             })
           }
 
-          return Response.json({
-            daytonaApiKeyConfigured: isEnvVarConfigured("DAYTONA_API_KEY"),
-            daytonaTargetConfigured: isEnvVarConfigured("DAYTONA_TARGET"),
-            daytonaTarget: process.env.DAYTONA_TARGET || "", // Return the target if we want to show it
-          })
+          const csrf = issueCsrfToken(request)
+          return Response.json(
+            {
+              daytonaApiKeyConfigured: isEnvVarConfigured("DAYTONA_API_KEY"),
+              daytonaTargetConfigured: isEnvVarConfigured("DAYTONA_TARGET"),
+              daytonaTarget: process.env.DAYTONA_TARGET || "", // Return the target if we want to show it
+              csrfToken: csrf.token,
+            },
+            {
+              headers: { "Set-Cookie": csrf.cookie },
+            }
+          )
         } catch (error) {
           return Response.json(
             { message: getErrorMessage(error) },
@@ -62,6 +70,13 @@ export const Route = createFileRoute("/api/sandbox/settings")({
               { status: 400 }
             )
           } else {
+            const csrf = validateCsrfRequest(request)
+            if (!csrf.ok) {
+              return Response.json(
+                { message: "Invalid CSRF protection" },
+                { status: 403 }
+              )
+            }
             const context = resolveAppRuntimeContext()
             if (body.daytonaApiKey !== undefined) {
               await updateEnvVar(

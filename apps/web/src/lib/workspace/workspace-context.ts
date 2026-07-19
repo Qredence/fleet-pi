@@ -5,15 +5,19 @@ import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 
 export async function resolveWorkspaceContext(
-  request: Request
+  request: Request,
+  authenticatedUser?: { id: string; email?: string | null }
 ): Promise<AppRuntimeContext> {
   const context = resolveAppRuntimeContext()
 
-  const { auth } = await import("@/lib/auth/server")
-  const session = await Promise.resolve(auth.api.getSession(request)).catch(
-    () => null
-  )
-  const user = session?.user
+  let user = authenticatedUser
+  if (!user) {
+    const { auth } = await import("@/lib/auth/server")
+    const session = await Promise.resolve(auth.api.getSession(request)).catch(
+      () => null
+    )
+    user = session?.user
+  }
   const userId = user?.id
 
   if (!userId) {
@@ -39,7 +43,7 @@ export async function resolveWorkspaceContext(
 
   const sandboxContext = await resolveUserSandboxContext({
     userId,
-    userEmail: user.email ?? undefined,
+    userEmail: user?.email ?? undefined,
     apiKey: resolvedDaytonaApiKey,
     surface: "workspace",
   })

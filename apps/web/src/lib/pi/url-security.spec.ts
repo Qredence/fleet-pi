@@ -1,22 +1,33 @@
 import { describe, expect, it } from "vitest"
-import { isPrivateNetworkAddress } from "../../../../../.pi/extensions/lib/url-security"
+import {
+  isPrivateNetworkAddress,
+  validatePublicHttpsUrl,
+} from "../../../../../.pi/extensions/lib/url-security"
 
-describe("url security helpers", () => {
-  it("detects private and internal network addresses", () => {
-    expect(isPrivateNetworkAddress("127.0.0.1")).toBe(true)
-    expect(isPrivateNetworkAddress("10.0.0.4")).toBe(true)
-    expect(isPrivateNetworkAddress("172.20.5.8")).toBe(true)
-    expect(isPrivateNetworkAddress("192.168.1.8")).toBe(true)
-    expect(isPrivateNetworkAddress("169.254.10.20")).toBe(true)
-    expect(isPrivateNetworkAddress("::1")).toBe(true)
-    expect(isPrivateNetworkAddress("fd00::1")).toBe(true)
-    expect(isPrivateNetworkAddress("fe80::1")).toBe(true)
-    expect(isPrivateNetworkAddress("::ffff:127.0.0.1")).toBe(true)
+describe("public URL security", () => {
+  it("rejects loopback, private, and metadata destinations", async () => {
+    await expect(
+      validatePublicHttpsUrl("http://localhost:3000")
+    ).rejects.toThrow()
+    await expect(
+      validatePublicHttpsUrl("https://127.0.0.1/internal")
+    ).rejects.toThrow()
+    await expect(
+      validatePublicHttpsUrl("https://169.254.169.254/latest/meta-data")
+    ).rejects.toThrow()
+    await expect(validatePublicHttpsUrl("https://[::1]/")).rejects.toThrow()
   })
 
-  it("allows public IP addresses", () => {
-    expect(isPrivateNetworkAddress("8.8.8.8")).toBe(false)
-    expect(isPrivateNetworkAddress("1.1.1.1")).toBe(false)
-    expect(isPrivateNetworkAddress("2606:4700:4700::1111")).toBe(false)
+  it("requires HTTPS for every fetch target", async () => {
+    await expect(validatePublicHttpsUrl("http://example.com")).rejects.toThrow(
+      "must use https://"
+    )
+  })
+
+  it("blocks mapped IPv4 and link-local/private ranges", () => {
+    expect(isPrivateNetworkAddress("::ffff:192.168.1.10")).toBe(true)
+    expect(isPrivateNetworkAddress("169.254.169.254")).toBe(true)
+    expect(isPrivateNetworkAddress("fe80::1")).toBe(true)
+    expect(isPrivateNetworkAddress("93.184.216.34")).toBe(false)
   })
 })

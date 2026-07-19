@@ -128,15 +128,17 @@ export function evaluatePlanCommand(command: string): CommandPolicyResult {
   const trimmed = command.trim()
   if (!trimmed) return deny("Command is empty.")
 
-  // Reject commands with control characters (except tab, newline, carriage return)
+  // Plan mode must never accept shell command termination or other controls.
   const hasControlChars = [...trimmed].some((char) => {
     const code = char.charCodeAt(0)
-    // Allow: tab (9), newline (10), carriage return (13)
-    // Block: all other control characters (0-8, 11-12, 14-31, 127)
+    // Allow tab for ordinary argument separation. Newline and carriage return
+    // are command separators and therefore must be rejected.
     return (
       (code >= 0 && code <= 8) ||
+      code === 10 ||
       code === 11 ||
       code === 12 ||
+      code === 13 ||
       (code >= 14 && code <= 31) ||
       code === 127
     )
