@@ -1,4 +1,4 @@
-import { Info, Plus, Search, Trash2 } from "lucide-react"
+import { ArrowLeft, Info, Plus, Search, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "../../../../alert"
@@ -12,13 +12,6 @@ import {
   AlertDialogTitle,
 } from "../../../../alert-dialog"
 import { Button } from "../../../../button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../../../../dialog"
 import {
   InputGroup,
   InputGroupAddon,
@@ -133,8 +126,6 @@ export function ProviderCredentialsSection({
 
   const filteredPickerConfigured = useMemo(() => {
     const query = addPickerQuery.trim().toLowerCase()
-    // Always surface configured providers (including OCC) so multi-field
-    // setups stay discoverable from Add — not only via the list Update button.
     return activeProviders.filter((provider) =>
       providerMatchesQuery(provider, query)
     )
@@ -142,6 +133,13 @@ export function ProviderCredentialsSection({
 
   const pickerHasResults =
     filteredPickerAvailable.length > 0 || filteredPickerConfigured.length > 0
+
+  const editingUnconfiguredProvider =
+    editingProvider &&
+    !activeProviders.some((provider) => provider.id === editingProvider)
+      ? (credentialProviders.find((entry) => entry.id === editingProvider) ??
+        null)
+      : null
 
   const resetEditor = () => {
     setApiKey("")
@@ -157,17 +155,25 @@ export function ProviderCredentialsSection({
   }
 
   const openEditor = (providerId: string) => {
+    setAddPickerOpen(false)
+    setAddPickerQuery("")
     setEditingProvider(providerId)
     resetEditor()
   }
 
-  const selectProviderFromPicker = (providerId: string) => {
+  const openAddPicker = () => {
+    closeEditor()
     setAddPickerQuery("")
+    setAddPickerOpen(true)
+  }
+
+  const closeAddPicker = () => {
     setAddPickerOpen(false)
-    // Defer past Dialog teardown/focus restore so editing state sticks.
-    window.setTimeout(() => {
-      openEditor(providerId)
-    }, 0)
+    setAddPickerQuery("")
+  }
+
+  const selectProviderFromPicker = (providerId: string) => {
+    openEditor(providerId)
   }
 
   const handleSave = async (providerId: string) => {
@@ -192,6 +198,7 @@ export function ProviderCredentialsSection({
 
       toast.success("Provider credentials applied to your active sessions.")
       closeEditor()
+      closeAddPicker()
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to update provider"
@@ -227,259 +234,20 @@ export function ProviderCredentialsSection({
       title="Providers"
       description="Locally, API keys are stored in `.env.local`. When deployed, they are stored encrypted in your account."
     >
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <InputGroup className="flex-1">
-            <InputGroupAddon align="inline-start">
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="text"
-              placeholder="Search credentials…"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              aria-label="Search credentials"
-              disabled={isLoading || activeProviders.length === 0}
-            />
-          </InputGroup>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isLoading || credentialProviders.length === 0}
-            onClick={() => setAddPickerOpen(true)}
-          >
-            <Plus data-icon="inline-start" />
-            Add provider
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
-            <Spinner className="size-3" />
-            <span>Loading...</span>
-          </div>
-        ) : activeProviders.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <p className="text-center text-xs text-pretty text-muted-foreground">
-              No providers configured
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={credentialProviders.length === 0}
-              onClick={() => setAddPickerOpen(true)}
-            >
-              <Plus data-icon="inline-start" />
-              Add provider
-            </Button>
-          </div>
-        ) : filteredActiveProviders.length === 0 ? (
-          <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
-            No matching providers found.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {filteredActiveProviders.map((provider) => {
-              const isEditing = editingProvider === provider.id
-              const meta = PROVIDER_METADATA[provider.id] ?? {
-                placeholder: "Enter credentials…",
-                help: "Stored securely in your local environment overrides.",
-              }
-              const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
-
-              return (
-                <div key={provider.id} className="flex flex-col">
-                  <ItemRow
-                    interactive={false}
-                    icon={
-                      <ProviderBrandIcon
-                        provider={provider.id}
-                        className="text-foreground/80"
-                      />
-                    }
-                    title={provider.name}
-                    subtitle={
-                      openAiChat
-                        ? "API key + base URL + model name"
-                        : provider.envVarName
-                    }
-                    trailing={
-                      <div className="flex items-center gap-0.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={cn(
-                            HIT_AREA_EXPAND_DENSE_CLASS,
-                            "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
-                          )}
-                          disabled={isPending || !onRemoveProvider}
-                          aria-label={`Remove ${provider.name}`}
-                          onClick={() => setConfirmRemoveProvider(provider)}
-                        >
-                          <Trash2 data-icon="inline-start" />
-                          Remove
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={cn(
-                            HIT_AREA_EXPAND_DENSE_CLASS,
-                            "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
-                          )}
-                          disabled={isPending}
-                          onClick={() => {
-                            if (isEditing) {
-                              closeEditor()
-                              return
-                            }
-                            openEditor(provider.id)
-                          }}
-                        >
-                          {isEditing ? "Cancel" : "Update"}
-                        </Button>
-                      </div>
-                    }
-                  />
-
-                  {isEditing ? (
-                    <RowSurface
-                      tone="inset"
-                      padding="md"
-                      className="flex flex-col gap-2 border-t border-border/30"
-                    >
-                      <ProviderCredentialFields
-                        attemptedSave={attemptedSave}
-                        apiKey={apiKey}
-                        baseUrl={baseUrl}
-                        modelId={modelId}
-                        openAiChat={openAiChat}
-                        placeholder={meta.placeholder}
-                        showPassword={showPassword}
-                        onApiKeyChange={setApiKey}
-                        onBaseUrlChange={setBaseUrl}
-                        onModelIdChange={setModelId}
-                        onTogglePassword={() =>
-                          setShowPassword((current) => !current)
-                        }
-                      />
-
-                      <Alert className="px-3 py-2">
-                        <Info />
-                        <AlertDescription className="text-xs text-pretty">
-                          {meta.help}
-                        </AlertDescription>
-                      </Alert>
-
-                      <div className="flex items-center justify-end">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={isPending || !canSave}
-                          onClick={() => void handleSave(provider.id)}
-                        >
-                          {isPending ? (
-                            <Spinner data-icon="inline-start" />
-                          ) : null}
-                          Save
-                        </Button>
-                      </div>
-                    </RowSurface>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <Dialog open={addPickerOpen} onOpenChange={setAddPickerOpen}>
-        <DialogContent className="z-[71] max-w-md" overlayClassName="z-[70]">
-          <DialogHeader>
-            <DialogTitle>Add provider</DialogTitle>
-            <DialogDescription>
-              Configure a new provider, or update one that is already set up.
-              OpenAI Chat Completions needs an API key, base URL, and model
-              name.
-            </DialogDescription>
-          </DialogHeader>
-
-          <InputGroup>
-            <InputGroupAddon align="inline-start">
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="text"
-              placeholder="Search providers…"
-              value={addPickerQuery}
-              onChange={(event) => setAddPickerQuery(event.target.value)}
-              aria-label="Search providers to add"
-            />
-          </InputGroup>
-
-          <div className="max-h-64 overflow-y-auto">
-            {!pickerHasResults ? (
-              <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
-                {credentialProviders.length === 0
-                  ? "No providers available."
-                  : "No matching providers found."}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filteredPickerAvailable.length > 0 ? (
-                  <div className="flex flex-col gap-1">
-                    {filteredPickerAvailable.map((provider) => (
-                      <ProviderPickerRow
-                        key={provider.id}
-                        provider={provider}
-                        configured={false}
-                        onSelect={() => selectProviderFromPicker(provider.id)}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-
-                {filteredPickerConfigured.length > 0 ? (
-                  <div className="flex flex-col gap-1">
-                    {filteredPickerAvailable.length > 0 ? (
-                      <p className="px-2 pt-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                        Already configured
-                      </p>
-                    ) : null}
-                    {filteredPickerConfigured.map((provider) => (
-                      <ProviderPickerRow
-                        key={provider.id}
-                        provider={provider}
-                        configured
-                        onSelect={() => selectProviderFromPicker(provider.id)}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <RemoveProviderConfirmDialog
-        confirmRemoveProvider={confirmRemoveProvider}
-        isPending={isPending}
-        onClose={() => setConfirmRemoveProvider(null)}
-        onConfirm={(provider) => {
-          void handleRemove(provider)
-        }}
-      />
-
-      {editingProvider &&
-      !activeProviders.some((provider) => provider.id === editingProvider) ? (
-        <AddProviderEditorOverlay
-          provider={credentialProviders.find(
-            (entry) => entry.id === editingProvider
-          )}
+      {addPickerOpen ? (
+        <AddProviderPickerPanel
+          addPickerQuery={addPickerQuery}
+          credentialProvidersLength={credentialProviders.length}
+          filteredPickerAvailable={filteredPickerAvailable}
+          filteredPickerConfigured={filteredPickerConfigured}
+          pickerHasResults={pickerHasResults}
+          onClose={closeAddPicker}
+          onQueryChange={setAddPickerQuery}
+          onSelect={selectProviderFromPicker}
+        />
+      ) : editingUnconfiguredProvider ? (
+        <AddProviderEditorPanel
+          provider={editingUnconfiguredProvider}
           apiKey={apiKey}
           baseUrl={baseUrl}
           modelId={modelId}
@@ -491,13 +259,390 @@ export function ProviderCredentialsSection({
           onBaseUrlChange={setBaseUrl}
           onModelIdChange={setModelId}
           onTogglePassword={() => setShowPassword((current) => !current)}
+          onBack={openAddPicker}
           onCancel={closeEditor}
           onSave={() => {
             if (editingProvider) void handleSave(editingProvider)
           }}
         />
-      ) : null}
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <InputGroup className="flex-1">
+              <InputGroupAddon align="inline-start">
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="text"
+                placeholder="Search credentials…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search credentials"
+                disabled={isLoading || activeProviders.length === 0}
+              />
+            </InputGroup>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isLoading || credentialProviders.length === 0}
+              onClick={openAddPicker}
+            >
+              <Plus data-icon="inline-start" />
+              Add provider
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+              <Spinner className="size-3" />
+              <span>Loading...</span>
+            </div>
+          ) : activeProviders.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <p className="text-center text-xs text-pretty text-muted-foreground">
+                No providers configured
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={credentialProviders.length === 0}
+                onClick={openAddPicker}
+              >
+                <Plus data-icon="inline-start" />
+                Add provider
+              </Button>
+            </div>
+          ) : filteredActiveProviders.length === 0 ? (
+            <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
+              No matching providers found.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {filteredActiveProviders.map((provider) => {
+                const isEditing = editingProvider === provider.id
+                const meta = PROVIDER_METADATA[provider.id] ?? {
+                  placeholder: "Enter credentials…",
+                  help: "Stored securely in your local environment overrides.",
+                }
+                const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
+
+                return (
+                  <div key={provider.id} className="flex flex-col">
+                    <ItemRow
+                      interactive={false}
+                      icon={
+                        <ProviderBrandIcon
+                          provider={provider.id}
+                          className="text-foreground/80"
+                        />
+                      }
+                      title={provider.name}
+                      subtitle={
+                        openAiChat
+                          ? "API key + base URL + model name"
+                          : provider.envVarName
+                      }
+                      trailing={
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              HIT_AREA_EXPAND_DENSE_CLASS,
+                              "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
+                            )}
+                            disabled={isPending || !onRemoveProvider}
+                            aria-label={`Remove ${provider.name}`}
+                            onClick={() => setConfirmRemoveProvider(provider)}
+                          >
+                            <Trash2 data-icon="inline-start" />
+                            Remove
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              HIT_AREA_EXPAND_DENSE_CLASS,
+                              "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                            )}
+                            disabled={isPending}
+                            onClick={() => {
+                              if (isEditing) {
+                                closeEditor()
+                                return
+                              }
+                              openEditor(provider.id)
+                            }}
+                          >
+                            {isEditing ? "Cancel" : "Update"}
+                          </Button>
+                        </div>
+                      }
+                    />
+
+                    {isEditing ? (
+                      <RowSurface
+                        tone="inset"
+                        padding="md"
+                        className="flex flex-col gap-2 border-t border-border/30"
+                      >
+                        <ProviderCredentialFields
+                          attemptedSave={attemptedSave}
+                          apiKey={apiKey}
+                          baseUrl={baseUrl}
+                          modelId={modelId}
+                          openAiChat={openAiChat}
+                          placeholder={meta.placeholder}
+                          showPassword={showPassword}
+                          onApiKeyChange={setApiKey}
+                          onBaseUrlChange={setBaseUrl}
+                          onModelIdChange={setModelId}
+                          onTogglePassword={() =>
+                            setShowPassword((current) => !current)
+                          }
+                        />
+
+                        <Alert className="px-3 py-2">
+                          <Info />
+                          <AlertDescription className="text-xs text-pretty">
+                            {meta.help}
+                          </AlertDescription>
+                        </Alert>
+
+                        <div className="flex items-center justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isPending || !canSave}
+                            onClick={() => void handleSave(provider.id)}
+                          >
+                            {isPending ? (
+                              <Spinner data-icon="inline-start" />
+                            ) : null}
+                            Save
+                          </Button>
+                        </div>
+                      </RowSurface>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <RemoveProviderConfirmDialog
+        confirmRemoveProvider={confirmRemoveProvider}
+        isPending={isPending}
+        onClose={() => setConfirmRemoveProvider(null)}
+        onConfirm={(provider) => {
+          void handleRemove(provider)
+        }}
+      />
     </SettingsPane>
+  )
+}
+
+function AddProviderPickerPanel({
+  addPickerQuery,
+  credentialProvidersLength,
+  filteredPickerAvailable,
+  filteredPickerConfigured,
+  pickerHasResults,
+  onClose,
+  onQueryChange,
+  onSelect,
+}: {
+  addPickerQuery: string
+  credentialProvidersLength: number
+  filteredPickerAvailable: Array<ChatProviderInfo>
+  filteredPickerConfigured: Array<ChatProviderInfo>
+  pickerHasResults: boolean
+  onClose: () => void
+  onQueryChange: (value: string) => void
+  onSelect: (providerId: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Back to providers"
+          onClick={onClose}
+        >
+          <ArrowLeft />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">Add provider</p>
+          <p className="text-xs text-pretty text-muted-foreground">
+            Choose a provider to store encrypted credentials for this account.
+          </p>
+        </div>
+      </div>
+
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          type="text"
+          placeholder="Search providers…"
+          value={addPickerQuery}
+          onChange={(event) => onQueryChange(event.target.value)}
+          aria-label="Search providers to add"
+        />
+      </InputGroup>
+
+      <div className="max-h-[min(24rem,50vh)] overflow-y-auto">
+        {!pickerHasResults ? (
+          <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
+            {credentialProvidersLength === 0
+              ? "No providers available."
+              : "No matching providers found."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filteredPickerAvailable.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {filteredPickerAvailable.map((provider) => (
+                  <ProviderPickerRow
+                    key={provider.id}
+                    provider={provider}
+                    configured={false}
+                    onSelect={() => onSelect(provider.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {filteredPickerConfigured.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {filteredPickerAvailable.length > 0 ? (
+                  <p className="px-2 pt-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    Already configured
+                  </p>
+                ) : null}
+                {filteredPickerConfigured.map((provider) => (
+                  <ProviderPickerRow
+                    key={provider.id}
+                    provider={provider}
+                    configured
+                    onSelect={() => onSelect(provider.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AddProviderEditorPanel({
+  provider,
+  apiKey,
+  baseUrl,
+  modelId,
+  showPassword,
+  attemptedSave,
+  isPending,
+  canSave,
+  onApiKeyChange,
+  onBaseUrlChange,
+  onModelIdChange,
+  onTogglePassword,
+  onBack,
+  onCancel,
+  onSave,
+}: {
+  provider: ChatProviderInfo
+  apiKey: string
+  baseUrl: string
+  modelId: string
+  showPassword: boolean
+  attemptedSave: boolean
+  isPending: boolean
+  canSave: boolean
+  onApiKeyChange: (value: string) => void
+  onBaseUrlChange: (value: string) => void
+  onModelIdChange: (value: string) => void
+  onTogglePassword: () => void
+  onBack: () => void
+  onCancel: () => void
+  onSave: () => void
+}) {
+  const meta = PROVIDER_METADATA[provider.id] ?? {
+    placeholder: "Enter credentials…",
+    help: "Stored securely in your local environment overrides.",
+  }
+  const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Back to provider list"
+          onClick={onBack}
+        >
+          <ArrowLeft />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">Configure {provider.name}</p>
+          <p className="text-xs text-pretty text-muted-foreground">
+            {openAiChat
+              ? "Enter your API key, base URL, and model name."
+              : `Stored as ${provider.envVarName} for this account.`}
+          </p>
+        </div>
+      </div>
+
+      <ProviderCredentialFields
+        attemptedSave={attemptedSave}
+        apiKey={apiKey}
+        baseUrl={baseUrl}
+        modelId={modelId}
+        openAiChat={openAiChat}
+        placeholder={meta.placeholder}
+        showPassword={showPassword}
+        onApiKeyChange={onApiKeyChange}
+        onBaseUrlChange={onBaseUrlChange}
+        onModelIdChange={onModelIdChange}
+        onTogglePassword={onTogglePassword}
+      />
+
+      <Alert className="px-3 py-2">
+        <Info />
+        <AlertDescription className="text-xs text-pretty">
+          {meta.help}
+        </AlertDescription>
+      </Alert>
+
+      <div className="flex items-center justify-end gap-1.5">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={isPending || !canSave}
+          onClick={onSave}
+        >
+          {isPending ? <Spinner data-icon="inline-start" /> : null}
+          Save
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -580,96 +725,5 @@ function ProviderPickerRow({
         </div>
       </div>
     </button>
-  )
-}
-
-function AddProviderEditorOverlay({
-  provider,
-  apiKey,
-  baseUrl,
-  modelId,
-  showPassword,
-  attemptedSave,
-  isPending,
-  canSave,
-  onApiKeyChange,
-  onBaseUrlChange,
-  onModelIdChange,
-  onTogglePassword,
-  onCancel,
-  onSave,
-}: {
-  provider: ChatProviderInfo | undefined
-  apiKey: string
-  baseUrl: string
-  modelId: string
-  showPassword: boolean
-  attemptedSave: boolean
-  isPending: boolean
-  canSave: boolean
-  onApiKeyChange: (value: string) => void
-  onBaseUrlChange: (value: string) => void
-  onModelIdChange: (value: string) => void
-  onTogglePassword: () => void
-  onCancel: () => void
-  onSave: () => void
-}) {
-  if (!provider) return null
-
-  const meta = PROVIDER_METADATA[provider.id] ?? {
-    placeholder: "Enter credentials…",
-    help: "Stored securely in your local environment overrides.",
-  }
-  const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="z-[71] max-w-md" overlayClassName="z-[70]">
-        <DialogHeader>
-          <DialogTitle>Configure {provider.name}</DialogTitle>
-          <DialogDescription>
-            {openAiChat
-              ? "Enter your API key, base URL, and model name."
-              : `Stored as ${provider.envVarName} in .env.local.`}
-          </DialogDescription>
-        </DialogHeader>
-
-        <ProviderCredentialFields
-          attemptedSave={attemptedSave}
-          apiKey={apiKey}
-          baseUrl={baseUrl}
-          modelId={modelId}
-          openAiChat={openAiChat}
-          placeholder={meta.placeholder}
-          showPassword={showPassword}
-          onApiKeyChange={onApiKeyChange}
-          onBaseUrlChange={onBaseUrlChange}
-          onModelIdChange={onModelIdChange}
-          onTogglePassword={onTogglePassword}
-        />
-
-        <Alert className="px-3 py-2">
-          <Info />
-          <AlertDescription className="text-xs text-pretty">
-            {meta.help}
-          </AlertDescription>
-        </Alert>
-
-        <div className="flex items-center justify-end gap-1.5">
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={isPending || !canSave}
-            onClick={onSave}
-          >
-            {isPending ? <Spinner data-icon="inline-start" /> : null}
-            Save
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
