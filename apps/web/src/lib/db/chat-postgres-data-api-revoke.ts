@@ -2,11 +2,10 @@ export const CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID =
   "20260719_revoke_data_api_pi_grants"
 
 /**
- * Neon Data API auto-grants `authenticated`/`anonymous` broad DML on public
- * tables. Fleet Pi chat/settings/providers use `fleet_pi_app` +
- * `app.current_user_id` RLS — not Data API JWT roles. Revoke those grants so
- * BYOK secrets (`pi_user_providers`) and session mirrors are not exposed via
- * the REST Data API until dedicated `auth.user_id()` policies are designed.
+ * Historical safety migration. The follow-up Data API auth migration replaces
+ * these broad revokes with explicit authenticated grants backed by
+ * `fleet_pi_current_user_id()` / Neon `auth.user_id()` RLS, while retaining
+ * server-only treatment for BYOK secrets and migration bookkeeping.
  */
 export const CHAT_POSTGRES_DATA_API_REVOKE_SQL = `
 DO $$

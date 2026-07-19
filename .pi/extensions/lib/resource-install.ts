@@ -10,7 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
-import { validatePublicHttpsUrl } from "./url-security"
+import { fetchPublicHttpsUrl } from "./url-security"
 
 export type ResourceInstallKind = "skill" | "prompt" | "extension" | "package"
 export type ResourceInstallSourceType = "content" | "path" | "url"
@@ -301,17 +301,12 @@ async function resolveSafeProjectPath(cwd: string, sourcePath: string) {
 
 async function fetchTextSource(url: string, signal?: AbortSignal) {
   const finalUrl = rewriteGitHubBlobUrl(url)
-  await validatePublicHttpsUrl(finalUrl, "Install URL", {
-    allowExplicitLoopback: true,
-  })
-
   const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const combinedSignal = signal
     ? AbortSignal.any([signal, timeoutSignal])
     : timeoutSignal
-  const response = await fetch(finalUrl, {
+  const response = await fetchPublicHttpsUrl(finalUrl, "Install URL", {
     headers: { "User-Agent": "fleet-pi-agent/1.0" },
-    redirect: "error",
     signal: combinedSignal,
   })
   if (!response.ok) {

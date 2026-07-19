@@ -35,6 +35,16 @@ describe("command policy", () => {
     expect(evaluatePlanCommand("cat `pwd`/package.json").allowed).toBe(false)
   })
 
+  it("blocks newline and carriage-return command termination", () => {
+    expect(evaluatePlanCommand("cat package.json\nrm marker").allowed).toBe(
+      false
+    )
+    expect(evaluatePlanCommand("cat package.json\r\nrm marker").allowed).toBe(
+      false
+    )
+    expect(evaluatePlanCommand("cat\npackage.json").allowed).toBe(false)
+  })
+
   it("blocks network access", () => {
     expect(evaluatePlanCommand("curl https://example.com").allowed).toBe(false)
     expect(

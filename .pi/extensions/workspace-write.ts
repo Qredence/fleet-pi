@@ -1,7 +1,11 @@
-import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import {
+  assertSafePath,
+  ensureSafeDirectory,
+  writeNoFollowFile,
+} from "./lib/safe-path"
 
 const WORKSPACE_ROOT = "agent-workspace"
 
@@ -98,8 +102,11 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
         )
       }
 
-      await mkdir(dirname(absolutePath), { recursive: true })
-      await writeFile(absolutePath, params.content, "utf8")
+      await ensureSafeDirectory(workspaceRoot, dirname(absolutePath))
+      await assertSafePath(workspaceRoot, absolutePath, {
+        allowMissingLeaf: true,
+      })
+      await writeNoFollowFile(workspaceRoot, absolutePath, params.content)
 
       const warning =
         tier === "protected"

@@ -6,6 +6,7 @@ function chatFunctionEnv(name: string) {
 
 export default defineConfig({
   auth: true,
+  dataApi: true,
   preview: {
     buckets: {
       sessions: {},

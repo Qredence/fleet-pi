@@ -19,8 +19,14 @@ import {
   matchesKey,
 } from "@earendil-works/pi-tui"
 import { createTwoFilesPatch } from "diff"
-import { readFile, writeFile, rm, mkdir } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { dirname, relative, resolve } from "node:path"
+import {
+  assertSafePath,
+  ensureSafeDirectory,
+  removeNoFollowFile,
+  writeNoFollowFile,
+} from "../../lib/safe-path"
 
 // Custom session entry types
 // New name: filechanges
@@ -205,8 +211,8 @@ function patchFromBaseline(
   )
 }
 
-async function ensureParentDir(absPath: string): Promise<void> {
-  await mkdir(dirname(absPath), { recursive: true })
+async function ensureParentDir(root: string, absPath: string): Promise<void> {
+  await ensureSafeDirectory(root, dirname(absPath))
 }
 
 export default function (pi: ExtensionAPI) {
@@ -341,12 +347,16 @@ export default function (pi: ExtensionAPI) {
 
     for (const item of items) {
       try {
+        await assertSafePath(ctx.cwd, item.absPath, {
+          allowMissingLeaf: item.originalContent === null,
+        })
         if (item.originalContent === null) {
           // created file
-          await rm(item.absPath, { force: true })
+          await removeNoFollowFile(ctx.cwd, item.absPath)
         } else {
-          await ensureParentDir(item.absPath)
-          await writeFile(item.absPath, item.originalContent, "utf-8")
+          await ensureParentDir(ctx.cwd, item.absPath)
+          await assertSafePath(ctx.cwd, item.absPath)
+          await writeNoFollowFile(ctx.cwd, item.absPath, item.originalContent)
         }
         reverted++
       } catch (e: any) {
@@ -669,6 +679,7 @@ export default function (pi: ExtensionAPI) {
       isToolCallEventType("write", event)
     ) {
       const { absPath, relPath } = normalizeToolPath(ctx.cwd, event.input.path)
+      await assertSafePath(ctx.cwd, absPath, { allowMissingLeaf: true })
       const before = await readTextOrNull(absPath)
       pendingByToolCallId.set(event.toolCallId, {
         path: relPath,

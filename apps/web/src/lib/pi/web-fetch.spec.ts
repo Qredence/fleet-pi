@@ -38,7 +38,7 @@ describe("web_fetch extension", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("allows explicit localhost URLs for local development", async () => {
+  it("rejects explicit localhost URLs even in local development", async () => {
     const fetchMock = vi.fn<
       (input: string, init?: RequestInit) => Promise<Response>
     >(async () => {
@@ -58,11 +58,9 @@ describe("web_fetch extension", () => {
       {}
     )
 
-    expect(result.isError).not.toBe(true)
+    expect(result.isError).toBe(true)
     expect(lookupMock).not.toHaveBeenCalled()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const requestInit = fetchMock.mock.calls[0]?.[1]
-    expect(requestInit).toMatchObject({ redirect: "error" })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("disables redirect following on outbound fetches", async () => {
@@ -90,6 +88,25 @@ describe("web_fetch extension", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const requestInit = fetchMock.mock.calls[0]?.[1]
     expect(requestInit).toMatchObject({ redirect: "error" })
+  })
+
+  it("fails closed when DNS changes to private space before connect", async () => {
+    lookupMock.mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }])
+    const fetchMock =
+      vi.fn<(input: string, init?: RequestInit) => Promise<Response>>()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const tool = registerWebFetchTool()
+    const result = await tool.execute(
+      "call-rebind",
+      { url: "https://example.com", maxBytes: 1024 },
+      undefined,
+      vi.fn(),
+      {}
+    )
+
+    expect(result.isError).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
