@@ -19,10 +19,11 @@ import {
   matchesKey,
 } from "@earendil-works/pi-tui"
 import { createTwoFilesPatch } from "diff"
-import { mkdir, readFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { dirname, relative, resolve } from "node:path"
 import {
   assertSafePath,
+  ensureSafeDirectory,
   removeNoFollowFile,
   writeNoFollowFile,
 } from "../../lib/safe-path"
@@ -210,8 +211,8 @@ function patchFromBaseline(
   )
 }
 
-async function ensureParentDir(absPath: string): Promise<void> {
-  await mkdir(dirname(absPath), { recursive: true })
+async function ensureParentDir(root: string, absPath: string): Promise<void> {
+  await ensureSafeDirectory(root, dirname(absPath))
 }
 
 export default function (pi: ExtensionAPI) {
@@ -353,7 +354,7 @@ export default function (pi: ExtensionAPI) {
           // created file
           await removeNoFollowFile(ctx.cwd, item.absPath)
         } else {
-          await ensureParentDir(item.absPath)
+          await ensureParentDir(ctx.cwd, item.absPath)
           await assertSafePath(ctx.cwd, item.absPath)
           await writeNoFollowFile(ctx.cwd, item.absPath, item.originalContent)
         }

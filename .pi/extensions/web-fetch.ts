@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import { fetchPublicHttpsUrl, validatePublicHttpsUrl } from "./lib/url-security"
+import { fetchPublicHttpsUrl } from "./lib/url-security"
 
 const DEFAULT_MAX_BYTES = 100_000
 const FETCH_TIMEOUT_MS = 15_000
@@ -28,18 +28,6 @@ export default function webFetchExtension(pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
       const limit = params.maxBytes ?? DEFAULT_MAX_BYTES
       const rawUrl = rewriteUrl(params.url)
-
-      try {
-        await validatePublicHttpsUrl(rawUrl, "URL")
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : `Invalid URL: ${rawUrl}`
-        return {
-          content: [{ type: "text" as const, text: `Blocked: ${message}` }],
-          details: undefined,
-          isError: true,
-        }
-      }
 
       const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
       const combinedSignal = signal

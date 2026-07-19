@@ -1,5 +1,5 @@
 import { constants } from "node:fs"
-import { lstat, open, unlink } from "node:fs/promises"
+import { lstat, mkdir, open, realpath, unlink } from "node:fs/promises"
 import { dirname, relative, resolve, sep } from "node:path"
 
 export async function assertSafePath(
@@ -7,7 +7,7 @@ export async function assertSafePath(
   target: string,
   options: { allowMissingLeaf?: boolean } = {}
 ) {
-  const absoluteRoot = resolve(root)
+  const absoluteRoot = await realpath(root)
   const rootInfo = await lstat(absoluteRoot)
   if (rootInfo.isSymbolicLink()) {
     throw new Error("Symlinked paths are not allowed.")
@@ -48,6 +48,30 @@ export async function assertSafePath(
         return current
       }
       throw error
+    }
+  }
+  return absoluteTarget
+}
+
+export async function ensureSafeDirectory(root: string, target: string) {
+  const absoluteRoot = await realpath(root)
+  const absoluteTarget = resolve(target)
+  const rel = relative(absoluteRoot, absoluteTarget)
+  if (!rel || rel === ".." || rel.startsWith(`..${sep}`)) {
+    throw new Error("Path escapes the approved root.")
+  }
+
+  let current = absoluteRoot
+  for (const part of rel.split(sep)) {
+    current = resolve(current, part)
+    try {
+      const info = await lstat(current)
+      if (info.isSymbolicLink() || !info.isDirectory()) {
+        throw new Error("Symlinked paths are not allowed.")
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+      await mkdir(current)
     }
   }
   return absoluteTarget

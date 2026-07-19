@@ -3,6 +3,7 @@ import { isIP } from "node:net"
 import type { LookupFunction } from "node:net"
 import { Agent } from "undici"
 
+const MAX_DISPATCHERS = 100
 const dispatcherCache = new Map<string, Agent>()
 
 const BLOCKED_HOSTNAME_RE =
@@ -31,7 +32,7 @@ export async function validatePublicHttpsUrl(url: string, label = "URL") {
     throw new Error(`${label} resolves to a private or internal IP address.`)
   }
 
-  return parsed
+  return { parsed, addresses }
 }
 
 /**
@@ -45,11 +46,7 @@ export async function fetchPublicHttpsUrl(
   label = "URL",
   init: RequestInit = {}
 ) {
-  const parsed = await validatePublicHttpsUrl(url, label)
-  const addresses = await lookup(parsed.hostname, {
-    all: true,
-    order: "verbatim",
-  })
+  const { parsed, addresses } = await validatePublicHttpsUrl(url, label)
   const address = addresses.find(
     (entry) => !isPrivateNetworkAddress(entry.address)
   )?.address
@@ -62,6 +59,14 @@ export async function fetchPublicHttpsUrl(
 
   let dispatcher = dispatcherCache.get(address)
   if (!dispatcher) {
+    if (dispatcherCache.size >= MAX_DISPATCHERS) {
+      const firstKey = dispatcherCache.keys().next().value
+      if (firstKey) {
+        const oldDispatcher = dispatcherCache.get(firstKey)
+        dispatcherCache.delete(firstKey)
+        oldDispatcher?.close().catch(() => undefined)
+      }
+    }
     dispatcher = new Agent({
       connect: {
         lookup: pinnedLookup,
