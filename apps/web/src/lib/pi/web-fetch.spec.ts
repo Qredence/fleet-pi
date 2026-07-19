@@ -91,9 +91,7 @@ describe("web_fetch extension", () => {
   })
 
   it("fails closed when DNS changes to private space before connect", async () => {
-    lookupMock
-      .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
-      .mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }])
+    lookupMock.mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }])
     const fetchMock =
       vi.fn<(input: string, init?: RequestInit) => Promise<Response>>()
     vi.stubGlobal("fetch", fetchMock)

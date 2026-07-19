@@ -1,6 +1,6 @@
 import { constants } from "node:fs"
 import { lstat, mkdir, open, realpath, unlink } from "node:fs/promises"
-import { dirname, relative, resolve, sep } from "node:path"
+import { basename, dirname, join, relative, resolve, sep } from "node:path"
 
 export async function assertSafePath(
   root: string,
@@ -12,7 +12,11 @@ export async function assertSafePath(
   if (rootInfo.isSymbolicLink()) {
     throw new Error("Symlinked paths are not allowed.")
   }
-  const absoluteTarget = resolve(target)
+  const targetPath = resolve(target)
+  const absoluteTarget = join(
+    await realpath(dirname(targetPath)),
+    basename(targetPath)
+  )
   const rel = relative(absoluteRoot, absoluteTarget)
   if (
     rel.startsWith(`..${sep}`) ||
@@ -55,7 +59,8 @@ export async function assertSafePath(
 
 export async function ensureSafeDirectory(root: string, target: string) {
   const absoluteRoot = await realpath(root)
-  const absoluteTarget = resolve(target)
+  const targetPath = resolve(target)
+  const absoluteTarget = await realpath(targetPath)
   const rel = relative(absoluteRoot, absoluteTarget)
   if (!rel || rel === ".." || rel.startsWith(`..${sep}`)) {
     throw new Error("Path escapes the approved root.")
