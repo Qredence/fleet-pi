@@ -32,7 +32,8 @@
         "nitro",
         "@tanstack/router-plugin",
         "tailwindcss",
-        "pino-pretty"
+        "pino-pretty",
+        "tslib"
       ]
     },
     "packages/hax-design": {
