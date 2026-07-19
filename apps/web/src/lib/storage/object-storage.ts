@@ -1,6 +1,6 @@
+import { randomBytes } from "node:crypto"
 import { createReadStream, createWriteStream, promises as fs } from "node:fs"
-import { dirname, isAbsolute, relative, resolve } from "node:path"
-import { tmpdir } from "node:os"
+import { dirname, resolve } from "node:path"
 import { pipeline } from "node:stream/promises"
 import { Readable } from "node:stream"
 import {
@@ -59,15 +59,49 @@ export function buildSessionObjectKey(userId: string, sessionId: string) {
   return `users/${userId}/sessions/${sessionId}.jsonl`
 }
 
-function assertDurableDestinationPath(destinationPath: string) {
-  const resolved = resolve(destinationPath)
-  const tempRoot = resolve(tmpdir())
-  const relativeToTemp = relative(tempRoot, resolved)
-  if (
-    relativeToTemp === "" ||
-    (!relativeToTemp.startsWith("..") && !isAbsolute(relativeToTemp))
-  ) {
-    throw new Error("Refusing to write object storage downloads under OS temp.")
+function partialPathFor(destinationPath: string) {
+  return `${destinationPath}.${randomBytes(8).toString("hex")}.partial`
+}
+
+/**
+ * Write bytes with O_EXCL into a sibling partial file, then rename.
+ * Avoids insecure OS-temp patterns and TOCTOU on the final path.
+ */
+async function writeFileAtomically(destinationPath: string, bytes: Uint8Array) {
+  const partial = partialPathFor(destinationPath)
+  let handle: fs.FileHandle | undefined
+  try {
+    handle = await fs.open(partial, "wx", 0o600)
+    await handle.writeFile(bytes)
+    await handle.close()
+    handle = undefined
+    await fs.rename(partial, resolve(destinationPath))
+  } catch (error) {
+    if (handle) {
+      await handle.close().catch(() => undefined)
+    }
+    await fs.unlink(partial).catch(() => undefined)
+    throw error
+  }
+}
+
+async function pipelineToFileAtomically(
+  body: Readable,
+  destinationPath: string
+) {
+  const partial = partialPathFor(destinationPath)
+  try {
+    await pipeline(
+      body,
+      createWriteStream(partial, {
+        flags: "wx",
+        mode: 0o600,
+      })
+    )
+    await fs.rename(partial, resolve(destinationPath))
+  } catch (error) {
+    await fs.unlink(partial).catch(() => undefined)
+    throw error
   }
 }
 
@@ -80,7 +114,7 @@ export async function downloadObjectToFile(input: {
     return false
   }
 
-  assertDurableDestinationPath(input.destinationPath)
+  const destinationPath = resolve(input.destinationPath)
 
   const response = await getObjectStorageClient().send(
     new GetObjectCommand({
@@ -93,16 +127,16 @@ export async function downloadObjectToFile(input: {
     return false
   }
 
-  await fs.mkdir(dirname(input.destinationPath), { recursive: true })
+  await fs.mkdir(dirname(destinationPath), { recursive: true })
 
   const body = response.Body
   if (body instanceof Readable) {
-    await pipeline(body, createWriteStream(input.destinationPath))
+    await pipelineToFileAtomically(body, destinationPath)
     return true
   }
 
   const bytes = await body.transformToByteArray()
-  await fs.writeFile(input.destinationPath, bytes)
+  await writeFileAtomically(destinationPath, bytes)
   return true
 }
 
