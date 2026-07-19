@@ -397,7 +397,7 @@ export function ProviderCredentialsSection({
       </div>
 
       <Dialog open={addPickerOpen} onOpenChange={setAddPickerOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="z-[71] max-w-md" overlayClassName="z-[70]">
           <DialogHeader>
             <DialogTitle>Add provider</DialogTitle>
             <DialogDescription>
@@ -624,7 +624,7 @@ function AddProviderEditorOverlay({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="z-[71] max-w-md" overlayClassName="z-[70]">
         <DialogHeader>
           <DialogTitle>Configure {provider.name}</DialogTitle>
           <DialogDescription>

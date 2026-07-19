@@ -21,19 +21,26 @@ export async function getProviderConfigStatus(options?: {
 }
 
 async function getVercelProviderConfigStatus(userId?: string) {
-  const configuredProviderIds = userId
-    ? await listConfiguredProviderIds(userId)
-    : new Set<string>()
+  // Settings lists account BYOK only. Org env keys still power chat via
+  // loadLlmProviderSecrets fallback, but must not appear as user credentials.
+  if (!userId) {
+    return KNOWN_PROVIDERS.map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      envVarName: provider.envVarName,
+      isConfigured: false,
+    }))
+  }
+
+  const configuredProviderIds = await listConfiguredProviderIds(userId)
 
   return KNOWN_PROVIDERS.map((provider) => ({
     id: provider.id,
     name: provider.name,
     envVarName: provider.envVarName,
-    // BYOK rows win for UX ownership; org env (e.g. GEMINI_API_KEY) still
-    // counts as configured so chat can use the platform fallback key.
-    isConfigured:
-      isProviderConfigured(provider.id, { configuredProviderIds }) ||
-      isProviderConfigured(provider.id, {}),
+    isConfigured: isProviderConfigured(provider.id, {
+      configuredProviderIds,
+    }),
   }))
 }
 

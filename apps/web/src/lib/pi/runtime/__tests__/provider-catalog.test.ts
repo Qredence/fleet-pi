@@ -49,7 +49,7 @@ describe("runtime provider catalog", () => {
     ).toBe(false)
   })
 
-  it("marks Vercel providers configured from org env when BYOK is empty", async () => {
+  it("does not mark Vercel providers configured from org env alone", async () => {
     process.env.VERCEL = "1"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
     mocks.isEnvVarConfigured.mockImplementation(
@@ -67,9 +67,6 @@ describe("runtime provider catalog", () => {
 
     expect(
       providers.find((provider) => provider.id === "google")?.isConfigured
-    ).toBe(true)
-    expect(
-      providers.find((provider) => provider.id === "openai")?.isConfigured
     ).toBe(false)
   })
 
