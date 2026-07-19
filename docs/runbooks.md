@@ -209,14 +209,19 @@ With Neon Managed Auth, identity tables live in `neon_auth` and are managed by N
 
 **Production (`fleet-pi-neon` with Neon Managed Auth):**
 
-- Identity: `neon_auth.*` (users, sessions, OAuth accounts) — operated by Neon; do not enable RLS or grant `fleet_pi_app` / Data API roles on this schema.
-- App tenancy: `public.pi_*` with user-scoped RLS via `app.current_user_id`.
+- Identity: `neon_auth.*` (users, sessions, OAuth accounts) — operated by Neon; keep this schema private and do not expose `neon_auth.user` through a Data API view.
+- App tenancy: `public.pi_*` with user-scoped RLS via `fleet_pi_current_user_id()`, which uses `auth.user_id()` for Managed Auth JWTs and the private `app.current_user_id` context for the server role.
 - After cutover remap (`pnpm remap-auth-user-ids`), `pnpm auth:migrate` drops legacy `public."user"`, `"session"`, `"account"`, and `"verification"` if `neon_auth."user"` exists.
 
 **Legacy self-hosted Better Auth only (no `neon_auth`):**
 
 - Auth store: `public."user"`, `"session"`, `"account"`, `"verification"`.
 - Auth post-migrate enables RLS with `fleet_pi_app`-only policies and revokes Data API roles on those tables.
+
+The chat mirror migration grants the `authenticated` Data API role only the
+non-secret mirror/settings tables after RLS is installed. BYOK provider
+payloads, tombstones, and migration bookkeeping remain server-only; anonymous
+requests receive no table privileges.
 
 ---
 
@@ -229,10 +234,11 @@ and debugging.
 
 ### Roles
 
-| Role           | Privileges                                      | Used by             |
-| -------------- | ----------------------------------------------- | ------------------- |
-| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)      | Migration CLI only  |
-| `fleet_pi_app` | SELECT, INSERT, UPDATE, DELETE on `pi_*` tables | Running application |
+| Role            | Privileges                                                                                  | Used by             |
+| --------------- | ------------------------------------------------------------------------------------------- | ------------------- |
+| `neondb_owner`  | Full DDL + DML (CREATE, ALTER, DROP, etc.)                                                  | Migration CLI only  |
+| `fleet_pi_app`  | SELECT, INSERT, UPDATE, DELETE on `pi_*` tables                                             | Running application |
+| `authenticated` | RLS-filtered SELECT on mirror tables and DML on `pi_user_settings`; no BYOK/provider access | Neon Data API JWTs  |
 
 ### Running migrations
 

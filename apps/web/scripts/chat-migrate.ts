@@ -30,6 +30,14 @@ import {
   CHAT_POSTGRES_DATA_API_REVOKE_SQL,
 } from "../src/lib/db/chat-postgres-data-api-revoke"
 import {
+  CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL,
+  CHAT_POSTGRES_DATA_API_AUTH_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL,
+  CHAT_POSTGRES_DATA_API_AUTH_SQL,
+} from "../src/lib/db/chat-postgres-data-api-auth"
+import {
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
 } from "../src/lib/db/chat-postgres-ownership-execute-revoke"
@@ -143,6 +151,21 @@ async function main() {
       client,
       CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
       CHAT_POSTGRES_RLS_INITPLAN_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DATA_API_AUTH_MIGRATION_ID,
+      CHAT_POSTGRES_DATA_API_AUTH_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID,
+      CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
+      CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL
     )
 
     await client.query("COMMIT")
