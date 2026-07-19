@@ -84,12 +84,16 @@ function createServices({
   const availableModels = available ?? models
 
   return {
-    modelRegistry: {
+    modelRuntime: {
       find: vi.fn((provider: string, id: string) =>
         models.find((model) => model.provider === provider && model.id === id)
       ),
-      getAll: vi.fn(() => models),
-      getAvailable: vi.fn(() => availableModels),
+      getModel: vi.fn((provider: string, id: string) =>
+        models.find((model) => model.provider === provider && model.id === id)
+      ),
+      getModels: vi.fn(() => models),
+      getAvailable: vi.fn(async () => availableModels),
+      getAvailableSnapshot: vi.fn(() => availableModels),
     },
     resourceLoader: {
       getAgentsFiles: vi.fn(() => ({
@@ -239,6 +243,22 @@ describe("server catalog", () => {
     ).toBe(occModel)
   })
 
+  it("does not remap google selections to openai-chat-completions with the same model id", () => {
+    const googleModel = createModel("google", "gemini-3.5-flash")
+    const occModel = createModel("openai-chat-completions", "gemini-3.5-flash")
+    const services = createServices({
+      all: [googleModel, occModel],
+      available: [occModel],
+    })
+
+    expect(
+      resolveModelSelection(services as never, {
+        provider: "google",
+        id: "gemini-3.5-flash",
+      }).model
+    ).toBe(googleModel)
+  })
+
   it("falls back to all models and prepends an unavailable configured default", async () => {
     mocks.resolveDefaultModelSelection.mockReturnValue({
       defaultProvider: "google",
@@ -339,6 +359,51 @@ describe("server catalog", () => {
     expect(response.models[0]).toMatchObject({
       key: "google/gemini-3.5-flash",
     })
+  })
+
+  it("does not route google defaults to openai-chat-completions with the same model id", async () => {
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "google",
+      defaultModel: "gemini-3.5-flash",
+    })
+    mocks.createSessionServices.mockResolvedValue(
+      createServices({
+        all: [
+          createModel("google", "gemini-3.5-flash"),
+          createModel("openai-chat-completions", "gemini-3.5-flash"),
+          createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        ],
+        available: [
+          createModel("openai-chat-completions", "gemini-3.5-flash"),
+          createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        ],
+        enabledModels: [
+          "google/*",
+          "openai-chat-completions/deepseek-v4-flash-free",
+        ],
+      })
+    )
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.selectedModelKey).toBe("google/gemini-3.5-flash")
+    expect(response.models).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "google/gemini-3.5-flash",
+          available: false,
+        }),
+        expect.objectContaining({
+          key: "openai-chat-completions/deepseek-v4-flash-free",
+          available: true,
+        }),
+      ])
+    )
+    expect(
+      response.models.some(
+        (model) => model.key === "openai-chat-completions/gemini-3.5-flash"
+      )
+    ).toBe(false)
   })
 
   it("merges runtime resources with workspace overlay and expectation diagnostics", async () => {

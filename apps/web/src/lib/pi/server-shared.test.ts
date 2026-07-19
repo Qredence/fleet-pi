@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSettingsManager } from "./runtime/__tests__/mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const createAgentSessionServices = vi.fn()
@@ -85,7 +86,7 @@ describe("createSessionServices", () => {
     const { collectDiagnostics } = await import("./server-shared")
     const mockServices = {
       diagnostics: [],
-      modelRegistry: { getError: () => undefined },
+      modelRuntime: { getError: () => undefined },
       settingsManager: { drainErrors: () => [] },
       resourceLoader: {
         getSkills: () => ({ diagnostics: [] }),
@@ -183,13 +184,14 @@ function contextFor(projectRoot: string): AppRuntimeContext {
 function createMockSessionServices() {
   return {
     diagnostics: [],
-    modelRegistry: {
+    modelRuntime: {
       getError: () => undefined,
+      unregisterProvider: vi.fn(),
+      registerProvider: vi.fn(),
     },
-    settingsManager: {
-      drainErrors: () => [],
-    },
+    settingsManager: createMockSettingsManager(),
     resourceLoader: {
+      reload: vi.fn(async () => undefined),
       getSkills: () => ({ diagnostics: [] }),
       getPrompts: () => ({ diagnostics: [] }),
       getThemes: () => ({ diagnostics: [] }),

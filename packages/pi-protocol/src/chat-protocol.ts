@@ -10,7 +10,7 @@ export type ChatMode = "agent" | "plan" | "harness"
 export type ChatPlanAction = "execute" | "refine"
 
 export type ChatThinkingLevel =
-  "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+  "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
 
 export type ChatTransport = "auto" | "sse" | "websocket"
 
@@ -199,6 +199,7 @@ type ChatStateEvent = {
   name:
     | "agent_start"
     | "agent_end"
+    | "agent_settled"
     | "turn_start"
     | "turn_end"
     | "message_start"

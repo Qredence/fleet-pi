@@ -89,17 +89,14 @@ export async function applyRuntimeAuth(
   const { loadLlmProviderSecrets } = await import("./user-provider-secrets")
   const configured = await loadLlmProviderSecrets(options.userId)
 
-  const authStorage = services.authStorage as {
-    setRuntimeApiKey: (providerId: string, apiKey: string) => void
-    removeRuntimeApiKey?: (providerId: string) => void
-  }
+  const { modelRuntime } = services
 
   for (const providerId of LLM_PROVIDER_ENV_SCRUB_IDS) {
     const apiKey = configured.get(providerId)
     if (apiKey) {
-      authStorage.setRuntimeApiKey(providerId, apiKey)
+      await modelRuntime.setRuntimeApiKey(providerId, apiKey)
     } else {
-      authStorage.removeRuntimeApiKey?.(providerId)
+      await modelRuntime.removeRuntimeApiKey(providerId)
     }
   }
 

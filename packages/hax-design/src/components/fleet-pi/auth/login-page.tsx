@@ -28,7 +28,7 @@ export type LoginPageProps = {
   onNameChange: (value: string) => void
   onEmailSubmit: (event: FormEvent) => void
   onGoogleSignIn: () => void
-  onContinueWithoutAuth: () => void
+  onContinueWithoutAuth?: () => void
 }
 
 export type LoginPageLoadingProps = {
@@ -165,15 +165,17 @@ export function LoginPage({
           >
             {toggleModeLabel}
           </button>
-          <div>
-            <button
-              type="button"
-              onClick={onContinueWithoutAuth}
-              className="text-muted-foreground/70 underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
-              {continueWithoutAuthLabel}
-            </button>
-          </div>
+          {onContinueWithoutAuth ? (
+            <div>
+              <button
+                type="button"
+                onClick={onContinueWithoutAuth}
+                className="text-muted-foreground/70 underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                {continueWithoutAuthLabel}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -65,13 +65,13 @@ export function applyProjectSettingsToServices(
   }
   if (
     typeof settings.defaultThinkingLevel === "string" &&
-    ["off", "minimal", "low", "medium", "high", "xhigh"].includes(
+    ["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(
       settings.defaultThinkingLevel
     )
   ) {
     manager.setDefaultThinkingLevel(
       settings.defaultThinkingLevel as
-        "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+        "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
     )
   }
 

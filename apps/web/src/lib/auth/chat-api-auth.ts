@@ -1,4 +1,9 @@
 import { auth } from "@/lib/auth/server"
+import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
+import {
+  parseBearerToken,
+  verifyNeonAuthAccessToken,
+} from "@/lib/auth/jwt-verify"
 import { isVercelDeployment } from "@/lib/deployment"
 import {
   isUserScopedEphemeralSessionFile,
@@ -14,12 +19,46 @@ export type AuthenticatedChatContext = {
   userId: string | undefined
 }
 
+/**
+ * Deployed chat (Vercel, Neon Function with Managed Auth, or explicit gate)
+ * must not allow anonymous session mutation.
+ */
+export function isDeployedChatAuthRequired(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  return (
+    isVercelDeployment() ||
+    isNeonManagedAuthConfigured(env) ||
+    env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1"
+  )
+}
+
+/** @deprecated Prefer isDeployedChatAuthRequired */
 export function isVercelChatDeployment() {
-  return isVercelDeployment()
+  return isDeployedChatAuthRequired()
 }
 
 export async function getChatAuthSession(request: Request) {
-  return auth.api.getSession({ headers: request.headers }).catch(() => null)
+  const bearer = parseBearerToken(request)
+  if (bearer) {
+    const verified = await verifyNeonAuthAccessToken(bearer)
+    if (verified) {
+      return {
+        user: {
+          id: verified.sub,
+          email: verified.email ?? "",
+          name: verified.email?.split("@")[0] ?? "User",
+        },
+        session: {
+          id: verified.sub,
+          userId: verified.sub,
+          token: bearer,
+        },
+      }
+    }
+  }
+
+  return auth.api.getSession(request).catch(() => null)
 }
 
 export function unauthorizedChatResponse() {
@@ -35,7 +74,7 @@ export function forbiddenSessionResponse() {
 
 export async function requireVercelChatAuth(request: Request) {
   const authSession = await getChatAuthSession(request)
-  if (isVercelChatDeployment() && !authSession?.user.id) {
+  if (isDeployedChatAuthRequired() && !authSession?.user.id) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
   return { ok: true as const, authSession }
@@ -66,7 +105,7 @@ export async function enforceChatSessionOwnership(input: {
     return { ok: true as const }
   }
 
-  if (isVercelChatDeployment() && !input.userId) {
+  if (isDeployedChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
 
@@ -77,7 +116,7 @@ export async function enforceChatSessionOwnership(input: {
   let sessionId = input.sessionId
 
   if (!sessionId && input.sessionFile) {
-    if (isVercelChatDeployment()) {
+    if (isDeployedChatAuthRequired()) {
       sessionId = await lookupSessionIdBySessionFile(input.sessionFile)
       if (
         !sessionId &&
@@ -113,7 +152,7 @@ export async function enforceRunOwnership(input: {
     return { ok: true as const }
   }
 
-  if (isVercelChatDeployment() && !input.userId) {
+  if (isDeployedChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
   }
 

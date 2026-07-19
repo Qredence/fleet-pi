@@ -22,6 +22,7 @@ import {
   metadataUrl,
   readChatStream,
 } from "./chat-fetch"
+import { resolveChatApiUrl } from "./chat-runtime-url"
 import type {
   ChatCommandsResponse,
   ChatModelsDiscoverRequest,
@@ -44,6 +45,7 @@ import type {
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import { getChatAuthBearerToken } from "@/lib/auth/use-auth"
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>
@@ -187,16 +189,20 @@ export const chatClient: ChatClient = {
   },
 
   async streamMessage(request, onEvent, signal) {
+    const headers = new Headers({ "Content-Type": "application/json" })
     const daytonaKey =
       typeof window !== "undefined"
         ? localStorage.getItem("daytonaApiKey")
         : null
-    const headers = new Headers({ "Content-Type": "application/json" })
     if (daytonaKey) {
       headers.set("x-daytona-api-key", daytonaKey)
     }
+    const bearer = await getChatAuthBearerToken()
+    if (bearer) {
+      headers.set("Authorization", `Bearer ${bearer}`)
+    }
 
-    const response = await fetch("/api/chat", {
+    const response = await fetch(resolveChatApiUrl("/api/chat"), {
       method: "POST",
       headers,
       body: JSON.stringify(request),

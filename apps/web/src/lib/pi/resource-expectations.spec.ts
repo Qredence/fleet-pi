@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
+import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./runtime/fleet-default-project-settings"
+import { mergeProjectSettingsRecords } from "./runtime/project-settings-merge"
 import {
   EXPECTED_PROJECT_EXTENSION_NAMES,
   collectResourceExpectationDiagnostics,
@@ -37,19 +39,20 @@ describe("resource expectations", () => {
     )
   })
 
-  it("keeps expected project extensions registered in Pi settings", async () => {
-    const settings = JSON.parse(
+  it("keeps expected project extensions registered in merged Pi settings", async () => {
+    const overrides = JSON.parse(
       await readFile(
         new URL("../../../../../.pi/settings.json", import.meta.url),
         "utf8"
       )
+    ) as Record<string, unknown>
+    const settings = mergeProjectSettingsRecords(
+      FLEET_PI_BASE_PROJECT_SETTINGS,
+      overrides
     ) as { extensions?: Array<string> }
 
     expect(settings.extensions).toEqual(
-      expect.arrayContaining([
-        "extensions/resource-install",
-        "extensions/daytona-sandbox",
-      ])
+      expect.arrayContaining(["../agent-workspace/pi/extensions/enabled"])
     )
   })
 })

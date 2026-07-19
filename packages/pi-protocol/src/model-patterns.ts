@@ -7,6 +7,7 @@ const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "medium",
   "high",
   "xhigh",
+  "max",
 ])
 
 export type ModelPatternCandidate = {

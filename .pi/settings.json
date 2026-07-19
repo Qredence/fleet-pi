@@ -3,12 +3,10 @@
     "../agent-workspace/pi/skills",
     "npm:pi-autocontext"
   ],
+  "defaultProvider": "openai-chat-completions",
+  "defaultModel": "deepseek-v4-flash-free",
   "enabledModels": [
-    "openai-chat-completions/deepseek-v4-flash-free",
-    "openai-chat-completions/mimo-v2.5-free",
-    "openai-chat-completions/hy3-free",
-    "openai-chat-completions/nemotron-3-ultra-free",
-    "openai-chat-completions/north-mini-code-free"
+    "openai-chat-completions/deepseek-v4-flash-free"
   ],
   "packages": [
     "npm:pi-autoresearch",

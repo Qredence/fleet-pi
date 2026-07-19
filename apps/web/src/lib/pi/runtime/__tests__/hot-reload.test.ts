@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { retainPiRuntime } from "../../server"
 import { hotReloadActiveRuntimesForUser } from "../hot-reload"
+import { createMockSettingsManager } from "./mock-settings-manager"
 
 const mocks = vi.hoisted(() => ({
   applyRuntimeAuth: vi.fn(),
@@ -18,13 +19,16 @@ describe("hotReloadActiveRuntimesForUser", () => {
 
   it("reloads BYOK only for matching user runtimes", async () => {
     const mockReload = vi.fn(async () => undefined)
-    const createRuntime = (sessionId: string) =>
-      ({
+    const createRuntime = (sessionId: string) => {
+      const settingsManager = createMockSettingsManager()
+      settingsManager.reload = mockReload
+      return {
         session: { sessionId, sessionFile: `/tmp/${sessionId}.jsonl` },
         services: {
-          settingsManager: { reload: mockReload },
+          settingsManager,
         },
-      }) as never
+      } as never
+    }
 
     const releaseA = retainPiRuntime(createRuntime("session-a"), "user-a")
     const releaseB = retainPiRuntime(createRuntime("session-b"), "user-b")

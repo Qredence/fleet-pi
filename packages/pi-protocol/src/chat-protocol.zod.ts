@@ -13,7 +13,7 @@ export const ChatPlanActionSchema = z
   .openapi({ description: "Plan action" })
 
 export const ChatThinkingLevelSchema = z
-  .enum(["off", "minimal", "low", "medium", "high", "xhigh"])
+  .enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"])
   .openapi({ description: "Thinking level" })
 
 export const ChatTransportSchema = z
@@ -240,6 +240,7 @@ export const ChatStateEventSchema = z
     name: z.enum([
       "agent_start",
       "agent_end",
+      "agent_settled",
       "turn_start",
       "turn_end",
       "message_start",

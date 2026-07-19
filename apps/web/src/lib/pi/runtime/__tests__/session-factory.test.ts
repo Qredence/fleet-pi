@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockSettingsManager } from "./mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 const mocks = vi.hoisted(() => ({
@@ -41,10 +42,15 @@ describe("session factory", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createAgentSessionServices.mockResolvedValue({
-      authStorage: { setRuntimeApiKey: vi.fn() },
-      modelRegistry: {
+      modelRuntime: {
+        setRuntimeApiKey: vi.fn(),
+        removeRuntimeApiKey: vi.fn(),
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
+      },
+      settingsManager: createMockSettingsManager(),
+      resourceLoader: {
+        reload: vi.fn(async () => undefined),
       },
       diagnostics: [],
     })
@@ -81,11 +87,9 @@ describe("session factory", () => {
     const { applyRuntimeAuth } = await import("../session-factory")
     const removeRuntimeApiKey = vi.fn()
     const services = {
-      authStorage: {
+      modelRuntime: {
         setRuntimeApiKey: vi.fn(),
         removeRuntimeApiKey,
-      },
-      modelRegistry: {
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
       },
@@ -94,7 +98,7 @@ describe("session factory", () => {
     await applyRuntimeAuth(services as never, { userId: "user-1" })
 
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
-    expect(services.authStorage.setRuntimeApiKey).toHaveBeenCalledWith(
+    expect(services.modelRuntime.setRuntimeApiKey).toHaveBeenCalledWith(
       "google",
       "decrypted-key"
     )
@@ -108,11 +112,9 @@ describe("session factory", () => {
     const setRuntimeApiKey = vi.fn()
     const removeRuntimeApiKey = vi.fn()
     const services = {
-      authStorage: {
+      modelRuntime: {
         setRuntimeApiKey,
         removeRuntimeApiKey,
-      },
-      modelRegistry: {
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
       },

@@ -19,6 +19,11 @@ import type {
   ChatSessionResponse,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import {
+  hydrateSessionFileFromObjectStorage,
+  inferSessionIdFromFile,
+  persistSessionFileToObjectStorage,
+} from "@/lib/storage/session-blob-store"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import {
@@ -29,6 +34,23 @@ import {
 export type SessionManagerResult = {
   sessionManager: SessionManager
   sessionReset: boolean
+}
+
+function scheduleSessionBlobPersist(input: {
+  userId?: string
+  sessionManager: SessionManager
+}) {
+  const sessionFile = input.sessionManager.getSessionFile()
+  const sessionId = input.sessionManager.getSessionId()
+  if (!input.userId || !sessionFile || !sessionId) {
+    return
+  }
+
+  void persistSessionFileToObjectStorage({
+    userId: input.userId,
+    sessionId,
+    sessionFile,
+  })
 }
 
 export async function createNewChatSession(
@@ -43,6 +65,7 @@ export async function createNewChatSession(
     getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
   await syncPiSessionMirrorSafely(sessionManager, { userId: options.userId })
+  scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -98,6 +121,7 @@ export async function hydrateChatSession(
   }
 
   void syncPiSessionMirrorSafely(sessionManager, options)
+  scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -197,6 +221,43 @@ export async function resolveSessionFileWithRecovery(
   options: { userId?: string } = {}
 ) {
   const sessionFile = await resolveSessionFile(metadata, repoRoot, sessionDir)
+  if (!sessionFile && options.userId) {
+    const rawSessionId =
+      metadata.sessionId ??
+      (metadata.sessionFile
+        ? inferSessionIdFromFile(metadata.sessionFile)
+        : undefined)
+    const candidateSessionId =
+      rawSessionId && /^[A-Za-z0-9._-]+$/.test(rawSessionId)
+        ? rawSessionId
+        : undefined
+    // Never trust client sessionFile as a download destination — only write
+    // under the resolved sessionDir.
+    const candidateSessionFile = candidateSessionId
+      ? resolve(sessionDir, `${candidateSessionId}.jsonl`)
+      : undefined
+
+    if (candidateSessionFile && candidateSessionId) {
+      await hydrateSessionFileFromObjectStorage({
+        userId: options.userId,
+        sessionId: candidateSessionId,
+        sessionFile: candidateSessionFile,
+      })
+      const hydrated = await resolveSessionFile(
+        {
+          ...metadata,
+          sessionFile: candidateSessionFile,
+          sessionId: candidateSessionId,
+        },
+        repoRoot,
+        sessionDir
+      )
+      if (hydrated) {
+        return hydrated
+      }
+    }
+  }
+
   if (sessionFile || !options.userId) {
     return sessionFile
   }

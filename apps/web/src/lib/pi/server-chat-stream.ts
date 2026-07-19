@@ -190,6 +190,18 @@ export function handleSessionEvent(
     return activeTurn
   }
 
+  if (event.type === "agent_settled") {
+    emitBufferedTurnEvent(
+      {
+        type: "state",
+        state: { name: "agent_settled" },
+      },
+      activeTurn,
+      startContext
+    )
+    return activeTurn
+  }
+
   if (isStateEvent(event)) {
     emitBufferedTurnEvent(
       {
@@ -442,6 +454,7 @@ function isStateEvent(event: AgentSessionEvent): event is Extract<
     type:
       | "agent_start"
       | "agent_end"
+      | "agent_settled"
       | "turn_start"
       | "turn_end"
       | "message_start"
@@ -451,6 +464,7 @@ function isStateEvent(event: AgentSessionEvent): event is Extract<
   return (
     event.type === "agent_start" ||
     event.type === "agent_end" ||
+    event.type === "agent_settled" ||
     event.type === "turn_start" ||
     event.type === "turn_end" ||
     event.type === "message_start" ||

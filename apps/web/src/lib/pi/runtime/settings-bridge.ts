@@ -16,6 +16,7 @@ import {
   projectSettingsPath,
 } from "./project-settings-file"
 import { createSessionServices } from "./session-factory"
+import { normalizeChatThinkingLevel } from "./thinking-level"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type {
@@ -200,7 +201,9 @@ function toEffectiveSettings(
     },
     defaultModel,
     defaultProvider,
-    defaultThinkingLevel: settingsManager.getDefaultThinkingLevel(),
+    defaultThinkingLevel: normalizeChatThinkingLevel(
+      settingsManager.getDefaultThinkingLevel()
+    ),
     enableSkillCommands: settingsManager.getEnableSkillCommands(),
     enabledModels: settingsManager.getEnabledModels(),
     extensions: settingsManager.getExtensionPaths(),

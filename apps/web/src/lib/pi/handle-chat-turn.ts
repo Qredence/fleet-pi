@@ -154,6 +154,7 @@ async function runChatTurn({
     await currentSession.prompt(prompt, {
       expandPromptTemplates: true,
     })
+    await currentSession.waitForIdle()
     signal.removeEventListener("abort", abort)
 
     activeTurn = completeAssistantTurn({

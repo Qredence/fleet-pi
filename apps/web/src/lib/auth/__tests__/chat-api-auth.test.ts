@@ -31,18 +31,48 @@ vi.mock("@/lib/db/pi-session-ownership-db", () => ({
 }))
 
 const originalVercel = process.env.VERCEL
+const originalNeonAuthBase = process.env.NEON_AUTH_BASE_URL
+const originalNeonAuthUrl = process.env.NEON_AUTH_URL
+const originalChatRuntimeAuth = process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
 
-afterEach(() => {
-  vi.clearAllMocks()
+function clearDeployedChatAuthEnv() {
+  delete process.env.VERCEL
+  delete process.env.NEON_AUTH_BASE_URL
+  delete process.env.NEON_AUTH_URL
+  delete process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
+}
+
+function restoreDeployedChatAuthEnv() {
   if (originalVercel === undefined) {
     delete process.env.VERCEL
   } else {
     process.env.VERCEL = originalVercel
   }
+  if (originalNeonAuthBase === undefined) {
+    delete process.env.NEON_AUTH_BASE_URL
+  } else {
+    process.env.NEON_AUTH_BASE_URL = originalNeonAuthBase
+  }
+  if (originalNeonAuthUrl === undefined) {
+    delete process.env.NEON_AUTH_URL
+  } else {
+    process.env.NEON_AUTH_URL = originalNeonAuthUrl
+  }
+  if (originalChatRuntimeAuth === undefined) {
+    delete process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
+  } else {
+    process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH = originalChatRuntimeAuth
+  }
+}
+
+afterEach(() => {
+  vi.clearAllMocks()
+  restoreDeployedChatAuthEnv()
 })
 
 describe("chat-api-auth", () => {
   it("requires auth on Vercel deployments", async () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
@@ -56,8 +86,24 @@ describe("chat-api-auth", () => {
     }
   })
 
-  it("allows unauthenticated access outside Vercel", async () => {
-    delete process.env.VERCEL
+  it("requires auth when Neon Managed Auth is configured", async () => {
+    clearDeployedChatAuthEnv()
+    process.env.NEON_AUTH_BASE_URL =
+      "https://ep-example.neonauth.aws.neon.tech/neondb/auth"
+    vi.mocked(auth.api.getSession).mockResolvedValue(null)
+
+    const result = await requireVercelChatAuth(
+      new Request("http://localhost/api/chat")
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(401)
+    }
+  })
+
+  it("allows unauthenticated access outside Vercel and Managed Auth", async () => {
+    clearDeployedChatAuthEnv()
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     const result = await requireVercelChatAuth(
@@ -96,6 +142,7 @@ describe("chat-api-auth", () => {
   })
 
   it("denies sessionFile-only access on Vercel when mirror lookup fails", async () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue(undefined)
     const { isUserScopedEphemeralSessionFile } =
@@ -115,6 +162,7 @@ describe("chat-api-auth", () => {
   })
 
   it("allows sessionFile-only access on Vercel when ephemeral JSONL exists before mirror sync", async () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue(undefined)
     const { isUserScopedEphemeralSessionFile } =
@@ -131,6 +179,7 @@ describe("chat-api-auth", () => {
   })
 
   it("resolves sessionFile to sessionId on Vercel before ownership check", async () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue("session-1")
     vi.mocked(verifySessionOwnership).mockResolvedValue(true)
@@ -147,7 +196,7 @@ describe("chat-api-auth", () => {
   })
 
   it("allows sessionFile-only access outside Vercel", async () => {
-    delete process.env.VERCEL
+    clearDeployedChatAuthEnv()
 
     const result = await enforceChatSessionOwnership({
       sessionFile: "/tmp/.fleet/sessions/session.jsonl",
@@ -159,10 +208,10 @@ describe("chat-api-auth", () => {
   })
 
   it("wraps handlers with authenticated chat context", async () => {
-    delete process.env.VERCEL
+    clearDeployedChatAuthEnv()
     vi.mocked(auth.api.getSession).mockResolvedValue({
       user: { id: "user-1", email: "user@example.com" },
-    } as never)
+    })
 
     const response = await withAuthenticatedChatRequest(
       new Request("http://localhost/api/chat"),
@@ -174,6 +223,7 @@ describe("chat-api-auth", () => {
   })
 
   it("exposes deployment detection for tests", () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
     expect(isVercelChatDeployment()).toBe(true)
     expect(unauthorizedChatResponse().status).toBe(401)
@@ -195,6 +245,7 @@ describe("chat-api-auth", () => {
   })
 
   it("requires auth for run access on Vercel", async () => {
+    clearDeployedChatAuthEnv()
     process.env.VERCEL = "1"
 
     const result = await enforceRunOwnership({

@@ -48,15 +48,14 @@ describe("runtime provider catalog", () => {
     ).toBe(false)
   })
 
-  it("marks local providers configured from authStorage runtime keys", async () => {
+  it("marks local providers configured from modelRuntime auth", async () => {
     delete process.env.VERCEL
     mocks.isEnvVarConfigured.mockReturnValue(false)
 
     const providers = await getProviderConfigStatus({
       services: {
-        authStorage: {
-          getRuntimeApiKey: (providerId: string) =>
-            providerId === "anthropic" ? "sk-test" : undefined,
+        modelRuntime: {
+          hasConfiguredAuth: (providerId: string) => providerId === "anthropic",
         },
       } as never,
     })

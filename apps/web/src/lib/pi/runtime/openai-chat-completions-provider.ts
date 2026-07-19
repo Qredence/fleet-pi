@@ -13,11 +13,6 @@ import { isEnvVarConfigured } from "@/lib/env-manager"
 const PROVIDER_ID = OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
 const BASE_URL_ENV_VAR = "OPENAI_CHAT_COMPLETIONS_BASE_URL"
 const MODEL_ENV_VAR = "OPENAI_CHAT_COMPLETIONS_MODEL"
-const MODELS_FETCH_TIMEOUT_MS = 10_000
-
-type OpenAiModelListResponse = {
-  data?: Array<{ id: string }>
-}
 
 type OpenAiChatCompletionsConfig = {
   apiKey: string
@@ -156,47 +151,9 @@ export async function discoverOpenAiChatCompletionsModels(
   const config = await resolveOpenAiChatCompletionsConfig(userId)
   if (!config) return []
 
-  const fetched = await fetchOpenAiCompatibleModels(
-    config.baseUrl,
-    config.apiKey
-  )
-  const models = new Map<string, { id: string; name: string }>()
-  models.set(config.modelId, { id: config.modelId, name: config.modelId })
-  for (const entry of fetched) {
-    models.set(entry.id, { id: entry.id, name: entry.name })
-  }
-  return [...models.values()]
-}
-
-async function fetchOpenAiCompatibleModels(
-  baseUrl: string,
-  apiKey: string
-): Promise<RegisteredModels> {
-  let safeBaseUrl: string
-  try {
-    safeBaseUrl = assertSafeOpenAiCompatibleBaseUrl(baseUrl)
-  } catch {
-    return []
-  }
-
-  try {
-    const response = await fetch(`${safeBaseUrl}/models`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: AbortSignal.timeout(MODELS_FETCH_TIMEOUT_MS),
-    })
-
-    if (!response.ok) {
-      return []
-    }
-
-    const payload = (await response.json()) as OpenAiModelListResponse
-    const entries = payload.data ?? []
-    return entries.map((entry) => buildModelEntry(entry.id))
-  } catch {
-    return []
-  }
+  // OpenCode Zen (and similar gateways) may advertise many models on /models.
+  // Fleet Pi only exposes the explicitly configured model id for this provider.
+  return [{ id: config.modelId, name: config.modelId }]
 }
 
 export async function resolveOpenAiChatCompletionsConfig(
@@ -245,34 +202,18 @@ export async function registerOpenAiChatCompletionsProvider(
   services: AgentSessionServices,
   userId: string | undefined
 ) {
-  const modelRegistry = services.modelRegistry as
-    | {
-        registerProvider?: (
-          providerName: string,
-          config: ProviderConfig
-        ) => void
-        unregisterProvider?: (providerName: string) => void
-      }
-    | undefined
+  const { modelRuntime } = services
 
   const config = await resolveOpenAiChatCompletionsConfig(userId)
   if (!config) {
-    modelRegistry?.unregisterProvider?.(PROVIDER_ID)
+    modelRuntime.unregisterProvider(PROVIDER_ID)
     // Do not delete shared process.env — other sessions may still rely on it.
     return
   }
 
-  const fetched = await fetchOpenAiCompatibleModels(
-    config.baseUrl,
-    config.apiKey
-  )
   const models: RegisteredModels = [buildModelEntry(config.modelId)]
-  for (const entry of fetched) {
-    if (entry.id === config.modelId) continue
-    models.push(entry)
-  }
 
-  modelRegistry?.registerProvider?.(PROVIDER_ID, {
+  modelRuntime.registerProvider(PROVIDER_ID, {
     name: "OpenAI Chat Completions",
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,

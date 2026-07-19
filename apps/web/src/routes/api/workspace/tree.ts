@@ -7,7 +7,7 @@ import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 export async function workspaceTreeHandler(request: Request) {
   try {
     const { auth } = await import("@/lib/auth/server")
-    await auth.api.getSession({ headers: request.headers })
+    await auth.api.getSession(request)
 
     const context = await resolveWorkspaceContext(request)
     return Response.json(await loadAgentWorkspaceTree(context))

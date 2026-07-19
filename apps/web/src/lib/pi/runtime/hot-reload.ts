@@ -5,6 +5,7 @@ import { applyProjectSettingsToServices } from "./apply-project-settings"
 import { resolveProjectSettings } from "./durable-project-settings"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import { applyRuntimeAuth } from "./session-factory"
+import { normalizeChatThinkingLevel } from "./thinking-level"
 import type { ActiveSessionRecord } from "./active-sessions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
 
@@ -39,7 +40,7 @@ async function reloadRuntimeForRecord(
     await applyModelSelection(runtime, {
       provider: defaultProvider,
       id: defaultModel,
-      thinkingLevel: defaultThinkingLevel,
+      thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
     })
   }
 
