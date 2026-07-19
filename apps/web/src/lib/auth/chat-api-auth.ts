@@ -1,5 +1,7 @@
+import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
+import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 import { auth } from "@/lib/auth/server"
-import { isChatAuthRequired } from "@/lib/auth/auth-mode"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 import {
   parseBearerToken,
   verifyNeonAuthAccessToken,
@@ -18,7 +20,23 @@ export type AuthenticatedChatContext = {
   userId: string | undefined
 }
 
-export { isChatAuthRequired } from "@/lib/auth/auth-mode"
+/**
+ * Single chat-auth policy:
+ * - Neon Function surface always requires auth
+ * - Vercel deployments require auth
+ * - Neon Managed Auth configured (web) requires auth
+ * - Optional `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1` for explicit gates
+ */
+export function isChatAuthRequired(env: NodeJS.ProcessEnv = process.env) {
+  if (getChatAuthSurface() === "neon-function") {
+    return true
+  }
+  return (
+    isVercelDeployment() ||
+    isNeonManagedAuthConfigured(env) ||
+    env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1"
+  )
+}
 
 export async function getChatAuthSession(request: Request) {
   const bearer = parseBearerToken(request)

@@ -1,5 +1,4 @@
 import { isVercelDeployment } from "@/lib/deployment/environment"
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 export type AuthBackend = "local-better-auth" | "neon-managed"
 
@@ -53,22 +52,4 @@ export function isLocalAnonymousAuthAllowed(
     return false
   }
   return !isNeonManagedAuthConfigured(env)
-}
-
-/**
- * Single chat-auth policy:
- * - Neon Function surface always requires auth
- * - Vercel deployments require auth
- * - Neon Managed Auth configured (web) requires auth
- * - Optional `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1` for explicit gates
- */
-export function isChatAuthRequired(env: NodeJS.ProcessEnv = process.env) {
-  if (getChatAuthSurface() === "neon-function") {
-    return true
-  }
-  return (
-    isVercelDeployment() ||
-    isNeonManagedAuthConfigured(env) ||
-    env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1"
-  )
 }
