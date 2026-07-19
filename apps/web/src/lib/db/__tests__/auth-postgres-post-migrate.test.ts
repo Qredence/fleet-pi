@@ -15,6 +15,12 @@ describe("auth-postgres-post-migrate", () => {
     expect(AUTH_POSTGRES_POST_MIGRATE_SQL).toContain(
       'ALTER TABLE IF EXISTS public."verification" DISABLE ROW LEVEL SECURITY'
     )
+    expect(AUTH_POSTGRES_POST_MIGRATE_SQL).toContain(
+      "ALTER TABLE neon_auth.account DISABLE ROW LEVEL SECURITY"
+    )
+    expect(AUTH_POSTGRES_POST_MIGRATE_SQL).toContain(
+      "ALTER TABLE neon_auth.invitation DISABLE ROW LEVEL SECURITY"
+    )
   })
 
   it("drops leftover public auth isolation policies", () => {

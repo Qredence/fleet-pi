@@ -23,7 +23,19 @@ function resolveJwksUrl(env: NodeJS.ProcessEnv = process.env) {
 }
 
 function resolveNeonAuthIssuer(env: NodeJS.ProcessEnv = process.env) {
-  return env.NEON_AUTH_ISSUER?.trim() || ""
+  const explicit = env.NEON_AUTH_ISSUER?.trim() || ""
+  if (explicit) return explicit
+
+  // Neon docs: JWT `iss` is the origin of the Managed Auth URL
+  // (e.g. https://ep-xx.neonauth…aws.neon.tech), not the `/neondb/auth` path.
+  const base = resolveNeonAuthBaseUrl(env)
+  if (!base) return ""
+
+  try {
+    return new URL(base).origin
+  } catch {
+    return ""
+  }
 }
 
 function getJwks() {
