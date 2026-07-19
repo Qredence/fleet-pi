@@ -21,24 +21,19 @@ export async function getProviderConfigStatus(options?: {
 }
 
 async function getVercelProviderConfigStatus(userId?: string) {
-  if (!userId) {
-    return KNOWN_PROVIDERS.map((provider) => ({
-      id: provider.id,
-      name: provider.name,
-      envVarName: provider.envVarName,
-      isConfigured: false,
-    }))
-  }
-
-  const configuredProviderIds = await listConfiguredProviderIds(userId)
+  const configuredProviderIds = userId
+    ? await listConfiguredProviderIds(userId)
+    : new Set<string>()
 
   return KNOWN_PROVIDERS.map((provider) => ({
     id: provider.id,
     name: provider.name,
     envVarName: provider.envVarName,
-    isConfigured: isProviderConfigured(provider.id, {
-      configuredProviderIds,
-    }),
+    // BYOK rows win for UX ownership; org env (e.g. GEMINI_API_KEY) still
+    // counts as configured so chat can use the platform fallback key.
+    isConfigured:
+      isProviderConfigured(provider.id, { configuredProviderIds }) ||
+      isProviderConfigured(provider.id, {}),
   }))
 }
 

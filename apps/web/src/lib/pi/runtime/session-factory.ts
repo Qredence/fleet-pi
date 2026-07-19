@@ -38,6 +38,11 @@ export async function createSessionServices(
   options?: { userId?: string; projectRoot?: string }
 ) {
   if (process.env.VERCEL === "1") {
+    // Capture org LLM keys before scrub so applyRuntimeAuth can fall back
+    // when the signed-in user has no BYOK row (GEMINI_API_KEY etc. on Vercel).
+    const { snapshotVercelProviderEnvSecrets } =
+      await import("./user-provider-secrets")
+    snapshotVercelProviderEnvSecrets()
     for (const envVarName of PROVIDER_ENV_SCRUB_VAR_NAMES) {
       delete process.env[envVarName]
     }

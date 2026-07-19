@@ -139,4 +139,39 @@ describe("session factory", () => {
     expect(process.env.DAYTONA_API_KEY).toBe("daytona-secret")
     expect(mocks.createAgentSessionServices).toHaveBeenCalled()
   })
+
+  it("falls back to org env LLM keys on Vercel when BYOK is empty", async () => {
+    process.env.VERCEL = "1"
+    process.env.GEMINI_API_KEY = "org-gemini-key"
+    process.env.BETTER_AUTH_SECRET = "auth-secret"
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
+    mocks.withChatPostgresTransaction.mockImplementation(
+      async (callback: (client: unknown) => Promise<void>) => {
+        await callback({
+          query: vi.fn().mockResolvedValue({ rows: [] }),
+        })
+      }
+    )
+
+    const { createSessionServices, applyRuntimeAuth } =
+      await import("../session-factory")
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
+
+    const setRuntimeApiKey = vi.fn()
+    const removeRuntimeApiKey = vi.fn()
+    await applyRuntimeAuth(
+      {
+        modelRuntime: {
+          setRuntimeApiKey,
+          removeRuntimeApiKey,
+          unregisterProvider: vi.fn(),
+          registerProvider: vi.fn(),
+        },
+      } as never,
+      { userId: "user-1" }
+    )
+
+    expect(process.env.GEMINI_API_KEY).toBeUndefined()
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "org-gemini-key")
+  })
 })

@@ -5,17 +5,23 @@ import {
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
-export async function loadLlmProviderSecrets(
-  userId: string | undefined
-): Promise<Map<string, string>> {
-  if (process.env.VERCEL === "1") {
-    if (!userId) return new Map()
-    return loadDecryptedUserProviderSecrets(userId, {
-      providerFilter: (providerId) =>
-        LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId),
-    })
-  }
+/**
+ * Snapshot of org LLM provider env secrets captured before Vercel scrub.
+ * BYOK always wins; this is the platform fallback when a user has no row.
+ */
+let vercelEnvProviderSnapshot: Map<string, string> | null = null
 
+export function snapshotVercelProviderEnvSecrets() {
+  if (process.env.VERCEL !== "1") return
+  vercelEnvProviderSnapshot = readEnvLlmProviderSecrets()
+}
+
+/** Test helper — clears the scrub-time snapshot. */
+export function resetVercelProviderEnvSnapshotForTests() {
+  vercelEnvProviderSnapshot = null
+}
+
+function readEnvLlmProviderSecrets(): Map<string, string> {
   const secrets = new Map<string, string>()
   for (const providerId of LLM_PROVIDER_ENV_SCRUB_IDS) {
     const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
@@ -25,6 +31,33 @@ export async function loadLlmProviderSecrets(
     }
   }
   return secrets
+}
+
+export async function loadLlmProviderSecrets(
+  userId: string | undefined
+): Promise<Map<string, string>> {
+  if (process.env.VERCEL === "1") {
+    const secrets = new Map<string, string>()
+    if (userId) {
+      const byok = await loadDecryptedUserProviderSecrets(userId, {
+        providerFilter: (providerId) =>
+          LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId),
+      })
+      for (const [providerId, apiKey] of byok) {
+        secrets.set(providerId, apiKey)
+      }
+    }
+
+    const fallback = vercelEnvProviderSnapshot ?? readEnvLlmProviderSecrets()
+    for (const [providerId, apiKey] of fallback) {
+      if (!secrets.has(providerId)) {
+        secrets.set(providerId, apiKey)
+      }
+    }
+    return secrets
+  }
+
+  return readEnvLlmProviderSecrets()
 }
 
 export async function resolveUserProviderSecret(

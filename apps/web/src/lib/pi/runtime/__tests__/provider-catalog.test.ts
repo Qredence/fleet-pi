@@ -29,6 +29,7 @@ describe("runtime provider catalog", () => {
   it("marks Vercel providers configured from pi_user_providers rows", async () => {
     process.env.VERCEL = "1"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
+    mocks.isEnvVarConfigured.mockReturnValue(false)
     mocks.withChatPostgresTransaction.mockImplementation(
       async (callback: (client: unknown) => Promise<void>) => {
         await callback({
@@ -43,6 +44,30 @@ describe("runtime provider catalog", () => {
     const google = providers.find((provider) => provider.id === "google")
 
     expect(google?.isConfigured).toBe(true)
+    expect(
+      providers.find((provider) => provider.id === "openai")?.isConfigured
+    ).toBe(false)
+  })
+
+  it("marks Vercel providers configured from org env when BYOK is empty", async () => {
+    process.env.VERCEL = "1"
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
+    mocks.isEnvVarConfigured.mockImplementation(
+      (key?: string) => key === "GEMINI_API_KEY"
+    )
+    mocks.withChatPostgresTransaction.mockImplementation(
+      async (callback: (client: unknown) => Promise<void>) => {
+        await callback({
+          query: vi.fn().mockResolvedValue({ rows: [] }),
+        })
+      }
+    )
+
+    const providers = await getProviderConfigStatus({ userId: "user-1" })
+
+    expect(
+      providers.find((provider) => provider.id === "google")?.isConfigured
+    ).toBe(true)
     expect(
       providers.find((provider) => provider.id === "openai")?.isConfigured
     ).toBe(false)
