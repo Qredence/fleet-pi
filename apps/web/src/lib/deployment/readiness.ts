@@ -6,6 +6,8 @@ import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgr
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../db/chat-postgres-provider-auth"
 import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../db/chat-postgres-user-settings"
 import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke"
+import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke-again"
+import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
 import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
@@ -16,13 +18,22 @@ export type ReadinessCheck = {
   message: string
 }
 
+export type DataApiPrivilegeProbe = {
+  tableName: string
+  grantee: string
+  privilegeType: string
+}
+
 export type DeploymentReadinessInput = {
   trustZone?: DeploymentTrustZone
   env?: NodeJS.ProcessEnv
   chatMigrationsApplied?: Array<string>
   authTablesRlsDisabled?: boolean
   piSessionsRlsEnabled?: boolean
+  piSessionsForceRls?: boolean
   ownershipProbePresent?: boolean
+  /** Non-empty when Data API roles still hold privileges on critical pi_* tables. */
+  dataApiPiPrivileges?: Array<DataApiPrivilegeProbe>
 }
 
 const LEGACY_REQUIRED_VERCEL_ENV_VARS = [
@@ -45,6 +56,8 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
 ] as const
 
 function readEnv(name: string, env: NodeJS.ProcessEnv) {
@@ -311,6 +324,16 @@ export function validateDeploymentReadiness(
     )
   }
 
+  if (typeof input.piSessionsForceRls === "boolean") {
+    push(
+      "db:pi-sessions-force-rls",
+      input.piSessionsForceRls,
+      input.piSessionsForceRls
+        ? "pi_sessions FORCE ROW LEVEL SECURITY is enabled."
+        : "pi_sessions must FORCE RLS so table owners cannot bypass isolation; run pnpm chat:migrate."
+    )
+  }
+
   if (typeof input.ownershipProbePresent === "boolean") {
     push(
       "db:ownership-probe",
@@ -318,6 +341,23 @@ export function validateDeploymentReadiness(
       input.ownershipProbePresent
         ? "fleet_pi_check_session_owner is installed."
         : "Ownership probe migration is missing; run pnpm chat:migrate."
+    )
+  }
+
+  if (input.dataApiPiPrivileges) {
+    const leaked = input.dataApiPiPrivileges
+    const ok = leaked.length === 0
+    push(
+      "db:data-api-pi-grants-revoked",
+      ok,
+      ok
+        ? "Neon Data API roles hold no privileges on critical pi_* tables."
+        : `Data API roles still privileged on: ${leaked
+            .map(
+              (row) =>
+                `${row.grantee}:${row.tableName}:${row.privilegeType.toLowerCase()}`
+            )
+            .join(", ")}. Run pnpm chat:migrate.`
     )
   }
 

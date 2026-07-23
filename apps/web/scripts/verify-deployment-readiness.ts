@@ -10,6 +10,10 @@ import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../src/lib/db/chat-postgres-provider-auth"
 import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../src/lib/db/chat-postgres-user-settings"
+import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke"
+import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke-again"
+import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../src/lib/db/chat-postgres-force-rls"
+import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../src/lib/db/chat-postgres-ownership-execute-revoke"
 import { validateDeploymentReadiness } from "../src/lib/deployment/readiness"
 import { resolveDeploymentTrustZone } from "../src/lib/deployment/trust-zone"
 import type { DeploymentReadinessInput } from "../src/lib/deployment/readiness"
@@ -123,9 +127,12 @@ async function queryChatDatabaseState(connectionString: string) {
       "SELECT id FROM fleet_pi_chat_migrations ORDER BY applied_at"
     )
 
-    const rls = await pool.query<{ rls_enabled: boolean }>(
+    const rls = await pool.query<{
+      rls_enabled: boolean
+      force_rls: boolean
+    }>(
       `
-        SELECT c.relrowsecurity AS rls_enabled
+        SELECT c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS force_rls
         FROM pg_class AS c
         JOIN pg_namespace AS n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public'
@@ -146,10 +153,36 @@ async function queryChatDatabaseState(connectionString: string) {
       `
     )
 
+    const dataApiGrants = await pool.query<{
+      table_name: string
+      grantee: string
+      privilege_type: string
+    }>(
+      `
+        SELECT table_name, grantee, privilege_type
+        FROM information_schema.role_table_grants
+        WHERE table_schema = 'public'
+          AND grantee IN ('authenticated', 'anonymous')
+          AND table_name IN (
+            'pi_sessions',
+            'pi_user_providers',
+            'pi_user_settings',
+            'fleet_pi_chat_migrations'
+          )
+        ORDER BY grantee, table_name, privilege_type
+      `
+    )
+
     return {
       chatMigrationsApplied: migrations.rows.map((row) => row.id),
       piSessionsRlsEnabled: rls.rows[0]?.rls_enabled === true,
+      piSessionsForceRls: rls.rows[0]?.force_rls === true,
       ownershipProbePresent: probe.rows.length > 0,
+      dataApiPiPrivileges: dataApiGrants.rows.map((row) => ({
+        tableName: row.table_name,
+        grantee: row.grantee,
+        privilegeType: row.privilege_type,
+      })),
     }
   } finally {
     await pool.end()
@@ -216,6 +249,10 @@ async function main() {
     CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
     CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
     CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
+    CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
+    CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
+    CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+    CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
   ]
   console.log(
     `INFO migrations: expected chat migration ids: ${expectedMigrations.join(", ")}`

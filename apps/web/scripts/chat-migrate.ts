@@ -26,6 +26,14 @@ import {
   CHAT_POSTGRES_DATA_API_REVOKE_SQL,
 } from "../src/lib/db/chat-postgres-data-api-revoke"
 import {
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
+} from "../src/lib/db/chat-postgres-data-api-revoke-again"
+import {
+  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+  CHAT_POSTGRES_FORCE_RLS_SQL,
+} from "../src/lib/db/chat-postgres-force-rls"
+import {
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
 } from "../src/lib/db/chat-postgres-ownership-execute-revoke"
@@ -134,6 +142,16 @@ async function main() {
       client,
       CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
       CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+      CHAT_POSTGRES_FORCE_RLS_SQL
     )
 
     await client.query("COMMIT")
