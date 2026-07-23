@@ -3,14 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const resolveClientNeonAuthUrl = vi.fn(() => "")
 const isNeonManagedAuthClientEnabled = vi.fn(() => false)
 const token = vi.fn()
-const betterAuthReactAdapterFactory = vi.fn(
-  (options?: { fetchOptions?: { credentials?: RequestCredentials } }) => {
-    betterAuthReactAdapterFactory.lastOptions = options
-    return () => ({})
-  }
-) as ReturnType<typeof vi.fn> & {
-  lastOptions?: { fetchOptions?: { credentials?: RequestCredentials } }
+
+type AdapterOptions = {
+  fetchOptions?: { credentials?: RequestCredentials }
 }
+
+const adapterOptionsSeen: { current?: AdapterOptions } = {}
+
+const betterAuthReactAdapterFactory = vi.fn((options?: AdapterOptions) => {
+  adapterOptionsSeen.current = options
+  return () => ({})
+})
 
 vi.mock("@/lib/auth/auth-mode", () => ({
   resolveClientNeonAuthUrl: () => resolveClientNeonAuthUrl(),
@@ -29,9 +32,8 @@ vi.mock("@neondatabase/auth", () => ({
 }))
 
 vi.mock("@neondatabase/auth/react/adapters", () => ({
-  BetterAuthReactAdapter: (options?: {
-    fetchOptions?: { credentials?: RequestCredentials }
-  }) => betterAuthReactAdapterFactory(options),
+  BetterAuthReactAdapter: (options?: AdapterOptions) =>
+    betterAuthReactAdapterFactory(options),
 }))
 
 vi.mock("better-auth/react", () => ({
@@ -49,7 +51,7 @@ describe("getChatAuthBearerToken", () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(false)
     token.mockReset()
     betterAuthReactAdapterFactory.mockClear()
-    betterAuthReactAdapterFactory.lastOptions = undefined
+    adapterOptionsSeen.current = undefined
   })
 
   afterEach(() => {
@@ -74,7 +76,7 @@ describe("getChatAuthBearerToken", () => {
     await expect(getChatAuthBearerToken()).resolves.toBe("eyJ.test.jwt")
 
     expect(token).toHaveBeenCalledTimes(1)
-    expect(betterAuthReactAdapterFactory.lastOptions?.fetchOptions).toEqual({
+    expect(adapterOptionsSeen.current?.fetchOptions).toEqual({
       credentials: "include",
     })
   })
