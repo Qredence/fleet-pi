@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+  CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL,
   CHAT_POSTGRES_DATA_API_AUTH_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL,
   CHAT_POSTGRES_DATA_API_AUTH_SQL,
 } from "../chat-postgres-data-api-auth"
@@ -36,8 +38,14 @@ describe("chat-postgres-data-api-auth", () => {
 
   it("keeps the managed auth lookup behind a fixed security-definer bridge", () => {
     expect(CHAT_POSTGRES_DATA_API_AUTH_SQL).toContain("SECURITY DEFINER")
+    expect(CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID).toBe(
+      "20260720_pi_data_api_auth_privileges"
+    )
     expect(CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL).toContain(
       "ALTER FUNCTION public.fleet_pi_current_user_id() SECURITY DEFINER"
+    )
+    expect(CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID).toBe(
+      "20260720_pi_data_api_auth_definer"
     )
     expect(CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL).toContain(
       "REVOKE ALL ON FUNCTION public.fleet_pi_current_user_id() FROM PUBLIC"
