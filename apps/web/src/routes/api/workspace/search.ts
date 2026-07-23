@@ -8,8 +8,8 @@ import {
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 export async function workspaceSearchHandler(request: Request) {
-  return withAuthenticatedChatRequest(request, async () => {
-    const context = await resolveWorkspaceContext(request)
+  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
+    const context = await resolveWorkspaceContext(request, authSession?.user)
     const url = new URL(request.url)
 
     try {

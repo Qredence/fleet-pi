@@ -62,7 +62,7 @@ export async function getChatAuthSession(request: Request) {
   }
 
   const { auth } = await import("@/lib/auth/server")
-  return auth.api.getSession(request).catch(() => null)
+  return Promise.resolve(auth.api.getSession(request)).catch(() => null)
 }
 
 export function unauthorizedChatResponse() {

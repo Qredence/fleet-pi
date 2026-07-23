@@ -120,7 +120,7 @@ describe("resource_install workspace installer", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("allows explicit localhost URL sources for local development", async () => {
+  it("rejects explicit localhost URL sources", async () => {
     const root = await createTempProject()
     const fetchMock = vi.fn<
       (input: string, init?: RequestInit) => Promise<Response>
@@ -134,19 +134,16 @@ describe("resource_install workspace installer", () => {
     })
     vi.stubGlobal("fetch", fetchMock)
 
-    const result = await installWorkspaceResource(root, {
-      kind: "prompt",
-      name: "Local Prompt",
-      source: "http://localhost:3000/prompt.md",
-      sourceType: "url",
-    })
-
-    expect(result.installedPath).toBe(
-      "agent-workspace/pi/prompts/local-prompt.md"
-    )
+    await expect(
+      installWorkspaceResource(root, {
+        kind: "prompt",
+        name: "Local Prompt",
+        source: "http://localhost:3000/prompt.md",
+        sourceType: "url",
+      })
+    ).rejects.toThrow()
     expect(lookupMock).not.toHaveBeenCalled()
-    const requestInit = fetchMock.mock.calls[0]?.[1]
-    expect(requestInit).toMatchObject({ redirect: "error" })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("stages extensions unless explicitly activated", async () => {

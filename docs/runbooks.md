@@ -169,10 +169,10 @@ as `neondb_owner` (full DDL).
 
 ### Roles
 
-| Role           | Privileges                                    | Used by             |
-| -------------- | --------------------------------------------- | ------------------- |
-| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)    | Migration CLI only  |
-| `fleet_pi_app` | SELECT, INSERT, UPDATE, DELETE on auth tables | Running application |
+| Role           | Privileges                                                               | Used by             |
+| -------------- | ------------------------------------------------------------------------ | ------------------- |
+| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)                               | Migration CLI only  |
+| `fleet_pi_app` | DML on `pi_*` mirror tables (and legacy public auth tables when present) | Running application |
 
 ### Running migrations
 
@@ -185,12 +185,16 @@ string).
 
 ### Adding new Better Auth plugins that create tables
 
+Legacy self-hosted Better Auth only (no `neon_auth` schema):
+
 1. Run `pnpm --filter web auth:migrate` (creates the tables as neondb_owner)
 2. Grant DML on new tables to fleet_pi_app:
    ```sql
    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."<new_table>" TO fleet_pi_app;
    ```
 3. Verify the app can access the new table
+
+With Neon Managed Auth, identity tables live in `neon_auth` and are managed by Neon — do not add public auth tables or grant `fleet_pi_app` on `neon_auth`.
 
 ### Rotating the fleet_pi_app password
 
@@ -201,12 +205,23 @@ string).
 2. Update `FLEET_PI_AUTH_DATABASE_URL` in all deployment environments
 3. Restart the application
 
-### Current auth tables
+### Auth storage (Managed Auth vs legacy)
 
-- `public."user"` — User accounts
-- `public."session"` — Active sessions
-- `public."account"` — OAuth/credential accounts
-- `public."verification"` — Email verification tokens
+**Production (`fleet-pi-neon` with Neon Managed Auth):**
+
+- Identity: `neon_auth.*` (users, sessions, OAuth accounts) — operated by Neon; keep this schema private and do not expose `neon_auth.user` through a Data API view.
+- App tenancy: `public.pi_*` with user-scoped RLS via `fleet_pi_current_user_id()`, which uses `auth.user_id()` for Managed Auth JWTs and the private `app.current_user_id` context for the server role.
+- After cutover remap (`pnpm remap-auth-user-ids`), `pnpm auth:migrate` drops legacy `public."user"`, `"session"`, `"account"`, and `"verification"` if `neon_auth."user"` exists.
+
+**Legacy self-hosted Better Auth only (no `neon_auth`):**
+
+- Auth store: `public."user"`, `"session"`, `"account"`, `"verification"`.
+- Auth post-migrate enables RLS with `fleet_pi_app`-only policies and revokes Data API roles on those tables.
+
+The chat mirror migration grants the `authenticated` Data API role only the
+non-secret mirror/settings tables after RLS is installed. BYOK provider
+payloads, tombstones, and migration bookkeeping remain server-only; anonymous
+requests receive no table privileges.
 
 ---
 
@@ -219,10 +234,11 @@ and debugging.
 
 ### Roles
 
-| Role           | Privileges                                      | Used by             |
-| -------------- | ----------------------------------------------- | ------------------- |
-| `neondb_owner` | Full DDL + DML (CREATE, ALTER, DROP, etc.)      | Migration CLI only  |
-| `fleet_pi_app` | SELECT, INSERT, UPDATE, DELETE on `pi_*` tables | Running application |
+| Role            | Privileges                                                                                  | Used by             |
+| --------------- | ------------------------------------------------------------------------------------------- | ------------------- |
+| `neondb_owner`  | Full DDL + DML (CREATE, ALTER, DROP, etc.)                                                  | Migration CLI only  |
+| `fleet_pi_app`  | SELECT, INSERT, UPDATE, DELETE on `pi_*` tables                                             | Running application |
+| `authenticated` | RLS-filtered SELECT on mirror tables and DML on `pi_user_settings`; no BYOK/provider access | Neon Data API JWTs  |
 
 ### Running migrations
 

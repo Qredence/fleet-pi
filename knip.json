@@ -15,7 +15,11 @@
         "functions/**/*.ts",
         "!agent-workspace/pi/**"
       ],
-      "ignoreDependencies": ["zod"]
+      "ignoreDependencies": [
+        "zod",
+        "@aws-sdk/client-s3",
+        "@neondatabase/serverless"
+      ]
     },
     "apps/web": {
       "entry": [

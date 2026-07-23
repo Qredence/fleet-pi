@@ -7,9 +7,11 @@ import {
 } from "@/lib/workspace/workspace-query"
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
-export async function workspaceItemsHandler(request: Request) {
-  return withAuthenticatedChatRequest(request, async () => {
-    const context = await resolveWorkspaceContext(request)
+export async function workspaceItemsHandler(
+  request = new Request("http://localhost/api/workspace/items")
+) {
+  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
+    const context = await resolveWorkspaceContext(request, authSession?.user)
 
     try {
       return Response.json(await createWorkspaceItemsResponse(context))

@@ -1,6 +1,11 @@
 import path from "node:path"
 import dotenv from "dotenv"
 import { Pool } from "@neondatabase/serverless"
+import {
+  assertNeonAuthUserIdMatch,
+  parseRemapFile,
+  resolveOldUserId,
+} from "../src/lib/db/remap-auth-user-ids"
 import type { PoolClient } from "@neondatabase/serverless"
 
 const cwd = process.cwd()
@@ -12,11 +17,6 @@ dotenv.config({
   override: true,
 })
 
-type RemapRow = {
-  email: string
-  newUserId: string
-}
-
 function parseArgs(argv: Array<string>) {
   const dryRun = argv.includes("--dry-run")
   const fileArg = argv.find((arg) => arg.startsWith("--file="))
@@ -24,18 +24,17 @@ function parseArgs(argv: Array<string>) {
   return { dryRun, filePath }
 }
 
-function parseRemapFile(contents: string): Array<RemapRow> {
-  return contents
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#"))
-    .map((line) => {
-      const [email, newUserId] = line.split(",").map((part) => part.trim())
-      if (!email || !newUserId) {
-        throw new Error(`Invalid remap row: ${line}`)
-      }
-      return { email, newUserId }
-    })
+async function publicUserTableExists(pool: Pool): Promise<boolean> {
+  const result = await pool.query<{ exists: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'user'
+      ) AS exists
+    `
+  )
+  return result.rows[0]?.exists === true
 }
 
 async function loadLegacyUserIds(
@@ -45,11 +44,49 @@ async function loadLegacyUserIds(
   if (emails.length === 0) {
     return new Map()
   }
+  if (!(await publicUserTableExists(pool))) {
+    return new Map()
+  }
 
   const result = await pool.query<{ id: string; email: string }>(
     `
       SELECT id, email
-      FROM "user"
+      FROM public."user"
+      WHERE lower(email) = ANY($1::text[])
+    `,
+    [emails.map((email) => email.toLowerCase())]
+  )
+
+  return new Map(
+    result.rows.map((row) => [row.email.toLowerCase(), row.id] as const)
+  )
+}
+
+async function loadNeonAuthUserIds(
+  pool: Pool,
+  emails: Array<string>
+): Promise<Map<string, string>> {
+  if (emails.length === 0) {
+    return new Map()
+  }
+
+  const neonAuthExists = await pool.query<{ exists: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'neon_auth' AND table_name = 'user'
+      ) AS exists
+    `
+  )
+  if (!neonAuthExists.rows[0]?.exists) {
+    return new Map()
+  }
+
+  const result = await pool.query<{ id: string; email: string }>(
+    `
+      SELECT id, email
+      FROM neon_auth."user"
       WHERE lower(email) = ANY($1::text[])
     `,
     [emails.map((email) => email.toLowerCase())]
@@ -101,19 +138,21 @@ async function main() {
     await import("node:fs/promises").then((fs) => fs.readFile(filePath, "utf8"))
   )
   const pool = new Pool({ connectionString })
-  const legacyIds = await loadLegacyUserIds(
-    pool,
-    remapRows.map((row) => row.email)
-  )
+  const emails = remapRows.map((row) => row.email)
+  const legacyIds = await loadLegacyUserIds(pool, emails)
+  const neonAuthIds = await loadNeonAuthUserIds(pool, emails)
 
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
 
     for (const row of remapRows) {
-      const oldUserId = legacyIds.get(row.email.toLowerCase())
+      assertNeonAuthUserIdMatch(row.email, row.newUserId, neonAuthIds)
+      const oldUserId = resolveOldUserId(row, legacyIds)
       if (!oldUserId) {
-        console.warn(`Skipping ${row.email}: legacy user not found`)
+        console.warn(
+          `Skipping ${row.email}: old user id not found (provide email,oldUserId,newUserId when public."user" is dropped)`
+        )
         continue
       }
       if (oldUserId === row.newUserId) {

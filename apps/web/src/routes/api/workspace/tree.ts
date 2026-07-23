@@ -6,9 +6,9 @@ import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 export async function workspaceTreeHandler(request: Request) {
-  return withAuthenticatedChatRequest(request, async () => {
+  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
     try {
-      const context = await resolveWorkspaceContext(request)
+      const context = await resolveWorkspaceContext(request, authSession?.user)
       return Response.json(await loadAgentWorkspaceTree(context))
     } catch (error) {
       return Response.json(

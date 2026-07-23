@@ -9,6 +9,7 @@ import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../db/chat-postgres-
 import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke-again"
 import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
 import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
+import { CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID } from "../db/chat-postgres-rls-initplan"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
@@ -56,6 +57,7 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
+  CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
   CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
 ] as const
@@ -363,8 +365,12 @@ export function validateDeploymentReadiness(
 
   push(
     "artifact:auth-post-migrate-sql",
-    AUTH_POSTGRES_POST_MIGRATE_SQL.includes("DISABLE ROW LEVEL SECURITY"),
-    "Auth post-migrate SQL disables RLS on Better Auth tables."
+    AUTH_POSTGRES_POST_MIGRATE_SQL.includes(
+      'DROP TABLE IF EXISTS public."user"'
+    ) ||
+      (AUTH_POSTGRES_POST_MIGRATE_SQL.includes("ENABLE ROW LEVEL SECURITY") &&
+        AUTH_POSTGRES_POST_MIGRATE_SQL.includes("fleet_pi_app_auth_access")),
+    "Auth post-migrate drops legacy public auth tables under Managed Auth or enables fleet_pi_app-only RLS for legacy Better Auth."
   )
 
   return { ok: checks.every((check) => check.ok), checks }

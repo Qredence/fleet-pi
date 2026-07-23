@@ -1,11 +1,16 @@
-export const CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID =
-  "20260709_pi_sessions_rls_strict"
+export const CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID =
+  "20260719_pi_rls_initplan"
 
+/**
+ * Wrap `current_setting(...)` in `(SELECT ...)` so Postgres evaluates the
+ * GUC once per query (InitPlan) instead of per row. Clears Neon Data Advisor
+ * `auth_rls_initplan` warnings without changing isolation semantics.
+ */
 const CURRENT_USER_ID = "(SELECT current_setting('app.current_user_id', true))"
 
 const SESSION_OWNER_MATCH = `pi_sessions.user_id = ${CURRENT_USER_ID}`
 
-export const CHAT_POSTGRES_RLS_STRICT_SQL = `
+export const CHAT_POSTGRES_RLS_INITPLAN_SQL = `
 DROP POLICY IF EXISTS pi_sessions_user_isolation ON pi_sessions;
 CREATE POLICY pi_sessions_user_isolation ON pi_sessions
   FOR ALL
@@ -105,4 +110,37 @@ CREATE POLICY pi_file_mutations_user_isolation ON pi_file_mutations
         AND (${SESSION_OWNER_MATCH})
     )
   );
+
+DROP POLICY IF EXISTS pi_user_providers_isolation ON pi_user_providers;
+CREATE POLICY pi_user_providers_isolation ON pi_user_providers
+  FOR ALL
+  USING (user_id = ${CURRENT_USER_ID})
+  WITH CHECK (user_id = ${CURRENT_USER_ID});
+
+DROP POLICY IF EXISTS pi_user_settings_isolation ON pi_user_settings;
+CREATE POLICY pi_user_settings_isolation ON pi_user_settings
+  FOR ALL
+  USING (user_id = ${CURRENT_USER_ID})
+  WITH CHECK (user_id = ${CURRENT_USER_ID});
+
+DROP POLICY IF EXISTS pi_session_tombstones_user_isolation ON pi_session_tombstones;
+CREATE POLICY pi_session_tombstones_user_isolation ON pi_session_tombstones
+  FOR ALL
+  USING (user_id = ${CURRENT_USER_ID})
+  WITH CHECK (user_id = ${CURRENT_USER_ID});
+
+-- Neon SQL Editor helper; pin search_path so Data Advisor stops flagging it.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'show_db_tree'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'ALTER FUNCTION public.show_db_tree() SET search_path = pg_catalog, public';
+  END IF;
+END $$;
 `

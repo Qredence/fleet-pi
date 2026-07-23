@@ -2,6 +2,10 @@ import path from "node:path"
 import dotenv from "dotenv"
 import { Pool } from "@neondatabase/serverless"
 import {
+  CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
+  CHAT_POSTGRES_RLS_INITPLAN_SQL,
+} from "../src/lib/db/chat-postgres-rls-initplan"
+import {
   CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
   CHAT_POSTGRES_RLS_STRICT_SQL,
 } from "../src/lib/db/chat-postgres-rls-strict"
@@ -143,6 +147,13 @@ async function main() {
       CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
       CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL
     )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
+      CHAT_POSTGRES_RLS_INITPLAN_SQL
+    )
+    // Intentionally do not apply `chat-postgres-data-api-auth` grants:
+    // closed-beta posture keeps Neon Data API disabled; use revoke_again + FORCE RLS.
     await applyMigrationIfNeeded(
       client,
       CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,

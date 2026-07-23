@@ -36,6 +36,9 @@ const EXISTENCE_ONLY_SCRIPTS = new Set([
   "e2e",
   "chat:migrate",
   "auth:migrate",
+  "neon:deploy",
+  "neon:env-pull",
+  "neon:verify",
   "quarantine-orphan-sessions",
   "remap-auth-user-ids",
 ])
@@ -139,9 +142,12 @@ function main() {
           ? "existence check only - modifies files"
           : scriptName === "chat:migrate" ||
               scriptName === "auth:migrate" ||
+              scriptName === "neon:deploy" ||
+              scriptName === "neon:env-pull" ||
+              scriptName === "neon:verify" ||
               scriptName === "quarantine-orphan-sessions" ||
               scriptName === "remap-auth-user-ids"
-            ? "existence check only - requires Neon migration credentials"
+            ? "existence check only - requires Neon credentials"
             : "existence check only - requires e2e runtime setup"
 
       console.log(`✅ PASS: "${command}" (${reason})`)

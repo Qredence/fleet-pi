@@ -10,6 +10,7 @@ export type VerifiedNeonAuthToken = {
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
+let jwksUrl: string | null = null
 
 function resolveJwksUrl(env: NodeJS.ProcessEnv = process.env) {
   const explicit =
@@ -38,14 +39,15 @@ function resolveNeonAuthIssuer(env: NodeJS.ProcessEnv = process.env) {
   }
 }
 
-function getJwks() {
-  const jwksUrl = resolveJwksUrl()
-  if (!jwksUrl) {
+function getJwks(env: NodeJS.ProcessEnv = process.env) {
+  const resolvedJwksUrl = resolveJwksUrl(env)
+  if (!resolvedJwksUrl) {
     throw new Error("NEON_AUTH_JWKS_URL is required for JWT verification.")
   }
 
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(jwksUrl))
+  if (!jwks || jwksUrl !== resolvedJwksUrl) {
+    jwks = createRemoteJWKSet(new URL(resolvedJwksUrl))
+    jwksUrl = resolvedJwksUrl
   }
 
   return jwks
@@ -76,7 +78,7 @@ export async function verifyNeonAuthAccessToken(
   }
 
   try {
-    const { payload } = await jwtVerify(token, getJwks(), {
+    const { payload } = await jwtVerify(token, getJwks(env), {
       issuer: issuer || undefined,
       audience: env.NEON_AUTH_AUDIENCE?.trim() || undefined,
     })

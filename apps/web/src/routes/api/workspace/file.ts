@@ -9,11 +9,11 @@ import {
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 export async function workspaceFileHandler(request: Request) {
-  return withAuthenticatedChatRequest(request, async () => {
+  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
     const url = new URL(request.url)
 
     try {
-      const context = await resolveWorkspaceContext(request)
+      const context = await resolveWorkspaceContext(request, authSession?.user)
       return Response.json(
         await loadAgentWorkspaceFile(context, url.searchParams.get("path"))
       )
