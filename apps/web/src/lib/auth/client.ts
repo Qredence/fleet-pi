@@ -8,21 +8,30 @@ import {
 
 type BetterAuthReactClient = ReturnType<typeof createBetterAuthClient>
 
+type NeonAuthTokenClient = BetterAuthReactClient & {
+  token: () => Promise<{
+    data?: { token?: string } | null
+    error?: unknown
+  }>
+}
+
 /**
  * Neon Auth's React adapter mirrors Better Auth's client surface
- * (`useSession`, `signIn`, …). Cast once at this boundary rather than
- * forcing a union through every consumer.
+ * (`useSession`, `signIn`, `token`, …). Cast once at this boundary rather
+ * than forcing a union through every consumer.
  *
- * Important: `@neondatabase/auth`'s `createAuthClient()` returns only the
- * Better Auth adapter instance, not the NeonAuth wrapper that owns
- * `getJWTToken`. Calling `authClient.getJWTToken()` is therefore treated as
- * a Better Auth path proxy and hits `/get-j-w-t-token` (404). Fetch `/token`
- * directly instead.
+ * Prefer `authClient.token()` (JWT plugin) for bearer minting. Do not call
+ * `getJWTToken()` on this client — `createAuthClient()` returns the adapter
+ * API only, and Better Auth proxies `getJWTToken` to a 404 path.
  */
 function createFleetAuthClient(): BetterAuthReactClient {
   if (isNeonManagedAuthClientEnabled()) {
     return createNeonAuthClient(resolveClientNeonAuthUrl(), {
-      adapter: BetterAuthReactAdapter(),
+      adapter: BetterAuthReactAdapter({
+        // Required when the app origin differs from the Managed Auth URL
+        // (Vercel ↔ neonauth), otherwise token() returns undefined.
+        fetchOptions: { credentials: "include" },
+      }),
     }) as unknown as BetterAuthReactClient
   }
 
@@ -30,10 +39,6 @@ function createFleetAuthClient(): BetterAuthReactClient {
 }
 
 export const authClient = createFleetAuthClient()
-
-type NeonTokenResponse = {
-  token?: unknown
-}
 
 /**
  * Returns a Neon Auth JWT for cross-origin chat APIs (Vercel → Neon cookies
@@ -44,22 +49,13 @@ export async function getChatAuthBearerToken(): Promise<string | null> {
     return null
   }
 
-  const base = resolveClientNeonAuthUrl().replace(/\/+$/, "")
-  if (!base) {
-    return null
-  }
-
   try {
-    const response = await fetch(`${base}/token`, {
-      credentials: "include",
-      method: "GET",
-    })
-    if (!response.ok) {
+    const { data, error } = await (authClient as NeonAuthTokenClient).token()
+    if (error) {
       return null
     }
 
-    const data = (await response.json()) as NeonTokenResponse
-    return typeof data.token === "string" && data.token.length > 0
+    return typeof data?.token === "string" && data.token.length > 0
       ? data.token
       : null
   } catch {

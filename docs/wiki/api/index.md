@@ -58,8 +58,9 @@ Auth policy follows the deployment trust zone:
 - **Vercel**, **Neon Managed Auth**, or **Neon Function** chat runtime: session
   and workspace APIs require authentication (`withAuthenticatedChatRequest`).
   Catalog endpoints (`/api/chat/models`, `/resources`, `/commands`,
-  `/models/discover`) use the same gate. Neon Auth clients mint JWTs from
-  Neon `/token` and send `Authorization: Bearer`.
+  `/models/discover`) use the same gate. Neon Auth clients mint JWTs via
+  `authClient.token()` (with `credentials: "include"`) and send
+  `Authorization: Bearer`.
 - `/api/sandbox/preview` always requires authentication (401 without a session).
 
 `/api/auth/$` proxies Neon Managed Auth when configured; otherwise it serves

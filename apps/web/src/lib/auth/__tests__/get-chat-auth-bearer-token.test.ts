@@ -2,6 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const resolveClientNeonAuthUrl = vi.fn(() => "")
 const isNeonManagedAuthClientEnabled = vi.fn(() => false)
+const token = vi.fn()
+const betterAuthReactAdapterFactory = vi.fn(
+  (options?: { fetchOptions?: { credentials?: RequestCredentials } }) => {
+    betterAuthReactAdapterFactory.lastOptions = options
+    return () => ({})
+  }
+) as ReturnType<typeof vi.fn> & {
+  lastOptions?: { fetchOptions?: { credentials?: RequestCredentials } }
+}
 
 vi.mock("@/lib/auth/auth-mode", () => ({
   resolveClientNeonAuthUrl: () => resolveClientNeonAuthUrl(),
@@ -14,11 +23,15 @@ vi.mock("@/lib/auth/auth-mode", () => ({
 }))
 
 vi.mock("@neondatabase/auth", () => ({
-  createAuthClient: vi.fn(() => ({})),
+  createAuthClient: vi.fn(() => ({
+    token,
+  })),
 }))
 
 vi.mock("@neondatabase/auth/react/adapters", () => ({
-  BetterAuthReactAdapter: vi.fn(() => () => ({})),
+  BetterAuthReactAdapter: (options?: {
+    fetchOptions?: { credentials?: RequestCredentials }
+  }) => betterAuthReactAdapterFactory(options),
 }))
 
 vi.mock("better-auth/react", () => ({
@@ -31,15 +44,15 @@ vi.mock("better-auth/react", () => ({
 }))
 
 describe("getChatAuthBearerToken", () => {
-  const originalFetch = globalThis.fetch
-
   beforeEach(() => {
     resolveClientNeonAuthUrl.mockReturnValue("")
     isNeonManagedAuthClientEnabled.mockReturnValue(false)
+    token.mockReset()
+    betterAuthReactAdapterFactory.mockClear()
+    betterAuthReactAdapterFactory.lastOptions = undefined
   })
 
   afterEach(() => {
-    globalThis.fetch = originalFetch
     vi.resetModules()
     vi.clearAllMocks()
   })
@@ -47,45 +60,33 @@ describe("getChatAuthBearerToken", () => {
   it("returns null when Neon Managed Auth is disabled", async () => {
     const { getChatAuthBearerToken } = await import("../client")
     await expect(getChatAuthBearerToken()).resolves.toBeNull()
-    expect(globalThis.fetch).toBe(originalFetch)
+    expect(token).not.toHaveBeenCalled()
   })
 
-  it("fetches JWT from Neon Auth /token and never proxies getJWTToken", async () => {
+  it("mints JWT via authClient.token() with credentials include", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
       "https://ep-example.neonauth.aws.neon.tech/neondb/auth/"
     )
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ token: "eyJ.test.jwt" }),
-    })
-    globalThis.fetch = fetchMock
+    token.mockResolvedValue({ data: { token: "eyJ.test.jwt" }, error: null })
 
     const { getChatAuthBearerToken } = await import("../client")
     await expect(getChatAuthBearerToken()).resolves.toBe("eyJ.test.jwt")
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://ep-example.neonauth.aws.neon.tech/neondb/auth/token",
-      expect.objectContaining({
-        credentials: "include",
-        method: "GET",
-      })
-    )
-    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain(
-      "get-j-w-t-token"
-    )
+    expect(token).toHaveBeenCalledTimes(1)
+    expect(betterAuthReactAdapterFactory.lastOptions?.fetchOptions).toEqual({
+      credentials: "include",
+    })
   })
 
-  it("returns null on Neon /token failure instead of throwing", async () => {
+  it("returns null on authClient.token() failure instead of throwing", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
       "https://ep-example.neonauth.aws.neon.tech/neondb/auth"
     )
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({}),
+    token.mockResolvedValue({
+      data: null,
+      error: { message: "unauthorized" },
     })
 
     const { getChatAuthBearerToken } = await import("../client")
