@@ -31,6 +31,8 @@ export async function loadChatModels(
     userId: options?.userId,
     projectRoot: context.projectRoot,
   })
+  const { applyRuntimeAuth } = await import("./session-factory")
+  await applyRuntimeAuth(services, { userId: options?.userId })
   const available = await services.modelRuntime.getAvailable()
   const availableKeys = new Set(available.map(modelKey))
   const all = services.modelRuntime.getModels()

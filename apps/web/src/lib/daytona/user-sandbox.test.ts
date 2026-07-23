@@ -159,9 +159,9 @@ describe("isDaytonaEnabled", () => {
     delete process.env.VERCEL
   })
 
-  it("treats ORG_DAYTONA_API_KEY as a local env enablement signal", () => {
+  it("does not treat ORG_DAYTONA_API_KEY as an enablement signal", () => {
     process.env.ORG_DAYTONA_API_KEY = "org-key"
-    expect(isDaytonaEnabled("user123")).toBe(true)
+    expect(isDaytonaEnabled("user123")).toBe(false)
     delete process.env.ORG_DAYTONA_API_KEY
   })
 })

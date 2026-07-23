@@ -1,28 +1,12 @@
 import {
+  INFRA_PROVIDER_IDS,
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
 } from "@workspace/pi-protocol/provider-catalog"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
-/**
- * Snapshot of org LLM provider env secrets captured before Vercel scrub.
- * BYOK always wins; this is the platform fallback when a user has no row.
- */
-let vercelEnvProviderSnapshot: Map<string, string> | null = null
-
-export function snapshotVercelProviderEnvSecrets() {
-  if (process.env.VERCEL !== "1") return
-  // createSessionServices can run twice per chat turn (catalog + runtime).
-  // Keep the first pre-scrub snapshot; a later call would see empty env.
-  if (vercelEnvProviderSnapshot) return
-  vercelEnvProviderSnapshot = readEnvLlmProviderSecrets()
-}
-
-/** Test helper — clears the scrub-time snapshot. */
-export function resetVercelProviderEnvSnapshotForTests() {
-  vercelEnvProviderSnapshot = null
-}
+const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
 
 function readEnvLlmProviderSecrets(): Map<string, string> {
   const secrets = new Map<string, string>()
@@ -36,6 +20,10 @@ function readEnvLlmProviderSecrets(): Map<string, string> {
   return secrets
 }
 
+/**
+ * On Vercel: only the signed-in user's BYOK rows (never org env).
+ * Local/dev: project env LLM keys.
+ */
 export async function loadLlmProviderSecrets(
   userId: string | undefined
 ): Promise<Map<string, string>> {
@@ -43,17 +31,9 @@ export async function loadLlmProviderSecrets(
     const secrets = new Map<string, string>()
     if (userId) {
       const byok = await loadDecryptedUserProviderSecrets(userId, {
-        providerFilter: (providerId) =>
-          LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId),
+        providerFilter: (providerId) => !INFRA_PROVIDER_ID_SET.has(providerId),
       })
       for (const [providerId, apiKey] of byok) {
-        secrets.set(providerId, apiKey)
-      }
-    }
-
-    const fallback = vercelEnvProviderSnapshot ?? readEnvLlmProviderSecrets()
-    for (const [providerId, apiKey] of fallback) {
-      if (!secrets.has(providerId)) {
         secrets.set(providerId, apiKey)
       }
     }
@@ -68,7 +48,15 @@ export async function resolveUserProviderSecret(
   providerId: string
 ): Promise<string | undefined> {
   const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
-  if (!provider) return undefined
+  if (!provider) {
+    if (process.env.VERCEL === "1") {
+      if (!userId || INFRA_PROVIDER_ID_SET.has(providerId)) return undefined
+      return (
+        await loadDecryptedUserProviderSecrets(userId, { providerId })
+      ).get(providerId)
+    }
+    return undefined
+  }
 
   if (LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId)) {
     return (await loadLlmProviderSecrets(userId)).get(providerId)
@@ -94,6 +82,12 @@ export async function resolveUserDaytonaApiKey(
   return resolveUserProviderSecret(userId, "daytona")
 }
 
+/**
+ * Resolve the Daytona API key for a user sandbox/runtime.
+ * On Vercel: BYOK only (`daytona` in `pi_user_providers`). Never org keys.
+ * Local/dev: BYOK when present, else `DAYTONA_API_KEY`. `ORG_DAYTONA_API_KEY`
+ * is never used for end-user sandboxes.
+ */
 export async function resolveDaytonaRuntimeApiKey(
   userId: string | undefined,
   override?: string
@@ -103,10 +97,6 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  // Prefer explicit org key (closed-beta / shared org sandboxes) over the
-  // legacy local `DAYTONA_API_KEY` name. BYOK above always wins.
-  const orgKey = process.env.ORG_DAYTONA_API_KEY?.trim()
-  if (orgKey) return orgKey
   if (process.env.VERCEL === "1") return undefined
   return process.env.DAYTONA_API_KEY
 }

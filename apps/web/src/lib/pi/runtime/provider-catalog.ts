@@ -21,8 +21,8 @@ export async function getProviderConfigStatus(options?: {
 }
 
 async function getVercelProviderConfigStatus(userId?: string) {
-  // Settings lists account BYOK only. Org env keys still power chat via
-  // loadLlmProviderSecrets fallback, but must not appear as user credentials.
+  // Settings lists account BYOK only. Org LLM env keys never back chat on
+  // Vercel and must not appear as user credentials.
   if (!userId) {
     return KNOWN_PROVIDERS.map((provider) => ({
       id: provider.id,

@@ -22,7 +22,7 @@ describe("resolveDaytonaRuntimeApiKey", () => {
     restoreEnv("VERCEL", originalVercel)
   })
 
-  it("prefers override, then ORG_DAYTONA_API_KEY over DAYTONA_API_KEY", async () => {
+  it("prefers override, then local DAYTONA_API_KEY when not on Vercel", async () => {
     process.env.ORG_DAYTONA_API_KEY = "org-key"
     process.env.DAYTONA_API_KEY = "legacy-key"
 
@@ -30,20 +30,23 @@ describe("resolveDaytonaRuntimeApiKey", () => {
       resolveDaytonaRuntimeApiKey(undefined, "override")
     ).resolves.toBe("override")
     await expect(resolveDaytonaRuntimeApiKey(undefined)).resolves.toBe(
-      "org-key"
+      "legacy-key"
     )
   })
 
-  it("uses ORG_DAYTONA_API_KEY on Vercel when the user has no BYOK", async () => {
-    process.env.VERCEL = "1"
+  it("never uses ORG_DAYTONA_API_KEY for user sandboxes", async () => {
     process.env.ORG_DAYTONA_API_KEY = "org-key"
-    process.env.DAYTONA_API_KEY = "legacy-key"
+    delete process.env.DAYTONA_API_KEY
 
-    await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBe("org-key")
+    await expect(
+      resolveDaytonaRuntimeApiKey(undefined)
+    ).resolves.toBeUndefined()
+    await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBeUndefined()
   })
 
-  it("does not fall back to DAYTONA_API_KEY on Vercel without ORG key", async () => {
+  it("does not fall back to org or DAYTONA_API_KEY on Vercel without BYOK", async () => {
     process.env.VERCEL = "1"
+    process.env.ORG_DAYTONA_API_KEY = "org-key"
     process.env.DAYTONA_API_KEY = "legacy-key"
 
     await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBeUndefined()
