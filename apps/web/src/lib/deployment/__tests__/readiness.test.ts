@@ -70,9 +70,14 @@ describe("validateDeploymentReadiness", () => {
         "20260718_pi_user_settings",
         "20260719_revoke_data_api_pi_grants",
         "20260719_revoke_ownership_probe_execute",
+        "20260719_pi_rls_initplan",
+        "20260723_revoke_data_api_pi_grants_again",
+        "20260723_pi_force_row_level_security",
       ],
       piSessionsRlsEnabled: true,
+      piSessionsForceRls: true,
       ownershipProbePresent: true,
+      dataApiPiPrivileges: [],
     })
 
     expect(result.ok).toBe(true)
@@ -102,15 +107,47 @@ describe("validateDeploymentReadiness", () => {
         "20260718_pi_user_settings",
         "20260719_revoke_data_api_pi_grants",
         "20260719_revoke_ownership_probe_execute",
+        "20260719_pi_rls_initplan",
+        "20260723_revoke_data_api_pi_grants_again",
+        "20260723_pi_force_row_level_security",
       ],
       piSessionsRlsEnabled: true,
+      piSessionsForceRls: true,
       ownershipProbePresent: true,
+      dataApiPiPrivileges: [],
     })
 
     expect(
       result.checks.find((check) => check.id === "env:BETTER_AUTH_URL")?.ok
     ).toBe(true)
     expect(result.ok).toBe(true)
+  })
+
+  it("fails when Data API roles still hold privileges on critical pi_* tables", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "vercel-production",
+      env: {
+        BETTER_AUTH_SECRET: "secret",
+        BETTER_AUTH_URL: "https://app.example",
+        FLEET_PI_AUTH_DATABASE_URL: "postgres://auth",
+        FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://app.example",
+      },
+      dataApiPiPrivileges: [
+        {
+          tableName: "pi_user_settings",
+          grantee: "authenticated",
+          privilegeType: "SELECT",
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.checks.find(
+        (check) => check.id === "db:data-api-pi-grants-revoked"
+      )?.ok
+    ).toBe(false)
   })
 
   it("requires NEON_AUTH_ISSUER when Neon Managed Auth is configured", () => {

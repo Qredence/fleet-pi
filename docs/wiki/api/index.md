@@ -42,16 +42,29 @@ Endpoints under `/api/workspace` expose `agent-workspace/` as a read/write file 
 
 ### Other endpoints
 
-| Endpoint                     | Purpose                                |
-| ---------------------------- | -------------------------------------- |
-| `GET /api/health`            | Application health check               |
-| `GET /api/sandbox/preview`   | Daytona sandbox preview URL proxy      |
-| `POST /api/webhooks/daytona` | Daytona sandbox event webhook receiver |
-| `ALL /api/auth/$`            | Better Auth wildcard handler           |
+| Endpoint                     | Purpose                                        |
+| ---------------------------- | ---------------------------------------------- |
+| `GET /api/health`            | Application health check                       |
+| `GET /api/sandbox/preview`   | Daytona sandbox preview URL proxy              |
+| `POST /api/webhooks/daytona` | Daytona sandbox event webhook receiver         |
+| `ALL /api/auth/$`            | Neon Managed Auth proxy or Better Auth handler |
 
 ## Authentication
 
-Most endpoints accept an optional Better Auth session cookie. When a valid session is present, the user's `id` and `email` are attached to chat requests. Unauthenticated access is allowed for the chat and workspace endpoints in the default configuration, so the app works without login. The `/api/sandbox/preview` endpoint requires authentication — it returns 401 when no session is present.
+Auth policy follows the deployment trust zone:
+
+- **Local** (no `NEON_AUTH_BASE_URL` / `NEON_AUTH_URL`, not Vercel): chat and
+  workspace endpoints allow anonymous access so the app works without login.
+- **Vercel**, **Neon Managed Auth**, or **Neon Function** chat runtime: session
+  and workspace APIs require authentication (`withAuthenticatedChatRequest`).
+  Catalog endpoints (`/api/chat/models`, `/resources`, `/commands`,
+  `/models/discover`) use the same gate. Neon Auth clients mint JWTs via
+  `authClient.token()` (with `credentials: "include"`) and send
+  `Authorization: Bearer`.
+- `/api/sandbox/preview` always requires authentication (401 without a session).
+
+`/api/auth/$` proxies Neon Managed Auth when configured; otherwise it serves
+legacy Better Auth.
 
 ## Request and Response Formats
 

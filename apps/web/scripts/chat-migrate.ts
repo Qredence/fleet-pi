@@ -30,13 +30,13 @@ import {
   CHAT_POSTGRES_DATA_API_REVOKE_SQL,
 } from "../src/lib/db/chat-postgres-data-api-revoke"
 import {
-  CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL,
-  CHAT_POSTGRES_DATA_API_AUTH_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL,
-  CHAT_POSTGRES_DATA_API_AUTH_SQL,
-} from "../src/lib/db/chat-postgres-data-api-auth"
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
+} from "../src/lib/db/chat-postgres-data-api-revoke-again"
+import {
+  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+  CHAT_POSTGRES_FORCE_RLS_SQL,
+} from "../src/lib/db/chat-postgres-force-rls"
 import {
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
@@ -152,20 +152,17 @@ async function main() {
       CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
       CHAT_POSTGRES_RLS_INITPLAN_SQL
     )
+    // Intentionally do not apply `chat-postgres-data-api-auth` grants:
+    // closed-beta posture keeps Neon Data API disabled; use revoke_again + FORCE RLS.
     await applyMigrationIfNeeded(
       client,
-      CHAT_POSTGRES_DATA_API_AUTH_MIGRATION_ID,
-      CHAT_POSTGRES_DATA_API_AUTH_SQL
+      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL
     )
     await applyMigrationIfNeeded(
       client,
-      CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_MIGRATION_ID,
-      CHAT_POSTGRES_DATA_API_AUTH_PRIVILEGES_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
-      CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL
+      CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+      CHAT_POSTGRES_FORCE_RLS_SQL
     )
 
     await client.query("COMMIT")

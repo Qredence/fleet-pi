@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getResponseStatus } from "@/lib/app-runtime"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage } from "@/lib/pi/server"
 import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"

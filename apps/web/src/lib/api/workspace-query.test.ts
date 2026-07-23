@@ -37,6 +37,7 @@ beforeEach(() => {
   delete process.env.FLEET_PI_AUTH_DATABASE_URL
   delete process.env.DAYTONA_API_KEY
   mockGetSession.mockReset()
+  mockGetSession.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -133,7 +134,9 @@ describe("workspace query APIs", () => {
       "# Projection Only\n\ndb-only-sentinel\n"
     )
 
-    const firstReindexResponse = await workspaceReindexHandler()
+    const firstReindexResponse = await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
     const firstReindexBody = (await firstReindexResponse.json()) as {
       outcome: string
       completion: string
@@ -157,7 +160,9 @@ describe("workspace query APIs", () => {
       },
     })
 
-    const itemsResponse = await workspaceItemsHandler()
+    const itemsResponse = await workspaceItemsHandler(
+      createRequest("/api/workspace/items")
+    )
     const itemsBody = (await itemsResponse.json()) as {
       items: Array<{
         id: string
@@ -227,7 +232,9 @@ describe("workspace query APIs", () => {
     expect(projectionOnlySearchResponse.status).toBe(200)
     expect(projectionOnlySearchBody.hits).toHaveLength(0)
 
-    const secondReindexResponse = await workspaceReindexHandler()
+    const secondReindexResponse = await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
     const secondReindexBody = (await secondReindexResponse.json()) as {
       counts: {
         scanned: number
@@ -244,7 +251,9 @@ describe("workspace query APIs", () => {
       firstReindexBody.counts.scanned
     )
 
-    const secondItemsResponse = await workspaceItemsHandler()
+    const secondItemsResponse = await workspaceItemsHandler(
+      createRequest("/api/workspace/items")
+    )
     const secondItemsBody = (await secondItemsResponse.json()) as {
       items: Array<{
         id: string
@@ -260,7 +269,9 @@ describe("workspace query APIs", () => {
       )?.id
     ).toBe(planItem?.id)
   })
+})
 
+describe("workspace query projection lifecycle", () => {
   it("keeps canonical file preview authoritative until explicit reindex propagates edits", async () => {
     const projectRoot = createProjectRoot()
 
@@ -270,9 +281,13 @@ describe("workspace query APIs", () => {
       "# Preferences\n\n- Preference: alpha-token\n"
     )
 
-    await workspaceReindexHandler()
+    await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
 
-    const itemsResponse = await workspaceItemsHandler()
+    const itemsResponse = await workspaceItemsHandler(
+      createRequest("/api/workspace/items")
+    )
     const itemsBody = (await itemsResponse.json()) as {
       items: Array<{ id: string; canonicalPath: string }>
     }
@@ -331,7 +346,9 @@ describe("workspace query APIs", () => {
     expect(staleSearchResponse.status).toBe(200)
     expect(staleSearchBody.hits).toHaveLength(0)
 
-    await workspaceReindexHandler()
+    await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
 
     const freshDetailResponse = await workspaceItemHandler(
       createRequest(`/api/workspace/item?id=${preferencesItem?.id}`)
@@ -381,9 +398,13 @@ describe("workspace query APIs", () => {
       "# Move Plan\n\nmove-token\n"
     )
 
-    await workspaceReindexHandler()
+    await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
 
-    const itemsResponse = await workspaceItemsHandler()
+    const itemsResponse = await workspaceItemsHandler(
+      createRequest("/api/workspace/items")
+    )
     const itemsBody = (await itemsResponse.json()) as {
       items: Array<{ id: string; canonicalPath: string }>
     }
@@ -397,9 +418,13 @@ describe("workspace query APIs", () => {
       join(projectRoot, "agent-workspace/plans/completed/movable-plan.md")
     )
 
-    await workspaceReindexHandler()
+    await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
 
-    const movedItemsResponse = await workspaceItemsHandler()
+    const movedItemsResponse = await workspaceItemsHandler(
+      createRequest("/api/workspace/items")
+    )
     const movedItemsBody = (await movedItemsResponse.json()) as {
       items: Array<{ canonicalPath: string }>
     }
@@ -465,7 +490,9 @@ describe("workspace query APIs", () => {
       "# Preferences\n\n- Preference: stable-token\n"
     )
 
-    await workspaceReindexHandler()
+    await workspaceReindexHandler(
+      createRequest("/api/workspace/reindex", { method: "POST" })
+    )
 
     const invalidSearchResponse = await workspaceSearchHandler(
       createRequest("/api/workspace/search")
@@ -574,5 +601,36 @@ describe("workspace file route errors", () => {
     expect(treeResponse.status).toBe(200)
     expect(treeBody.root).toBe("agent-workspace")
     expect(treeBody.nodes.length).toBeGreaterThan(0)
+  })
+})
+
+describe("workspace route auth gate", () => {
+  it("requires auth for workspace APIs on Vercel when no session is present", async () => {
+    createProjectRoot()
+    const previousVercel = process.env.VERCEL
+    process.env.VERCEL = "1"
+    mockGetSession.mockResolvedValue(null)
+
+    try {
+      const treeResponse = await workspaceTreeHandler(
+        createRequest("/api/workspace/tree")
+      )
+      const itemsResponse = await workspaceItemsHandler(
+        createRequest("/api/workspace/items")
+      )
+      const reindexResponse = await workspaceReindexHandler(
+        createRequest("/api/workspace/reindex", { method: "POST" })
+      )
+
+      expect(treeResponse.status).toBe(401)
+      expect(itemsResponse.status).toBe(401)
+      expect(reindexResponse.status).toBe(401)
+    } finally {
+      if (previousVercel === undefined) {
+        delete process.env.VERCEL
+      } else {
+        process.env.VERCEL = previousVercel
+      }
+    }
   })
 })

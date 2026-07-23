@@ -1,26 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { getChatAuthSession } from "@/lib/auth/chat-api-auth"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage, loadChatResources } from "@/lib/pi/server"
+
+export async function chatResourcesHandler(request: Request) {
+  return withAuthenticatedChatRequest(request, async ({ userId }) => {
+    try {
+      return Response.json(
+        await loadChatResources(resolveAppRuntimeContext(), {
+          userId,
+        })
+      )
+    } catch (error) {
+      return Response.json(
+        { message: getErrorMessage(error) },
+        { status: getResponseStatus(error) }
+      )
+    }
+  })
+}
 
 export const Route = createFileRoute("/api/chat/resources")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        try {
-          const authSession = await getChatAuthSession(request)
-          return Response.json(
-            await loadChatResources(resolveAppRuntimeContext(), {
-              userId: authSession?.user.id,
-            })
-          )
-        } catch (error) {
-          return Response.json(
-            { message: getErrorMessage(error) },
-            { status: getResponseStatus(error) }
-          )
-        }
-      },
+      GET: ({ request }) => chatResourcesHandler(request),
     },
   },
 })

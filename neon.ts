@@ -5,13 +5,11 @@ function chatFunctionEnv(name: string) {
 }
 
 export default defineConfig({
+  // Managed Auth for identity; keep Data API off — Fleet Pi uses the
+  // server/Function path (JWKS-verified JWT + fleet_pi_app), not browser→REST.
   auth: true,
-  dataApi: true,
+  dataApi: false,
   preview: {
-    buckets: {
-      sessions: {},
-      artifacts: {},
-    },
     functions: {
       chat: {
         name: "Fleet Pi Chat Runtime",

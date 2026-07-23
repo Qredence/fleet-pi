@@ -57,6 +57,21 @@ If production is blocked by a false-positive readiness check:
 Do **not** disable `assertDeploymentReadyOnBoot()` or owner-only persistence to
 unblock traffic.
 
+## Neon Managed Auth closed beta
+
+Neon Managed Auth currently allows open sign-up (“Anyone on the web can sign
+up”). Until Neon ships restricted signups:
+
+- Treat production as **invite-known-users** closed beta (share the URL only
+  with intended testers).
+- Do **not** enable Neon Data API or “Grant public schema access” — keep
+  `neon.ts` `dataApi: false`. Fleet Pi uses Managed Auth cookies/JWTs plus
+  `fleet_pi_app` + RLS (server/Function path), not browser→Data API REST.
+- Prefer rate limits / abuse monitoring on the Vercel edge if the URL becomes
+  discoverable.
+- Re-run `pnpm verify-deployment-readiness` with migration URLs before inviting
+  a wider audience.
+
 ## Legacy ownerless mirror data
 
 After owner-only enforcement is live:
