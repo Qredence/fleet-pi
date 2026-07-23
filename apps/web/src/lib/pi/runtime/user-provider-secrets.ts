@@ -103,7 +103,10 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  // Deployed: each user must BYOK their Daytona key — no org env fallback.
+  // Prefer explicit org key (closed-beta / shared org sandboxes) over the
+  // legacy local `DAYTONA_API_KEY` name. BYOK above always wins.
+  const orgKey = process.env.ORG_DAYTONA_API_KEY?.trim()
+  if (orgKey) return orgKey
   if (process.env.VERCEL === "1") return undefined
   return process.env.DAYTONA_API_KEY
 }

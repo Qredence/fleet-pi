@@ -128,6 +128,8 @@ afterEach(() => {
   clearSandboxCache()
   vi.clearAllMocks()
   delete process.env.DAYTONA_API_KEY
+  delete process.env.ORG_DAYTONA_API_KEY
+  delete process.env.VERCEL
 })
 
 describe("isDaytonaEnabled", () => {
@@ -149,12 +151,18 @@ describe("isDaytonaEnabled", () => {
     expect(isDaytonaEnabled("user123")).toBe(true)
   })
 
-  it("ignores env DAYTONA_API_KEY on Vercel without a client key", () => {
+  it("ignores env DAYTONA_API_KEY on Vercel without a resolved client key", () => {
     process.env.VERCEL = "1"
     process.env.DAYTONA_API_KEY = "org-key"
     expect(isDaytonaEnabled("user123")).toBe(false)
     expect(isDaytonaEnabled("user123", "byok-key")).toBe(true)
     delete process.env.VERCEL
+  })
+
+  it("treats ORG_DAYTONA_API_KEY as a local env enablement signal", () => {
+    process.env.ORG_DAYTONA_API_KEY = "org-key"
+    expect(isDaytonaEnabled("user123")).toBe(true)
+    delete process.env.ORG_DAYTONA_API_KEY
   })
 })
 
@@ -284,6 +292,51 @@ describe("getUserSandbox", () => {
         ],
       })
     )
+    expect(handle.sandboxId).toBe("sandbox-fresh")
+  })
+
+  it("recreates sandboxes stuck in error state while keeping the volume", async () => {
+    const client = makeMockClient()
+    const executeCommandMock = vi
+      .fn()
+      .mockResolvedValue({ result: "", exitCode: 0 })
+    const erroredSandbox = makeMockSandbox({
+      id: "sandbox-error",
+      state: "error",
+      volumes: [
+        {
+          volumeId: "vol-1",
+          mountPath: "/home/daytona/agent-workspace",
+        },
+      ],
+      refreshData: vi.fn().mockResolvedValue(undefined),
+    })
+    const freshSandbox = makeMockSandbox({
+      id: "sandbox-fresh",
+      process: {
+        executeCommand: executeCommandMock,
+        codeRun: vi.fn(),
+      },
+      volumes: [
+        {
+          volumeId: "vol-1",
+          mountPath: "/home/daytona/agent-workspace",
+        },
+      ],
+    } as unknown as Partial<Sandbox>)
+
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(erroredSandbox)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedCreateSandbox.mockResolvedValue(freshSandbox)
+
+    const handle = await getUserSandbox({ userId: "user123" })
+
+    expect(mockedDeleteSandbox).toHaveBeenCalledWith(erroredSandbox)
+    expect(mockedCreateSandbox).toHaveBeenCalled()
     expect(handle.sandboxId).toBe("sandbox-fresh")
   })
 

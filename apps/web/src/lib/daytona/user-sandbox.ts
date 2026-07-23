@@ -62,7 +62,8 @@ const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 /**
  * Daytona is enabled when the caller has a userId and a resolved API key.
  * Pass the result of `resolveDaytonaRuntimeApiKey` as `clientApiKey`.
- * On Vercel, env `DAYTONA_API_KEY` alone must not enable Daytona (BYOK required).
+ * On Vercel, env alone must not enable Daytona without a resolved key
+ * (BYOK or `ORG_DAYTONA_API_KEY` via `resolveDaytonaRuntimeApiKey`).
  */
 export function isDaytonaEnabled(
   userId?: string,
@@ -71,7 +72,9 @@ export function isDaytonaEnabled(
   if (!userId) return false
   if (clientApiKey) return true
   if (process.env.VERCEL === "1") return false
-  return Boolean(process.env.DAYTONA_API_KEY)
+  return Boolean(
+    process.env.ORG_DAYTONA_API_KEY?.trim() || process.env.DAYTONA_API_KEY
+  )
 }
 
 export function getSandboxName(userId: string): string {
@@ -172,14 +175,16 @@ async function provisionUserSandbox(
     // Old sandboxes may still mount the full repo at /home/daytona/fleet-pi.
     // Volumes cannot be remounted in place — recreate the sandbox (keep volume).
     // Also recreate when Secrets map is non-empty so placeholders remount
-    // (Daytona secrets attach only at create time).
+    // (Daytona secrets attach only at create time), and when the sandbox is
+    // stuck in `error` (e.g. failed volume mount) so warm-up can recover.
     const needsRemount = !(await hasAgentWorkspaceOnlyMount(existing))
     const needsSecretsRemount = shouldRecreateForSecretsState(
       existing,
       daytonaSecrets
     )
+    const needsErrorRecreate = existing.state === "error"
 
-    if (needsRemount || needsSecretsRemount) {
+    if (needsRemount || needsSecretsRemount || needsErrorRecreate) {
       await deleteSandbox(existing)
       sandbox = await createUserSandboxInstance(client, {
         sandboxName,

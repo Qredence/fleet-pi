@@ -45,6 +45,17 @@ vi.mock("better-auth/react", () => ({
   })),
 }))
 
+function makeJwt(expSecondsFromNow: number) {
+  const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }))
+  const payload = btoa(
+    JSON.stringify({
+      sub: "user-1",
+      exp: Math.floor(Date.now() / 1000) + expSecondsFromNow,
+    })
+  )
+  return `${header}.${payload}.sig`
+}
+
 describe("getChatAuthBearerToken", () => {
   beforeEach(() => {
     resolveClientNeonAuthUrl.mockReturnValue("")
@@ -54,7 +65,9 @@ describe("getChatAuthBearerToken", () => {
     adapterOptionsSeen.current = undefined
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    const { clearChatAuthBearerTokenCache } = await import("../client")
+    clearChatAuthBearerTokenCache()
     vi.resetModules()
     vi.clearAllMocks()
   })
@@ -68,12 +81,13 @@ describe("getChatAuthBearerToken", () => {
   it("mints JWT via authClient.token() with credentials include", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://ep-example.neonauth.aws.neon.tech/neondb/auth/"
+      "https://fleet-pi-web.vercel.app/api/auth"
     )
-    token.mockResolvedValue({ data: { token: "eyJ.test.jwt" }, error: null })
+    token.mockResolvedValue({ data: { token: makeJwt(600) }, error: null })
 
     const { getChatAuthBearerToken } = await import("../client")
-    await expect(getChatAuthBearerToken()).resolves.toBe("eyJ.test.jwt")
+    const minted = await getChatAuthBearerToken()
+    expect(minted).toMatch(/^ey/)
 
     expect(token).toHaveBeenCalledTimes(1)
     expect(adapterOptionsSeen.current?.fetchOptions).toEqual({
@@ -81,10 +95,55 @@ describe("getChatAuthBearerToken", () => {
     })
   })
 
+  it("coalesces concurrent mint calls and caches the bearer", async () => {
+    isNeonManagedAuthClientEnabled.mockReturnValue(true)
+    resolveClientNeonAuthUrl.mockReturnValue(
+      "https://fleet-pi-web.vercel.app/api/auth"
+    )
+    let resolveToken:
+      ((value: { data: { token: string }; error: null }) => void) | undefined
+    token.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveToken = resolve
+        })
+    )
+
+    const { getChatAuthBearerToken } = await import("../client")
+    const first = getChatAuthBearerToken()
+    const second = getChatAuthBearerToken()
+    expect(token).toHaveBeenCalledTimes(1)
+
+    resolveToken?.({ data: { token: makeJwt(600) }, error: null })
+    const [a, b] = await Promise.all([first, second])
+    expect(a).toBe(b)
+    expect(token).toHaveBeenCalledTimes(1)
+
+    await expect(getChatAuthBearerToken()).resolves.toBe(a)
+    expect(token).toHaveBeenCalledTimes(1)
+  })
+
+  it("retries once when the first mint fails", async () => {
+    isNeonManagedAuthClientEnabled.mockReturnValue(true)
+    resolveClientNeonAuthUrl.mockReturnValue(
+      "https://fleet-pi-web.vercel.app/api/auth"
+    )
+    token
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "unauthorized" },
+      })
+      .mockResolvedValueOnce({ data: { token: makeJwt(600) }, error: null })
+
+    const { getChatAuthBearerToken } = await import("../client")
+    await expect(getChatAuthBearerToken()).resolves.toMatch(/^ey/)
+    expect(token).toHaveBeenCalledTimes(2)
+  })
+
   it("returns null on authClient.token() failure instead of throwing", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://ep-example.neonauth.aws.neon.tech/neondb/auth"
+      "https://fleet-pi-web.vercel.app/api/auth"
     )
     token.mockResolvedValue({
       data: null,
