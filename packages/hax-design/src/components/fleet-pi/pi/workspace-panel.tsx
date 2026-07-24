@@ -57,7 +57,7 @@ export function WorkspacePanelContent({
   emptyTitle = "Workspace unavailable",
   loadWorkspaceFile,
   loading,
-  onRefresh,
+  onRefresh: _onRefresh,
   onSelectedPathChange,
   previewEmptyDescription = "Choose a workspace file to preview its Markdown.",
   previewEmptyTitle = "Select a file",
@@ -67,31 +67,6 @@ export function WorkspacePanelContent({
   treeTestId = "workspace-tree",
   workspace,
 }: WorkspacePanelContentProps) {
-  const [daytonaKey, setDaytonaKey] = useState<string>("")
-  const [hasDaytonaKey, setHasDaytonaKey] = useState<boolean>(false)
-
-  useEffect(() => {
-    const key = localStorage.getItem("daytonaApiKey")
-    if (key) {
-      setHasDaytonaKey(true)
-    }
-  }, [])
-
-  const handleSaveDaytonaKey = () => {
-    if (daytonaKey.trim()) {
-      localStorage.setItem("daytonaApiKey", daytonaKey.trim())
-      setHasDaytonaKey(true)
-      if (onRefresh) onRefresh()
-    }
-  }
-
-  const handleClearDaytonaKey = () => {
-    localStorage.removeItem("daytonaApiKey")
-    setHasDaytonaKey(false)
-    setDaytonaKey("")
-    if (onRefresh) onRefresh()
-  }
-
   const [internalSelectedPath, setInternalSelectedPath] = useState<
     string | null
   >(null)
@@ -214,39 +189,6 @@ export function WorkspacePanelContent({
   }, [selectedPath])
 
   if (error) {
-    if (error.message.includes("daytona_credential_required")) {
-      return (
-        <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-          <HardDrive className="size-12 text-muted-foreground/50" />
-          <div className="flex flex-col gap-2">
-            <h3 className="text-lg font-semibold">Daytona Sandbox Required</h3>
-            <p className="text-sm text-muted-foreground">
-              To access the workspace, you need to provide a Daytona API key.
-              This will provision your personal isolated environment.
-            </p>
-          </div>
-          <div className="flex w-full max-w-sm flex-col gap-2">
-            <input
-              type="password"
-              placeholder="Enter Daytona API Key"
-              value={daytonaKey}
-              onChange={(e) => setDaytonaKey(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveDaytonaKey()
-              }}
-            />
-            <Button
-              onClick={handleSaveDaytonaKey}
-              disabled={!daytonaKey.trim()}
-            >
-              Connect Sandbox
-            </Button>
-          </div>
-        </div>
-      )
-    }
-
     return (
       <ResourceNotice
         icon={CircleAlert}
@@ -286,18 +228,6 @@ export function WorkspacePanelContent({
       className={`relative grid h-full min-h-0 grid-cols-1 gap-2 overflow-hidden ${WORKSPACE_SPLIT_GAP_RESET}`}
       style={splitStyle}
     >
-      {hasDaytonaKey && (
-        <div className="absolute top-1 right-2 z-10">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearDaytonaKey}
-            className="h-6 px-2 text-[10px]"
-          >
-            Disconnect Sandbox
-          </Button>
-        </div>
-      )}
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
         <div
           data-testid={treeTestId}

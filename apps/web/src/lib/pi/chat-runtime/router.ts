@@ -32,7 +32,7 @@ function applyCors(request: Request, response: Response) {
     headers.set("Access-Control-Allow-Credentials", "true")
     headers.set(
       "Access-Control-Allow-Headers",
-      "Authorization, Content-Type, x-daytona-api-key, x-request-id"
+      "Authorization, Content-Type, x-request-id"
     )
     headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
   }

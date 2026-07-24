@@ -89,10 +89,8 @@ export async function resolveUserDaytonaApiKey(
  * is never used for end-user sandboxes.
  */
 export async function resolveDaytonaRuntimeApiKey(
-  userId: string | undefined,
-  override?: string
+  userId: string | undefined
 ): Promise<string | undefined> {
-  if (override) return override
   if (userId) {
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore

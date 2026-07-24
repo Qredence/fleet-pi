@@ -22,13 +22,10 @@ describe("resolveDaytonaRuntimeApiKey", () => {
     restoreEnv("VERCEL", originalVercel)
   })
 
-  it("prefers override, then local DAYTONA_API_KEY when not on Vercel", async () => {
+  it("uses local DAYTONA_API_KEY when not on Vercel", async () => {
     process.env.ORG_DAYTONA_API_KEY = "org-key"
     process.env.DAYTONA_API_KEY = "legacy-key"
 
-    await expect(
-      resolveDaytonaRuntimeApiKey(undefined, "override")
-    ).resolves.toBe("override")
     await expect(resolveDaytonaRuntimeApiKey(undefined)).resolves.toBe(
       "legacy-key"
     )

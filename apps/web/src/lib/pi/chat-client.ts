@@ -194,13 +194,6 @@ export const chatClient: ChatClient = {
   async streamMessage(request, onEvent, signal) {
     const attempt = async (allowRetry: boolean): Promise<void> => {
       const headers = new Headers({ "Content-Type": "application/json" })
-      const daytonaKey =
-        typeof window !== "undefined"
-          ? localStorage.getItem("daytonaApiKey")
-          : null
-      if (daytonaKey) {
-        headers.set("x-daytona-api-key", daytonaKey)
-      }
       const bearer = await getChatAuthBearerToken()
       if (bearer) {
         headers.set("Authorization", `Bearer ${bearer}`)

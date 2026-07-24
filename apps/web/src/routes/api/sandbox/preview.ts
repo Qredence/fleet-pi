@@ -22,11 +22,7 @@ export const Route = createFileRoute("/api/sandbox/preview")({
           )
         }
 
-        const clientDaytonaApiKey = request.headers.get("x-daytona-api-key")
-        const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
-          user.id,
-          clientDaytonaApiKey || undefined
-        )
+        const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(user.id)
 
         if (!isDaytonaEnabled(user.id, resolvedDaytonaApiKey)) {
           return Response.json(

@@ -47,12 +47,7 @@ export function isForbiddenSessionError(error: unknown) {
 }
 
 async function withChatRequestHeaders(init?: RequestInit) {
-  const daytonaKey =
-    typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
   const headers = new Headers(init?.headers)
-  if (daytonaKey) {
-    headers.set("x-daytona-api-key", daytonaKey)
-  }
 
   const bearer = await getChatAuthBearerToken()
   if (bearer) {
