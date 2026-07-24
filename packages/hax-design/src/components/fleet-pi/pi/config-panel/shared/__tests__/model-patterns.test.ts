@@ -48,7 +48,7 @@ describe("nextEnabledModelPatterns", () => {
     ).toEqual(["google/gemini-3.1-pro-preview"])
   })
 
-  it("collapses to allow-all only when enabling every catalog model", () => {
+  it("returns explicit list when enabling every catalog model (no collapse to allow-all)", () => {
     expect(
       nextEnabledModelPatterns({
         currentPatterns: ["google/gemini-3.5-flash"],
@@ -56,6 +56,17 @@ describe("nextEnabledModelPatterns", () => {
         model: googlePro,
         models: [googleFlash, googlePro],
       })
-    ).toBeUndefined()
+    ).toEqual(["google/gemini-3.5-flash", "google/gemini-3.1-pro-preview"])
+  })
+
+  it("adds model to empty deny-all list", () => {
+    expect(
+      nextEnabledModelPatterns({
+        currentPatterns: [],
+        enabled: true,
+        model: googleFlash,
+        models: catalog,
+      })
+    ).toEqual(["google/gemini-3.5-flash"])
   })
 })

@@ -43,11 +43,12 @@ export function nextEnabledModelPatterns({
   const knownModelPatterns = new Set(
     models.map((item) => modelPatternFor(item))
   )
-  const activeKnown = new Set(
-    models
-      .filter((item) => isModelEnabled(item, currentPatterns))
-      .map((item) => modelPatternFor(item))
-  )
+  const activeKnown = new Set<string>()
+  for (const item of models) {
+    if (isModelEnabled(item, currentPatterns)) {
+      activeKnown.add(modelPatternFor(item))
+    }
+  }
 
   if (enabled) {
     activeKnown.add(modelPatternFor(model))
@@ -59,19 +60,8 @@ export function nextEnabledModelPatterns({
     if (knownModelPatterns.has(pattern)) return false
     return enabled || !modelMatchesPattern(model, pattern)
   })
-  const next = [...preservedPatterns, ...activeKnown]
 
-  // Only collapse to allow-all when enabling every catalog model — not after
-  // removals, or a curated deny-list would snap back to allow-all on reopen.
-  if (
-    enabled &&
-    preservedPatterns.length === 0 &&
-    models.every((item) => activeKnown.has(modelPatternFor(item)))
-  ) {
-    return undefined
-  }
-
-  return next
+  return [...preservedPatterns, ...activeKnown]
 }
 
 export function nextProviderModelPatterns({
@@ -96,12 +86,12 @@ export function nextProviderModelPatterns({
     )
   }
 
-  const remainingActive = models
-    .filter(
-      (model) =>
-        model.provider !== provider && isModelEnabled(model, currentPatterns)
-    )
-    .map((model) => modelPatternFor(model))
+  const remainingActive: Array<string> = []
+  for (const model of models) {
+    if (model.provider !== provider && isModelEnabled(model, currentPatterns)) {
+      remainingActive.push(modelPatternFor(model))
+    }
+  }
   const preserved = withoutProviderPatterns(
     currentPatterns ?? [],
     providerModels,

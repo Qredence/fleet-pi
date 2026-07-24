@@ -26,7 +26,7 @@ export function cleanupProjectSettingsForRemovedProvider(
     })
 
     if (filtered.length === 0) {
-      delete next.enabledModels
+      next.enabledModels = []
     } else if (filtered.length !== next.enabledModels.length) {
       next.enabledModels = filtered
     }

@@ -72,13 +72,12 @@ export function ModelDefaultsSection({
     const credentialIds = new Set(
       CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
     )
-    const ids = new Set(
-      providers
-        .filter(
-          (provider) => provider.isConfigured && credentialIds.has(provider.id)
-        )
-        .map((provider) => provider.id)
-    )
+    const ids = new Set<string>()
+    for (const provider of providers) {
+      if (provider.isConfigured && credentialIds.has(provider.id)) {
+        ids.add(provider.id)
+      }
+    }
     // Keep providers already on the curated list discoverable after refresh.
     for (const model of modelOptions) {
       if (isModelEnabled(model, draft?.enabledModels)) {
@@ -147,7 +146,7 @@ export function ModelDefaultsSection({
       return "No models discovered yet. Configure a provider, then add models."
     }
     if (listedModels.length === 0 && !normalizedFilter) {
-      return "No models in your list yet. Add models discovered from your providers."
+      return "Add models from your configured providers to make them available in chat."
     }
     if (listedModels.length === 0) {
       return "No models match your search."

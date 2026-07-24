@@ -16,6 +16,7 @@ export const FLEET_PI_BASE_PROJECT_SETTINGS: Record<string, unknown> = {
   defaultModel: "gemini-3.5-flash",
   defaultThinkingLevel: "high",
   enableSkillCommands: true,
-  // Omit enabledModels for allow-all discovery. Users persist overrides when
-  // curating models in Settings; an empty array means deny-all.
+  // Deny-all by default: no models appear in the chat picker until the user
+  // adds them via Settings > LLM Models. `undefined` (omitted) means allow-all.
+  enabledModels: [],
 }

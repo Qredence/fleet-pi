@@ -29,7 +29,6 @@ import {
   hotReloadActiveRuntimesForUser,
   hotReloadProviderAuthForActiveRuntimes,
 } from "@/lib/pi/runtime"
-import { ensureOpenAiChatCompletionsModelEnabled } from "@/lib/pi/runtime/ensure-openai-chat-completions-model"
 import { removeProviderBundle } from "@/lib/pi/runtime/remove-provider-bundle"
 import { assertSafeOpenAiCompatibleBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-provider"
 import {
@@ -168,17 +167,6 @@ export const Route = createFileRoute("/api/chat/providers")({
                 // Vite ignores .env.local watches; await durable persistence so
                 // success means credentials are on disk (temp file + rename).
                 await updateEnvVars(context.projectRoot, envEntries)
-              }
-
-              if (isOpenAiChatCompletions && modelId) {
-                await ensureOpenAiChatCompletionsModelEnabled(
-                  context,
-                  modelId,
-                  {
-                    userId,
-                    skipSettingsHotReload: true,
-                  }
-                )
               }
 
               if (userId) {
