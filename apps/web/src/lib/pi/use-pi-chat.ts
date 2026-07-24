@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { chatClient } from "./chat-client"
 import { isPlanDecisionToolCall } from "./plan-state"
@@ -80,9 +80,7 @@ export function usePiChat(
     ) => {
       setMessages((current) => {
         const next = typeof updater === "function" ? updater(current) : updater
-        const enhanced = enhanceMessagesRef.current(next)
-        messagesRef.current = enhanced
-        return enhanced
+        return next
       })
     },
     []
@@ -196,7 +194,7 @@ export function usePiChat(
   )
 
   useEffect(() => {
-    messagesRef.current = messages
+    messagesRef.current = enhanceMessagesRef.current(messages)
   }, [messages])
 
   useEffect(() => {
@@ -209,8 +207,7 @@ export function usePiChat(
 
   useEffect(() => {
     enhanceMessagesRef.current = enhanceMessages
-    setMessagesSynced((current) => current)
-  }, [enhanceMessages, setMessagesSynced])
+  }, [enhanceMessages])
 
   useEffect(() => {
     void refreshSessions().catch((err) => {
@@ -374,13 +371,18 @@ export function usePiChat(
     sendMessageRef.current = sendMessage
   }, [sendMessage])
 
+  const enhancedMessages = useMemo(
+    () => enhanceMessages(messages),
+    [messages, enhanceMessages]
+  )
+
   const answerQuestion = submitQuestionAnswer
 
   return {
     activityLabel,
     answerQuestion,
     error,
-    messages,
+    messages: enhancedMessages,
     planLabel,
     queue,
     refreshSessions,
