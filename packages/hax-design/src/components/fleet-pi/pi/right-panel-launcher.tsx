@@ -4,7 +4,7 @@ import { TabsSubtle, TabsSubtleItem } from "../../tabs-subtle"
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
 import { useRightPanelContext } from "../layout/right-panel-context"
 import { HIT_AREA_EXPAND_CLASS, PANEL_OVERLAY_CLASS } from "../styles/tokens"
-import { getArtifactsScopePath } from "./artifacts-panel"
+import { getArtifactsScopePath } from "./artifacts-utils"
 import {
   countWorkspaceFiles,
   findWorkspaceNode,

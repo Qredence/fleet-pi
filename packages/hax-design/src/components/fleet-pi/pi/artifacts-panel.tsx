@@ -1,11 +1,6 @@
 import { WorkspacePanelContent } from "./workspace-panel"
+import { getArtifactsScopePath } from "./artifacts-utils"
 import type { WorkspacePanelContentProps } from "./workspace-panel"
-
-const ARTIFACTS_SCOPE_SUFFIX = "artifacts"
-
-export function getArtifactsScopePath(root: string) {
-  return `${root}/${ARTIFACTS_SCOPE_SUFFIX}`
-}
 
 export function ArtifactsPanelContent({
   error,
