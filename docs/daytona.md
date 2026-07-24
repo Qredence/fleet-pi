@@ -18,7 +18,24 @@ Authenticated user → POST /api/chat (with session cookie)
 
 **Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Vercel, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
 
-**CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter.
+**CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` **outside this repo** — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter. The Pi CLI does **not** apply that filter, so keep stock `@daytona/pi` out of `~/.pi/agent/settings.json` while developing in `fleet-pi`.
+
+## Troubleshooting
+
+### `pi` CLI: tool conflicts with `daytona-sandbox`
+
+**Symptom:** Running `pi` in this repo exits with errors like:
+
+```
+Error: Failed to load extension ".../node_modules/@daytona/pi/index.ts": Tool "bash" conflicts with .../.pi/extensions/daytona-sandbox.ts
+Hint: Start without extensions using "pi -ne".
+```
+
+(Same conflict can appear for `read`, `write`, `edit`, `ls`, `find`, `grep`, or `preview_url`.)
+
+**Cause:** Global packages include `npm:@daytona/pi`, and this repo's Fleet adapter (`.pi/extensions/daytona-sandbox`) registers the same tool names. Pi treats extension load failures as fatal. Web chat already strips stock `@daytona/pi` via `excludeStockDaytonaPiExtension`; the CLI does not.
+
+**Fix:** Remove `"npm:@daytona/pi"` from `packages` in `~/.pi/agent/settings.json` while working in this repo. Re-run `pi` from the repo root. Do not add stock `@daytona/pi` to project `.pi/settings.json`. Outside `fleet-pi`, you can re-add the global package for `pi --daytona`.
 
 ## Tenancy model
 
