@@ -42,6 +42,7 @@ vi.mock("../resource-expectations", () => ({
 
 vi.mock("../runtime/session-factory", () => ({
   createSessionServices: mocks.createSessionServices,
+  applyRuntimeAuth: vi.fn(),
 }))
 
 vi.mock("../runtime/diagnostics", () => ({
