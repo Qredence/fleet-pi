@@ -3,22 +3,31 @@ import { cn } from "../utils/cn"
 
 export type SendButtonProps = {
   state: "idle" | "typing" | "streaming"
+  onClick?: () => void
 }
 
-export function SendButton({ state }: SendButtonProps) {
+export function SendButton({ state, onClick }: SendButtonProps) {
   const isStreaming = state === "streaming"
   const isTyping = state === "typing"
 
   if (isStreaming) {
     return (
-      <div className="flex size-7 cursor-pointer items-center justify-center rounded-full bg-foreground">
+      <button
+        type="button"
+        aria-label="Stop"
+        onClick={onClick}
+        className="flex size-7 cursor-pointer items-center justify-center rounded-full bg-foreground"
+      >
         <IconPlayerStopFilled className="size-4 text-background" />
-      </div>
+      </button>
     )
   }
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label="Send"
+      onClick={onClick}
       className={cn(
         "flex size-7 items-center justify-center rounded-full",
         isTyping
@@ -32,6 +41,6 @@ export function SendButton({ state }: SendButtonProps) {
           isTyping ? "text-an-send-button-color" : "text-muted-foreground"
         )}
       />
-    </div>
+    </button>
   )
 }
