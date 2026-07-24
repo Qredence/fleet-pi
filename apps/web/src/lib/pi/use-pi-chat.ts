@@ -70,8 +70,6 @@ export function usePiChat(
   const sendMessageRef = useRef<(input: SendMessageInput) => Promise<void>>(
     () => Promise.resolve()
   )
-  const enhanceMessagesRef = useRef((current: Array<ChatMessage>) => current)
-
   const setMessagesSynced = useCallback(
     (
       updater:
@@ -80,6 +78,7 @@ export function usePiChat(
     ) => {
       setMessages((current) => {
         const next = typeof updater === "function" ? updater(current) : updater
+        messagesRef.current = next
         return next
       })
     },
@@ -194,20 +193,12 @@ export function usePiChat(
   )
 
   useEffect(() => {
-    messagesRef.current = enhanceMessagesRef.current(messages)
-  }, [messages])
-
-  useEffect(() => {
     sessionMetadataRef.current = sessionMetadata
   }, [sessionMetadata])
 
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
-
-  useEffect(() => {
-    enhanceMessagesRef.current = enhanceMessages
-  }, [enhanceMessages])
 
   useEffect(() => {
     void refreshSessions().catch((err) => {

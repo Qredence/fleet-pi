@@ -40,7 +40,6 @@ export type WorkspacePanelContentProps = {
   emptyTitle?: string
   loadWorkspaceFile: (path: string) => Promise<WorkspaceFileResponse>
   loading: boolean
-  onRefresh?: () => void
   onSelectedPathChange?: (path: string | null) => void
   previewEmptyDescription?: string
   previewEmptyTitle?: string
@@ -57,7 +56,6 @@ export function WorkspacePanelContent({
   emptyTitle = "Workspace unavailable",
   loadWorkspaceFile,
   loading,
-  onRefresh: _onRefresh,
   onSelectedPathChange,
   previewEmptyDescription = "Choose a workspace file to preview its Markdown.",
   previewEmptyTitle = "Select a file",
