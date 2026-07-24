@@ -9,6 +9,5 @@
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
   "prompts": ["../agent-workspace/pi/prompts"],
   "defaultProvider": "google",
-  "defaultModel": "gemini-3.5-flash",
   "defaultThinkingLevel": "high"
 }
