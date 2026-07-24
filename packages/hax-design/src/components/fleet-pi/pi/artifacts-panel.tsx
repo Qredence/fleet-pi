@@ -1,18 +1,12 @@
 import { WorkspacePanelContent } from "./workspace-panel"
+import { getArtifactsScopePath } from "./artifacts-utils"
 import type { WorkspacePanelContentProps } from "./workspace-panel"
-
-const ARTIFACTS_SCOPE_SUFFIX = "artifacts"
-
-export function getArtifactsScopePath(root: string) {
-  return `${root}/${ARTIFACTS_SCOPE_SUFFIX}`
-}
 
 export function ArtifactsPanelContent({
   error,
   loadWorkspaceFile,
   loading,
   onSelectedPathChange,
-  onRefresh,
   selectedPath,
   workspace,
 }: Pick<
@@ -21,7 +15,6 @@ export function ArtifactsPanelContent({
   | "loadWorkspaceFile"
   | "loading"
   | "onSelectedPathChange"
-  | "onRefresh"
   | "selectedPath"
   | "workspace"
 >) {
@@ -37,7 +30,6 @@ export function ArtifactsPanelContent({
       loadWorkspaceFile={loadWorkspaceFile}
       loading={loading}
       onSelectedPathChange={onSelectedPathChange}
-      onRefresh={onRefresh}
       previewEmptyDescription="Choose a report, dataset, trace, or diagram to preview."
       previewEmptyTitle="Select an artifact"
       scopeLabel="artifacts"

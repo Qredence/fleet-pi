@@ -7,5 +7,7 @@
     "npm:pi-web-access"
   ],
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
-  "prompts": ["../agent-workspace/pi/prompts"]
+  "prompts": ["../agent-workspace/pi/prompts"],
+  "defaultProvider": "google",
+  "defaultThinkingLevel": "high"
 }

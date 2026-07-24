@@ -209,6 +209,7 @@ function CopyButton({
     <button
       type="button"
       tabIndex={-1}
+      aria-label={copied ? "Copied" : "Copy message"}
       onClick={handleCopy}
       onPointerDown={(event) => {
         event.stopPropagation()

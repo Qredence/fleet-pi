@@ -108,7 +108,6 @@ export const RIGHT_PANEL_REGISTRY: Record<
         error={props.workspaceError}
         loadWorkspaceFile={props.loadWorkspaceFile}
         loading={props.workspaceLoading}
-        onRefresh={props.refreshWorkspace}
         onSelectedPathChange={props.setSelectedWorkspacePath}
         selectedPath={props.selectedWorkspacePath}
         workspace={props.workspaceTree}
@@ -127,7 +126,6 @@ export const RIGHT_PANEL_REGISTRY: Record<
         error={props.workspaceError}
         loadWorkspaceFile={props.loadWorkspaceFile}
         loading={props.workspaceLoading}
-        onRefresh={props.refreshWorkspace}
         onSelectedPathChange={props.setSelectedWorkspacePath}
         selectedPath={props.selectedWorkspacePath}
         workspace={props.workspaceTree}

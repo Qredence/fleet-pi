@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { chatClient } from "./chat-client"
 import { isPlanDecisionToolCall } from "./plan-state"
@@ -70,8 +70,6 @@ export function usePiChat(
   const sendMessageRef = useRef<(input: SendMessageInput) => Promise<void>>(
     () => Promise.resolve()
   )
-  const enhanceMessagesRef = useRef((current: Array<ChatMessage>) => current)
-
   const setMessagesSynced = useCallback(
     (
       updater:
@@ -80,9 +78,8 @@ export function usePiChat(
     ) => {
       setMessages((current) => {
         const next = typeof updater === "function" ? updater(current) : updater
-        const enhanced = enhanceMessagesRef.current(next)
-        messagesRef.current = enhanced
-        return enhanced
+        messagesRef.current = next
+        return next
       })
     },
     []
@@ -196,21 +193,12 @@ export function usePiChat(
   )
 
   useEffect(() => {
-    messagesRef.current = messages
-  }, [messages])
-
-  useEffect(() => {
     sessionMetadataRef.current = sessionMetadata
   }, [sessionMetadata])
 
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
-
-  useEffect(() => {
-    enhanceMessagesRef.current = enhanceMessages
-    setMessagesSynced((current) => current)
-  }, [enhanceMessages, setMessagesSynced])
 
   useEffect(() => {
     void refreshSessions().catch((err) => {
@@ -374,13 +362,18 @@ export function usePiChat(
     sendMessageRef.current = sendMessage
   }, [sendMessage])
 
+  const enhancedMessages = useMemo(
+    () => enhanceMessages(messages),
+    [messages, enhanceMessages]
+  )
+
   const answerQuestion = submitQuestionAnswer
 
   return {
     activityLabel,
     answerQuestion,
     error,
-    messages,
+    messages: enhancedMessages,
     planLabel,
     queue,
     refreshSessions,

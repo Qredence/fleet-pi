@@ -3,7 +3,7 @@ import {
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import {
-  LLM_PROVIDER_ENV_SCRUB_IDS,
+  PI_LLM_RUNTIME_PROVIDER_IDS,
   PROVIDER_ENV_SCRUB_VAR_NAMES,
 } from "@workspace/pi-protocol/provider-catalog"
 import {
@@ -38,11 +38,8 @@ export async function createSessionServices(
   options?: { userId?: string; projectRoot?: string }
 ) {
   if (process.env.VERCEL === "1") {
-    // Capture org LLM keys before scrub so applyRuntimeAuth can fall back
-    // when the signed-in user has no BYOK row (GEMINI_API_KEY etc. on Vercel).
-    const { snapshotVercelProviderEnvSecrets } =
-      await import("./user-provider-secrets")
-    snapshotVercelProviderEnvSecrets()
+    // Scrub org LLM provider env so bash/tools cannot read them. Chat auth
+    // uses only the signed-in user's BYOK rows — never these org keys.
     for (const envVarName of PROVIDER_ENV_SCRUB_VAR_NAMES) {
       delete process.env[envVarName]
     }
@@ -96,7 +93,12 @@ export async function applyRuntimeAuth(
 
   const { modelRuntime } = services
 
-  for (const providerId of LLM_PROVIDER_ENV_SCRUB_IDS) {
+  // Clear every Pi LLM provider that can bind org env, then re-apply BYOK only.
+  const providerIds = new Set<string>([
+    ...PI_LLM_RUNTIME_PROVIDER_IDS,
+    ...configured.keys(),
+  ])
+  for (const providerId of providerIds) {
     const apiKey = configured.get(providerId)
     if (apiKey) {
       await modelRuntime.setRuntimeApiKey(providerId, apiKey)

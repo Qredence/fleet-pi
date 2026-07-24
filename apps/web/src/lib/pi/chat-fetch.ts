@@ -4,7 +4,10 @@ import type {
   ChatSessionMetadata,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import { getChatAuthBearerToken } from "@/lib/auth/use-auth"
+import {
+  clearChatAuthBearerTokenCache,
+  getChatAuthBearerToken,
+} from "@/lib/auth/use-auth"
 import { resolveChatApiUrl } from "@/lib/pi/chat-runtime-url"
 
 export class ChatRequestError extends Error {
@@ -44,12 +47,7 @@ export function isForbiddenSessionError(error: unknown) {
 }
 
 async function withChatRequestHeaders(init?: RequestInit) {
-  const daytonaKey =
-    typeof window !== "undefined" ? localStorage.getItem("daytonaApiKey") : null
   const headers = new Headers(init?.headers)
-  if (daytonaKey) {
-    headers.set("x-daytona-api-key", daytonaKey)
-  }
 
   const bearer = await getChatAuthBearerToken()
   if (bearer) {
@@ -63,15 +61,23 @@ export async function fetchJson<T>(
   url: string,
   init?: RequestInit
 ): Promise<T> {
-  const headers = await withChatRequestHeaders(init)
   const resolvedUrl = resolveChatApiUrl(url)
 
-  const response = await fetch(resolvedUrl, { ...init, headers })
-  if (!response.ok) {
-    const body = await response.text()
-    throw new ChatRequestError(response.status, body)
+  const attempt = async (allowRetry: boolean): Promise<T> => {
+    const headers = await withChatRequestHeaders(init)
+    const response = await fetch(resolvedUrl, { ...init, headers })
+    if (response.status === 401 && allowRetry) {
+      clearChatAuthBearerTokenCache()
+      return attempt(false)
+    }
+    if (!response.ok) {
+      const body = await response.text()
+      throw new ChatRequestError(response.status, body)
+    }
+    return (await response.json()) as T
   }
-  return (await response.json()) as T
+
+  return attempt(true)
 }
 
 export async function fetchValidatedJson<T>(

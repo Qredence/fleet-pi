@@ -34,7 +34,7 @@ You can also save credentials from the chat UI **Configurations → Provider Cre
 
 **Symptom:** The `/api/sandbox/preview` endpoint returns `503 Sandbox not available`. The app continues to function normally — Daytona sandboxes are an optional feature.
 
-**Cause:** No Daytona API key resolved for the signed-in user. Fleet Pi checks the request `x-daytona-api-key` header, the user's stored `daytona` provider secret on Vercel, then `DAYTONA_API_KEY`.
+**Cause:** No Daytona API key resolved for the signed-in user. Fleet Pi checks the user's stored `daytona` provider secret on Vercel, then `DAYTONA_API_KEY`.
 
 **Fix:** On Vercel, save a Daytona API key in Settings for the signed-in user, or set org-level `DAYTONA_API_KEY`. Locally, set `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` in `.env`. If you don't need sandboxes, ignore the 503 — the rest of the app is unaffected.
 

@@ -68,8 +68,6 @@ export function QuestionTool({ part }: QuestionToolProps) {
     setLocalIndex(part.input?.questionIndex ?? 1)
   }, [part.toolCallId])
 
-  if (!question) return null
-
   const outputAnswer = part.output?.answer
   const answeredCount = Object.keys(localAnswers).length
   const isComplete =
@@ -101,6 +99,8 @@ export function QuestionTool({ part }: QuestionToolProps) {
       return formatAnswer(localAnswers[clampedIndex])
     return "Pending"
   }, [isComplete, summaryAnswers, outputAnswer, localAnswers, clampedIndex])
+
+  if (!question) return null
 
   const goPrev = () => {
     if (!canGoPrev) return

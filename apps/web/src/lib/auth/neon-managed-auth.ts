@@ -92,12 +92,57 @@ function prepareUpstreamHeaders(request: Request) {
   return headers
 }
 
+/**
+ * Rewrite upstream Neon Auth Set-Cookie values for the app host.
+ * Strip `Domain` / `Partitioned` so cookies bind to the proxy origin
+ * (first-party) instead of the neonauth.* upstream host.
+ */
+export function rewriteNeonAuthSetCookieForAppHost(setCookie: string) {
+  const parts = setCookie
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+  if (parts.length === 0) {
+    return setCookie
+  }
+
+  const [nameValue, ...attributes] = parts
+  const rewrittenAttributes: Array<string> = []
+  let hasPath = false
+  let hasSameSite = false
+
+  for (const attribute of attributes) {
+    if (/^domain=/i.test(attribute) || /^partitioned$/i.test(attribute)) {
+      continue
+    }
+    if (/^path=/i.test(attribute)) {
+      hasPath = true
+    }
+    if (/^samesite=/i.test(attribute)) {
+      hasSameSite = true
+      // Same-origin proxy: Lax is correct; None was for cross-site neonauth.
+      rewrittenAttributes.push("SameSite=Lax")
+      continue
+    }
+    rewrittenAttributes.push(attribute)
+  }
+
+  if (!hasPath) {
+    rewrittenAttributes.push("Path=/")
+  }
+  if (!hasSameSite) {
+    rewrittenAttributes.push("SameSite=Lax")
+  }
+
+  return [nameValue, ...rewrittenAttributes].join("; ")
+}
+
 function prepareDownstreamHeaders(response: Response) {
   const headers = new Headers()
   for (const header of PROXY_RESPONSE_HEADERS) {
     if (header === "set-cookie") {
       for (const cookie of response.headers.getSetCookie()) {
-        headers.append("Set-Cookie", cookie)
+        headers.append("Set-Cookie", rewriteNeonAuthSetCookieForAppHost(cookie))
       }
       continue
     }

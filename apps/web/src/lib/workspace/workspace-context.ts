@@ -24,11 +24,7 @@ export async function resolveWorkspaceContext(
     return context
   }
 
-  const clientDaytonaApiKey = request.headers.get("x-daytona-api-key")
-  const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(
-    userId,
-    clientDaytonaApiKey || undefined
-  )
+  const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(userId)
 
   if (process.env.VERCEL === "1" && !resolvedDaytonaApiKey) {
     throw new Error("daytona_credential_required")

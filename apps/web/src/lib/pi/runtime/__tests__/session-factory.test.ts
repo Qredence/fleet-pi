@@ -77,6 +77,9 @@ describe("session factory", () => {
     process.env.GEMINI_API_KEY = originalGeminiKey
     process.env.BETTER_AUTH_SECRET = originalAuthSecret
     process.env.FLEET_PI_CHAT_DATABASE_URL = originalChatDb
+    delete process.env.HF_TOKEN
+    delete process.env.OPENROUTER_API_KEY
+    delete process.env.DAYTONA_API_KEY
     vi.resetModules()
   })
 
@@ -127,20 +130,25 @@ describe("session factory", () => {
     expect(removeRuntimeApiKey).toHaveBeenCalled()
   })
 
-  it("scrubs only LLM provider env vars on Vercel", async () => {
+  it("scrubs Pi LLM provider env vars including Hugging Face on Vercel", async () => {
     process.env.VERCEL = "1"
     process.env.GEMINI_API_KEY = "secret"
+    process.env.HF_TOKEN = "hf-org-token"
+    process.env.OPENROUTER_API_KEY = "or-secret"
     process.env.DAYTONA_API_KEY = "daytona-secret"
     const { createSessionServices } = await import("../session-factory")
 
     await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
 
     expect(process.env.GEMINI_API_KEY).toBeUndefined()
-    expect(process.env.DAYTONA_API_KEY).toBe("daytona-secret")
+    expect(process.env.HF_TOKEN).toBeUndefined()
+    expect(process.env.OPENROUTER_API_KEY).toBeUndefined()
+    // Daytona org keys are scrubbed on Vercel; user BYOK is loaded separately.
+    expect(process.env.DAYTONA_API_KEY).toBeUndefined()
     expect(mocks.createAgentSessionServices).toHaveBeenCalled()
   })
 
-  it("falls back to org env LLM keys on Vercel when BYOK is empty", async () => {
+  it("does not fall back to org env LLM keys on Vercel when BYOK is empty", async () => {
     process.env.VERCEL = "1"
     process.env.GEMINI_API_KEY = "org-gemini-key"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
@@ -153,14 +161,8 @@ describe("session factory", () => {
       }
     )
 
-    const { resetVercelProviderEnvSnapshotForTests } =
-      await import("../user-provider-secrets")
-    resetVercelProviderEnvSnapshotForTests()
-
     const { createSessionServices, applyRuntimeAuth } =
       await import("../session-factory")
-    // Mirrors production: services are created twice per turn (dir probe + runtime).
-    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
     await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
 
     const setRuntimeApiKey = vi.fn()
@@ -178,6 +180,11 @@ describe("session factory", () => {
     )
 
     expect(process.env.GEMINI_API_KEY).toBeUndefined()
-    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "org-gemini-key")
+    expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
+      "google",
+      "org-gemini-key"
+    )
+    expect(removeRuntimeApiKey).toHaveBeenCalledWith("huggingface")
+    expect(removeRuntimeApiKey).toHaveBeenCalledWith("google")
   })
 })

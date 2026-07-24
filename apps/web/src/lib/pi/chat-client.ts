@@ -45,7 +45,10 @@ import type {
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import { getChatAuthBearerToken } from "@/lib/auth/use-auth"
+import {
+  clearChatAuthBearerTokenCache,
+  getChatAuthBearerToken,
+} from "@/lib/auth/use-auth"
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>
@@ -189,32 +192,34 @@ export const chatClient: ChatClient = {
   },
 
   async streamMessage(request, onEvent, signal) {
-    const headers = new Headers({ "Content-Type": "application/json" })
-    const daytonaKey =
-      typeof window !== "undefined"
-        ? localStorage.getItem("daytonaApiKey")
-        : null
-    if (daytonaKey) {
-      headers.set("x-daytona-api-key", daytonaKey)
-    }
-    const bearer = await getChatAuthBearerToken()
-    if (bearer) {
-      headers.set("Authorization", `Bearer ${bearer}`)
+    const attempt = async (allowRetry: boolean): Promise<void> => {
+      const headers = new Headers({ "Content-Type": "application/json" })
+      const bearer = await getChatAuthBearerToken()
+      if (bearer) {
+        headers.set("Authorization", `Bearer ${bearer}`)
+      }
+
+      const response = await fetch(resolveChatApiUrl("/api/chat"), {
+        method: "POST",
+        headers,
+        body: JSON.stringify(request),
+        signal,
+      })
+
+      if (response.status === 401 && allowRetry) {
+        clearChatAuthBearerTokenCache()
+        return attempt(false)
+      }
+
+      if (!response.ok) {
+        const body = await response.text()
+        throw new ChatRequestError(response.status, body)
+      }
+
+      await readChatStream(response, onEvent)
     }
 
-    const response = await fetch(resolveChatApiUrl("/api/chat"), {
-      method: "POST",
-      headers,
-      body: JSON.stringify(request),
-      signal,
-    })
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new ChatRequestError(response.status, body)
-    }
-
-    await readChatStream(response, onEvent)
+    await attempt(true)
   },
 
   async getProviders() {

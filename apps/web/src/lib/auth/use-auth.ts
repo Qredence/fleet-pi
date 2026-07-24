@@ -1,13 +1,21 @@
-import { authClient, getChatAuthBearerToken } from "./client"
+import {
+  authClient,
+  clearChatAuthBearerTokenCache,
+  getChatAuthBearerToken,
+} from "./client"
 
 export const useSession = authClient.useSession
 export const signIn = authClient.signIn
 export const signUp = authClient.signUp
-export const signOut = authClient.signOut
+
+export async function signOut() {
+  clearChatAuthBearerTokenCache()
+  return authClient.signOut()
+}
 
 export function useOptionalUser() {
   const { data } = useSession()
   return data?.user ?? null
 }
 
-export { getChatAuthBearerToken }
+export { clearChatAuthBearerTokenCache, getChatAuthBearerToken }
