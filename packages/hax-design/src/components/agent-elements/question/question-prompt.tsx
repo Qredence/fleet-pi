@@ -211,7 +211,7 @@ export function QuestionPrompt({
         data-total-questions={resolvedTotal}
       >
         <div className="flex items-center gap-2 text-sm text-an-tool-color">
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] px-1 text-sm font-medium text-an-tool-color-muted">
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-sm font-medium text-an-tool-color-muted">
             {clampedIndex}
           </span>
           <span>{activeQuestion.title}</span>
@@ -240,7 +240,7 @@ export function QuestionPrompt({
                 >
                   <span
                     className={cn(
-                      "inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] border px-1 text-sm font-medium",
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-sm font-medium",
                       checked
                         ? "border-an-primary-color bg-an-primary-color text-an-send-button-color"
                         : "border-border bg-transparent text-an-tool-color-muted"
@@ -265,7 +265,7 @@ export function QuestionPrompt({
               <div className="flex items-center gap-2 pt-1">
                 <span
                   className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] border px-1 text-sm font-medium",
+                    "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-sm font-medium",
                     selectedIds.includes(QUESTION_CUSTOM_ID)
                       ? "border-an-primary-color bg-an-primary-color text-an-send-button-color"
                       : "border-border bg-transparent text-an-tool-color-muted"
@@ -311,7 +311,7 @@ export function QuestionPrompt({
                 type="button"
                 onClick={onPreviousQuestion}
                 disabled={!canGoPrev}
-                className="h-6 rounded-[4px] px-2 text-sm text-muted-foreground hover:text-an-tool-color disabled:opacity-60"
+                className="h-6 rounded px-2 text-sm text-muted-foreground hover:text-an-tool-color disabled:opacity-60"
               >
                 Previous
               </button>
@@ -321,7 +321,7 @@ export function QuestionPrompt({
                 type="button"
                 onClick={onNextQuestion}
                 disabled={!canGoNext}
-                className="h-6 rounded-[4px] px-2 text-sm text-muted-foreground hover:text-an-tool-color disabled:opacity-60"
+                className="h-6 rounded px-2 text-sm text-muted-foreground hover:text-an-tool-color disabled:opacity-60"
               >
                 Next
               </button>
@@ -333,7 +333,7 @@ export function QuestionPrompt({
             <button
               type="button"
               onClick={handleSkip}
-              className="h-6 rounded-[4px] px-2 text-sm text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted/50 hover:text-an-tool-color active:scale-[0.98]"
+              className="h-6 rounded px-2 text-sm text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted/50 hover:text-an-tool-color active:scale-[0.98]"
             >
               {skipLabel}
             </button>
@@ -342,7 +342,7 @@ export function QuestionPrompt({
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="h-6 rounded-[4px] bg-an-primary-color px-2.5 text-sm font-medium text-an-send-button-color transition-[background-color,transform] duration-150 hover:bg-an-primary-color/90 active:scale-[0.98] disabled:opacity-60 disabled:hover:bg-an-primary-color disabled:active:scale-100"
+            className="h-6 rounded bg-an-primary-color px-2.5 text-sm font-medium text-an-send-button-color transition-[background-color,transform] duration-150 hover:bg-an-primary-color/90 active:scale-[0.98] disabled:opacity-60 disabled:hover:bg-an-primary-color disabled:active:scale-100"
           >
             {primaryLabel}
           </button>

@@ -51,6 +51,7 @@ import { ModelDefaultsSection } from "./config-panel/sections/model-defaults-sec
 import { ResourcesSection } from "./config-panel/sections/resources-section"
 import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider-section"
 
+import { CREDENTIAL_UI_PROVIDERS } from "./config-panel/shared/provider-metadata"
 import {
   customModelKey,
   nextEnabledModelPatterns,
@@ -137,15 +138,32 @@ function useSettingsForm() {
 
   const resourceSummary = summarizeResources(resources)
 
+  const configuredProviderIds = useMemo(() => {
+    const credentialIds = new Set(
+      CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
+    )
+    const ids = new Set<string>()
+    for (const provider of providers) {
+      if (provider.isConfigured && credentialIds.has(provider.id)) {
+        ids.add(provider.id)
+      }
+    }
+    return ids
+  }, [providers])
+
   const catalogModels = modelCatalog ?? models
 
   const modelOptions = useMemo(() => {
     const byId = new Map<string, ConfigModelInfo>()
     for (const model of catalogModels) {
-      byId.set(model.id, model)
+      if (configuredProviderIds.has(model.provider)) {
+        byId.set(model.id, model)
+      }
     }
     for (const model of discoveredModels) {
-      byId.set(model.id, model)
+      if (configuredProviderIds.has(model.provider)) {
+        byId.set(model.id, model)
+      }
     }
     const merged = [...byId.values()]
     if (!draft?.defaultProvider || !draft.defaultModel) return merged
@@ -159,6 +177,8 @@ function useSettingsForm() {
       return merged
     }
 
+    if (!configuredProviderIds.has(draft.defaultProvider)) return merged
+
     return [
       {
         id: customModelKey(draft.defaultProvider, draft.defaultModel),
@@ -169,7 +189,7 @@ function useSettingsForm() {
       },
       ...merged,
     ]
-  }, [catalogModels, discoveredModels, draft])
+  }, [catalogModels, configuredProviderIds, discoveredModels, draft])
 
   const modelBaseline =
     lastCommittedModelSettings.current ??
