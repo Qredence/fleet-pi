@@ -6,12 +6,15 @@ CREATE TABLE IF NOT EXISTS fleet_pi_chat_migrations (
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE IF EXISTS fleet_pi_chat_migrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS fleet_pi_chat_migrations FORCE ROW LEVEL SECURITY;
+
 CREATE TABLE IF NOT EXISTS pi_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NULL,
   session_file_path TEXT UNIQUE NOT NULL,
   cwd TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 3,
+  version INTEGER NOT NULL DEFAULT 3 CHECK (version >= 3),
   parent_session_file_path TEXT,
   name TEXT,
   first_message_preview TEXT,
@@ -68,24 +71,8 @@ CREATE TABLE IF NOT EXISTS pi_session_entries (
   PRIMARY KEY (session_id, entry_id)
 );
 
-CREATE INDEX IF NOT EXISTS pi_session_entries_parent_idx
-ON pi_session_entries(session_id, parent_entry_id);
-
 CREATE INDEX IF NOT EXISTS pi_session_entries_timestamp_idx
 ON pi_session_entries(session_id, entry_timestamp);
-
-CREATE INDEX IF NOT EXISTS pi_session_entries_type_idx
-ON pi_session_entries(entry_type);
-
-CREATE INDEX IF NOT EXISTS pi_session_entries_role_idx
-ON pi_session_entries(role);
-
-CREATE INDEX IF NOT EXISTS pi_session_entries_raw_gin_idx
-ON pi_session_entries USING GIN(raw_entry);
-
-CREATE INDEX IF NOT EXISTS pi_session_entries_content_fts_idx
-ON pi_session_entries
-USING GIN(to_tsvector('english', COALESCE(content_text, '')));
 
 CREATE TABLE IF NOT EXISTS pi_runs (
   id TEXT PRIMARY KEY,
@@ -102,8 +89,7 @@ CREATE TABLE IF NOT EXISTS pi_runs (
   tool_call_count INTEGER NOT NULL DEFAULT 0,
   mutation_count INTEGER NOT NULL DEFAULT 0,
   started_at TIMESTAMPTZ NOT NULL,
-  completed_at TIMESTAMPTZ,
-  UNIQUE(session_id, session_turn_index)
+  completed_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS pi_runs_session_idx
@@ -121,9 +107,6 @@ CREATE TABLE IF NOT EXISTS pi_run_events (
   recorded_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (run_id, sequence)
 );
-
-CREATE INDEX IF NOT EXISTS pi_run_events_run_idx
-ON pi_run_events(run_id, sequence);
 
 CREATE TABLE IF NOT EXISTS pi_tool_executions (
   id TEXT PRIMARY KEY,
