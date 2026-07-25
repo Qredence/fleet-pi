@@ -7,5 +7,15 @@
 # Shared packages
 /packages/ @Zochory
 
+# Security-critical auth, RLS, and trust-zone paths (require explicit review)
+/apps/web/src/lib/auth/ @Zochory
+/apps/web/src/lib/deployment/trust-zone.ts @Zochory
+/apps/web/src/lib/pi/runtime/session-factory.ts @Zochory
+/scripts/auth-migrate.sh @Zochory
+/scripts/verify-auth-role.sql @Zochory
+
+# Database migrations and RLS policy
+/apps/web/src/lib/db/migrations/ @Zochory
+
 # GitHub configuration and CI/CD workflows
 /.github/ @Zochory

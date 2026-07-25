@@ -70,6 +70,9 @@
     ],
     "packages/hax-design/**/*.{ts,tsx,js,jsx}": [
       "pnpm --filter @workspace/hax-design exec eslint --fix"
+    ],
+    "packages/pi-protocol/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --filter @workspace/pi-protocol exec eslint --fix"
     ]
   },
   "engines": {
