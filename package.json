@@ -53,7 +53,7 @@
     "husky": "^9.1.7",
     "jscpd": "^4.2.5",
     "knip": "^6.23.0",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17.2.0",
     "neon": "^2.34.1",
     "prettier": "^3.9.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
