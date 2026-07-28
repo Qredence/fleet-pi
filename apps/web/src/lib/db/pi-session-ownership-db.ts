@@ -42,20 +42,25 @@ export function markDeployment(): void {
     { deployedPools },
     "[pi-session-ownership-db] deployment marked, scheduling pool cleanup"
   )
-  
+
   // Schedule cleanup after delay to allow in-flight requests to complete
   setTimeout(() => {
     if (--deployedPools === 0) {
-      logger.info("[pi-session-ownership-db] all deployments completed, ending pool")
-      sharedPool?.end().then(() => {
-        sharedPool = undefined
-        logger.debug("[pi-session-ownership-db] PostgreSQL pool ended")
-      }).catch((err) => {
-        logger.error(
-          { error: err.message },
-          "[pi-session-ownership-db] failed to end PostgreSQL pool"
-        )
-      })
+      logger.info(
+        "[pi-session-ownership-db] all deployments completed, ending pool"
+      )
+      sharedPool
+        ?.end()
+        .then(() => {
+          sharedPool = undefined
+          logger.debug("[pi-session-ownership-db] PostgreSQL pool ended")
+        })
+        .catch((err) => {
+          logger.error(
+            { error: err.message },
+            "[pi-session-ownership-db] failed to end PostgreSQL pool"
+          )
+        })
     }
   }, DEPLOYMENT_CLEANUP_DELAY_MS)
 }
@@ -222,10 +227,12 @@ export async function verifySessionOwnership(
         { error, sessionId, userId, attempt },
         "[pi-session-mirror] failed to verify session ownership, retrying..."
       )
-      
+
       if (attempt < maxRetries - 1) {
         // Exponential backoff: 100ms, 200ms, 400ms
-        await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)))
+        await new Promise((resolve) =>
+          setTimeout(resolve, 100 * Math.pow(2, attempt))
+        )
       }
     }
   }
@@ -384,11 +391,11 @@ export function getPoolHealthMetrics() {
   if (!sharedPool) {
     return { active: 0, idle: 0, total: 0, connected: false, deployedPools: 0 }
   }
-  
+
   // Calculate busy connections (total capacity minus idle)
-  const socketConnectionCount = sharedPool.options.max ?? 5
+  const socketConnectionCount = sharedPool.options.max
   const busyConnections = socketConnectionCount - sharedPool.idleCount
-  
+
   return {
     active: Math.max(0, busyConnections),
     idle: sharedPool.idleCount,
