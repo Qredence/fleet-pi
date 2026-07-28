@@ -37,7 +37,7 @@ fleet-pi/
 | @earendil-works/pi-ai                                   | Pi AI primitives                                          |
 | @workspace/pi-protocol                                  | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |
 | @workspace/hax-design                                   | Fleet Pi UI shell, agent-elements, openui renderer        |
-| OpenAI-compatible provider (Pi openai-chat-completions) | Current default (deepseek-v4-flash-free)                  |
+| OpenAI-compatible provider (Pi openai-chat-completions) | Current default (nemotron-3-ultra-free)                   |
 | pino + pino-pretty                                      | Structured logging                                        |
 | opossum                                                 | Circuit breaker pattern                                   |
 | zod + @asteasolutions/zod-to-openapi                    | Schema validation & OpenAPI generation                    |
@@ -48,7 +48,7 @@ fleet-pi/
 
 1. The **Browser** sends a user message to `/api/chat` via NDJSON stream.
 2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and delegates to `handleChatTurn`.
-3. The **Pi Server Module** invokes the configured Pi provider (currently OpenAI-compatible `openai-chat-completions` with `deepseek-v4-flash-free`) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.
+3. The **Pi Server Module** invokes the configured Pi provider (currently OpenAI-compatible `openai-chat-completions` with `nemotron-3-ultra-free`) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.
 4. Streaming events (`start`, `delta`, `tool`, `plan`, `state`, `queue`, `thinking`, `compaction`, `retry`, `done`, `error`) flow back to the client.
 5. The **Client** hydrates messages from the Pi session file on reload and opens supporting resources/workspace panels on demand.
 6. Supporting endpoints expose models, resources, workspace files, sessions, and health checks.
