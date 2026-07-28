@@ -8,5 +8,8 @@
   ],
   "skills": ["../agent-workspace/pi/skills"],
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
-  "prompts": ["../agent-workspace/pi/prompts"]
+  "prompts": ["../agent-workspace/pi/prompts"],
+  "defaultProvider": "openai-chat-completions",
+  "defaultModel": "nemotron-3-ultra-free",
+  "defaultThinkingLevel": "high"
 }
