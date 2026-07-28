@@ -7,9 +7,6 @@
     display: grid;
     grid-template-columns: 0fr;
     opacity: 0;
-    transition:
-      grid-template-columns 220ms var(--discrete-tab-ease),
-      opacity 220ms var(--discrete-tab-ease);
   }
 
   .discrete-tab-trigger[data-state="active"] .discrete-tab-label {
@@ -20,5 +17,13 @@
   .discrete-tab-label-inner {
     overflow: hidden;
     white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .discrete-tab-label {
+    transition:
+      grid-template-columns 220ms var(--discrete-tab-ease),
+      opacity 220ms var(--discrete-tab-ease);
   }
 }

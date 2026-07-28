@@ -1,0 +1,1 @@
+TypeScript (ESM, `type: module`) with Zod v4 for runtime validation, `@asteasolutions/zod-to-openapi` for OpenAPI schema generation, `@openuidev/lang-core` for OpenUI prompt generation, Vitest for tests, and ESLint/Prettier for linting/formatting.

@@ -82,7 +82,7 @@ export const ModelPicker = memo(function ModelPicker({
         <button
           type="button"
           className={cn(
-            "relative inline-flex h-7 max-w-full cursor-pointer items-center gap-1 rounded-[100px] px-2 text-[12px] leading-4 text-foreground/40 transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-1.5 after:-bottom-1.5 hover:bg-foreground/6 active:scale-[0.96]",
+            "relative inline-flex h-7 max-w-full cursor-pointer items-center gap-1 rounded-full px-2 text-[12px] leading-4 text-foreground/40 transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-1.5 after:-bottom-1.5 hover:bg-foreground/6 active:scale-[0.96]",
             className
           )}
           aria-label="Select model"

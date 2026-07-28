@@ -1,0 +1,1 @@
+TanStack Router (`createFileRoute`) for file-based server-side routing; Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` for request/response validation; TypeScript handlers returning standard `Response` objects.

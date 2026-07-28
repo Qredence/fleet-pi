@@ -1,0 +1,5 @@
+- Every GitHub Actions job follows a fixed template: checkout → setup pnpm → setup Node.js (version pinned or `>=22.0.0`) → `pnpm install --frozen-lockfile` → run the actual step.
+- Performance metrics for long-running jobs (test, build) are captured by recording start/end timestamps, computing duration in seconds and human-readable form, and uploading both JSON and Markdown artifacts under dedicated directories.
+- All third-party GitHub Actions are pinned to exact commit SHAs rather than version tags to ensure reproducible CI runs.
+- PI agent configuration centralizes external dependencies through `.pi/settings.json` entries for `skills`, `packages`, `extensions`, and `prompts`, all resolved relative to `../agent-workspace/pi/`.
+- Pre-commit hooks are kept minimal and delegate heavy work to `pnpm exec` commands (here, `lint-staged`) so the hook itself stays fast.

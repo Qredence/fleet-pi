@@ -1,0 +1,1 @@
+TanStack Router file-based endpoints under /api/chat that expose chat session, run, model, provider, settings, and related CRUD operations by delegating to handler functions in the chat-runtime layer.

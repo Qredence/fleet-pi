@@ -9,7 +9,7 @@ import React, {
 } from "react"
 import { IconCheck, IconCopy } from "@tabler/icons-react"
 import { toast } from "sonner"
-import { motion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 import { cn } from "./utils/cn"
 
 import { UserMessage } from "./user-message"
@@ -322,6 +322,7 @@ export const MessageList = memo(function MessageList({
   const assistantSpaceActiveRef = useRef(false)
   const [activeCopyId, setActiveCopyId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   const CustomUserMessage = slots?.UserMessage || UserMessage
   const CustomToolRenderer = slots?.ToolRenderer || DefaultToolRenderer
@@ -537,9 +538,13 @@ export const MessageList = memo(function MessageList({
               <motion.div
                 key={turnKey}
                 className="relative flex flex-col gap-2"
-                initial={{ opacity: 0, y: 8 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.25, ease: "easeOut" }
+                }
               >
                 {turn.userMsg &&
                   (() => {

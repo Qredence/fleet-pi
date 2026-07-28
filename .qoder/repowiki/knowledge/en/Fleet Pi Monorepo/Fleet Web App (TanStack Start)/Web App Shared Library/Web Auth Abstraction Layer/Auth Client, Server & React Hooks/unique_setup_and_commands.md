@@ -1,0 +1,1 @@
+Server-side code runs `assertDeploymentReadyOnBoot()` at module load time, so deployments must satisfy the deployment readiness check before importing `server.ts`. The Neon Managed path requires cookies to be sent with `credentials: "include"` through the `/api/auth` proxy.

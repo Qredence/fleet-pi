@@ -1,0 +1,1 @@
+Native Web Fetch API (`Request`, `Response`, `ReadableStream`) with no Express/Fastify; NDJSON streaming via `application/x-ndjson`; Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` for request validation; CORS configured through the `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS` environment variable.

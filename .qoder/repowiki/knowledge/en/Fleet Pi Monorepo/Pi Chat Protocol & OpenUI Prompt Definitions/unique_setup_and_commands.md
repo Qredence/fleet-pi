@@ -1,0 +1,1 @@
+Tests run via `vitest run` (script defined in `package.json`). The package uses per-subpath exports in `package.json` so consumers import specific modules like `@workspace/pi-protocol/chat-protocol.zod`. No build step is required since `exports` points directly at `.ts` sources consumed by the consuming project's TypeScript compiler.

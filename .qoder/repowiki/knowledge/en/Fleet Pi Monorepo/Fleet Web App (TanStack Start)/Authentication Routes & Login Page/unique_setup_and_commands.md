@@ -1,0 +1,1 @@
+The catch-all `/api/auth/$` route only runs in TanStack Start (not the Neon Function bundle); it switches backends at runtime based on `resolveAuthBackend()`, so the correct auth backend must be configured via the shared `@/lib/auth/auth-mode` module before any request arrives.

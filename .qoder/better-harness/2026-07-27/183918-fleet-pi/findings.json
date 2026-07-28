@@ -1,0 +1,191 @@
+{
+  "summary": {
+    "schemaVersion": "1",
+    "projectName": "fleet-pi",
+    "modelId": "software-fluency",
+    "strengths": [
+      "Well-documented codebase with comprehensive AGENTS.md and DESIGN.md contracts",
+      "42 project memories capturing development practices and domain knowledge",
+      "31 skills providing specialized AI capabilities across testing, deployment, and workflow management",
+      "5 CI workflows ensuring continuous integration and quality gates"
+    ],
+    "weaknesses": [
+      "Validation commands mentioned but not observed in execution traces",
+      "Three failed-event friction signals affecting session reliability",
+      "Long skill documents lack progressive disclosure structure",
+      "Memory title collisions requiring governance review"
+    ],
+    "scoreRows": [
+      {
+        "id": "context-map",
+        "label": "Context Map",
+        "summary": "Strong project documentation and memory coverage",
+        "score": 80,
+        "findingRefs": ["skill-documentation-progressive-disclosure"]
+      },
+      {
+        "id": "fast-feedback",
+        "label": "Fast Feedback",
+        "summary": "Command execution patterns incomplete; 3 failed events require investigation",
+        "score": 40,
+        "findingRefs": [
+          "validation-execution-gap",
+          "friction-from-failed-events"
+        ]
+      },
+      {
+        "id": "safe-change",
+        "label": "Safe Change",
+        "summary": "Documentation quality gaps and governance issues present low-risk maintainability debt",
+        "score": 80,
+        "findingRefs": [
+          "skill-documentation-progressive-disclosure",
+          "memory-title-collisions",
+          "long-running-sessions-decomposition"
+        ]
+      }
+    ],
+    "dimensions": [
+      { "id": "context-map", "name": "Context Map" },
+      { "id": "environment-readiness", "name": "Environment Readiness" },
+      { "id": "fast-feedback", "name": "Fast Feedback" },
+      { "id": "quality-gates", "name": "Quality Gates" },
+      { "id": "safe-change", "name": "Safe Change" }
+    ]
+  },
+  "findings": [
+    {
+      "id": "validation-execution-gap",
+      "title": "Validation Commands Not Observed in Execution Traces",
+      "consequence": "User mentions running validation commands like 'make test' (5 occurrences) but no actual command executions captured in session logs, preventing validation habit analysis",
+      "causeChain": [
+        "No edit events observed in analyzed sessions",
+        "Test commands appear in user requests but never execute",
+        "Unclear whether editing or validation habits exist"
+      ],
+      "owner": "Development Workflow",
+      "surface": "Development Practices",
+      "evidence": "34 sessions analyzed, 0 edit events observed",
+      "confidence": "Medium",
+      "repair": {
+        "prompt": "Configure execution tracing for validation commands",
+        "steps": [
+          "Add script execution hooks for make/test/npm test commands",
+          "Enable command logging in session tracking",
+          "Re-analyze sessions to capture validation patterns"
+        ]
+      },
+      "priority": true,
+      "severity": "High",
+      "dimensionRefs": ["fast-feedback"],
+      "reason": "Critical gap between stated intent (validation) and observable behavior prevents confident assessment of development workflow quality"
+    },
+    {
+      "id": "friction-from-failed-events",
+      "title": "Failed Event Friction Impacting Session Outcomes",
+      "consequence": "Three failed-event friction signals detected across analyzed sessions, causing user re-attempts and reduced productivity",
+      "causeChain": [
+        "Model requests fail during tool execution attempts",
+        "Turns finish with errors rather than completion",
+        "User must re-attempt or recover from failures"
+      ],
+      "owner": "Agent Execution Layer",
+      "surface": "Session Management",
+      "evidence": "3 bounded error sessions identified in friction taxonomy",
+      "confidence": "High",
+      "repair": {
+        "prompt": "Investigate failed event patterns and implement better error handling",
+        "steps": [
+          "Open bounded sessions behind failed-event category",
+          "Identify specific tool or API failures",
+          "Implement retry logic or clearer error messages"
+        ]
+      },
+      "priority": true,
+      "severity": "High",
+      "dimensionRefs": ["fast-feedback"],
+      "reason": "Direct user impact from repeated failures; requires immediate investigation to restore confidence in session outcomes"
+    },
+    {
+      "id": "skill-documentation-progressive-disclosure",
+      "title": "Long Skill Documents Lack Progressive Disclosure Structure",
+      "consequence": "13 skill files exceed reasonable length thresholds without local Markdown references, creating navigation friction for developers",
+      "causeChain": [
+        "Skills like neon-functions (490 lines), visual-plan (549 lines) contain extensive detail inline",
+        "Readers must navigate long documents to find key information",
+        "Reference structure not leveraged for deepening"
+      ],
+      "owner": "Documentation Standards",
+      "surface": "Skill Assets",
+      "evidence": "13 of 31 skills flagged; top offenders: visual-plan (549 lines), neon-functions (490 lines), neon-postgres (376 lines)",
+      "confidence": "High",
+      "repair": {
+        "prompt": "Refactor long skill documents to use progressive disclosure with reference files",
+        "steps": [
+          "Extract detailed explanations into separate .md reference files",
+          "Keep SKILL.md focused on core workflow and triggers",
+          "Add cross-references using relative paths",
+          "Verify links render correctly in Qoder interface"
+        ]
+      },
+      "priority": false,
+      "severity": "Low",
+      "dimensionRefs": ["safe-change"],
+      "reason": "Maintainability debt that accumulates over time; reduces discoverability but doesn't block current work"
+    },
+    {
+      "id": "memory-title-collisions",
+      "title": "Memory Title Collisions Require Governance Review",
+      "consequence": "3 exact title collisions and 2 similarity pairs detected in project memory titles, potentially causing retrieval ambiguity",
+      "causeChain": [
+        "Duplicate memories created without title uniqueness checks",
+        "Similar titles indicate semantic overlap needing manual review",
+        "May cause confusion when querying memories"
+      ],
+      "owner": "Knowledge Management",
+      "surface": "Memory Governance",
+      "evidence": "42 project memories scanned; collisions: Fleet_Pi_Project_Introduction (2x), Fleet_Pi_Tech_Stack (2x), Prettier+Tailwind_Plugin_Configuration (2x); Similarity pairs at 81% and 80%",
+      "confidence": "High",
+      "repair": {
+        "prompt": "Review and merge duplicate or highly similar memory titles",
+        "steps": [
+          "Open each collision pair in Qoder interface",
+          "Compare memory bodies for redundancy",
+          "Merge duplicates preserving most complete content",
+          "Update memory titles for distinctiveness"
+        ]
+      },
+      "priority": false,
+      "severity": "Low",
+      "dimensionRefs": ["safe-change"],
+      "reason": "Governance issue that affects long-term maintainability but can be resolved through manual review process"
+    },
+    {
+      "id": "long-running-sessions-decomposition",
+      "title": "Extended Session Durations Suggest Complex Tasks Without Decomposition",
+      "consequence": "One active session lasted 46 minutes with multiple long spans, indicating potential opportunity for task decomposition and checkpoint patterns",
+      "causeChain": [
+        "Tasks not broken into smaller, completable units",
+        "Continuous work without checkpoints or closures",
+        "May increase cognitive load and reduce recovery points"
+      ],
+      "owner": "Task Management Strategy",
+      "surface": "Session Strategy",
+      "evidence": "34 sessions analyzed; 1 active-long session at 46m; 3 additional long spans mainly idle or resumed work",
+      "confidence": "Medium",
+      "repair": {
+        "prompt": "Consider task decomposition strategies for complex work spanning long durations",
+        "steps": [
+          "Review task complexity for sessions exceeding 30 minutes",
+          "Implement checkpoint-based work patterns",
+          "Use delegation or subagent patterns for independent subtasks",
+          "Monitor outcomes to assess efficiency improvements"
+        ]
+      },
+      "priority": true,
+      "severity": "Low",
+      "dimensionRefs": ["safe-change"],
+      "reason": "Efficiency opportunity identified through duration data alone; outcome quality evidence incomplete so prioritized but low severity"
+    }
+  ]
+}

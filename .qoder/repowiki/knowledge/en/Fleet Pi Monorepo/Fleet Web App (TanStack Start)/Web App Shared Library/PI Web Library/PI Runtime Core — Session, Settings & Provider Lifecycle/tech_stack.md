@@ -1,0 +1,1 @@
+TypeScript module built against `@earendil-works/pi-coding-agent` for agent session management, `@workspace/pi-protocol` for ChatPi schema/types, and Node.js `fs/promises` for local file persistence. Settings are stored either in `.pi/settings.json` per project root (local) or in the user-settings DB (Vercel), detected via `process.env.VERCEL === '1'`.

@@ -1,0 +1,1 @@
+No unified build or test command at this level — tests are co-located per file using Vitest/Jest patterns (`.test.ts` and `.spec.ts` suffixes) and are invoked through the parent web app's test runner.

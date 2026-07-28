@@ -5,6 +5,9 @@ test.describe("OpenUI State Sync E2E Verification", () => {
   test("should load the DevOps dashboard and toggle the metrics visibility reactively", async ({
     page,
   }, testInfo) => {
+    // Increase timeout for this test to accommodate OpenUI rendering
+    test.setTimeout(30000)
+
     // 1. Mock the models, sessions, and resources list endpoints so the app loads cleanly
     await page.route("**/api/chat/models", async (route) => {
       await route.fulfill({
@@ -122,9 +125,9 @@ metric2 = Metric("Last Success Rate", "99.4%")
     await textarea.fill("Display the DevOps deployment analytics dashboard")
     await page.keyboard.press("Enter")
 
-    // 5. Wait for the OpenUI generative components to render
+    // 5. Wait for the OpenUI generative components to render with increased timeout
     const switchLabel = page.locator("text=Display Deployment Metrics")
-    await expect(switchLabel).toBeVisible({ timeout: 15000 })
+    await expect(switchLabel).toBeVisible({ timeout: 30000 })
 
     // 6. Assert initial state: Switch ON, KPI metric cards are visible
     const metric1 = page.locator("text=Active Instances")

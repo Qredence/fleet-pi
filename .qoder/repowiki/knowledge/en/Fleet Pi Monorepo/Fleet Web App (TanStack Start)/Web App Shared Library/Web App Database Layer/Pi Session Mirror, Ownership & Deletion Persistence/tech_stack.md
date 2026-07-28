@@ -1,0 +1,1 @@
+Neon serverless Postgres via `@neondatabase/serverless` Pool, raw SQL with positional `$N` parameters and `ON CONFLICT ... DO UPDATE` upserts, JSONB columns for `raw_entry`/payload fields, and a shared in-process `Set` for tombstone tracking.

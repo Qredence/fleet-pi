@@ -62,15 +62,9 @@ export function handleSessionEvent(
     if (!activeTurn) {
       activeTurn = beginAssistantTurn(startContext)
     }
-    const nextParts = appendTextPart(
-      activeTurn.parts,
-      event.assistantMessageEvent.delta
-    )
+    appendTextPart(activeTurn.parts, event.assistantMessageEvent.delta)
     send({ type: "delta", text: event.assistantMessageEvent.delta })
-    return {
-      ...activeTurn,
-      parts: nextParts,
-    }
+    return activeTurn
   }
 
   if (
@@ -81,17 +75,14 @@ export function handleSessionEvent(
       activeTurn = beginAssistantTurn(startContext)
     }
     const nextThinkingText = `${activeTurn.thinkingText}${event.assistantMessageEvent.delta}`
-    const nextParts = upsertThinkingPart(
+    upsertThinkingPart(
       activeTurn.parts,
       activeTurn.assistantId,
       nextThinkingText
     )
+    activeTurn.thinkingText = nextThinkingText
     send({ type: "thinking", text: nextThinkingText })
-    return {
-      ...activeTurn,
-      parts: nextParts,
-      thinkingText: nextThinkingText,
-    }
+    return activeTurn
   }
 
   if (
@@ -109,12 +100,9 @@ export function handleSessionEvent(
         part.input as Record<string, unknown>
       )
     }
-    const nextParts = upsertToolPart(activeTurn.parts, part)
+    upsertToolPart(activeTurn.parts, part)
     send({ type: "tool", part })
-    return {
-      ...activeTurn,
-      parts: nextParts,
-    }
+    return activeTurn
   }
 
   if (event.type === "queue_update") {

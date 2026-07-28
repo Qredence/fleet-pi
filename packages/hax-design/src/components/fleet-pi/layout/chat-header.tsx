@@ -56,7 +56,7 @@ export function AccountMenu({
   onOpenSettings?: () => void
 }) {
   const menuItemClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-an-foreground transition-colors hover:bg-foreground/6"
+    "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-foreground transition-colors hover:bg-foreground/6"
 
   return (
     <Popover
@@ -192,9 +192,7 @@ export function SessionControls({
                   })
                 }
                 className={`flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 transition-colors hover:bg-foreground/6 ${
-                  active
-                    ? "bg-foreground/6 text-an-foreground"
-                    : "text-an-foreground"
+                  active ? "bg-foreground/6 text-foreground" : "text-foreground"
                 }`}
               >
                 <History className="size-3 shrink-0 text-foreground/45" />

@@ -1,0 +1,4 @@
+- Routes are defined as TanStack Start file-based routes using `createFileRoute` with a `server.handlers` object exposing async GET/POST functions that receive `{ request }`.
+- Auth operations go through the shared `auth` instance from `@/lib/auth/server` (or the dynamically imported legacy handler) rather than direct HTTP calls.
+- Error handling on server routes uses `.catch(() => null)` or returns error objects with a `message` field that the login UI surfaces via `setError(...)`.
+- Post-success navigation is performed via TanStack's `useNavigate().navigate({ to: "/" })` instead of `window.location` redirects.

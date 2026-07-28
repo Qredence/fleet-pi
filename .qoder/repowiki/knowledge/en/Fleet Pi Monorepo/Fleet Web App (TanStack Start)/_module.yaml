@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web
+title: Fleet Web App (TanStack Start)
+scope:
+    - apps/web/
+source_files: []
+depends_on: []
+related_to: []

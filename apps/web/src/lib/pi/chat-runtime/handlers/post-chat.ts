@@ -83,13 +83,13 @@ export async function postChatHandler(request: Request) {
       const readable = new ReadableStream<Uint8Array>({
         async start(controller) {
           try {
-            log.info("starting chat turn")
             for await (const event of handleChatTurn({
               body,
               signal: request.signal,
               recorder,
               runtimeContext,
               prompt,
+              requestId,
             })) {
               controller.enqueue(encodeEvent(event))
             }

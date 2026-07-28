@@ -1,0 +1,1 @@
+Defines the TypeScript types, Zod schemas, and OpenUI prompt specifications that form the shared protocol between Pi chat clients and servers, including provider catalog and model pattern matching utilities.

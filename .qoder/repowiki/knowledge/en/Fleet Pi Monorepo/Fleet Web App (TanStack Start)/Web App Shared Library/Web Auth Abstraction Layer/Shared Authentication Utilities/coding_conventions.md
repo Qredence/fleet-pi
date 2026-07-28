@@ -1,0 +1,4 @@
+- Environment-sensitive functions accept an optional `env: NodeJS.ProcessEnv = process.env` parameter so callers can inject test environments without mutating global state.
+- Public utility functions return typed result objects with discriminated unions (e.g. `{ ok: true }` vs `{ ok: false as const, reason: string }`) instead of throwing on validation failures.
+- Secrets and keys are derived via `scryptSync` with random salt rather than used directly, and IVs are generated per encryption call to ensure ciphertext uniqueness.
+- Deployment detection branches on `isVercelDeployment()` and falls back to local defaults, with explicit error messages thrown for missing required configuration in preview/prod contexts.

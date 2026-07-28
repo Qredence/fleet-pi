@@ -10,7 +10,7 @@ import {
   useState,
 } from "react"
 import { Tabs } from "@base-ui/react/tabs"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 
 import { useProximityHover } from "../hooks/use-proximity-hover"
 import { fontWeights } from "../lib/font-weight"
@@ -72,6 +72,8 @@ function TabsSubtleIndicators({
   isHoveringSelected: boolean
   isMouseInsideRef: RefObject<boolean>
 }) {
+  const reduceMotion = useReducedMotion()
+  const instant = reduceMotion ? { duration: 0 } : undefined
   return (
     <>
       {selectedRect ? (
@@ -89,10 +91,12 @@ function TabsSubtleIndicators({
             height: selectedRect.height,
             opacity: isHovering ? 0.8 : 1,
           }}
-          transition={{
-            ...spring.moderate.enter,
-            opacity: { duration: 0.08 },
-          }}
+          transition={
+            instant ?? {
+              ...spring.moderate.enter,
+              opacity: { duration: 0.08 },
+            }
+          }
         />
       ) : null}
 
@@ -136,17 +140,19 @@ function TabsSubtleIndicators({
                     top: selectedRect.top,
                     height: selectedRect.height,
                     opacity: 0,
-                    transition: {
+                    transition: instant ?? {
                       ...spring.moderate.enter,
                       opacity: { duration: 0.06 },
                     },
                   }
-                : { opacity: 0, transition: spring.fast.exit }
+                : { opacity: 0, transition: instant ?? spring.fast.exit }
             }
-            transition={{
-              ...spring.fast.enter,
-              opacity: { duration: 0.08 },
-            }}
+            transition={
+              instant ?? {
+                ...spring.fast.enter,
+                opacity: { duration: 0.08 },
+              }
+            }
           />
         ) : null}
       </AnimatePresence>
@@ -165,11 +171,13 @@ function TabsSubtleIndicators({
               width: focusRect.width + 4,
               height: focusRect.height + 4,
             }}
-            exit={{ opacity: 0, transition: spring.fast.exit }}
-            transition={{
-              ...spring.fast.enter,
-              opacity: { duration: 0.08 },
-            }}
+            exit={{ opacity: 0, transition: instant ?? spring.fast.exit }}
+            transition={
+              instant ?? {
+                ...spring.fast.enter,
+                opacity: { duration: 0.08 },
+              }
+            }
           />
         ) : null}
       </AnimatePresence>

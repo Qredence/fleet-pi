@@ -1,0 +1,1 @@
+TanStack Start web application that renders React UI routes and exposes server-side API endpoints for chat, workspace, auth, sandbox, and webhooks, all wired through a single TanStack Router instance.

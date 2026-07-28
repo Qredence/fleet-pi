@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: design_plans_and_research
+title: Design Plans & Research Documentation
+scope:
+    - design-plans/
+    - research/
+source_files: []
+depends_on: []
+related_to: []

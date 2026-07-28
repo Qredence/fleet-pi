@@ -1,0 +1,1 @@
+Tests are co-located alongside sources with `.test.ts` / `.spec.ts` suffixes and run via the project's standard test runner (Jest/Vitest inferred from `.spec.ts` naming). The bootstrap flow requires `context.workspaceRoot` to point at a writable directory; in Vercel deployments a missing `daytona_credential_required` error is thrown when the Daytona API key is absent.

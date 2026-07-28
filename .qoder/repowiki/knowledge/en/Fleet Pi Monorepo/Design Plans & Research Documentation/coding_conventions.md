@@ -1,0 +1,5 @@
+- Each design plan starts with a `Written against:` line pinning the Git commit the document was authored against, ensuring traceability to a known code state.
+- Design plans follow a fixed section order: Evidence chain, Design decision, Reuse, Changes, Scope, Validation, Stop conditions, Design documentation.
+- Evidence chains cite concrete file paths and line numbers (e.g. `tokens.ts L20`, `discrete-tab.tsx`) rather than vague descriptions of behavior.
+- Change sections enumerate numbered steps with explicit `Change:` and `Preserve:` bullets per target file, separating modifications from invariants.
+- Research documents list all consulted sources at the bottom under a `Sources consulted` heading, linking back to READMEs, docs/, and specific source files.

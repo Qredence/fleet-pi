@@ -1,0 +1,1 @@
+Zod for runtime validation of the workspace manifest schema; Node `node:fs/promises` and `node:path` for local filesystem operations; shell commands (`stat`, `mkdir`, `find`, `base64 -d`) invoked through a sandbox command executor for remote workspace access; TypeScript-only module with no bundler-specific features beyond path aliases (`@/lib/...`).

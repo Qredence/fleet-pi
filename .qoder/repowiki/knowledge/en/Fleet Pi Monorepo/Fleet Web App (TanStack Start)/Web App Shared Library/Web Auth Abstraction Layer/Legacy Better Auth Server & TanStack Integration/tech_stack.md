@@ -1,0 +1,1 @@
+Better Auth with dual backends — `@neondatabase/serverless` Pool for production (PostgreSQL) and `better-sqlite3` for local development; TanStack Start cookies via `better-auth/tanstack-start`; Vercel deployment detection via `isVercelDeployment()` / `isVercelPreviewDeployment()`.

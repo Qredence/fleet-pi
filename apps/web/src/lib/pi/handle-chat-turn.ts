@@ -25,6 +25,7 @@ import {
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
 
 export type HandleChatTurnParams = {
@@ -33,6 +34,7 @@ export type HandleChatTurnParams = {
   recorder: RunProvenanceRecorder
   runtimeContext?: AppRuntimeContext
   prompt?: string
+  requestId?: string
 }
 
 export async function* handleChatTurn(
@@ -45,6 +47,8 @@ export async function* handleChatTurn(
   const prompt = sanitizePii(rawPrompt)
 
   if (!prompt) {
+    const log = createRequestLogger(params.requestId ?? crypto.randomUUID())
+    log.warn({ reason: "missing message" }, "prompt rejected")
     throw new Error("Missing message")
   }
 
@@ -65,6 +69,7 @@ export async function* handleChatTurn(
     runtimeContext,
     send,
     signal: params.signal,
+    requestId: params.requestId ?? crypto.randomUUID(),
   }).finally(() => {
     turnState.finished = true
     notify?.()
@@ -90,6 +95,7 @@ type RunChatTurnParams = {
   runtimeContext: AppRuntimeContext
   send: (event: ChatStreamEvent) => void
   signal: AbortSignal
+  requestId: string
 }
 
 async function runChatTurn({
@@ -98,12 +104,20 @@ async function runChatTurn({
   runtimeContext,
   send,
   signal,
+  requestId,
 }: RunChatTurnParams) {
+  const log = createRequestLogger(requestId)
   let unsubscribe: (() => void) | undefined
   let releaseRuntime: (() => void) | undefined
+  let removeAbortListener: (() => void) | undefined
   let activeTurn: AssistantTurnState | undefined
   let turnStartContext: TurnStartContext | undefined
   let queuedPromptCount = 0
+
+  log.info(
+    { sessionId: body.sessionId, ...(body.mode && { mode: body.mode }) },
+    "chat turn lifecycle start"
+  )
 
   try {
     const result = await createPiRuntime(runtimeContext, body, body.model)
@@ -112,6 +126,7 @@ async function runChatTurn({
 
     const abort = () => void currentSession.abort()
     signal.addEventListener("abort", abort, { once: true })
+    removeAbortListener = () => signal.removeEventListener("abort", abort)
 
     const initialPlanState = getPlanState(result.runtime)
     if (shouldEmitInitialPlanEvent(initialPlanState)) {
@@ -156,7 +171,6 @@ async function runChatTurn({
       expandPromptTemplates: true,
     })
     await currentSession.waitForIdle()
-    signal.removeEventListener("abort", abort)
 
     activeTurn = completeAssistantTurn({
       activeTurn,
@@ -175,6 +189,10 @@ async function runChatTurn({
       sessionManager: result.runtime.session.sessionManager,
     })
   } catch (error) {
+    log.error(
+      { error: getErrorMessage(error), aborted: signal.aborted },
+      "chat turn error"
+    )
     if (!signal.aborted) {
       if (turnStartContext?.firstStartPending) {
         const errorTurn = beginAssistantTurn(turnStartContext)
@@ -188,7 +206,9 @@ async function runChatTurn({
       }
     }
   } finally {
+    removeAbortListener?.()
     unsubscribe?.()
     releaseRuntime?.()
+    log.info({ aborted: signal.aborted }, "chat turn teardown complete")
   }
 }

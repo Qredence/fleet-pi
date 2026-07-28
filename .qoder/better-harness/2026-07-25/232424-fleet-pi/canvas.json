@@ -1,0 +1,221 @@
+{
+  "version": "1.0",
+  "findingsCount": 4,
+  "generatedAt": "2026-07-25T23:30:00.000Z",
+  "summaryFacts": {
+    "dimensions": {
+      "contextInspection": {
+        "score": 0.85,
+        "rank": "B+",
+        "color": "#4ade80"
+      },
+      "diffDiscipline": {
+        "score": 0.9,
+        "rank": "A-",
+        "color": "#22c55e"
+      },
+      "conventionPreservation": {
+        "score": 0.92,
+        "rank": "A",
+        "color": "#16a34a"
+      },
+      "durableOutput": {
+        "score": 0.78,
+        "rank": "C+",
+        "color": "#facc15"
+      },
+      "validationHonesty": {
+        "score": 0.88,
+        "rank": "A-",
+        "color": "#22c55e"
+      }
+    },
+    "overallScore": 0.87,
+    "overalRank": "A-",
+    "findingsBySeverity": {
+      "HIGH": 1,
+      "MEDIUM": 2,
+      "LOW": 1
+    },
+    "topFindings": [
+      "Self-improvement loop is not fully closed (HIGH)",
+      "Resource manager does not cover full Pi package lifecycle (MEDIUM)",
+      "Reasoning controls are only partially surfaced (MEDIUM)",
+      "Memory retrieval optimization opportunity (LOW)"
+    ]
+  },
+  "evidenceMap": {
+    "sessionEvidence": {
+      "available": false,
+      "reason": "Better harness CLI tool not available; manual analysis used"
+    },
+    "projectEvidence": {
+      "available": true,
+      "sources": [
+        "agent-workspace/system/behavior.md",
+        "agent-workspace/memory/project/architecture.md",
+        "agent-workspace/memory/project/preferences.md",
+        "agent-workspace/memory/project/known-issues.md",
+        "agent-workspace/evals/agentic-coding.md",
+        "AGENTS.md"
+      ],
+      "coverage": "comprehensive"
+    },
+    "assetBaseline": {
+      "available": true,
+      "workspaceRoot": "agent-workworkspace/",
+      "sections": [
+        "instructions",
+        "system",
+        "memory",
+        "plans",
+        "skills",
+        "evals",
+        "artifacts",
+        "scratch",
+        "pi",
+        "indexes"
+      ],
+      "manifestPath": "agent-workspace/manifest.json"
+    }
+  },
+  "canvasLayout": {
+    "header": {
+      "title": "Fleet Pi Harness Analysis",
+      "subtitle": "Agent Practices Review • 2026-07-25",
+      "metricsBar": {
+        "overallScore": 87,
+        "highPriorityFindings": 1,
+        "recommendationsCount": 3
+      }
+    },
+    "panels": [
+      {
+        "id": "dimensions-overview",
+        "type": "radar-chart",
+        "dataBinding": "summaryFacts.dimensions",
+        "title": "Agent Practice Dimensions",
+        "layout": {
+          "row": 1,
+          "col": 1,
+          "width": 6,
+          "height": 4
+        }
+      },
+      {
+        "id": "findings-list",
+        "type": "accordions",
+        "dataBinding": "findings",
+        "title": "Key Findings (4 total)",
+        "filters": {
+          "severity": ["HIGH", "MEDIUM", "LOW"],
+          "priority": [1, 2, 3, 4]
+        },
+        "layout": {
+          "row": 1,
+          "col": 7,
+          "width": 6,
+          "height": 6
+        }
+      },
+      {
+        "id": "prioritized-actions",
+        "type": "kanban-columns",
+        "dataBinding": "recommendations",
+        "title": "Recommended Actions",
+        "columns": ["IMMEDIATE", "SHORT_TERM", "MEDIUM_TERM"],
+        "layout": {
+          "row": 5,
+          "col": 1,
+          "width": 12,
+          "height": 3
+        }
+      },
+      {
+        "id": "timeline-view",
+        "type": "gantt-timeline",
+        "dataBinding": "recommendations",
+        "title": "Implementation Timeline",
+        "xAxis": "timeline",
+        "labels": ["Q3 2026", "Q4 2026"],
+        "layout": {
+          "row": 8,
+          "col": 1,
+          "width": 12,
+          "height": 2
+        }
+      },
+      {
+        "id": "evidence-sources",
+        "type": "tree-view",
+        "dataBinding": "evidenceMap.projectEvidence.sources",
+        "title": "Evidence Sources",
+        "collapsible": true,
+        "layout": {
+          "row": 10,
+          "col": 1,
+          "width": 6,
+          "height": 2
+        }
+      },
+      {
+        "id": "metadata-notes",
+        "type": "text-block",
+        "dataBinding": "metadata.notes",
+        "title": "Analysis Notes",
+        "readOnly": true,
+        "layout": {
+          "row": 10,
+          "col": 7,
+          "width": 6,
+          "height": 2
+        }
+      }
+    ],
+    "styleGuide": {
+      "colorPalette": {
+        "primary": "#3b82f6",
+        "success": "#22c55e",
+        "warning": "#f59e0b",
+        "danger": "#ef4444",
+        "info": "#0ea5e9",
+        "background": "#f8fafc",
+        "surface": "#ffffff"
+      },
+      "typography": {
+        "headingFont": "Inter, system-ui, sans-serif",
+        "bodyFont": "Inter, system-ui, sans-serif",
+        "monospaceFont": "JetBrains Mono, SFMono-Regular, monospace"
+      }
+    }
+  },
+  "interactiveElements": {
+    "findingsAccordion": {
+      "clickAction": "showFullFindingDetails",
+      "expandable": true,
+      "defaultExpanded": 1,
+      "actions": ["copyToClipboard", "exportMarkdown"]
+    },
+    "dimensionsRadar": {
+      "hoverAction": "showDetailTooltip",
+      "clickAction": null,
+      "annotations": ["best-performing", "needs-improvement"]
+    },
+    "kanbanColumns": {
+      "draggable": false,
+      "filterable": true,
+      "sortableBy": ["effort", "timeline"]
+    }
+  },
+  "exportOptions": {
+    "pdf": true,
+    "png": true,
+    "html": true,
+    "markdown": true
+  },
+  "metadata": {
+    "createdBy": "better-harness-manual",
+    "analysisMode": "manual-without-cli",
+    "compatibleWith": "harness-renderer-v1.0+"
+  }
+}

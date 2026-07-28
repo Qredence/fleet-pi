@@ -1,0 +1,1 @@
+better-sqlite3 for synchronous SQLite access; Node `node:crypto` (SHA-256) for deterministic IDs and content hashing; Node `node:fs/promises` and `node:path` for filesystem walking; schema migrations stored inline as SQL strings in a `WORKSPACE_PROJECTION_MIGRATIONS` array.

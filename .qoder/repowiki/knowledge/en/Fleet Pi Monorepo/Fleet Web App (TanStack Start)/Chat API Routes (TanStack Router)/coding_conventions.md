@@ -1,0 +1,6 @@
+- Each endpoint is a single file exporting a `Route` created with `createFileRoute(path)` and a `server.handlers` object mapping HTTP verbs to async handler functions.
+- Handler functions are imported from `@/lib/pi/chat-runtime/handlers/*` (or `@/lib/pi/server`) rather than implemented inline, keeping route files as thin adapters.
+- Authenticated endpoints wrap their logic in `withAuthenticatedChatRequest(request, async ({ userId }) => ...)` to obtain the user id, while read-only endpoints use `getChatAuthSession(request)` when authentication is optional.
+- Request bodies are parsed and validated with Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` before being passed to business logic.
+- Errors are caught and returned as `{ message: getErrorMessage(error) }` responses with status codes derived from `getResponseStatus(error)`.
+- Runtime context is obtained via `resolveAppRuntimeContext()` and passed alongside `userId` to downstream services.

@@ -1,0 +1,1 @@
+Node.js (ES modules via `.mjs`), Bash with ripgrep + python3 for JSON generation, @better-auth/cli for database migrations, @neondatabase/serverless for Postgres connectivity, @aws-sdk/client-s3 for object storage round-trip checks, and Mermaid for architecture diagram generation.

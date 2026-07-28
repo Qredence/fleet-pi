@@ -20,8 +20,11 @@ export {
   resolveDefaultModelSelection,
 }
 
+// Reuse TextEncoder instance to eliminate one allocation per streamed event
+const encoder = new TextEncoder()
+
 export function encodeEvent(event: unknown) {
-  return new TextEncoder().encode(`${JSON.stringify(event)}\n`)
+  return encoder.encode(`${JSON.stringify(event)}\n`)
 }
 
 export function getErrorMessage(error: unknown) {

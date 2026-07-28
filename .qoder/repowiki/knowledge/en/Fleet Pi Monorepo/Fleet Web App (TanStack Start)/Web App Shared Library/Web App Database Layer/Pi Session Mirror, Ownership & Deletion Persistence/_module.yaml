@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: apps_web/shared_lib/db/pi_session
+title: Pi Session Mirror, Ownership & Deletion Persistence
+scope:
+    - apps/web/src/lib/db/pi-session-*.ts
+source_files: []
+depends_on: []
+related_to:
+    - path: apps_web/shared_lib/db/chat_postgres
+    - path: apps_web/shared_lib/pi/chat_runtime_handlers

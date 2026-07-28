@@ -1,0 +1,1 @@
+Better Auth (with its React adapter), @neondatabase/auth (Neon Managed Auth), JWT+JWKS verification, AES-GCM string encryption, and Vite/Node environment variable resolution for deployment-aware configuration.

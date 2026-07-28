@@ -1,0 +1,5 @@
+- Every function that touches Postgres is wrapped in a transaction via `withChatPostgresTransaction(client => ..., userId)`, passing the authenticated `userId` as the second argument for tenant isolation.
+- DB availability is checked at runtime with a local `isChatDatabaseConfigured()` that inspects `process.env.FLEET_PI_CHAT_DATABASE_URL`, returning early or throwing a typed error instead of failing mid-query.
+- Write operations use parameterized SQL with `$1`, `$2` placeholders and `JSON.stringify` for JSONB columns rather than string interpolation.
+- Sensitive values are never stored or returned in plaintext: API keys are encrypted via `encryptString` before insert and decrypted via `decryptString` only when loading secrets.
+- Pure decision logic (session ownership, remap parsing) is exposed as functions operating on plain types (`SessionOwnershipRow`, `RemapRow`) without importing any DB client.

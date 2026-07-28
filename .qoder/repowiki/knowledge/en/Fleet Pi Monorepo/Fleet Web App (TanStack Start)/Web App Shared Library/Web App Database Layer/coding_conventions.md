@@ -1,0 +1,3 @@
+- Each domain groups related files by prefix (chat-postgres-_, pi-session-_, workspace-*) with matching test files in **tests**/
+- Database changes are expressed as idempotent SQL migration files rather than code-driven schema updates
+- Row Level Security is implemented through generated PostgreSQL functions that enforce ownership checks at the database level

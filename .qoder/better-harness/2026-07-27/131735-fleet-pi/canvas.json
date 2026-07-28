@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "evidenceMode": "session-rich",
+    "evidenceBoundary": {
+      "manifest": {
+        "schemaVersion": 2,
+        "sourceFingerprint": "08a388f032f4fa7b",
+        "adapterVersion": "qoder-task-loop-source-v2",
+        "platform": "qoder",
+        "selection": {
+          "strategy": "all-eligible",
+          "eligibleCount": 10,
+          "analyzedCount": 10,
+          "confidence": "High"
+        }
+      },
+      "episodeCoverage": {
+        "episodeCount": 1,
+        "editedEpisodeCount": 0,
+        "closedEpisodeCount": 0,
+        "recoveredEpisodeCount": 0
+      },
+      "deliveryEvidenceLevels": [],
+      "sourceGaps": []
+    },
+    "semanticFacets": {
+      "schemaVersion": 1,
+      "status": "supplementary",
+      "entries": [
+        {
+          "id": "session-insight:source-coverage",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["source-coverage", "High"],
+          "summary": "Analyzed 10 of 10 sessions; 3/5 enabled source roots exist. Use this as the current workspace evidence boundary for final insight cards.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:validation-behavior",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["validation-behavior", "Low"],
+          "summary": "No validation command category was observed in the analyzed session sample. Inspect more sessions or add explicit validation guidance before claiming validation-after-edit behavior.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:post-edit-validation",
+          "kind": "rework-correction",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["post-edit-validation", "Low"],
+          "summary": "No edit event was observed in the analyzed sample. Inspect more sessions before making claims about edit or validation habits.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:execution-friction",
+          "kind": "friction-taxonomy",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["execution-friction", "Low"],
+          "summary": "No strong execution friction signal in the analyzed sample. Keep friction claims narrow unless additional failed commands, rejected actions, or warnings are inspected.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:observed-hooks",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["observed-hooks", "High"],
+          "summary": "Most observed hook: SessionStart (1). Separate configured hooks from observed hook enforcement, and state when the script target is unavailable.",
+          "evidenceRefs": [
+            {
+              "kind": "logs-session",
+              "id": "session-insight-5-1",
+              "type": "hook.finished",
+              "line": 8
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:session-usage-efficiency",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["session-usage-efficiency", "High"],
+          "summary": "The analysis covered 10 sessions: none met the active-long threshold. This activity describes effort only; token or credit evidence is incomplete and does not establish model preference, quality, or savings.",
+          "evidenceRefs": [
+            {
+              "kind": "project-jsonl",
+              "id": "session-insight-6-1",
+              "type": "last-prompt",
+              "line": 4
+            },
+            {
+              "kind": "logs-session",
+              "id": "session-insight-6-2",
+              "type": "model.response.completed",
+              "line": 29
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        }
+      ]
+    },
+    "usageActivity": {
+      "schemaVersion": 2,
+      "dateBasis": "UTC",
+      "measurementBasis": "session-starts-active-estimate-model-active-session-days-skill-invocations-and-loads",
+      "truncated": false,
+      "dates": ["2026-07-25", "2026-07-26", "2026-07-27"],
+      "sessions": {
+        "total": 10,
+        "starts": [5, 0, 5],
+        "activeMinutes": [56.3, 0, 18.4]
+      },
+      "models": [
+        {
+          "name": "auto",
+          "total": 1,
+          "daily": [1, 0, 0]
+        }
+      ],
+      "skills": [
+        {
+          "name": "better-harness",
+          "total": 1,
+          "daily": [0, 0, 1]
+        },
+        {
+          "name": "canvas",
+          "total": 1,
+          "daily": [1, 0, 0]
+        },
+        {
+          "name": "commit",
+          "total": 1,
+          "daily": [1, 0, 0]
+        }
+      ]
+    },
+    "usageEfficiency": {
+      "schemaVersion": 2,
+      "selection": {
+        "strategy": "all-eligible",
+        "eligibleSessionCount": 10,
+        "analyzedSessionCount": 10,
+        "complete": true
+      },
+      "roles": {
+        "userThreadCandidateCount": 6,
+        "childAgentCandidateCount": 4
+      },
+      "longSessions": {
+        "activeCount": 0,
+        "wallOnlyCount": 0,
+        "longestActiveMinutes": 0,
+        "activeRatio": 0,
+        "estimate": {
+          "method": "capped-event-gap",
+          "activeThresholdMinutes": 45,
+          "gapCapMinutes": 5,
+          "idleGapMinutes": 30
+        },
+        "samples": []
+      },
+      "accounting": {
+        "mode": "effort-proxy",
+        "responseCount": 1,
+        "modelAttributedResponseCount": 1,
+        "unattributedResponseCount": 0,
+        "usageFieldObservedCount": 1,
+        "nonZeroUsageCount": 0,
+        "exactCreditsAvailable": false,
+        "pricingVersion": null
+      },
+      "modelUsage": [
+        {
+          "model": "auto",
+          "responseCount": 1,
+          "usageFieldObservedCount": 1,
+          "nonZeroUsageCount": 0
+        }
+      ],
+      "outcomeReview": {
+        "status": "required",
+        "reviewedCandidateCount": 0,
+        "reviewedActiveLongCount": 0,
+        "comparableModelOutcomeEvidence": false,
+        "recommendation": "controlled-a-b-required"
+      }
+    },
+    "learningCapture": {
+      "schemaVersion": 1,
+      "state": "N/A",
+      "summary": "N/A — requires two comparable observation windows and an intervention comparison.",
+      "interventions": []
+    }
+  },
+  "dimensions": [
+    {
+      "id": "task-understanding"
+    },
+    {
+      "id": "controlled-execution"
+    },
+    {
+      "id": "change-validation"
+    },
+    {
+      "id": "reliable-delivery"
+    },
+    {
+      "id": "learning-capture"
+    }
+  ],
+  "findings": [
+    {
+      "id": "chat-orchestrator-no-test-no-log"
+    },
+    {
+      "id": "ci-test-excludes-packages"
+    },
+    {
+      "id": "hot-roots-no-local-instructions"
+    },
+    {
+      "id": "memory-title-collisions"
+    },
+    {
+      "id": "tech-debt-gate-advisory-only"
+    }
+  ]
+}

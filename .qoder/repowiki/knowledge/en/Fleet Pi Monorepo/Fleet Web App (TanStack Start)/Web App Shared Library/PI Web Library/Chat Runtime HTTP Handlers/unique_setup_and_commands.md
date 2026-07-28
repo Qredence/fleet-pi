@@ -1,0 +1,1 @@
+CORS must be configured at runtime by setting the `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS` comma-separated env var; the health endpoint `/health` returns `{ ok: true, service: 'fleet-pi-chat-runtime' }` for external probes.

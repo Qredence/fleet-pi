@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: apps_web/shared_lib/auth/shared_utils
+title: Shared Authentication Utilities
+scope:
+    - apps/web/src/lib/auth/crypto.ts
+    - apps/web/src/lib/auth/csrf.ts
+    - apps/web/src/lib/auth/jwt-verify.ts
+    - apps/web/src/lib/auth/auth-host-policy.ts
+    - apps/web/src/lib/auth/auth-mode.ts
+source_files: []
+depends_on: []
+related_to:
+    - path: apps_web/shared_lib/auth/client_server

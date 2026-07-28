@@ -1,0 +1,1 @@
+Markdown-driven configuration consumed by Fleet Pi; SQLite-backed index projection (`indexes/workspace-projection.sqlite`); no compiled code — the workspace is pure declarative text consumed at runtime.

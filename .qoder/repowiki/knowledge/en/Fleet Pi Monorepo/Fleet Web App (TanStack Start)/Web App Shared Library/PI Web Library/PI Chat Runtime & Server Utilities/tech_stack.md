@@ -1,0 +1,1 @@
+Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` for request/response validation; `@earendil-works/pi-coding-agent` for `createAgentSessionFromServices` and `AgentSessionRuntime`; Vite env variable `VITE_FLEET_PI_CHAT_RUNTIME_URL` to proxy chat runtime calls; native `fetch` with `ReadableStream` reader for SSE-style event streaming.

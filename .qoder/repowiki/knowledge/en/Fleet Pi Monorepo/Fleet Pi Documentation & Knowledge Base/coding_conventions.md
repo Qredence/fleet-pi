@@ -1,0 +1,5 @@
+- ADR files follow a fixed template with sections Status, Context, Decision, Consequences (Positive/Constraints), and Non-Goals, each prefixed by a sequential four-digit number (e.g., 0001-, 0002-).
+- Wiki pages are organized into topic subdirectories (overview, how-to-contribute, apps, packages, features, api, background, reference) with an `index.md` per section acting as a hub.
+- The wiki uses a centralized `.wiki-meta.json` manifest that declares both `topLevelSections` and an ordered `pageOrder` array of relative paths, keeping navigation deterministic.
+- Runbook entries document commands with full environment variable context (e.g., `FLEET_PI_AUTH_MIGRATION_DATABASE_URL`, `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`) and include break-glass procedures for production incidents.
+- Top-level documentation files are split between human-authored guides (quickstart, agent-workspace, adaptive-workspace) and generated/reference-oriented files (api.md, architecture.md, project-structure.md) clearly labeled in README.md.

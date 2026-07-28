@@ -1,0 +1,1 @@
+Build and operational tooling for the TanStack Start web app: Vite/Tailwind/React configuration, Playwright E2E setup, shadcn/ui component registry, and CLI scripts for OpenAPI generation, Vercel output packaging, database migrations, deployment readiness checks, and data maintenance.

@@ -1,0 +1,6 @@
+- Files inside this package use only relative imports to other files within `packages/hax-design`; external consumers reach in through the `@workspace/hax-design/*` package exports.
+- New shadcn primitives are added via the shadcn CLI with `-c packages/hax-design` and imported with relative paths inside the package rather than absolute aliases.
+- Fleet Pi visual styling goes through semantic tokens in `fleet-pi/styles/tokens.ts` and CVA variant definitions instead of inline class strings or raw CSS-in-JS.
+- Right-panel surfaces are registered in `layout/right-panel-registry.tsx` and launched through `pi/right-panel-launcher.tsx` rather than being imported directly.
+- Tool renderers are registered in `agent-elements/tools/tool-registry.ts` and dispatched via `tool-renderer.tsx`, keeping new tool types decoupled from the chat surface.
+- Dynamic layout dimensions and measured values use inline `style` props for CSS custom properties or pixel measurements; static styling is delegated to Tailwind classes and design tokens.
