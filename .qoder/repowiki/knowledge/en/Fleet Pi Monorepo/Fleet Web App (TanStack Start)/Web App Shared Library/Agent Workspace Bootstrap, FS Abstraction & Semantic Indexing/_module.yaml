@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/shared_lib/workspace
+title: Agent Workspace Bootstrap, FS Abstraction & Semantic Indexing
+scope:
+    - apps/web/src/lib/workspace/
+source_files: []
+depends_on: []
+related_to: []

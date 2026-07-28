@@ -1,0 +1,1 @@
+No build or setup required to read docs locally. The wiki index is regenerated via the repository's build process which produces `wiki/.wiki-meta.json` containing `generatedAt`, `commitHash`, `branch`, `pageCount`, `topLevelSections`, and `pageOrder`. Runbook operators use `pnpm verify-deployment-readiness` and `pnpm quarantine-orphan-sessions` against Vercel+Neon deployments.

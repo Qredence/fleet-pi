@@ -1,0 +1,4 @@
+- All packages share root-level ESLint, Prettier, and TypeScript configs rather than maintaining per-package copies.
+- Cross-package dependencies are declared through pnpm workspace protocols (@workspace/*) and resolved via the root pnpm overrides.
+- Task scripts follow the Turborepo convention of delegating to `turbo <task>` so each package only needs to define its own implementation.
+- Pre-commit lint/format runs are gated through husky + lint-staged with glob patterns scoped to apps/web and packages/hax-design.

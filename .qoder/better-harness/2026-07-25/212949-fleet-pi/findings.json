@@ -1,0 +1,87 @@
+{
+  "summary": {
+    "projectName": "fleet-pi",
+    "locale": "en",
+    "modelId": "agent-work-loop-v4",
+    "reportContractVersion": 25,
+    "overview": "Fleet Pi has strong agent instructions with CI self-validation, comprehensive deployment gates, and a well-configured local development environment. All previously identified findings have been resolved: E2E smoke tests now run in CI, auth/RLS code paths are protected by CODEOWNERS reviewers, daytona skill dead references removed, and pi-protocol included in pre-commit ESLint.",
+    "dimensions": [
+      {
+        "id": "task-understanding",
+        "label": "Task Understanding",
+        "score": 74,
+        "summary": "AGENTS.md is comprehensive and self-validates in CI; DESIGN.md, ADRs, and architecture docs provide authoritative context. No session evidence confirms runtime application."
+      },
+      {
+        "id": "controlled-execution",
+        "label": "Controlled Execution",
+        "score": 80,
+        "summary": "Devcontainer, pinned pnpm, turbo orchestration, and documented commands make startup reproducible. Permission boundaries are stronger with CODEOWNERS entries for security-critical paths."
+      },
+      {
+        "id": "change-validation",
+        "label": "Change Validation",
+        "score": 76,
+        "summary": "Local feedback is fast (watch, pre-commit, turbo cache), CI gates lint/typecheck/test in parallel, and E2E smoke tests now run on every PR. Pre-commit ESLint covers all workspace packages including pi-protocol."
+      },
+      {
+        "id": "reliable-delivery",
+        "label": "Reliable Delivery",
+        "score": 70,
+        "summary": "Release gate verifies trust-zone contracts, migration probes, and Neon preview branches per PR. CODEOWNERS requires explicit review for auth/RLS changes. No documented rollback procedure beyond standard git revert."
+      },
+      {
+        "id": "learning-capture",
+        "label": "Learning Capture",
+        "score": 45,
+        "summary": "Fourteen project memories and 31 skills configured with clean integrity. Session evidence shows some activity but no complete task episodes observed yet. No comparable observation window exists."
+      }
+    ],
+    "aiAgentPractice": {
+      "inspectedSurfaces": ["Rules", "Skills", "Workflows"],
+      "coverageRows": [
+        {
+          "surface": "Rules",
+          "scopes": ["Project"],
+          "count": 2,
+          "paths": ["AGENTS.md", "DESIGN.md"]
+        },
+        {
+          "surface": "Skills",
+          "scopes": ["Project"],
+          "count": 31,
+          "paths": [
+            ".agents/skills/agent-elements/SKILL.md",
+            ".agents/skills/baseline-ui/SKILL.md",
+            ".agents/skills/claimable-postgres/SKILL.md",
+            ".agents/skills/code-review/SKILL.md",
+            ".agents/skills/codebase-design/SKILL.md"
+          ]
+        },
+        {
+          "surface": "Workflows",
+          "scopes": ["Project"],
+          "count": 5,
+          "paths": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/e2e.yml",
+            ".github/workflows/neon_workflow.yml",
+            ".github/workflows/qa.yml",
+            ".github/workflows/release.yml"
+          ]
+        },
+        {
+          "surface": "Memories",
+          "scopes": ["Project"],
+          "count": 14
+        },
+        {
+          "surface": "Custom Agents",
+          "scopes": ["Project"],
+          "count": 0
+        }
+      ]
+    }
+  },
+  "findings": []
+}

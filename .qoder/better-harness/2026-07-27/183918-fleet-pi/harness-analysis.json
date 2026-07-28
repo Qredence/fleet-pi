@@ -1,0 +1,336 @@
+{
+  "kind": "better-harness.harness-analysis-evidence",
+  "schemaVersion": 1,
+  "evidence": "HARNESS ANALYSIS EVIDENCE\n\nThis is a read-only evidence brief, not a report conclusion.\nProjected report conclusions are intentionally excluded; use the observations and boundaries below to make your own evidence-backed decisions.\nWorkspace: /Volumes/SSD-T7/qredence-environnement/fleet-pi\nPlatform: qoder\nLanguage: en\nBudget: at most 6000 estimated tokens; each evidence domain uses bounded representative rows and reports omissions.\n\nOBSERVATION SCOPE\nSource roots: 4 of 6 enabled roots exist; 7 roots were discovered.\nSession selection: analyzed 34 of 34 eligible sessions with all-eligible selection; confidence High; representative yes.\nScope: workspace; global capability metadata included yes; until 2026-07-27T16:40:32.651Z.\nPrivacy boundary: reader-safe; raw prompts included no; raw commands included no; absolute home paths included no.\nSource warnings: disabled-source-root, invalid-prior-learning-capture-report, missing-optional-root.\n\nREPOSITORY FACTS\nProject label: fleet-pi.\n- Task understanding: 2 observed and 1 connected signal(s). Representative evidence: 3 agent guidance file(s), root DESIGN.md visual design contract, 14 architecture/readme and 5 spec file(s).\n- Controlled execution: 1 observed and 1 connected signal(s). Representative evidence: 6 workspace manifest(s), workspace run/build/test scripts.\n- Change validation: 1 observed and 1 connected signal(s). Representative evidence: 131 tracked test file(s), workspace test/check script.\n- Reliable delivery: 1 observed and 1 connected signal(s). Representative evidence: package/release verification script, 6 CI workflow file(s).\n- Agent practice coverage: Rules has 2 asset(s) in Project; paths: AGENTS.md, DESIGN.md.\n- Agent practice coverage: Skills has 42 asset(s) in Project, Global; paths: .agents/skills/agent-elements/SKILL.md, .agents/skills/baseline-ui/SKILL.md, .agents/skills/claimable-postgres/SKILL.md, .agents/skills/code-review/SKILL.md, .agents/skills/codebase-design/SKILL.md (+7 omitted).\n- Agent practice coverage: Workflows has 5 asset(s) in Project; paths: .github/workflows/ci.yml, .github/workflows/e2e.yml, .github/workflows/neon_workflow.yml, .github/workflows/qa.yml, .github/workflows/release.yml.\n- Agent practice coverage: Plugins has 8 asset(s) in Plugin; paths: ~/.qoder/plugins/cache/qoder-marketplace/neondatabase-agent-skills/1.0.0/.qoder-plugin/plugin.json, ~/.qoder/plugins/cache/qoder-bundler/better-harness/.qoder-plugin/plugin.json, ~/.qoder/plugins/cache/qoder-marketplace/context7/1.0.0/.qoder-plugin/plugin.json, ~/.qoder/plugins/cache/qoder-marketplace/design-review/0.1.0/.qoder-plugin/plugin.json, ~/.qoder/plugins/cache/qoder-marketplace/qmind/0.1.0/.qoder-plugin/plugin.json (+3 omitted).\n- Agent practice coverage: Memories has 42 asset(s) in Project; paths: ~/.qoder/memories/019f9a1a/projects/Volumes-SSD-T7-qredence-environnement-fleet-pi/common_pitfalls_experience/ESLint_naming_convention_violation_for_loop_variable_`_event`.md, ~/.qoder/memories/019f9a1a/projects/Volumes-SSD-T7-qredence-environnement-fleet-pi/development_practice_specification/Abort_listener_cleanup_in_finally_block.md, ~/.qoder/memories/019f9a1a/projects/Volumes-SSD-T7-qredence-environnement-fleet-pi/development_test_specification/Error-path_and_lifecycle_log_unit_testing_convention.md, ~/.qoder/memories/019f9a1a/projects/Volumes-SSD-T7-qredence-environnement-fleet-pi/project_build_configuration/CI_workflow_structure_for_E2E_testing.md, ~/.qoder/memories/019f9b20/projects/Volumes-SSD-T7-qredence-environnement-fleet-pi/project_build_configuration/Turbo-powered_Build_Configuration.md (+7 omitted).\n- Agent practice coverage: Custom Agents has 0 asset(s) in Project.\n- Reusable Skill evidence: candidates-present; 10 candidate asset(s), 0 observed project Skill(s), and 0 unresolved name match(es).\n  - .agents/skills/agent-elements/SKILL.md: trigger yes, procedure no, output no, validation no, routed yes via AGENTS.md.\n  - .agents/skills/openui/SKILL.md: trigger no, procedure yes, output no, validation yes, routed no.\n  - .pi/skills/agent-ui-workflows/SKILL.md: trigger no, procedure no, output no, validation yes, routed yes via AGENTS.md.\n  - .pi/skills/chat-runtime-debugging/SKILL.md: trigger no, procedure yes, output no, validation yes, routed yes via AGENTS.md.\n  - .pi/skills/fleet-pi-orientation/SKILL.md: trigger yes, procedure yes, output no, validation no, routed yes via AGENTS.md.\n  - 5 additional Skill candidate(s) omitted.\n- Regression-test evidence: candidates-present; inspected 200 commit(s) and retained 20 source/test co-change candidate(s).\n  - Sources: apps/web/src/lib/pi/chat-client.ts, apps/web/src/lib/pi/chat-fetch.ts, apps/web/src/lib/pi/chat-runtime/router.ts (+4 omitted). Tests: apps/web/src/lib/pi/runtime/__tests__/resolve-daytona-runtime-api-key.test.ts. Path-correlated no.\n  - Sources: apps/web/src/lib/daytona/user-sandbox.ts, apps/web/src/lib/pi/runtime/model-catalog.ts, apps/web/src/lib/pi/runtime/provider-catalog.ts (+4 omitted). Tests: apps/web/src/lib/daytona/user-sandbox.test.ts, apps/web/src/lib/pi/runtime/__tests__/resolve-daytona-runtime-api-key.test.ts, apps/web/src/lib/pi/runtime/__tests__/session-factory.test.ts. Path-correlated yes.\n  - Sources: apps/web/src/lib/auth/auth-mode.ts, apps/web/src/lib/auth/client.ts, apps/web/src/lib/auth/neon-managed-auth.ts (+5 omitted). Tests: apps/web/src/lib/auth/__tests__/get-chat-auth-bearer-token.test.ts, apps/web/src/lib/auth/__tests__/neon-managed-auth-cookies.test.ts, apps/web/src/lib/auth/__tests__/resolve-client-neon-auth-url.test.ts (+2 omitted). Path-correlated yes.\n  - 17 additional co-change candidate(s) omitted.\n- Canonical planning evidence: candidates-present; 5 candidate(s); paths: docs/adr/0001-agent-workspace-as-canonical-adaptive-state.md, docs/adr/0002-vercel-neon-deployment-trust-zones.md, docs/adr/0003-owner-only-session-mirror.md, docs/adr/0004-user-controlled-transcript-deletion.md, docs/adr/0005-authority-of-domain-and-architecture-records.md.\n- Sensitive-config scan coverage: complete; 40 of 40 candidate file(s) scanned, 0 skipped, 0 read error(s), truncated no.\n- Learning observation coverage: 8 episode record(s), 0 recurring candidate(s), 0 scoped Skill observation(s), and 3 unscoped Skill observation(s).\n  - Aggregated friction signals: failed-event: 3, source-warning:missing-optional-root: 2, source-warning:disabled-source-root: 1.\n  - Coverage boundary: Asset Coverage=checked-clean, Capture=not-evaluable-missing-normalized-events, Pattern Detection=insufficient-recurrence, Routing=not-evaluable-missing-invocation-events, Freshness=not-evaluable-missing-freshness-evidence, Application=not-evaluable-missing-application-events, Evolution=not-evaluable-missing-update-evidence, Effectiveness=pending-no-later-window, Memory Governance=not-evaluable-missing-memory-policy.\n- Workflow-demand observation: 0 current handoff(s) and 1 repeated candidate(s); candidate contents are not projected into this brief.\n  - Coverage boundary: Demand Signals=candidate-found, Current Handoff=checked-clean, Recurrence=candidate-found, Skill Inventory=checked-clean, Skill Activation=not-evaluable-missing-invocation-events.\n\nSESSION AND TASK FACTS\nSession packet: 34 selected session(s), 8 retained candidate episode(s), and 32 discarded episode(s).\nUsage activity: 34 session(s) in the complete activity census; top bounded Skill observations: better-harness: 4, canvas: 2, commit: 2.\nUsage census: analyzed 34 of 34 eligible sessions; complete yes; 1 active-long and 3 wall-only session(s); accounting effort-proxy.\n- Episode 1 (episode:54e986b572647225): idle-gap; 1 session(s); 0 change event(s) in 0 set(s); 0 validation event(s) in 0 set(s); closure not-applicable; repair not-applicable; 3292.5 seconds; 0 tool call(s); 224 retained event(s).\n- Episode 2 (episode:29dfa6ee7306ee60): idle-gap; 1 session(s); 0 change event(s) in 0 set(s); 0 validation event(s) in 0 set(s); closure not-applicable; repair not-applicable; 2848.4 seconds; 0 tool call(s); 217 retained event(s).\n- Episode 3 (episode:04f0539587e34911): session-start; 1 session(s); 0 change event(s) in 0 set(s); 0 validation event(s) in 0 set(s); closure not-applicable; repair not-applicable; 103.2 seconds; 0 tool call(s); 74 retained event(s).\n- Episode 4 (episode:22ef11e9f4e2ff7b): session-start; 1 session(s); 0 change event(s) in 0 set(s); 0 validation event(s) in 0 set(s); closure not-applicable; repair not-applicable; 98.2 seconds; 0 tool call(s); 37 retained event(s).\n- Episode 5 (episode:b0d3c7bf0c3fd68f): session-start; 1 session(s); 0 change event(s) in 0 set(s); 0 validation event(s) in 0 set(s); closure not-applicable; repair not-applicable; 1808.1 seconds; 0 tool call(s); 201 retained event(s).\n- 3 additional task episode(s) omitted; selection retained the first, last, and highest observed activity episodes.\n\nANALYZER OBSERVATIONS\n- Analyzed 34 of 34 sessions; 4/6 enabled source roots exist. Use this as the current workspace evidence boundary for final insight cards.\n- Validation was mentioned by the user, but no matching command execution was observed: make test (5). Treat this as a validation execution gap until a matching tool command is found in bounded evidence. (3 bounded evidence reference(s))\n- No edit event was observed in the analyzed sample. Inspect more sessions before making claims about edit or validation habits.\n- Observed friction category: failed-event (3). Open bounded sessions behind this category before turning it into a user-facing recommendation. (3 bounded evidence reference(s))\n- Most observed hook: SessionStart (3). Separate configured hooks from observed hook enforcement, and state when the script target is unavailable. (1 bounded evidence reference(s))\n- Observed 1 active long session(s); longest active estimate: 46m. Review task family, outcome, and friction before deciding whether this duration reflects a problem or any decomposition, tool, delegation, or model change is needed. (1 bounded evidence reference(s))\n- The analysis covered 34 sessions: 1 met the active-long threshold, with the longest estimated at 46 minutes; 3 additional long spans were mainly idle or resumed work. This activity describes effort only; token or credit evidence is incomplete and does not establish model preference, quality, or savings. (1 bounded evidence reference(s))\n\nDELIVERY EVIDENCE\nNo bounded evidence observed.\n\nINTERVENTION HISTORY\nNo bounded evidence observed.\n\nREVIEW BOUNDARIES\n- Source candidate: requires-review.\n- Repository review: requires-review; 2 framework(s), 9 repository check(s), and 5 Software Fluency capability review(s) remain in scope.\n- Score review: requires-review; 5 dimension(s) await AI judgment.\n- Session observation review: candidate; 7 observation card(s) from 34 analyzed session(s).",
+  "summaryFacts": {
+    "evidenceMode": "session-rich",
+    "evidenceBoundary": {
+      "manifest": {
+        "schemaVersion": 2,
+        "sourceFingerprint": "10369ea19cf15fdf",
+        "adapterVersion": "qoder-task-loop-source-v2",
+        "platform": "qoder",
+        "selection": {
+          "strategy": "all-eligible",
+          "eligibleCount": 34,
+          "analyzedCount": 34,
+          "confidence": "High"
+        }
+      },
+      "episodeCoverage": {
+        "episodeCount": 8,
+        "editedEpisodeCount": 0,
+        "closedEpisodeCount": 0,
+        "recoveredEpisodeCount": 0
+      },
+      "deliveryEvidenceLevels": [],
+      "sourceGaps": []
+    },
+    "semanticFacets": {
+      "schemaVersion": 1,
+      "status": "supplementary",
+      "entries": [
+        {
+          "id": "session-insight:source-coverage",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["source-coverage", "High"],
+          "summary": "Analyzed 34 of 34 sessions; 4/6 enabled source roots exist. Use this as the current workspace evidence boundary for final insight cards.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:validation-behavior",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["validation-behavior", "Low"],
+          "summary": "Validation was mentioned by the user, but no matching command execution was observed: make test (5). Treat this as a validation execution gap until a matching tool command is found in bounded evidence.",
+          "evidenceRefs": [
+            {
+              "kind": "global-project-jsonl",
+              "id": "session-insight-2-1",
+              "type": "user",
+              "line": 4
+            },
+            {
+              "kind": "global-project-jsonl",
+              "id": "session-insight-2-2",
+              "type": "user",
+              "line": 4
+            },
+            {
+              "kind": "global-project-jsonl",
+              "id": "session-insight-2-3",
+              "type": "user",
+              "line": 4
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:post-edit-validation",
+          "kind": "rework-correction",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["post-edit-validation", "Low"],
+          "summary": "No edit event was observed in the analyzed sample. Inspect more sessions before making claims about edit or validation habits.",
+          "evidenceRefs": [],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:execution-friction",
+          "kind": "friction-taxonomy",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["execution-friction", "High"],
+          "summary": "Observed friction category: failed-event (3). Open bounded sessions behind this category before turning it into a user-facing recommendation.",
+          "evidenceRefs": [
+            {
+              "kind": "logs-session",
+              "id": "session-insight-4-1",
+              "type": "model.request.attempt_failed",
+              "line": 29
+            },
+            {
+              "kind": "project-jsonl",
+              "id": "session-insight-4-2",
+              "type": "assistant",
+              "line": 3
+            },
+            {
+              "kind": "logs-session",
+              "id": "session-insight-4-3",
+              "type": "turn.finished",
+              "line": 30
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:observed-hooks",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["observed-hooks", "High"],
+          "summary": "Most observed hook: SessionStart (3). Separate configured hooks from observed hook enforcement, and state when the script target is unavailable.",
+          "evidenceRefs": [
+            {
+              "kind": "logs-session",
+              "id": "session-insight-5-1",
+              "type": "hook.finished",
+              "line": 8
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:session-complexity",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["session-complexity", "High"],
+          "summary": "Observed 1 active long session(s); longest active estimate: 46m. Review task family, outcome, and friction before deciding whether this duration reflects a problem or any decomposition, tool, delegation, or model change is needed.",
+          "evidenceRefs": [
+            {
+              "kind": "execution-transcript",
+              "id": "session-insight-6-1",
+              "type": "progress",
+              "line": 1
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        },
+        {
+          "id": "session-insight:session-usage-efficiency",
+          "kind": "redacted-summary",
+          "episodeRef": null,
+          "status": "candidate",
+          "labels": ["session-usage-efficiency", "High"],
+          "summary": "The analysis covered 34 sessions: 1 met the active-long threshold, with the longest estimated at 46 minutes; 3 additional long spans were mainly idle or resumed work. This activity describes effort only; token or credit evidence is incomplete and does not establish model preference, quality, or savings.",
+          "evidenceRefs": [
+            {
+              "kind": "execution-transcript",
+              "id": "session-insight-7-1",
+              "type": "progress",
+              "line": 1
+            }
+          ],
+          "modelVersion": "session-insights-v1"
+        }
+      ]
+    },
+    "learningCapture": {
+      "schemaVersion": 1,
+      "state": "N/A",
+      "summary": "N/A — requires two comparable observation windows and an intervention comparison.",
+      "interventions": []
+    },
+    "aiAgentPractice": {
+      "inspectedSurfaces": [],
+      "coverageRows": [
+        {
+          "surface": "Rules",
+          "scopes": ["Project"],
+          "count": 2,
+          "paths": ["AGENTS.md", "DESIGN.md"]
+        },
+        {
+          "surface": "Skills",
+          "scopes": ["Project", "Global"],
+          "count": 42,
+          "paths": [
+            ".agents/skills/agent-elements/SKILL.md",
+            ".agents/skills/baseline-ui/SKILL.md",
+            ".agents/skills/claimable-postgres/SKILL.md",
+            ".agents/skills/code-review/SKILL.md",
+            ".agents/skills/codebase-design/SKILL.md",
+            ".agents/skills/daytona/SKILL.md",
+            ".agents/skills/domain-modeling/SKILL.md",
+            ".agents/skills/grill-with-docs/SKILL.md",
+            ".agents/skills/grilling/SKILL.md",
+            ".agents/skills/impeccable/SKILL.md",
+            ".agents/skills/improve-codebase-architecture/SKILL.md",
+            ".agents/skills/improve-ui/SKILL.md"
+          ]
+        },
+        {
+          "surface": "Workflows",
+          "scopes": ["Project"],
+          "count": 5,
+          "paths": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/e2e.yml",
+            ".github/workflows/neon_workflow.yml",
+            ".github/workflows/qa.yml",
+            ".github/workflows/release.yml"
+          ]
+        },
+        {
+          "surface": "Plugins",
+          "scopes": ["Plugin"],
+          "count": 8
+        },
+        {
+          "surface": "Memories",
+          "scopes": ["Project"],
+          "count": 42
+        },
+        {
+          "surface": "Custom Agents",
+          "scopes": ["Project"],
+          "count": 0
+        }
+      ]
+    },
+    "usageActivity": {
+      "schemaVersion": 2,
+      "dateBasis": "UTC",
+      "measurementBasis": "session-starts-active-estimate-model-active-session-days-skill-invocations-and-loads",
+      "truncated": false,
+      "dates": ["2026-07-25", "2026-07-26", "2026-07-27"],
+      "sessions": {
+        "total": 34,
+        "starts": [15, 0, 19],
+        "activeMinutes": [135.1, 0, 122.2]
+      },
+      "models": [
+        {
+          "name": "auto",
+          "total": 2,
+          "daily": [1, 0, 1]
+        }
+      ],
+      "skills": [
+        {
+          "name": "better-harness",
+          "total": 4,
+          "daily": [0, 0, 4]
+        },
+        {
+          "name": "canvas",
+          "total": 2,
+          "daily": [2, 0, 0]
+        },
+        {
+          "name": "commit",
+          "total": 2,
+          "daily": [2, 0, 0]
+        }
+      ]
+    },
+    "usageEfficiency": {
+      "schemaVersion": 2,
+      "selection": {
+        "strategy": "all-eligible",
+        "eligibleSessionCount": 34,
+        "analyzedSessionCount": 34,
+        "complete": true
+      },
+      "roles": {
+        "userThreadCandidateCount": 18,
+        "childAgentCandidateCount": 16
+      },
+      "longSessions": {
+        "activeCount": 1,
+        "wallOnlyCount": 3,
+        "longestActiveMinutes": 45.6,
+        "activeRatio": 0.0294,
+        "estimate": {
+          "method": "capped-event-gap",
+          "activeThresholdMinutes": 45,
+          "gapCapMinutes": 5,
+          "idleGapMinutes": 30
+        },
+        "samples": [
+          {
+            "alias": "S1",
+            "role": "child-agent-candidate",
+            "activeMinutes": 45.6,
+            "failureCount": 0
+          }
+        ]
+      },
+      "accounting": {
+        "mode": "effort-proxy",
+        "responseCount": 2,
+        "modelAttributedResponseCount": 2,
+        "unattributedResponseCount": 0,
+        "usageFieldObservedCount": 2,
+        "nonZeroUsageCount": 0,
+        "exactCreditsAvailable": false,
+        "pricingVersion": null
+      },
+      "modelUsage": [
+        {
+          "model": "auto",
+          "responseCount": 2,
+          "usageFieldObservedCount": 2,
+          "nonZeroUsageCount": 0
+        }
+      ],
+      "outcomeReview": {
+        "status": "required",
+        "reviewedCandidateCount": 0,
+        "reviewedActiveLongCount": 0,
+        "comparableModelOutcomeEvidence": false,
+        "recommendation": "controlled-a-b-required"
+      },
+      "reviewLead": {
+        "id": "session-usage-outcome-review-gap",
+        "title": "1 long-session candidate still need outcome review",
+        "reason": "1 of 34 analyzed sessions (2.9%) crossed the estimated active-time threshold; the longest estimate was 45.6 minutes and 0 have reviewed outcomes. 3 additional long spans may be idle or resumed work. This is an investigation lead, not a confirmed efficiency, decomposition, tool, or model problem.",
+        "expectedOutcome": "Each displayed candidate is classified by task family, outcome, and friction so the report can decide whether any real improvement is needed.",
+        "aiFixPrompt": "/better-harness review these sessions\n\n1 long-session candidate still need outcome review\n\n## Evidence to inspect\n\n- S1: child-agent candidate, about 45.6 estimated active minutes, 0 failure event(s)\n\n## First step\n\nCreate <run> in the OS temporary directory, then run from the project root:\n\n```bash\nnode scripts/session-analysis.mjs insights --platform qoder --workspace . --selection all-eligible --limit 1000 --format json --output <run>/insights.json\nnode scripts/session-analysis/usage-review-packet.mjs --source <run>/insights.json --workspace . --limit 8 --output <run>/.review-packet.json\n```\n\nThe private review packet resolves candidates locally. Write taskFamily, outcome, friction, confidence, and evidenceReason only for S1. Finish diagnosis before editing product code or creating a Memory, Skill, or Hook.\n\n## What we saw\n\n1 of 34 analyzed sessions (2.9%) crossed the estimated active-time threshold; the longest estimate was 45.6 minutes and 0 have reviewed outcomes. 3 additional long spans may be idle or resumed work. This is an investigation lead, not a confirmed efficiency, decomposition, tool, or model problem.\n\n## Why review it\n\nWithout outcome review, complex work, tool friction, idle/resume noise, and a normal long task remain indistinguishable.\n\n## Expected result\n\nEach displayed candidate is classified by task family, outcome, and friction so the report can decide whether any real improvement is needed.\n\n## Scope\n\nCreate only a privacy-safe session-efficiency review and reader report. Do not edit product code or treat wall span as active cost. Durable reports keep aliases only; do not copy the private review packet into them. This is the complete 1/1 candidate view; conclusions still require semantic review.\n\n## Done when\n\n<run>/.review.json has one valid row for each of S1; semantic review writes <run>/insights.reviewed.json; and <run>/report.md validates against the reviewed source. If review confirms no problem, do not create an improvement.\n\n## Validation\n\n- Run `node scripts/session-analysis/usage-semantic-review.mjs --source <run>/insights.json --packet <run>/.review-packet.json --review <run>/.review.json --output <run>/insights.reviewed.json`\n- Run `node scripts/session-analysis/validate-usage-report.mjs --source <run>/insights.reviewed.json --report <run>/report.md`; it must return `ok: true`\n- Confirm `outcomeReview.reviewedActiveLongCount` in the reviewed source equals the number of reviewed displayed aliases; delete the two private review files after validation",
+        "sampleCoverage": {
+          "shown": 1,
+          "total": 1,
+          "complete": true
+        }
+      }
+    }
+  },
+  "canvasPath": "/Volumes/SSD-T7/qredence-environnement/fleet-pi/.qoder/better-harness/2026-07-27/183918-fleet-pi/canvas.json",
+  "canvasReplaced": false
+}

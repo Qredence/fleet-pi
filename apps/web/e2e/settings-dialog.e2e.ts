@@ -1,7 +1,66 @@
 import { expect, test } from "@playwright/test"
 
 test.describe("Settings Dialog E2E Tests", () => {
+  // Shared API mocks to prevent flakiness from real API state
   test.beforeEach(async ({ page }) => {
+    // Mock /api/chat/models
+    await page.route(
+      (url) => url.pathname.startsWith("/api/chat/models"),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            models: [
+              {
+                key: "google/gemini-3.5-flash",
+                provider: "google",
+                id: "gemini-3.5-flash",
+                name: "Gemini 3.5 Flash",
+                reasoning: false,
+                input: ["text"],
+                available: true,
+              },
+            ],
+            selectedModelKey: "google/gemini-3.5-flash",
+            diagnostics: [],
+          }),
+        })
+      }
+    )
+
+    // Mock /api/chat/sessions
+    await page.route(
+      (url) => url.pathname.startsWith("/api/chat/sessions"),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ sessions: [] }),
+        })
+      }
+    )
+
+    // Mock /api/chat/resources
+    await page.route(
+      (url) => url.pathname.startsWith("/api/chat/resources"),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            packages: [],
+            skills: [],
+            prompts: [],
+            extensions: [],
+            themes: [],
+            agentsFiles: [],
+            diagnostics: [],
+          }),
+        })
+      }
+    )
+
     // Navigate to the main chat page
     await page.goto("/")
     // Wait for network idle to ensure event handlers have fully hydrated
@@ -131,5 +190,10 @@ test.describe("Settings Dialog E2E Tests", () => {
     await lightBtn.click()
     await expect(lightBtn).toHaveAttribute("aria-pressed", "true")
     await expect(darkBtn).toHaveAttribute("aria-pressed", "false")
+  })
+
+  // Cleanup mocked routes after each test to prevent interference
+  test.afterEach(async ({ page }) => {
+    await page.unroute((url) => url.pathname.startsWith("/api/chat"))
   })
 })

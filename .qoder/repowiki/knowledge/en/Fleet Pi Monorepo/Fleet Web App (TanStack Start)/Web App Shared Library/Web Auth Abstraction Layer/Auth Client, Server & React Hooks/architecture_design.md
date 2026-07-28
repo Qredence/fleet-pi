@@ -1,0 +1,6 @@
+Three cooperating entry points form a thin abstraction over two interchangeable auth backends (Neon Managed vs legacy Better Auth):
+
+- `client.ts` creates a single `authClient` via `createFleetAuthClient()`, which selects Neon's `@neondatabase/auth` React adapter or standard `better-auth/react` based on `isNeonManagedAuthClientEnabled()` from `auth-mode`. It also owns an in-memory bearer-token cache (`cachedBearer`) with near-expiry skew and concurrent-request coalescing (`inFlightBearer`) for `getChatAuthBearerToken()`, used by chat/workspace APIs.
+- `server.ts` exposes an `auth` object with `api.getSession`, `handler`, and `backend` fields. At boot it runs `assertDeploymentReadyOnBoot()`, resolves the backend via `resolveAuthBackend()`, and lazily imports either `@/lib/auth/neon-managed-auth` or `@/lib/auth/legacy-better-auth-server` so the unused backend is never loaded.
+- `use-auth.ts` re-exports `authClient.useSession`, `signIn`, `signUp`, wraps `signOut` to clear the bearer cache, and provides a convenience `useOptionalUser` hook.
+  Dependency direction is one-way: `use-auth.ts` → `client.ts` → `auth-mode`; `server.ts` → `auth-mode` → backend-specific modules. No cross-imports between client and server files.

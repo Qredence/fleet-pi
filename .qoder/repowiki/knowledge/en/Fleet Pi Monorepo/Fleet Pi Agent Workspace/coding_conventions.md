@@ -1,0 +1,5 @@
+- Each skill is a self-contained directory with a `SKILL.md` entrypoint and an optional `changelog.md` documenting changes.
+- Plans follow a three-tier lifecycle: `active/` for in-progress work, `completed/` for finished items, and `abandoned/` for cancelled ones, with `backlog.md` as the central queue.
+- Memory documents are single-topic Markdown files named descriptively (e.g. `architecture.md`, `decisions.md`, `known-issues.md`) rather than aggregated logs.
+- Policy and system files live under `system/` and are referenced by key in `manifest.json` so the runtime can load them programmatically.
+- New durable content is added to the smallest canonical file matching its purpose, preferring Markdown over hidden session state.

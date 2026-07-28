@@ -1,0 +1,1 @@
+Requires `FLEET_PI_CHAT_DATABASE_URL` to be set for any read/write of `pi_user_settings` or `pi_user_providers`; requires `BETTER_AUTH_SECRET` for encrypting provider secrets; the post-migrate SQL in `auth-postgres-post-migrate.ts` must be executed after schema migrations to configure RLS policies for legacy Better Auth tables.

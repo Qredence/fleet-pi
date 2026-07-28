@@ -1,0 +1,5 @@
+- Each readiness check is recorded via a `{ id, ok, message }` tuple pushed into a local `checks` array, then aggregated with `checks.every(c => c.ok)` to produce the final `ok` boolean.
+- Environment variable access goes through a local `readEnv(name, env)` helper that trims values and defaults to empty string, keeping null/undefined handling uniform across all checks.
+- Trust-zone–sensitive behavior branches on the resolved `DeploymentTrustZone` enum value rather than raw env inspection, centralizing Vercel vs local vs preview logic in `trust-zone.ts`.
+- Public APIs are re-exported through a single `index.ts` barrel, while `deployment.ts` at the lib root re-exports that barrel for consumers.
+- Tests mirror the source layout one-to-one under `__tests__/` with filenames matching their implementation files.

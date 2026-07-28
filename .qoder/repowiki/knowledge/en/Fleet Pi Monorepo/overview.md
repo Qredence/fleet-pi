@@ -1,0 +1,1 @@
+pnpm + Turborepo monorepo that wires the Fleet Pi TanStack Start web app, shared HAX design library, Pi chat protocol, agent workspace, docs, scripts, CI config, and design research into a single build graph.

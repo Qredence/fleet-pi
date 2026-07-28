@@ -1,0 +1,1 @@
+Provides a unified auth abstraction over two backends — Neon Managed Auth and legacy Better Auth — exposing a single client/server API, React hooks, and chat bearer-token helpers selected at runtime by environment variables.

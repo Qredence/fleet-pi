@@ -1,0 +1,1 @@
+The SQLite database lives at `<context.workspaceRoot>/indexes/workspace-projection.sqlite` (auto-created under `/tmp/...` when `VERCEL=1` and the workspace root starts with `/var/task`). Run `indexWorkspaceProjection(context)` to rebuild the index; call `initializeWorkspaceProjection(context)` to seed the project/workspace-root rows before indexing.

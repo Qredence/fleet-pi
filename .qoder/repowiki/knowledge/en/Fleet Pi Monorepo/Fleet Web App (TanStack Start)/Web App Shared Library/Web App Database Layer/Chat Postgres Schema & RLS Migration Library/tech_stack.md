@@ -1,0 +1,1 @@
+Plain PostgreSQL DDL/DDL+RLS stored as TypeScript template literals; uses `SECURITY DEFINER` functions, `FORCE ROW LEVEL SECURITY`, GUC `app.current_user_id`, and Neon Data API roles (`authenticated`, `anonymous`, `fleet_pi_app`).

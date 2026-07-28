@@ -1,0 +1,5 @@
+- Each script in `scripts/` is self-contained, loads `.env` and `.env.local` from both the app and repo roots via `dotenv.config`, and exits with `process.exitCode = 1` on failure.
+- Database scripts use `@neondatabase/serverless` Pool with explicit `BEGIN`/`COMMIT`/`ROLLBACK` transactions around migration application, and record applied migrations in a `fleet_pi_chat_migrations` ledger table before committing.
+- Migration scripts import paired `{MIGRATION_ID, SQL}` constants from `../src/lib/db/chat-postgres-*.ts` modules and call a shared `applyMigrationIfNeeded(client, id, sql)` helper to skip already-applied migrations.
+- npm scripts follow a consistent naming pattern: `generate:*` for codegen, `*:migrate` for database migrations, and descriptive verbs like `verify-deployment-readiness`, `quarantine-orphan-sessions`, `remap-auth-user-ids` for maintenance tasks, all executed through `tsx` or `bash` wrappers.
+- Configuration files (`vite.config.ts`, `playwright.config.ts`, `components.json`) resolve paths relative to the monorepo root using `import.meta.dirname` and `resolve()` rather than hardcoding absolute paths.

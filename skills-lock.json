@@ -11,7 +11,7 @@
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/claimable-postgres/SKILL.md",
-      "computedHash": "d0263a96eccc2fc5e169b29050efdeabe081810e074792cb7b386449258099b0"
+      "computedHash": "67aa25ffcbb8257790ea07884cb86e39aeea77b2f46b03c5052b08fd35a3d046"
     },
     "codebase-design": {
       "source": "mattpocock/skills",
@@ -23,7 +23,7 @@
       "source": "daytona/skills",
       "sourceType": "github",
       "skillPath": "skills/daytona/SKILL.md",
-      "computedHash": "5ddd9f9edddefb8e950e900e2d038f01f1efb8f6273d4df29dbfebfcc438e37c"
+      "computedHash": "9b11bbf89faac841e40df3e06a6fcc0d5bc45d2cf15231d4b45b7bd9b0cd28f2"
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
@@ -35,7 +35,7 @@
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "e07098370ad7fd4605b67d305d8c06623a5c7d7737d2364e30932294ef880ff6"
+      "computedHash": "9883f6d77edd5cbfe4ca28e28a1f1b71b1b0beaf8e3f5cc8f3a66590c7d8bad0"
     },
     "improve-ui": {
       "source": "ibelick/ui-skills",
@@ -47,49 +47,49 @@
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon/SKILL.md",
-      "computedHash": "e6ef33700cc74a83197d5681a937c5de3131472fbace2afd5d5219aea86545a3"
+      "computedHash": "f51065e397e6865a234c98a4688b23859fa7744cc0434d95d35dd4e8183fcc31"
     },
     "neon-ai-gateway": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-ai-gateway/SKILL.md",
-      "computedHash": "5799ce8864b2254499b19ed631b0eae9cd8aac062cbf8d919e8c24d4480e6810"
+      "computedHash": "cd28f1ae1c8c84319dc2bd7be7a5c9b9aa883949164ee0165590405a85a9c4dc"
     },
     "neon-functions": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-functions/SKILL.md",
-      "computedHash": "badf29cdd01b9e149188a4c703e906cc4ed37c91981018e7db275fc1f5e31d5f"
+      "computedHash": "4e5314bb70a96ca144a4bf82cc625e4a4652c05ef0511a3d560ce2f5a017f2f3"
     },
     "neon-object-storage": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-object-storage/SKILL.md",
-      "computedHash": "a0e3cef9325c6b2edda6e1071ef719594a61f9e90cc4e2da007de0623e100e7a"
+      "computedHash": "7d24b809f8c1bd5d7fdaf12b86c3a5c7a2c1f774bd6a1982569389245ea499b0"
     },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres/SKILL.md",
-      "computedHash": "7829cd52b49b75f2f7ef5cf577d233b4d9ed2a0775c3b95021b94eaa9d56630a"
+      "computedHash": "d4c284e055236b2a3ea1eaaa7dbcf832918ffad5e2745d8c938fa5b5c671e9a3"
     },
     "neon-postgres-branches": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres-branches/SKILL.md",
-      "computedHash": "e9d411c35009dfd8ddaca7eb5e6f3fd55d9fcdbfbd31d1c7838c499b262e283d"
+      "computedHash": "39a27a390d91bb944c604f9b703aae62fec265ff492ca749bcb9345c6759346b"
     },
     "neon-postgres-egress-optimizer": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres-egress-optimizer/SKILL.md",
-      "computedHash": "618b5bc5c65ff143adb028ef3bb4f49d800e6b524339cf63327d86df264cbf1a"
+      "computedHash": "a9dab78ac3c88090b0e12a3348784cc9f762f903f324c9e94526510776912a88"
     },
     "openui": {
       "source": "thesysdev/openui",
       "sourceType": "github",
       "skillPath": "skills/openui/SKILL.md",
-      "computedHash": "5b337cac238a31210016dec987aca7bc1713ec2310f4c72291802b9c7a105ba3"
+      "computedHash": "fe39deb9874b110b22ee0e756e892e231e0a4b9c52a4f14cf4bd5b1c81992560"
     },
     "ui-skills-root": {
       "source": "ibelick/ui-skills",

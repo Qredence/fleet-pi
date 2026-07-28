@@ -1,0 +1,6 @@
+- Every handler wraps its body in `withAuthenticatedChatRequest(request, async ({ userId | authSession }) => ...)` to obtain the authenticated user before any business logic.
+- Session-scoped mutations and reads call `enforceChatSessionOwnership({ sessionId, sessionFile, userId })` immediately after authentication and short-circuit with `ownership.response` when unauthorized.
+- Input payloads are validated against Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` (e.g. `ChatRequestSchema.parse`, `ChatSessionMetadataSchema.parse`) before processing.
+- Error paths consistently return `Response.json({ message: getErrorMessage(error) }, { status: getResponseStatus(error) })` so callers receive a uniform error envelope.
+- Handlers that need logging create a per-request logger via `createRequestLogger(requestId)` where `requestId` comes from the `x-request-id` header or `crypto.randomUUID()`.
+- Streaming endpoints build a `ReadableStream<Uint8Array>` controller that enqueues `encodeEvent(event)` items and closes the stream in a `finally` block, returning it wrapped by `createNdjsonResponse`.

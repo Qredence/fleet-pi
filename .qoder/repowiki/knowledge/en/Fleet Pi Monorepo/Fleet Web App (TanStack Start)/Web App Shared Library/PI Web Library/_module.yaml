@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/shared_lib/pi
+title: PI Web Library
+scope:
+    - apps/web/src/lib/pi/
+source_files: []
+depends_on: []
+related_to: []

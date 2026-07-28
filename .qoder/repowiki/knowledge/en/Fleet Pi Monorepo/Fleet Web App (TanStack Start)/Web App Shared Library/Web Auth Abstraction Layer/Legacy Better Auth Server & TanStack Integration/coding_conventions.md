@@ -1,0 +1,4 @@
+- Environment variables are read through small helpers (`readCsvEnv`, `requiredVercelEnv`) that split comma-separated values or throw on missing required vars during Vercel deployments.
+- Database selection is runtime-driven: if `FLEET_PI_AUTH_DATABASE_URL` is present a Neon Pool is used, otherwise a local `better-sqlite3` file is created and its schema is migrated inline via `db.exec(...CREATE TABLE IF NOT EXISTS...)`.
+- Server configuration is parameterized through a factory function (`createLegacyBetterAuth`) that accepts a plugins array, rather than exporting a single monolithic config object.
+- TanStack-specific dependencies are isolated behind a dedicated getter (`getLegacyBetterAuthTanstackPlugins`) to keep bundle consumers free of `@tanstack/start-server-core`.

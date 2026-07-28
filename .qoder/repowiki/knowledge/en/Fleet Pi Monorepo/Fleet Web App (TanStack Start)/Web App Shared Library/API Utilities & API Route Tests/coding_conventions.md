@@ -1,0 +1,4 @@
+- API handlers return native `Response` objects, and errors are surfaced as `{ ok: false, code: string, message: string }` JSON bodies with appropriate HTTP status codes.
+- Test fixtures create isolated project roots under `os.tmpdir()` prefixed with `fleet-pi-*`, write session and workspace files into them, and clean them up in `afterEach`.
+- Error cases are asserted by checking both the HTTP status code and the exact shape of the JSON body (`ok`, `code`, `message` fields).
+- Handlers are invoked directly in tests by constructing a `new Request(url)` and passing it along with an optional second argument.

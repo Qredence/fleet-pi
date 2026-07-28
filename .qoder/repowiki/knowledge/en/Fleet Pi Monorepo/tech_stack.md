@@ -1,0 +1,1 @@
+pnpm workspaces with pinned packageManager@11.1.3, Turborepo v2 for task orchestration, TypeScript 6 across all packages, Node >=22, and a centralized dependency override list in pnpm-workspace.yaml enforcing consistent versions of shared libraries (h3, hono, undici, protobufjs, etc.).

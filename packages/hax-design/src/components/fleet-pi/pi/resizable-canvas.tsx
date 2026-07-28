@@ -1,5 +1,5 @@
 import { RefreshCw, X } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { DESKTOP_PANEL_HIDDEN_FLEX } from "../../../lib/layout-constants"
 import { HIT_AREA_EXPAND_DENSE_CLASS } from "../styles/tokens"
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
@@ -29,14 +29,19 @@ export function ResizableCanvas({
   titleIcon: React.ElementType
   width: number
 }) {
+  const reduceMotion = useReducedMotion()
   return (
     <AnimatePresence>
       {open && (
         <motion.aside
-          initial={{ x: width, opacity: 0.8 }}
+          initial={reduceMotion ? false : { x: width, opacity: 0.8 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: width, opacity: 0.8 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
+          exit={reduceMotion ? { opacity: 0 } : { x: width, opacity: 0.8 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: 0.2, ease: "easeInOut" }
+          }
           className={`relative h-full shrink-0 border-l border-border/70 bg-background/95 ${DESKTOP_PANEL_HIDDEN_FLEX}`}
           data-testid={dataTestid}
           style={{ width }}

@@ -8,7 +8,6 @@ import {
   answerPlanDecision,
   applyPlanMode,
   clearPlanModeSession,
-  createPlanModeExtension,
   createPlanToolPart,
   getPlanState,
   isPlanDecisionToolCall,
@@ -64,6 +63,9 @@ import {
 } from "@/lib/daytona/tool-context"
 import { logger } from "@/lib/logger"
 
+// Cap concurrent runtime instances to prevent unbounded memory growth
+const MAX_CONCURRENT_RUNTIMES = 50
+
 const DEFAULT_RUNTIME_TTL_MS = 600_000
 
 function resolveRuntimeTtlMs(value: string | undefined) {
@@ -97,7 +99,14 @@ const sessionCircuitBreaker = createSessionCircuitBreaker(
   invokeAgentSessionCreation
 )
 
-sessionCircuitBreaker.fallback(() => {
+// Circuit breaker fallback with observability hooks
+sessionCircuitBreaker.fallback((error) => {
+  // Log circuit breaker trip for observability
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  logger.warn(
+    { error: errorMessage },
+    "[pi-runtime] session circuit breaker triggered"
+  )
   throw createSessionFallbackError()
 })
 
@@ -281,36 +290,27 @@ export async function createPiRuntime(
       })
     }
   }
+  // Reuse the already-created services instead of creating new ones
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
-    cwd,
-    agentDir: runtimeAgentDir,
+    cwd: _cwd,
+    agentDir: _runtimeAgentDir,
     sessionManager: runtimeSessionManager,
     sessionStartEvent,
+    projectTrustContext: _trust,
   }) => {
-    const runtimeServices = await createSessionServices(
-      context,
-      {
-        cwd,
-        agentDir: runtimeAgentDir,
-        resourceLoaderOptions: {
-          extensionFactories: [createPlanModeExtension()],
-        },
-      },
-      { userId: metadata.userId }
-    )
     const { model, thinkingLevel } = resolveModelSelection(
-      runtimeServices,
+      services,
       modelSelection
     )
 
-    await applyRuntimeAuth(runtimeServices, { userId: metadata.userId })
+    await applyRuntimeAuth(services, { userId: metadata.userId })
 
     // Eager warm-up ran above when Daytona is enabled. Fleet adapter extension
     // owns sandbox tool registration (not customTools). Stock npm:@daytona/pi
     // is excluded from the web resource loader.
 
     const result = await sessionCircuitBreaker.fire({
-      services: runtimeServices,
+      services,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
       model,
@@ -320,8 +320,8 @@ export async function createPiRuntime(
 
     return {
       ...result,
-      services: runtimeServices,
-      diagnostics: runtimeServices.diagnostics,
+      services,
+      diagnostics: services.diagnostics,
     }
   }
   const runtime = await createAgentSessionRuntime(createRuntime, {
@@ -414,6 +414,18 @@ function findRuntimeRecord(metadata: ChatRuntimeMetadata) {
 }
 
 function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
+  // Cap concurrent runtime instances - dispose oldest idle runtime when limit reached
+  if (runtimeRecords.size >= MAX_CONCURRENT_RUNTIMES) {
+    const oldest = getOldestIdleRuntime()
+    if (oldest && oldest.sessionId !== runtime.session.sessionId) {
+      logger.warn(
+        { currentCount: runtimeRecords.size, max: MAX_CONCURRENT_RUNTIMES },
+        "[pi-runtime] concurrency limit reached; disposing oldest idle runtime"
+      )
+      disposeRuntimeRecord(oldest)
+    }
+  }
+
   const session = runtime.session
   const record =
     runtimeRecords.get(session.sessionId) ??
@@ -439,6 +451,21 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   }
   setActiveSessionRecord(session.sessionId, record)
   return record
+}
+
+function getOldestIdleRuntime() {
+  let oldest: ActiveSessionRecord | undefined
+  let oldestTimestamp = Number.MAX_SAFE_INTEGER // Start high, find minimum
+
+  for (const record of runtimeRecords.values()) {
+    if (record.disposeTimer) continue // Skip ones scheduled for disposal
+    if (record.lastUsedAt < oldestTimestamp) {
+      // Changed from > to <
+      oldestTimestamp = record.lastUsedAt
+      oldest = record
+    }
+  }
+  return oldest
 }
 
 function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
@@ -494,3 +521,32 @@ function matchesPendingPlanDecisionToolCall(
     toolCallId
   )
 }
+
+// Re-export runtime utilities for component library reuse
+export type { ActiveSessionRecord } from "./runtime/active-sessions"
+export {
+  collectDiagnostics,
+  resolveDefaultModelSelection,
+  applyModelSelection,
+  resolveModelSelection,
+  loadChatModels,
+  loadChatResources,
+  getProviderConfigStatus,
+  hotReloadActiveRuntimes,
+  hotReloadActiveRuntimesForUser,
+  hotReloadProviderAuthForActiveRuntimes,
+  impactForSettings,
+  loadChatSettings,
+  loadPersistedProjectSettingsOverrides,
+  patchProjectSettingsOverrides,
+  readProjectSettingsFile,
+  saveProjectSettingsOverrides,
+  updateChatSettings,
+  applyRuntimeAuth,
+  createSessionServices,
+  resolveDaytonaRuntimeApiKey,
+  resolveUserDaytonaApiKey,
+  resolveUserProviderSecret,
+  DEFAULT_MODEL,
+  RESOURCE_SETTING_KEYS,
+} from "./runtime/index"

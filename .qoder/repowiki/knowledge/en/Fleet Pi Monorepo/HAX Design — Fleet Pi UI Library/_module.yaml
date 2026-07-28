@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: packages_hax_design
+title: HAX Design — Fleet Pi UI Library
+scope:
+    - packages/hax-design/
+source_files: []
+depends_on: []
+related_to: []

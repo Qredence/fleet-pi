@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: apps_web/shared_lib/db/user_settings_providers
+title: User Settings & Provider Credential Persistence
+scope:
+    - apps/web/src/lib/db/user-settings.ts
+    - apps/web/src/lib/db/user-providers.ts
+    - apps/web/src/lib/db/session-ownership.ts
+    - apps/web/src/lib/db/remap-auth-user-ids.ts
+    - apps/web/src/lib/db/remove-provider-with-settings.ts
+    - apps/web/src/lib/db/auth-postgres-post-migrate.ts
+source_files: []
+depends_on: []
+related_to:
+    - path: apps_web/shared_lib/pi/chat_runtime_handlers
+    - path: apps_web/shared_lib/pi/runtime_core

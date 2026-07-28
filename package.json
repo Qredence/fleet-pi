@@ -38,7 +38,8 @@
     "tech-debt": "./scripts/scan-tech-debt.sh",
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js",
-    "generate:openui-signatures": "pnpm --filter hax-design generate:openui-signatures"
+    "generate:openui-signatures": "pnpm --filter hax-design generate:openui-signatures",
+    "check-design-drift": "node scripts/check-design-drift.js"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.10",

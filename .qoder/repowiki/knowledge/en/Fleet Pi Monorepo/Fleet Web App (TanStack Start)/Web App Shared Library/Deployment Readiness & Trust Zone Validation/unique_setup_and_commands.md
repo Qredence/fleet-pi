@@ -1,0 +1,1 @@
+Readiness failures during CI are surfaced via `pnpm verify-deployment-readiness` (referenced in comments) which uses owner migration URLs; individual DB fixes require running `pnpm chat:migrate` or the auth post-migrate script.

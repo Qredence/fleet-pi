@@ -1,0 +1,1 @@
+React 19 + TypeScript 6, Tailwind v4 with CSS variables, shadcn/ui (base-nova style) on top of @base-ui/react, Zod for schema validation, recharts for charts, lottie-react for animations, streamdown for markdown, cmdk for command palette, next-themes for dark mode, vitest for testing, eslint + prettier for lint/format, tsx for scripts.

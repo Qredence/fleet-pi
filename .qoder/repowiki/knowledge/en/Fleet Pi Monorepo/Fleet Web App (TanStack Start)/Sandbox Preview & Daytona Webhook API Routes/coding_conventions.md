@@ -1,0 +1,5 @@
+- Each route is defined by exporting a `Route` created via `createFileRoute("/api/..." )` with a `server.handlers` object mapping HTTP methods to async request handlers.
+- Authentication is performed by calling `auth.api.getSession({ headers })` and returning a 401 JSON response when no session is present.
+- Error responses are returned as `Response.json({ message | error }, { status })` objects rather than throwing, with helper functions `getErrorMessage` and `getResponseStatus` used for consistent formatting.
+- Write mutations go through `resolveAppRuntimeContext()` to obtain the project root before invoking `updateEnvVar`, and POST endpoints validate requests with CSRF tokens issued via `issueCsrfToken` / `validateCsrfRequest`.
+- Environment-dependent features short-circuit when `process.env.VERCEL === "1"`, returning a not-supported response instead of performing side effects.

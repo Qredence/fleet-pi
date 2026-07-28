@@ -35,6 +35,13 @@ const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
 const MANAGED_BY_LABEL = "fleet-pi"
 export const WORKSPACE_MOUNT_PATH = SANDBOX_WORKSPACE_ROOT
 
+// Cache sandbox health checks with 30-second TTL to eliminate network round-trips
+const sandboxHealthCache = new Map<
+  string,
+  { healthy: boolean; cachedAt: number }
+>()
+const SANDBOX_HEALTH_TTL_MS = 30_000
+
 export interface UserSandboxConfig {
   userId: string
   userEmail?: string
@@ -376,10 +383,32 @@ function shouldRecreateForSecretsState(
 }
 
 async function isSandboxHealthy(sandbox: Sandbox): Promise<boolean> {
+  const sandboxId = sandbox.id || sandbox.name
+  if (!sandboxId) return false
+
+  // Lazy cleanup of stale entries before processing current one
+  const now = Date.now()
+  for (const [id, cached] of sandboxHealthCache.entries()) {
+    if (now - cached.cachedAt >= SANDBOX_HEALTH_TTL_MS * 2) {
+      sandboxHealthCache.delete(id)
+    }
+  }
+
+  // Check cache first
+  const cached = sandboxHealthCache.get(sandboxId)
+  if (cached && Date.now() - cached.cachedAt < SANDBOX_HEALTH_TTL_MS) {
+    return cached.healthy
+  }
+
   try {
     const status = await getSandboxStatus(sandbox)
-    return status.state === "started"
+    const healthy = status.state === "started"
+    // Update cache
+    sandboxHealthCache.set(sandboxId, { healthy, cachedAt: Date.now() })
+    return healthy
   } catch {
+    // Cache the failure too
+    sandboxHealthCache.set(sandboxId, { healthy: false, cachedAt: Date.now() })
     return false
   }
 }

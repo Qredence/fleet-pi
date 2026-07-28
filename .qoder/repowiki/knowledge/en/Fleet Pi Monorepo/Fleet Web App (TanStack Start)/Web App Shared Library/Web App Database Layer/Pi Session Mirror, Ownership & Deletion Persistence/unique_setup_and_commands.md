@@ -1,0 +1,1 @@
+Mirror is enabled only when `FLEET_PI_CHAT_DATABASE_URL` is set; tests toggle this env var and mock `VERCEL=1` to exercise Vercel-specific ownership checks. Run tests with Vitest (`vitest apps/web/src/lib/db/pi-session-mirror.test.ts`).

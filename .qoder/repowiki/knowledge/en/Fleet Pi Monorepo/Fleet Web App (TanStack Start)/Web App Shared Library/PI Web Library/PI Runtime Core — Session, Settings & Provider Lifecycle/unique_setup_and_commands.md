@@ -1,0 +1,1 @@
+No build or test scripts are defined inside this module; tests live under `__tests__/` alongside source files and are run by the project's global test runner. On Vercel, saving settings requires a `userId` because persistence goes through `upsertUserProjectSettings` rather than the filesystem.

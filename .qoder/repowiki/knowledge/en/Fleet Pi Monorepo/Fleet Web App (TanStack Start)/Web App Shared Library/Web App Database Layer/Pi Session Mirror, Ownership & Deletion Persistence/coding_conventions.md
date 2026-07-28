@@ -1,0 +1,6 @@
+- All database writes go through `withUserContext(pool, userId, operation)` which begins a transaction, optionally sets `app.current_user_id`, commits on success, rolls back on error, and always releases the connection.
+- Ownership-sensitive operations call `assertMirrorOwnerForPersistence(userId)` before any write, throwing when `requiresAuthenticatedMirrorOwner()` is true and no userId is supplied.
+- Database queries use raw SQL with positional `$N` parameters and `ON CONFLICT ... DO UPDATE SET` upsert patterns rather than an ORM or query builder.
+- Mirror failures are wrapped in try/catch that logs via `logger.warn` or `logger.error` and never rethrow, making sync operations non-fatal unless `shouldFailClosedOnMirrorError()` is configured.
+- Each feature file exports a single top-level async function returning a result object with a boolean `deleted`/`recovered`/`ok` field plus contextual metadata, keeping error paths explicit and uniform.
+- JSON serialization of arbitrary payloads goes through `sanitizeForJson` to strip functions/symbols and stringify BigInts before storing in JSONB columns.

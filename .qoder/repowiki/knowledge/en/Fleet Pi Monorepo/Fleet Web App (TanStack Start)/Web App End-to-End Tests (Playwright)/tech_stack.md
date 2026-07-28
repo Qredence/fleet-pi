@@ -1,0 +1,1 @@
+Playwright Test (`@playwright/test`) with TypeScript; tests assert against a locally running dev server at `http://localhost:3000` and mock NDJSON streaming responses on `/api/chat` using `application/x-ndjson; charset=utf-8` content type.

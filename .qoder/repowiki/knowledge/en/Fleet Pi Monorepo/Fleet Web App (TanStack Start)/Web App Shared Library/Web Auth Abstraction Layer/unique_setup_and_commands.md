@@ -1,0 +1,1 @@
+No top-level command; the auth layer is initialized automatically when `server.ts` or `client.ts` is imported, with `assertDeploymentReadyOnBoot()` running on server startup to validate deployment readiness before selecting a backend.

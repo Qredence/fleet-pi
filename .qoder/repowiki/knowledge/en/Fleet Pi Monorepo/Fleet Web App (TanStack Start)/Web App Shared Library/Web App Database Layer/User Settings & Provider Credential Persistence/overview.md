@@ -1,0 +1,1 @@
+Postgres-backed persistence for per-user project settings, encrypted provider credentials (API keys and OAuth payloads), session ownership resolution, auth user ID remapping, and post-migration RLS setup for Better Auth tables.

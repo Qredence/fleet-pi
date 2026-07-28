@@ -1,0 +1,1 @@
+Pure Markdown documentation with a JSON metadata manifest (`.wiki-meta.json`) generated alongside commits; ADRs follow the standard architecture-decision-record format; runbooks reference pnpm scripts (`pnpm verify-deployment-readiness`, `pnpm quarantine-orphan-sessions`) and GitHub Actions CI jobs.

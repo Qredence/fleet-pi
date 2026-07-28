@@ -1,0 +1,1 @@
+GitHub Actions on `blacksmith-4vcpu-ubuntu-2404` runners with Node.js 22 and pnpm v4; CircleCI 2.1 with `cimg/base:current`; VS Code Dev Containers using `typescript-node:1-22-bookworm`; Husky + lint-staged for pre-commit hooks; Dependabot configured for weekly npm updates grouped under `dev-dependencies`.

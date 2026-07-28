@@ -1,0 +1,6 @@
+- Scripts compute `repoRoot` by resolving `__dirname` (or `BASH_SOURCE`) and joining `..`, then operate relative to it instead of using absolute paths.
+- Bash scripts begin with `#!/usr/bin/env bash` followed by `set -euo pipefail` to fail fast on errors and undefined variables.
+- Node scripts use ES module syntax (`import ... from`, `import.meta.url`) and avoid CommonJS `require` except when dynamically loading project dependencies via `createRequire` against a package's `package.json`.
+- Each script defines explicit exit codes (0 for success, 1 for failure) and prints human-readable status messages prefixed with emoji markers (✅, ❌, ⚠️, 🧪) for CI readability.
+- Environment-driven configuration is preferred over hard-coded values, with fallback chains checking multiple env var names (e.g., `FLEET_PI_CHAT_DATABASE_URL` then `DATABASE_URL`).
+- External tool invocations go through `execSync`/`execFileSync` with `stdio: 'inherit'` or `'pipe'` and cwd set to `repoRoot`, keeping all side effects scoped to the repository.

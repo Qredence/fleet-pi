@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: apps_web/shared_lib/pi/chat_runtime_handlers
+title: Chat Runtime HTTP Handlers
+scope:
+    - apps/web/src/lib/pi/chat-runtime/
+source_files: []
+depends_on: []
+related_to:
+    - path: apps_web/shared_lib/db/pi_session
+    - path: apps_web/shared_lib/db/user_settings_providers
+    - path: packages_pi_protocol

@@ -1,0 +1,6 @@
+- Cross-environment behavior is gated by checking `process.env.VERCEL === '1'`, branching between DB-backed persistence (Vercel) and file-based persistence (local).
+- Each catalog function (`loadChatModels`, `loadChatResources`, `getProviderConfigStatus`) constructs an ephemeral `AgentSessionServices` via `createSessionServices` rather than sharing a singleton, keeping side effects isolated per call.
+- Settings mutations go through `patchProjectSettingsOverrides` plus `prepareProjectSettingsForPersist` before writing, ensuring portable path sanitization and schema normalization at every write point.
+- Hot-reload operations iterate over `getActiveSessionRecords()` and apply changes uniformly via `reloadRuntimeForRecord`, separating per-user filtering (`hotReloadActiveRuntimesForUser`) from the core reload logic.
+- Diagnostic collection follows a uniform pattern: gather messages from multiple subsystems (workspace bootstrap, model runtime, settings manager, resource loader, extensions) into a `Set<string>` to deduplicate, then return as an array.
+- Types from `@workspace/pi-protocol/chat-protocol` are used as the canonical contract for all external-facing responses, while internal helpers use plain `Record<string, unknown>` for mutable intermediate objects.

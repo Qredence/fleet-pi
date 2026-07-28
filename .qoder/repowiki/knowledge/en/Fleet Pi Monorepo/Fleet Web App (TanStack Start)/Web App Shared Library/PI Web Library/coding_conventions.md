@@ -1,0 +1,4 @@
+- Each public capability is split into a dedicated module file (e.g. `provider-catalog.ts`, `project-settings-merge.ts`) and re-exported through a barrel index.
+- Tests are colocated alongside source using either `.test.ts` for unit tests or `.spec.ts` for integration/spec-style tests.
+- Server-side and client-side code share types and logic via the `runtime/` core rather than duplicating implementations.
+- HTTP handlers follow a uniform pattern of request parsing, validation, then delegation to a runtime service function.

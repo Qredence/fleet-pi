@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: apps_web/shared_lib/auth/legacy_better_auth
+title: Legacy Better Auth Server & TanStack Integration
+scope:
+    - apps/web/src/lib/auth/legacy-better-auth-server.ts
+    - apps/web/src/lib/auth/legacy-better-auth-tanstack-plugins.ts
+    - apps/web/src/lib/auth/legacy-better-auth-tanstack.ts
+source_files: []
+depends_on: []
+related_to:
+    - path: apps_web/shared_lib/auth/client_server

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
 import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import { getErrorMessage } from "@/lib/pi/server"
 
 function toPublicWorkspaceHealth(
   health: Awaited<ReturnType<typeof loadAgentWorkspaceHealth>>
@@ -21,7 +22,11 @@ export async function workspaceHealthHandler(request: Request) {
       return Response.json(
         toPublicWorkspaceHealth(await loadAgentWorkspaceHealth(context))
       )
-    } catch {
+    } catch (error) {
+      console.error(
+        "[workspace/health] Error checking workspace health:",
+        getErrorMessage(error)
+      )
       return Response.json(
         {
           status: "degraded",

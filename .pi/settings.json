@@ -1,13 +1,12 @@
 {
-  "skills": ["../agent-workspace/pi/skills"],
+  "enabledModels": ["openai-chat-completions/nemotron-3-ultra-free"],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
     "npm:pi-web-access"
   ],
+  "skills": ["../agent-workspace/pi/skills"],
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
-  "prompts": ["../agent-workspace/pi/prompts"],
-  "defaultProvider": "google",
-  "defaultThinkingLevel": "high"
+  "prompts": ["../agent-workspace/pi/prompts"]
 }

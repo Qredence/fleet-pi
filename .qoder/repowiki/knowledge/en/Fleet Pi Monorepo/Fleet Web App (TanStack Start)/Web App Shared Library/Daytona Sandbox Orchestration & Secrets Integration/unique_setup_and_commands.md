@@ -1,0 +1,1 @@
+Requires `DAYTONA_API_KEY` (and optionally `DAYTONA_API_URL`, `DAYTONA_TARGET`) environment variables to construct the client; on Vercel only user BYOK keys are accepted — org env keys are rejected. Sandboxes are named `fleet-pi-user-{userId}` with volumes `fleet-pi-ws-{userId}`, mounted at `/home/daytona/agent-workspace`, and auto-stopped after 30 minutes.

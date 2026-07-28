@@ -1,0 +1,4 @@
+{
+  "status": "runtime-error",
+  "error": "Failed to resolve module specifier \"@workspace/hax-design\". Relative references must start with either \"/\", \"./\", or \"../\"."
+}
