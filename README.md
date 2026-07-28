@@ -19,6 +19,8 @@ Fleet Pi is a **meta-harness** — a complete, self-hosted agent workspace built
 
 The agent is simultaneously the worker and the architect of its own environment. Two users with Fleet Pi will have completely different systems after a few sessions — because the system _became_ what they needed it to be.
 
+`agent-workspace/` is Fleet Pi's durable adaptive layer: its memory, plans, skills, evals, and artifacts stay with the project as reviewable files.
+
 ## Why Fleet Pi?
 
 | Problem                                                                      | Fleet Pi's approach                                                                      |

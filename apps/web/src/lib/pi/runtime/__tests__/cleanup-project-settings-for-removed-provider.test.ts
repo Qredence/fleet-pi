@@ -38,6 +38,6 @@ describe("cleanupProjectSettingsForRemovedProvider", () => {
         },
         "openai-chat-completions"
       )
-    ).toEqual({})
+    ).toEqual({ enabledModels: [] })
   })
 })
