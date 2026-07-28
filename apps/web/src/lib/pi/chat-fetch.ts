@@ -98,12 +98,58 @@ export async function readChatStream(
 
   const decoder = new TextDecoder()
   let buffer = ""
+  
+  // Sequence tracking for critical events to detect reordering/duplication
+  const expectedSequenceNumbers = new Map<string, number>()
+  
+  /** Track event sequence per session */
+  function trackSequence(sessionId: string, eventType: string, seq: number) {
+    const current = expectedSequenceNumbers.get(`${sessionId}:${eventType}`) ?? 0
+    if (seq > current + 1) {
+      console.warn(
+        `[chat-sequence] Gap detected in ${eventType} sequence for session ${sessionId}: ` +
+        `expected ${current + 1}, got ${seq}`
+      )
+    }
+    expectedSequenceNumbers.set(`${sessionId}:${eventType}`, seq)
+  }
 
+  // Fast path: JSON.parse without Zod for high-frequency delta/thinking events
   const handleLine = (line: string) => {
     const trimmed = line.trim()
     if (!trimmed) return
+    
     const data = JSON.parse(trimmed) as unknown
-    onEvent(parseWithSchema(ChatStreamEventSchema, data, "Chat stream event"))
+    const eventType = typeof data === "object" && data !== null ? "type" in data && (data as Record<string, unknown>).type : undefined
+    
+    // Extract session ID and sequence number for tracking
+    const sessionId = typeof data === "object" && data !== null && "sessionId" in data ? String((data as any).sessionId) : undefined
+    const sequenceNumber = typeof data === "object" && data !== null && "sequenceNumber" in data ? Number((data as any).sequenceNumber) : undefined
+    
+    // Validate only low-frequency events that carry schema-critical structure
+    if (
+      eventType === "start" ||
+      eventType === "done" ||
+      eventType === "error" ||
+      eventType === "plan" ||
+      eventType === "state" ||
+      eventType === "tool" ||
+      eventType === "queue" ||
+      eventType === "compaction" ||
+      eventType === "retry"
+    ) {
+      const validatedEvent = parseWithSchema(ChatStreamEventSchema, data, "Chat stream event")
+      
+      // Track sequence for critical structural events
+      if (sessionId && sequenceNumber !== undefined) {
+        trackSequence(sessionId, String(validatedEvent.type), sequenceNumber)
+      }
+      
+      onEvent(validatedEvent)
+    } else {
+      // Fast path: assume delta/thinking are well-formed NDJSON from server
+      onEvent(data as ChatStreamEvent)
+    }
   }
 
   for (;;) {

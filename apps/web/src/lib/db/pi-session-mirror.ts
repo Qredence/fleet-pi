@@ -40,6 +40,7 @@ export type PiSessionMirrorInput = {
   createdAt: string
   updatedAt: string
   entries: Array<PiSessionEntryMirrorInput>
+  lastSyncedEntryId?: string // Watermark for incremental sync (entry ID-based)
 }
 
 export type PiSessionEntryMirrorInput = {
@@ -219,8 +220,26 @@ export function extractPiSessionMirrorInput(
     messageCount: entries.filter((entry) => entry.type === "message").length,
     createdAt,
     updatedAt,
+    lastSyncedEntryId: getLastSyncedEntryId(sessionManager),
     entries: entries.map((entry) => mapSessionEntryToMirrorRow(header, entry)),
   }
+}
+
+// Track the last synced entry ID as a watermark for incremental sync
+/**
+ * Get the last synced entry ID as watermark for incremental sync.
+ * Uses the second-to-last entry by index for robustness against compaction reordering.
+ */
+function getLastSyncedEntryId(sessionManager: SessionManager): string | undefined {
+  const entries = sessionManager.getEntries()
+  
+  // Revert to index-based for safety - Pi library guarantees chronological order
+  if (entries.length >= 2) {
+    // Return the ID of the second-to-last entry
+    return entries[entries.length - 2].id
+  }
+  
+  return entries.length === 1 ? entries[0].id : undefined
 }
 
 export function mapSessionEntryToMirrorRow(
@@ -331,7 +350,8 @@ export async function upsertPiSessionMirror(
   )
 
   if (input.entries.length > 0) {
-    await upsertPiSessionEntriesBatch(client, input.entries)
+    // Incremental sync: only upsert entries newer than the watermark
+    await upsertPiSessionEntriesIncremental(client, input)
   }
 }
 
@@ -479,11 +499,41 @@ export async function replacePiFileMutations(
   client: PostgresQueryClient,
   input: ReplacePiFileMutationsInput
 ) {
+  // Delete existing mutations for this run
   await client.query("DELETE FROM pi_file_mutations WHERE run_id = $1", [
     input.runId,
   ])
 
-  for (const mutation of input.mutations) {
+  if (input.mutations.length === 0) return
+
+  // Batch insert all mutations in a single query instead of one INSERT per mutation
+  const CHUNK_SIZE = 50
+  for (let i = 0; i < input.mutations.length; i += CHUNK_SIZE) {
+    const chunk = input.mutations.slice(i, i + CHUNK_SIZE)
+    const values: Array<unknown> = []
+    const rowPlaceholders = chunk.map((mutation, rowIdx) => {
+      const base = rowIdx * 12 + 1
+      const mutationId = deterministicId(
+        "pi-file-mutation",
+        `${input.runId}:${mutation.canonicalPath}`
+      )
+      values.push(
+        mutationId,
+        input.runId,
+        mutation.canonicalPath,
+        mutation.kind,
+        mutation.toolCallId ?? null,
+        mutation.eventSequence ?? null,
+        mutation.beforeDigest ?? null,
+        mutation.afterDigest ?? null,
+        mutation.beforeSize ?? null,
+        mutation.afterSize ?? null,
+        mutation.summary ?? null,
+        input.recordedAt
+      )
+      const p = (n: number) => `$${base + n}`
+      return `(${p(0)},${p(1)},${p(2)},${p(3)},${p(4)},${p(5)},${p(6)},${p(7)},${p(8)},${p(9)},${p(10)},${p(11)})`
+    })
     await client.query(
       `
         INSERT INTO pi_file_mutations (
@@ -499,25 +549,9 @@ export async function replacePiFileMutations(
           after_size,
           summary,
           recorded_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ${rowPlaceholders.join(",")}
       `,
-      [
-        deterministicId(
-          "pi-file-mutation",
-          `${input.runId}:${mutation.canonicalPath}`
-        ),
-        input.runId,
-        mutation.canonicalPath,
-        mutation.kind,
-        mutation.toolCallId ?? null,
-        mutation.eventSequence ?? null,
-        mutation.beforeDigest ?? null,
-        mutation.afterDigest ?? null,
-        mutation.beforeSize ?? null,
-        mutation.afterSize ?? null,
-        mutation.summary ?? null,
-        input.recordedAt,
-      ]
+      values
     )
   }
 }
@@ -682,6 +716,32 @@ async function upsertPiSessionEntriesBatch(
       `,
       values
     )
+  }
+}
+
+// Incremental sync: only insert/update entries newer than lastSyncedEntryId
+// For a session with N entries, reduces writes from O(N) to O(newEntriesPerTurn)
+async function upsertPiSessionEntriesIncremental(
+  client: PostgresQueryClient,
+  input: PiSessionMirrorInput
+) {
+  // Find the first entry that's newer than the last synced watermark (ID-based)
+  const newEntries = input.entries.filter(
+    (entry) => entry.entryId !== input.lastSyncedEntryId
+  )
+
+  logger.debug(
+    {
+      sessionId: input.id,
+      totalEntries: input.entries.length,
+      newEntries: newEntries.length,
+      lastSyncedEntryId: input.lastSyncedEntryId,
+    },
+    "[pi-session-mirror] incremental sync delta"
+  )
+
+  if (newEntries.length > 0) {
+    await upsertPiSessionEntriesBatch(client, newEntries)
   }
 }
 

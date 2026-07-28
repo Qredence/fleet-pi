@@ -24,15 +24,58 @@ export type PostgresQueryClient = {
 
 let sharedPool: InstanceType<typeof Pool> | undefined
 
+// Track deployments for graceful pool cleanup across hot reloads
+let deployedPools = 0
+const DEPLOYMENT_CLEANUP_DELAY_MS = 60_000 // 1 minute delay to catch late requests
+
 export function isPiSessionMirrorEnabled() {
   return Boolean(resolveChatDatabaseUrl())
+}
+
+/**
+ * Increment deployment counter and schedule pool cleanup.
+ * Call this on application startup/hot reload to track new deploy cycles.
+ */
+export function markDeployment(): void {
+  deployedPools++
+  logger.debug(
+    { deployedPools },
+    "[pi-session-ownership-db] deployment marked, scheduling pool cleanup"
+  )
+  
+  // Schedule cleanup after delay to allow in-flight requests to complete
+  setTimeout(() => {
+    if (--deployedPools === 0) {
+      logger.info("[pi-session-ownership-db] all deployments completed, ending pool")
+      sharedPool?.end().then(() => {
+        sharedPool = undefined
+        logger.debug("[pi-session-ownership-db] PostgreSQL pool ended")
+      }).catch((err) => {
+        logger.error(
+          { error: err.message },
+          "[pi-session-ownership-db] failed to end PostgreSQL pool"
+        )
+      })
+    }
+  }, DEPLOYMENT_CLEANUP_DELAY_MS)
 }
 
 export function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
   const connectionString = resolveChatDatabaseUrl()
   if (!connectionString) return undefined
   if (!sharedPool) {
-    sharedPool = new Pool({ connectionString })
+    // Track this as a deployment event for cleanup tracking
+    markDeployment()
+    sharedPool = new Pool({
+      connectionString,
+      max: 5,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    })
+    logger.debug(
+      { deployedPools },
+      "[pi-session-ownership-db] PostgreSQL pool created"
+    )
   }
   return sharedPool
 }
@@ -144,38 +187,55 @@ export async function verifySessionOwnership(
   const pool = getChatPostgresPool()
   if (!pool) return failClosedOnError ? false : true
 
-  try {
-    const status = await lookupSessionOwnershipStatus(sessionId, userId)
-    if (!status || !isSessionOwnershipStatus(status)) {
+  // Retry with exponential backoff for transient errors
+  let lastError: unknown
+  const maxRetries = 3
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const status = await lookupSessionOwnershipStatus(sessionId, userId)
+      if (!status || !isSessionOwnershipStatus(status)) {
+        logger.warn(
+          { sessionId, userId, attempt, status },
+          "[pi-session-mirror] unexpected session ownership status"
+        )
+        return failClosedOnError ? false : true
+      }
+
+      if (isSessionAccessAllowed(status, { denyMissing: failClosedOnError })) {
+        return true
+      }
+
+      if (
+        status === "missing" &&
+        failClosedOnError &&
+        options.sessionFile &&
+        !isPiSessionDeleted(sessionId) &&
+        isUserScopedEphemeralSessionFile(options.sessionFile, userId)
+      ) {
+        return true
+      }
+
+      return false
+    } catch (error) {
+      lastError = error
       logger.warn(
-        { sessionId, userId, status },
-        "[pi-session-mirror] unexpected session ownership status"
+        { error, sessionId, userId, attempt },
+        "[pi-session-mirror] failed to verify session ownership, retrying..."
       )
-      return failClosedOnError ? false : true
+      
+      if (attempt < maxRetries - 1) {
+        // Exponential backoff: 100ms, 200ms, 400ms
+        await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)))
+      }
     }
-
-    if (isSessionAccessAllowed(status, { denyMissing: failClosedOnError })) {
-      return true
-    }
-
-    if (
-      status === "missing" &&
-      failClosedOnError &&
-      options.sessionFile &&
-      !isPiSessionDeleted(sessionId) &&
-      isUserScopedEphemeralSessionFile(options.sessionFile, userId)
-    ) {
-      return true
-    }
-
-    return false
-  } catch (error) {
-    logger.warn(
-      { error, sessionId, userId },
-      "[pi-session-mirror] failed to verify session ownership"
-    )
-    return failClosedOnError ? false : true
   }
+
+  // After all retries exhausted, log and apply fail-closed policy
+  logger.error(
+    { sessionId, userId, error: lastError },
+    "[pi-session-mirror] ownership verification failed after retries"
+  )
+  return failClosedOnError ? false : true
 }
 
 export async function verifyRunOwnership(
@@ -315,3 +375,25 @@ export async function resolveOwnedMirrorSession(
 /** On conflict, never assign user_id to a previously ownerless row. */
 export const PI_SESSION_USER_ID_ON_CONFLICT_SQL =
   "user_id = pi_sessions.user_id"
+
+/**
+ * Get current pool health metrics for monitoring dashboards.
+ * Useful for detecting connection leaks or exhaustion.
+ */
+export function getPoolHealthMetrics() {
+  if (!sharedPool) {
+    return { active: 0, idle: 0, total: 0, connected: false, deployedPools: 0 }
+  }
+  
+  // Calculate busy connections (total capacity minus idle)
+  const socketConnectionCount = sharedPool.options.max ?? 5
+  const busyConnections = socketConnectionCount - sharedPool.idleCount
+  
+  return {
+    active: Math.max(0, busyConnections),
+    idle: sharedPool.idleCount,
+    total: socketConnectionCount,
+    connected: true,
+    deployedPools,
+  }
+}
