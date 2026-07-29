@@ -1,9 +1,0 @@
-The module is split into focused responsibilities around a shared Neon Postgres mirror:
-
-- `pi-session-mirror.ts` is the primary persistence layer: it normalizes in-memory `SessionManager`/`SessionEntry` objects into typed input shapes (`PiSessionMirrorInput`, `InsertPiRunInput`, etc.), batches upserts into `pi_sessions` and `pi_session_entries` (chunked at 50 rows to respect pg parameter limits), and records run lifecycle data into `pi_runs`, `pi_run_events`, `pi_tool_executions`, and `pi_file_mutations`. It exposes both fire-and-forget (`syncPiSessionMirror`) and safe wrappers (`syncPiSessionMirrorSafely`) with a `MirrorMetrics` counter.
-- `pi-session-ownership-db.ts` owns the PostgreSQL connection pool (`@neondatabase/serverless` Pool), sets per-query `app.current_user_id` via `set_config`, and provides ownership verification against the `fleet_pi_check_session_owner` PL/pgSQL function. All DB operations go through `withUserContext` which wraps a transaction (BEGIN/COMMIT/ROLLBACK) and releases the connection.
-- `pi-session-deletion.ts` implements `deleteOwnedPiSession` and `eraseUserPiData`: it marks sessions as deleted via tombstones, removes rows from `pi_sessions`, deletes local JSONL files, and evicts in-memory runtime caches.
-- `pi-session-recovery.ts` reconstructs a JSONL session file from the mirror's `pi_session_entries` table when the on-disk file is missing, writing under a validated user-scoped path.
-- `pi-session-tombstones.ts` holds an in-process `Set<string>` of deleted session IDs used to short-circuit mirroring for already-deleted sessions.
-
-Dependency direction is one-way: mirror/deletion/recovery depend on ownership-db for DB access; ownership-db depends only on `chat-database-url`, `session-ownership`, and trust-zone helpers. The test file mocks a `PostgresQueryClient` interface to assert SQL shape without hitting a real database.

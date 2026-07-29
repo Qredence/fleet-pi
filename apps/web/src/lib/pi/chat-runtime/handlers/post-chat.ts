@@ -26,6 +26,8 @@ export async function postChatHandler(request: Request) {
     try {
       const runtimeContext = resolveAppRuntimeContext()
       const body = ChatRequestSchema.parse(await request.json()) as ChatRequest
+      body.userId = undefined
+      body.userEmail = undefined
       if (authSession?.user) {
         body.userId = authSession.user.id
         body.userEmail = authSession.user.email ?? undefined
@@ -95,7 +97,13 @@ export async function postChatHandler(request: Request) {
             }
             log.info("chat stream completed")
           } catch (error) {
-            log.error({ error: getErrorMessage(error) }, "chat stream error")
+            const message = getErrorMessage(error)
+            log.error({ error: message }, "chat stream error")
+            try {
+              controller.enqueue(encodeEvent({ type: "error", message }))
+            } catch {
+              // stream may already be errored or closed by the client
+            }
           } finally {
             void recorder.close()
             controller.close()

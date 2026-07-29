@@ -1,1 +1,0 @@
-Shared React/TypeScript UI library for Fleet Pi, providing shadcn primitives, agent-agnostic chat components, a product shell with right-panel workspace/artifacts/config panels, and an OpenUI generative renderer.

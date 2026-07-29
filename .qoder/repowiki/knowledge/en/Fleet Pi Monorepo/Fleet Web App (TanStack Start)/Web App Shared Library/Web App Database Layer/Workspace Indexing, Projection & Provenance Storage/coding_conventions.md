@@ -1,5 +1,0 @@
-- All persistent identifiers are generated deterministically via `createHash('sha256').update('${kind}:${value}').digest('hex')` so inserts are idempotent across runs.
-- Database writes are wrapped in `db.transaction(...)` blocks to guarantee atomicity of multi-statement operations like applying an index plan or recording provenance mutations.
-- SQL queries use named parameters (`@param`) with `prepare().run({ @param })` style bindings rather than string concatenation, and column aliases map snake_case DB columns to camelCase JS properties.
-- Enumerated types (categories, source-of-truth values, record types, run statuses, mutation kinds) are declared as `as const` tuples and enforced via SQL `CHECK (...) IN (...)` constraints built from those arrays.
-- JSON payloads are serialized with a `sanitizeForStorage` helper that truncates long strings, limits array/object depth and size, and falls back to safe defaults on parse errors.

@@ -1,1 +1,0 @@
-TypeScript with no runtime framework; relies on Node.js `process.env` and Vercel-specific variables (`VERCEL`, `VERCEL_ENV`, `AWS_LAMBDA_FUNCTION_NAME`, `VERCEL_REGION`). Uses PostgreSQL migration IDs imported from `../db/chat-postgres-*` and `../db/auth-postgres-post-migrate` as compile-time artifacts for validation.

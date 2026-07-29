@@ -1,4 +1,0 @@
-- Each route file exports a named `Route` constant created via `createFileRoute` or `createRootRoute`, keeping route definitions declarative and colocated with their UI component.
-- Global side effects like analytics initialization and provider wrapping are placed in the root route (`__root.tsx`) rather than individual pages, ensuring they run once at app bootstrap.
-- UI composition follows a layered pattern: a thin presentational wrapper component (e.g., `Chat`) delegates to a stateful shell component (e.g., `ChatWorkspaceShell`) that owns all hooks and business logic.
-- Cross-cutting concerns (auth, analytics, settings) are consumed through custom hooks from `@/lib/*` rather than direct imports, keeping route files focused on composition.

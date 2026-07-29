@@ -1,4 +1,0 @@
-- Backend selection is centralized through `auth-mode` helpers (`isNeonManagedAuthClientEnabled`, `resolveAuthBackend`) and consumers branch on the result rather than hard-coding a specific provider.
-- Heavy backend implementations are loaded via dynamic `await import(...)` inside functions so the active backend is the only one bundled into the running context.
-- Client-side token caching uses an in-memory object with an explicit `expiresAtMs` timestamp and a separate `inFlightBearer` promise to deduplicate concurrent mint requests.
-- Public APIs return `null` instead of throwing for transient failures (e.g., `getChatAuthBearerToken`, `getSessionFromRequest`), letting callers handle absence explicitly.

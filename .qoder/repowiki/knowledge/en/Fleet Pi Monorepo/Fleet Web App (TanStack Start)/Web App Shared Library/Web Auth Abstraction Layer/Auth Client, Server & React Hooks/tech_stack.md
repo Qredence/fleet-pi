@@ -1,1 +1,0 @@
-Better Auth (`better-auth/react`) with an optional Neon Managed Auth adapter (`@neondatabase/auth` + `BetterAuthReactAdapter`). JWT bearer tokens are parsed client-side by decoding the base64url payload to read the `exp` claim.

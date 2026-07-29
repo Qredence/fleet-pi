@@ -1,1 +1,0 @@
-Node.js built-in `node:crypto` (AES-256-GCM, scrypt, timing-safe comparison), the `jose` library for JWKS-based JWT verification, and Vite runtime env access via `import.meta.env` for client-side config.

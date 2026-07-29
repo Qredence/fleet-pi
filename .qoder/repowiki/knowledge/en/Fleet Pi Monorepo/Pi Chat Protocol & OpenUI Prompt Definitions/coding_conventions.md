@@ -1,5 +1,0 @@
-- Every domain shape in `chat-protocol.ts` has a corresponding Zod schema in `chat-protocol.zod.ts` with matching naming (e.g. `ChatRequest` ↔ `ChatRequestSchema`) and an `.openapi({ description })` annotation.
-- Enum-like string literal types are mirrored as both a TypeScript `type` union and a `z.enum(...)` schema, keeping the two representations in sync.
-- Optional fields use `.optional()` on Zod schemas while TypeScript uses `?` or `| undefined`, and passthrough objects (like `ChatToolPart`) use `.passthrough()` to allow unknown keys.
-- Provider and credential metadata are declared as const arrays typed with `satisfies Array<PiProviderCredentialEntry>` so new entries are validated against the shape automatically.
-- Public APIs are split across multiple files and re-exported through `src/index.ts`, with `package.json` exposing each file as a separate subpath export for selective imports.

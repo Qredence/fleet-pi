@@ -1,1 +1,0 @@
-HTTP request handlers for the Fleet PI chat runtime, exposing REST endpoints for creating, streaming, aborting, and querying chat sessions and runs behind a shared router with CORS and auth middleware.

@@ -1,5 +1,0 @@
-- Shared runtime state (project root, workspace path) flows through an `AppRuntimeContext` object resolved via `resolveAppRuntimeContext()` rather than global variables.
-- Environment variable changes go through `updateEnvVars` / `removeEnvVars` which atomically rewrite `.env.local` and mirror values into `process.env` without restarting the process.
-- All logging goes through the exported `logger` instance from `logger.ts`, using `createRequestLogger(requestId)` to attach request IDs to child loggers.
-- Server-side singleton instances (QueryClient, logger) are created once per process and reused across requests.
-- Feature subdirectories expose a focused public API surface while importing only from sibling subdirectories through explicit type contracts rather than circular imports.

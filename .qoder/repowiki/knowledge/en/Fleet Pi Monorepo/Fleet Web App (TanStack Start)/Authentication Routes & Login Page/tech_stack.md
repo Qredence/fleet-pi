@@ -1,1 +1,0 @@
-TanStack Start file-based routing (`createFileRoute`), React components from `@workspace/hax-design/components/fleet-pi/auth/login-page`, toast notifications via `sonner`, and the Better Auth library (both legacy TanStack adapter and the shared `auth` instance).

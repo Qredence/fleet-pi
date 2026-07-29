@@ -1,1 +1,0 @@
-React 19 + TanStack Start (Router v1, React-Query v5, Vite v8) as the unified framework; Zod + TypeBox for schema validation across API routes; Better-Auth for authentication; Neon serverless Postgres and better-sqlite3 for persistence; Pino for logging; Playwright for E2E testing; Vitest for unit tests; Tailwind CSS v4 with shadcn/ui components.

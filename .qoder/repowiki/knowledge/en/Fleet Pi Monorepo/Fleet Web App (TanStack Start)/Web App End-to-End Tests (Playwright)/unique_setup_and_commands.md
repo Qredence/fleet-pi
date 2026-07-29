@@ -1,1 +1,0 @@
-Run the full suite with `npx playwright test apps/web/e2e`. The `vercel-preview-smoke.e2e.ts` tests are skipped unless `FLEET_PI_PREVIEW_SMOKE_URL` is set, which points to a deployed Vercel preview instance for auth-gate verification.

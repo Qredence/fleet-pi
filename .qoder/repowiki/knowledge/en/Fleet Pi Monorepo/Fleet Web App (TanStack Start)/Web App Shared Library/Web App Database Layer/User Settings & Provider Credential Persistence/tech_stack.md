@@ -1,1 +1,0 @@
-PostgreSQL via a custom `PostgresQueryClient` wrapped by `withChatPostgresTransaction`; AES encryption of secrets through `../auth/crypto` (`encryptString`/`decryptString`) keyed by `BETTER_AUTH_SECRET`; conditional Neon Managed Auth vs legacy self-hosted Better Auth detection via `information_schema.tables`.

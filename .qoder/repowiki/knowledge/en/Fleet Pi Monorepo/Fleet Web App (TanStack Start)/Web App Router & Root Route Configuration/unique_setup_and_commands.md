@@ -1,1 +1,0 @@
-The router consumes an auto-generated `routeTree` from `./routeTree.gen`; this file is produced by TanStack Router's codegen and must be regenerated when new route files are added under `src/routes/`.
