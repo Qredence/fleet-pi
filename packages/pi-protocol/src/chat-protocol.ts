@@ -85,11 +85,23 @@ export type ChatModelSelection =
       thinkingLevel?: ChatThinkingLevel
     }
 
+/**
+ * Identifies the chat session a request targets. At least one of
+ * `sessionFile`/`sessionId` is typically provided to continue an existing
+ * session; omitting both starts a new one.
+ */
 export type ChatSessionMetadata = {
   sessionFile?: string
   sessionId?: string
 }
 
+/**
+ * Body of a `POST /api/chat` turn request.
+ *
+ * `userId`/`userEmail` are server-injected from the authenticated session
+ * (see the `post-chat` handler); they are not trusted from the client.
+ * Validated by `ChatRequestSchema` in `chat-protocol.zod`.
+ */
 export type ChatRequest = ChatSessionMetadata & {
   message?: string
   model?: ChatModelSelection
@@ -145,6 +157,14 @@ type ChatStartEvent = {
   diagnostics?: Array<string>
 }
 
+/**
+ * A single NDJSON frame emitted on the chat turn stream (`POST /api/chat`).
+ *
+ * Discriminated by `type`. A turn begins with `start`, then a mix of `delta` /
+ * `tool` / `thinking` content, `plan` / `state` / `queue` lifecycle signals,
+ * `compaction` / `retry` progress, and ends with `done` (success) or `error`.
+ * Validated by `ChatStreamEventSchema` in `chat-protocol.zod`.
+ */
 export type ChatStreamEvent =
   | ChatStartEvent
   | { type: "delta"; text: string; messageId?: string }

@@ -95,7 +95,13 @@ export async function postChatHandler(request: Request) {
             }
             log.info("chat stream completed")
           } catch (error) {
-            log.error({ error: getErrorMessage(error) }, "chat stream error")
+            const message = getErrorMessage(error)
+            log.error({ error: message }, "chat stream error")
+            try {
+              controller.enqueue(encodeEvent({ type: "error", message }))
+            } catch {
+              // stream may already be errored or closed by the client
+            }
           } finally {
             void recorder.close()
             controller.close()
