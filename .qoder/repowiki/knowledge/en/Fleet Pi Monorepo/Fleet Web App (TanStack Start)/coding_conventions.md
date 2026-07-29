@@ -1,5 +1,0 @@
-- File-based routing under `src/routes/` — each `.ts` or `.tsx` file maps directly to a URL path via TanStack Router's auto-generated route tree.
-- Server API handlers under `src/routes/api/*` follow a uniform pattern: validate input with Zod schemas, resolve authenticated user context, then delegate to domain libraries in `src/lib/`.
-- Shared cross-cutting concerns (logging, DB access, query client, environment, analytics) are centralized in `src/lib/` and imported by both client routes and server handlers.
-- Schema definitions use Zod for runtime validation and are reused between route handlers and OpenAPI generation via `@asteasolutions/zod-to-openapi`.
-- Tests are organized per feature: unit tests co-located with source files using Vitest, and E2E scenarios live in `e2e/` targeting the full dev server.

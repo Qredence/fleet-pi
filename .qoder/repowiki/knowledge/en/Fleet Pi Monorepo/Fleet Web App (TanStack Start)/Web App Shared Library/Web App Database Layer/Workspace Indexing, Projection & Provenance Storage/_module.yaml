@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: apps_web/shared_lib/db/workspace
-title: Workspace Indexing, Projection & Provenance Storage
-scope:
-    - apps/web/src/lib/db/workspace-*.ts
-    - apps/web/src/lib/db/workspace-provenance.ts
-source_files: []
-depends_on: []
-related_to: []

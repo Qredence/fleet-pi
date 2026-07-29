@@ -1,5 +1,0 @@
-- Every async function wrapping a Daytona SDK call follows a try/catch that rethrows non-`DaytonaError` errors unchanged and wraps `DaytonaError` instances in a plain `Error` with a `Daytona ... error:` prefix.
-- Path arguments passed into sandbox operations are validated through `guardPath` / `assertPathWithinWorkspaceBound` before any filesystem access, preventing escape outside the bound root.
-- Secrets and credentials are tracked via SHA-256 fingerprints (e.g. `fingerprintProviderSecrets`, `fingerprintDaytonaSecretsConfig`) so callers can short-circuit updates when values have not changed.
-- Shell commands injected into sandboxes are constructed with a local `shellEscape` helper that single-quotes strings and escapes embedded quotes, avoiding direct string interpolation of untrusted paths.
-- Per-user state is stored in module-level `Map` instances (`userSandboxes`, `userSandboxRequests`, `authFingerprintByUser`, `sessionUsers`) keyed by `userId` or `sessionId`, with explicit clear/reset helpers exposed for tests.

@@ -1,6 +1,0 @@
-- All filesystem interactions go through the `WorkspaceFS` interface rather than direct Node `fs` calls, enabling both local and sandbox-backed implementations.
-- Errors are wrapped in domain-specific classes (`WorkspaceFileError`, `RequestContextError`) carrying an HTTP status code as a `status` property instead of throwing raw errors.
-- Configuration constants (section names, required paths, policy definitions, allowed top-level files) are declared as `as const` arrays or tuples and re-exported from `workspace-contract.ts` for single-source-of-truth usage.
-- Diagnostic information follows a uniform `{ scope, code, severity, message, path? }` shape (`WorkspaceHealthDiagnostic`) produced by the `createDiagnostic` helper, then sorted deterministically before being returned.
-- Path handling always normalizes via `toWorkspaceProjectPath` (prefixing with `AGENT_WORKSPACE_DIRECTORY/`) and validates against traversal attacks using `hasUnsafeWorkspaceSegments` plus `isPathInside` checks before accessing files.
-- Parser functions follow a try/catch pattern that returns a parse result with `metadata.valid: false` and a `parseError` field instead of throwing, allowing callers to handle malformed content gracefully.

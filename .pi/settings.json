@@ -1,15 +1,27 @@
 {
-  "enabledModels": ["openai-chat-completions/nemotron-3-ultra-free"],
+  "skills": [
+    "../agent-workspace/pi/skills",
+    "npm:pi-autoresearch",
+    "npm:pi-autocontext"
+  ],
+  "prompts": [
+    "../agent-workspace/pi/prompts",
+    "npm:pi-autocontext"
+  ],
+  "extensions": [
+    "../agent-workspace/pi/extensions/enabled",
+    "npm:pi-autoresearch"
+  ],
+  "defaultProvider": "openai-chat-completions",
+  "defaultModel": "nemotron-3-ultra-free",
+  "enabledModels": [
+    "openai-chat-completions/nemotron-3-ultra-free"
+  ],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
     "npm:pi-web-access"
   ],
-  "skills": ["../agent-workspace/pi/skills"],
-  "extensions": ["../agent-workspace/pi/extensions/enabled"],
-  "prompts": ["../agent-workspace/pi/prompts"],
-  "defaultProvider": "openai-chat-completions",
-  "defaultModel": "nemotron-3-ultra-free",
   "defaultThinkingLevel": "high"
 }

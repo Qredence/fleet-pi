@@ -1,1 +1,0 @@
-Components are added via `pnpm dlx shadcn@latest add <name> -c packages/hax-design` which writes into this package; `apps/web/components.json` mirrors the config for app-cwd tooling. OpenUI signature generation runs through `pnpm generate:openui-signatures` (tsx script). Test coverage via `pnpm test:coverage`, typecheck via `tsc --noEmit`, lint via eslint.

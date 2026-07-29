@@ -1,1 +1,0 @@
-`.env.local` updates are written atomically via a `<file>.<pid>.<timestamp>.tmp` temp file followed by `rename`, so Vite must not trigger a restart on this write (noted in the module comment referencing `vite.config`). Logger pretty-printing is disabled when `NEON_BRANCH` or `VERCEL=1` is set, since those platforms do not bundle `pino-pretty`.

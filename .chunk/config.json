@@ -1,0 +1,25 @@
+{
+  "validation": {
+    "sidecarImage": "26426608-e021-4f75-8fdd-4a85d705c216"
+  },
+  "orgID": "d0fc62ae-1f4a-4037-8ccb-d357adfdfda6",
+  "environment": {
+    "stack": "javascript",
+    "setup": [
+      {
+        "name": "system",
+        "command": "curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash - && sudo apt-get install -y nodejs --no-install-recommends && sudo rm -rf /var/lib/apt/lists/* && sudo npm install -g pnpm"
+      },
+      {
+        "name": "install",
+        "command": "pnpm install"
+      },
+      {
+        "name": "test",
+        "command": "pnpm test"
+      }
+    ],
+    "image": "cimg/node",
+    "image_version": "26.5.0"
+  }
+}

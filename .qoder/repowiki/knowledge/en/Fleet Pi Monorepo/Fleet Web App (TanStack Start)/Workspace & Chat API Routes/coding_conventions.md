@@ -1,5 +1,0 @@
-- Every route file exports a named `handler` async function plus a `Route = createFileRoute(...)({ server: { handlers: { METHOD } } })` declaration, keeping handler logic separate from route registration.
-- Handlers always wrap their body in `withAuthenticatedChatRequest`, which provides `authSession` and `userId` to downstream logic.
-- Workspace context is obtained uniformly via `resolveWorkspaceContext(request, authSession?.user)` before calling any workspace library function.
-- Errors are handled by distinguishing domain-specific error types (e.g. `WorkspaceQueryApiError`, `WorkspaceFileError`) for correct status codes, falling back to `createUnexpectedWorkspaceQueryErrorResponse` or `getResponseStatus`/`getErrorMessage` for unknown errors.
-- GET handlers read query parameters via `new URL(request.url).searchParams.get(...)` rather than router params.

@@ -1,6 +1,0 @@
-- All HTTP responses are validated against Zod schemas from `@workspace/pi-protocol/chat-protocol.zod` via the `fetchValidatedJson` helper before being returned to callers.
-- Streaming chat events are handled through a single `readChatStream` function that reads a `ReadableStream`, buffers lines, parses each line as JSON, and validates each event against `ChatStreamEventSchema`.
-- 401 responses trigger automatic bearer-token cache invalidation followed by a single retry via an inner `attempt(allowRetry)` closure pattern used in both `chat-fetch.ts` and `chat-client.ts`.
-- Long-lived agent sessions are tracked in an in-memory `Map` (`runtimeRecords`) with per-record `lastUsedAt` timestamps and a scheduled `setTimeout` for TTL-based disposal, guarded by checks that the session is not currently streaming.
-- Public APIs are exposed through barrel files (`server.ts`, `runtime/index.ts`) that re-export named functions from implementation modules rather than importing them directly.
-- Each feature area pairs its source file with a co-located `.test.ts` or `.spec.ts` test file under either `__tests__/` or alongside the source, keeping tests colocated with implementation.

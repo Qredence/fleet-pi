@@ -1,1 +1,0 @@
-JWT verification requires `NEON_AUTH_JWKS_URL` or `NEON_AUTH_JWKS` plus optional `NEON_AUTH_ISSUER` and `NEON_AUTH_AUDIENCE` environment variables; preview deployments additionally require `BETTER_AUTH_URL` when no explicit trusted origins are set.

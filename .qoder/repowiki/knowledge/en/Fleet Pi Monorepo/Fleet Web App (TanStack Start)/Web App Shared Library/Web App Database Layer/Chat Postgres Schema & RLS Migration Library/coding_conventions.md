@@ -1,5 +1,0 @@
-- Every migration file exports exactly two named constants: a timestamp-prefixed `*_MIGRATION_ID` string and a `*_SQL` template literal containing the full DDL/DML.
-- All SQL statements use `IF EXISTS` / `IF NOT EXISTS` guards so migrations are safe to re-run (idempotent).
-- Row Level Security policies are created with both `USING` and `WITH CHECK` clauses that reference `current_setting('app.current_user_id', true)` (or `fleet_pi_current_user_id()`) to enforce per-user isolation.
-- Function and table privileges are explicitly revoked from `PUBLIC`, `authenticated`, and `anonymous`, then granted only to `fleet_pi_app` when that role exists.
-- Cross-table ownership checks are implemented via `SECURITY DEFINER` SQL functions (e.g. `fleet_pi_check_session_owner`, `fleet_pi_lookup_session_id_by_file`) rather than application-side logic.

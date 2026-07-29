@@ -1,1 +1,0 @@
-TanStack Router file-based server routes exposing workspace operations (file, item, items, search, tree, reindex, health) and a chat endpoint, each delegating to authenticated handlers that resolve workspace context and call domain libraries.

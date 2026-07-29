@@ -1,1 +1,0 @@
-Shared utilities for the Fleet PI chat feature, providing the client-side API wrapper, server-side runtime lifecycle management, session handling, and cross-cutting helpers for streaming, settings, and provider configuration.

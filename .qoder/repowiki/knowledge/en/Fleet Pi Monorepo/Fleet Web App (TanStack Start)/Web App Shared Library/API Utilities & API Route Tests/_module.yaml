@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: apps_web/shared_lib/api_utils
-title: API Utilities & API Route Tests
-scope:
-    - apps/web/src/lib/api/
-    - apps/web/src/lib/api-utils.ts
-source_files: []
-depends_on: []
-related_to: []

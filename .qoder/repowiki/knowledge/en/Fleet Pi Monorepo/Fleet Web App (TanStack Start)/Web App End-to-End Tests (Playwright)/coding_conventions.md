@@ -1,5 +1,0 @@
-- Tests import `expect` and `test` from `@playwright/test` and organize scenarios with `test.describe` blocks plus optional `test.beforeEach` hooks for navigation and load-state setup.
-- Network mocking is done per-test via `page.route()` against exact or globbed URLs matching `**/api/chat/*` and `**/api/workspace/*`, returning JSON or NDJSON bodies through `route.fulfill()`.
-- UI assertions prefer semantic selectors such as `page.getByRole('dialog', { name: '...' })`, `[aria-label=...]`, and `toHaveAttribute('aria-pressed', ...)` over XPath or CSS class selectors.
-- Large shared fixture data (models, resources, settings, workspace trees) is defined as top-level constants and reused across multiple test cases within the same file.
-- Screenshot capture uses `testInfo.outputPath(...)` to write artifacts into Playwright's test output directory, with console logging of saved paths.
