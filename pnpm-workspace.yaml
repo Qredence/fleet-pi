@@ -48,8 +48,37 @@ allowBuilds:
   msw: true
   protobufjs: true
   unrs-resolver: true
+# pnpm 11 (used by Vercel via package.json#packageManager) defaults minimumReleaseAge
+# to 1440 (24h): versions published < 24h ago cannot be installed. Local installs use
+# pnpm 10 (lockfile v9), which has no such default, so dependabot can pin a freshly-
+# published version that Vercel then rejects with ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION.
+# Waive the guard ONLY for these trusted, high-churn publishers; it stays ON for
+# everything else. pnpm gives NO warning for an entry that matches nothing, so keep
+# names exact and prune an entry when its package stops being bumped weekly / pins a
+# stable major. Last verified against the 2026-07-27/28 Vercel failure (19 blocked).
 minimumReleaseAgeExclude:
+  # Vendored Pi toolchain (internal to this stack; bumped by dependabot).
   - '@earendil-works/pi-agent-core'
   - '@earendil-works/pi-ai'
   - '@earendil-works/pi-coding-agent'
   - '@earendil-works/pi-tui'
+  # AWS SDK (transitive; single AWS publisher on a near-daily release train).
+  - '@aws-sdk/*'
+  # Motion family — four distinct published names; motion-dom/motion-utils are
+  # motion's internal split, NOT covered by the 'motion' entry (exact-name match).
+  - 'framer-motion'
+  - 'motion'
+  - 'motion-dom'
+  - 'motion-utils'
+  # Neon: 'neon' and the 'neon-init' CLI are unscoped, so @neon/* does NOT cover them.
+  - 'neon'
+  - 'neon-init'
+  - '@neon/*'
+  # shadcn registry CLI (direct dep of hax-design).
+  - 'shadcn'
+  # Toolchain pins (insurance: not in the blocked-19, but same publishers re-release
+  # <24h and would re-break dependabot previews). typescript/@types/node/better-sqlite3.
+  - 'typescript'
+  - '@types/node'
+  - 'better-sqlite3'
+  - 'jscpd'
