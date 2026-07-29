@@ -55,7 +55,8 @@ allowBuilds:
 # Waive the guard ONLY for these trusted, high-churn publishers; it stays ON for
 # everything else. pnpm gives NO warning for an entry that matches nothing, so keep
 # names exact and prune an entry when its package stops being bumped weekly / pins a
-# stable major. Last verified against the 2026-07-27/28 Vercel failure (19 blocked).
+# stable major. Verified against the 2026-07-27/28 (19 blocked) and 2026-07-28
+# (@tabler/icons-react, @tabler/icons, posthog-js) Vercel dependabot failures.
 minimumReleaseAgeExclude:
   # Vendored Pi toolchain (internal to this stack; bumped by dependabot).
   - '@earendil-works/pi-agent-core'
@@ -76,6 +77,10 @@ minimumReleaseAgeExclude:
   - '@neon/*'
   # shadcn registry CLI (direct dep of hax-design).
   - 'shadcn'
+  # Tabler icons (direct dep of hax-design; @tabler/* covers icons + icons-react).
+  - '@tabler/*'
+  # PostHog analytics SDK (direct dep of web).
+  - 'posthog-js'
   # Toolchain pins (insurance: not in the blocked-19, but same publishers re-release
   # <24h and would re-break dependabot previews). typescript/@types/node/better-sqlite3.
   - 'typescript'
