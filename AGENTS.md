@@ -74,8 +74,8 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 
 ## AI Integration
 
-- The chat backend uses `@earendil-works/pi-coding-agent` v0.80.10 on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
-- Pi 0.80.10 extensions can access `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()` for context-aware behavior. BYOK uses `services.modelRuntime` (`setRuntimeApiKey` / `getRuntimeApiKey`). Follow-up queues wait for `agent_settled`.
+- The chat backend uses `@earendil-works/pi-coding-agent` v0.82.1 on top of `@earendil-works/pi-ai`, not Vercel AI SDK.
+- Pi 0.82.1 extensions can access `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()` for context-aware behavior. BYOK uses `services.modelRuntime` (`setRuntimeApiKey` / `getRuntimeApiKey`). Follow-up queues wait for `agent_settled`.
 - The primary provider is Google via Pi's `google` provider (default model: `gemini-3.5-flash`).
 - The chat API route is `apps/web/src/routes/api/chat.ts`.
 - `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.

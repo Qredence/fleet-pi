@@ -26,6 +26,9 @@ maintainability refactor of the Zod schema surface. Public API is unchanged.
 
 ### Changed
 
+- **Pi SDK 0.82.1** — aligned `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-agent-core`, and
+  `pi-tui` to `^0.82.1` in the root workspace and `apps/web` (no runtime code changes;
+  Fleet Pi already uses `services.modelRuntime` for BYOK).
 - **Split `chat-protocol.zod.ts` into `schemas/` modules** (`shared`, `settings`,
   `chat`, `catalog`, `misc`, `z`) re-exported through the existing entry point.
   A single patched zod instance (`schemas/z.ts`) is threaded through all
