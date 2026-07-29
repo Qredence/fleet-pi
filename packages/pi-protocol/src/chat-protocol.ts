@@ -98,8 +98,9 @@ export type ChatSessionMetadata = {
 /**
  * Body of a `POST /api/chat` turn request.
  *
- * `userId`/`userEmail` are server-injected from the authenticated session
- * (see the `post-chat` handler); they are not trusted from the client.
+ * `userId`/`userEmail` may appear on the wire for OpenAPI documentation but
+ * client-supplied values are stripped after validation; the server sets them
+ * only from the authenticated session (see the `post-chat` handler).
  * Validated by `ChatRequestSchema` in `chat-protocol.zod`.
  */
 export type ChatRequest = ChatSessionMetadata & {

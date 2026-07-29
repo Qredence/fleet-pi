@@ -55,12 +55,11 @@ maintainability refactor of the Zod schema surface. Public API is unchanged.
 
 ### Chore
 
-- Cleared pre-existing working-tree leftovers (`37634c4`): refreshed
-  `.circleci/config.yml`, the husky pre-commit hook, `.pi/settings.json`
-  formatting, and `.chunk` config; regenerated `docs/api.md` and
-  `docs/project-structure.md`; added `docs/test-automation.md`,
-  `docs/test-automation-summary.md`, and the `scripts/test-precommit-hooks.sh`
-  helper.
+- **Thermos remediation** — restored husky pre-commit to `pnpm exec lint-staged`
+  only (removed package test runs from the hook); reverted `.circleci/config.yml`
+  to the `origin/main` say-hello stub; removed `docs/test-automation.md`,
+  `docs/test-automation-summary.md`, and `scripts/test-precommit-hooks.sh`.
+  Reverted `.pi/settings.json` local churn from the prior chore commit.
 
 ### Verification
 

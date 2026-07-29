@@ -26,6 +26,8 @@ export async function postChatHandler(request: Request) {
     try {
       const runtimeContext = resolveAppRuntimeContext()
       const body = ChatRequestSchema.parse(await request.json()) as ChatRequest
+      body.userId = undefined
+      body.userEmail = undefined
       if (authSession?.user) {
         body.userId = authSession.user.id
         body.userEmail = authSession.user.email ?? undefined
