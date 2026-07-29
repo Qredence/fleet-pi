@@ -8,7 +8,7 @@
     "setup": [
       {
         "name": "system",
-        "command": "curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash - && sudo apt-get install -y nodejs --no-install-recommends && sudo rm -rf /var/lib/apt/lists/* && sudo npm install -g pnpm"
+        "command": "corepack enable && corepack prepare pnpm@11.1.3 --activate"
       },
       {
         "name": "install",
