@@ -1,6 +1,11 @@
 import { applyProjectSettingsToServices } from "./apply-project-settings"
 import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./fleet-default-project-settings"
+import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { mergeProjectSettingsRecords } from "./project-settings-merge"
+import {
+  prepareProjectSettingsForPersist,
+  projectSettingsOverridesEqual,
+} from "./project-settings-persist"
 import { readProjectSettingsFile } from "./project-settings-file"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
@@ -15,13 +20,38 @@ export async function loadPersistedProjectSettingsOverrides(
 ) {
   if (process.env.VERCEL === "1") {
     const stored = await loadUserProjectSettings(options.userId)
-    return stored ? sanitizePortableResourcePaths(stored) : {}
+    const overrides = stored ? sanitizePortableResourcePaths(stored) : {}
+    return persistLegacyGatewayMigrationIfNeeded(overrides, options.userId)
   }
 
   if (!options.projectRoot) return {}
-  return sanitizePortableResourcePaths(
+  const overrides = sanitizePortableResourcePaths(
     await readProjectSettingsFile(options.projectRoot)
   )
+  return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
+}
+
+async function persistLegacyGatewayMigrationIfNeeded(
+  overrides: Record<string, unknown>,
+  userId: string | undefined
+) {
+  const migrated = migrateLegacyGatewayProjectOverrides(overrides, userId)
+  if (
+    !userId ||
+    projectSettingsOverridesEqual(
+      prepareProjectSettingsForPersist(overrides),
+      prepareProjectSettingsForPersist(migrated)
+    )
+  ) {
+    return migrated
+  }
+
+  const { upsertUserProjectSettings } = await import("@/lib/db/user-settings")
+  await upsertUserProjectSettings(
+    userId,
+    prepareProjectSettingsForPersist(migrated)
+  )
+  return migrated
 }
 
 export async function resolveProjectSettings(

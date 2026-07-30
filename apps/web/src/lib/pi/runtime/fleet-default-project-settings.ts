@@ -12,11 +12,14 @@ export const FLEET_PI_BASE_PROJECT_SETTINGS: Record<string, unknown> = {
   skills: ["../agent-workspace/pi/skills"],
   prompts: ["../agent-workspace/pi/prompts"],
   extensions: ["../agent-workspace/pi/extensions/enabled"],
-  defaultProvider: "google",
-  defaultModel: "gemini-3.5-flash",
+  defaultProvider: "openai-chat-completions",
+  defaultModel: "qwen35-122b-a10b",
   defaultThinkingLevel: "high",
   enableSkillCommands: true,
-  // Deny-all by default: no models appear in the chat picker until the user
-  // adds them via Settings > LLM Models. `undefined` (omitted) means allow-all.
-  enabledModels: [],
+  // Curated Neon AI Gateway models for authenticated deploys; local BYOK/OCC
+  // overrides still apply. `undefined` (omitted) means allow-all.
+  enabledModels: [
+    "openai-chat-completions/qwen35-122b-a10b",
+    "openai-chat-completions/gpt-oss-120b",
+  ],
 }

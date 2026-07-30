@@ -68,7 +68,7 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
     }
 
     const selected = models.find((model) => model.id === modelKey)
-    if (selected?.available === false) {
+    if (!selected || selected.available === false) {
       setModelKey(preferredKey)
     }
   }, [models, modelKey, modelsData])

@@ -10,6 +10,7 @@ export default defineConfig({
   auth: true,
   dataApi: false,
   preview: {
+    aiGateway: true,
     functions: {
       chat: {
         name: "Fleet Pi Chat Runtime",
@@ -28,6 +29,8 @@ export default defineConfig({
             "FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS"
           ),
           GEMINI_API_KEY: chatFunctionEnv("GEMINI_API_KEY"),
+          NEON_AI_GATEWAY_TOKEN: chatFunctionEnv("NEON_AI_GATEWAY_TOKEN"),
+          NEON_AI_GATEWAY_BASE_URL: chatFunctionEnv("NEON_AI_GATEWAY_BASE_URL"),
         },
       },
     },

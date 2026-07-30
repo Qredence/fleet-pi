@@ -75,3 +75,6 @@ codex-security/
 
 .qoder/*
 .qoder/repowiki
+.env
+.env.*
+!.env.example

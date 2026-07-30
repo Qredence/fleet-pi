@@ -4,6 +4,7 @@ import {
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+import { resolveNeonAiGatewayConfig } from "./neon-ai-gateway"
 import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { listConfiguredProviderIds } from "@/lib/db/user-providers"
@@ -40,6 +41,7 @@ async function getVercelProviderConfigStatus(userId?: string) {
     envVarName: provider.envVarName,
     isConfigured: isProviderConfigured(provider.id, {
       configuredProviderIds,
+      userId,
     }),
   }))
 }
@@ -58,9 +60,14 @@ function isProviderConfigured(
   options: {
     configuredProviderIds?: Set<string>
     services?: AgentSessionServices
+    userId?: string
   }
 ): boolean {
   if (providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) {
+    if (options.userId && resolveNeonAiGatewayConfig(options.userId)) {
+      return true
+    }
+
     if (options.configuredProviderIds) {
       return (
         options.configuredProviderIds.has(

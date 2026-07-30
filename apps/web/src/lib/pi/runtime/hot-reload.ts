@@ -37,11 +37,15 @@ async function reloadRuntimeForRecord(
     const defaultThinkingLevel =
       runtime.services.settingsManager.getDefaultThinkingLevel()
 
-    await applyModelSelection(runtime, {
-      provider: defaultProvider,
-      id: defaultModel,
-      thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
-    })
+    await applyModelSelection(
+      runtime,
+      {
+        provider: defaultProvider,
+        id: defaultModel,
+        thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
+      },
+      record.userId
+    )
   }
 
   await applyRuntimeAuth(runtime.services, { userId: record.userId })

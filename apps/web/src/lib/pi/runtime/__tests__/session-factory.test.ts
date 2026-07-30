@@ -148,6 +148,27 @@ describe("session factory", () => {
     expect(mocks.createAgentSessionServices).toHaveBeenCalled()
   })
 
+  it("scrubs NEON_AI_GATEWAY env on Vercel after capturing credentials", async () => {
+    process.env.VERCEL = "1"
+    process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
+    process.env.NEON_AI_GATEWAY_BASE_URL =
+      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.GEMINI_API_KEY = "secret"
+    const { resetCapturedNeonAiGatewayCredentialsForTests } =
+      await import("../neon-ai-gateway")
+    resetCapturedNeonAiGatewayCredentialsForTests()
+    const { createSessionServices } = await import("../session-factory")
+    const { resolveNeonAiGatewayConfig } = await import("../neon-ai-gateway")
+
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
+
+    expect(process.env.NEON_AI_GATEWAY_TOKEN).toBeUndefined()
+    expect(process.env.NEON_AI_GATEWAY_BASE_URL).toBeUndefined()
+    expect(resolveNeonAiGatewayConfig("user-1")?.apiKey).toBe("nt_live_gateway")
+    expect(process.env.GEMINI_API_KEY).toBeUndefined()
+    resetCapturedNeonAiGatewayCredentialsForTests()
+  })
+
   it("does not fall back to org env LLM keys on Vercel when BYOK is empty", async () => {
     process.env.VERCEL = "1"
     process.env.GEMINI_API_KEY = "org-gemini-key"
