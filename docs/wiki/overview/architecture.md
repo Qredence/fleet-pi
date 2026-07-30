@@ -9,7 +9,8 @@ graph TD
     Browser["Browser (React 19)"]
     TanStackStart["TanStack Start (Vite + Nitro)"]
     PiRuntime["Pi AgentSessionRuntime"]
-    Provider["OpenAI-compatible provider via Pi openai-chat-completions"]
+    Provider["Neon AI Gateway / BYOK via openai-chat-completions"]
+    NeonAuth["Neon Managed Auth"]
     PiSession["Pi JSONL canonical transcript"]
     NeonPG["Neon Postgres derived mirror"]
     Daytona["Daytona Sandbox (optional)"]
@@ -106,6 +107,6 @@ sequenceDiagram
 | `@neondatabase/serverless`        | Neon Postgres client                                      |
 | `@openuidev/react-lang`           | OpenUI language support                                   |
 
-Google Gemini and Amazon Bedrock remain supported provider-specific integrations.
-The current project configuration defaults to the OpenAI-compatible
-`openai-chat-completions` provider with model `deepseek-v4-flash-free`.
+Google Gemini and Amazon Bedrock remain supported BYOK providers. Authenticated
+deploys default to Neon AI Gateway (`qwen35-122b-a10b`, `gpt-oss-120b`) through
+Pi `openai-chat-completions`.

@@ -20,7 +20,10 @@ graph TD
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
         SandboxContext[resolveUserSandboxContext]
-        PlanMode[Plan Mode Extension]
+        SettingsRoute[/api/chat/settings]
+        ProvidersRoute[/api/chat/providers]
+        CommandsRoute[/api/chat/commands]
+        PlanMode[Agent Plan and Harness modes]
         WorkspaceServer[Workspace Server]
         ResourceCatalog[Workspace Resource Catalog]
         CircuitBreaker[Circuit Breaker]
@@ -58,8 +61,10 @@ graph TD
     end
 
     subgraph External["External Services"]
-        ConfiguredProvider[OpenAI-compatible provider via Pi openai-chat-completions]
-        Daytona[Daytona per-user sandboxes]
+        NeonAuth[Neon Managed Auth]
+        NeonGateway[Neon AI Gateway /v1]
+        NeonPostgres[Neon Postgres pi_* mirror]
+        Daytona[Daytona per-user BYOK sandboxes]
     end
 
     React --> AgentChat
@@ -79,7 +84,9 @@ graph TD
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> ConfiguredProvider
+    CircuitBreaker --> NeonGateway
+    PiServer --> NeonAuth
+    PiServer --> NeonPostgres
     PiServer --> SandboxContext
     SandboxContext --> Daytona
     PiServer --> PlanMode

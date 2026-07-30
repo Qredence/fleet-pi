@@ -5,6 +5,7 @@ import { applyProjectSettingsToServices } from "./apply-project-settings"
 import { resolveProjectSettings } from "./durable-project-settings"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import { applyRuntimeAuth } from "./session-factory"
+import { reconcileRuntimeOccModel } from "./openai-chat-completions-compat"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type { ActiveSessionRecord } from "./active-sessions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
@@ -37,11 +38,15 @@ async function reloadRuntimeForRecord(
     const defaultThinkingLevel =
       runtime.services.settingsManager.getDefaultThinkingLevel()
 
-    await applyModelSelection(runtime, {
-      provider: defaultProvider,
-      id: defaultModel,
-      thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
-    })
+    await applyModelSelection(
+      runtime,
+      {
+        provider: defaultProvider,
+        id: defaultModel,
+        thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
+      },
+      record.userId
+    )
   }
 
   await applyRuntimeAuth(runtime.services, { userId: record.userId })
@@ -70,5 +75,6 @@ export async function hotReloadActiveRuntimesForUser(
 export async function hotReloadProviderAuthForActiveRuntimes() {
   for (const record of getActiveSessionRecords().values()) {
     await applyRuntimeAuth(record.runtime.services, { userId: record.userId })
+    reconcileRuntimeOccModel(record.runtime, record.userId)
   }
 }

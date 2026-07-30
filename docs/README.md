@@ -33,6 +33,12 @@ or reference-oriented, not the recommended starting point for new users.
 - [API Reference](api.md) — generated API contract
 - [Project Structure](project-structure.md) — generated monorepo map
 
+## Wiki (deep dive)
+
+- [Wiki overview](wiki/overview/index.md) — architecture, glossary, deployment
+- [Features](wiki/features/index.md) — chat, Daytona, agent-workspace, OpenUI
+- [How to contribute](wiki/how-to-contribute/index.md) — workflow, testing, tooling
+
 ## Contributor links
 
 - [README](../README.md) — public repo overview

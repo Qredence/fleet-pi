@@ -17,7 +17,11 @@ import {
   createSessionCircuitBreaker,
   createSessionFallbackError,
 } from "./circuit-breaker"
-import { applyModelSelection, resolveModelSelection } from "./runtime"
+import {
+  applyModelSelection,
+  resolveModelSelection,
+} from "./runtime/model-catalog"
+import { reconcileRuntimeOccModel } from "./runtime/openai-chat-completions-compat"
 import {
   collectDiagnostics,
   createSessionServices,
@@ -245,7 +249,11 @@ export async function createPiRuntime(
     }
     reusable.lastUsedAt = Date.now()
     try {
-      await applyModelSelection(reusable.runtime, modelSelection)
+      await applyModelSelection(
+        reusable.runtime,
+        modelSelection,
+        metadata.userId
+      )
       applyPlanMode(reusable.runtime, metadata.mode, metadata.planAction)
     } catch (error) {
       scheduleRuntimeDisposal(reusable)
@@ -300,7 +308,8 @@ export async function createPiRuntime(
   }) => {
     const { model, thinkingLevel } = resolveModelSelection(
       services,
-      modelSelection
+      modelSelection,
+      metadata.userId
     )
 
     await applyRuntimeAuth(services, { userId: metadata.userId })
@@ -330,6 +339,7 @@ export async function createPiRuntime(
     sessionManager,
   })
   trackRuntime(runtime, metadata.userId)
+  reconcileRuntimeOccModel(runtime, metadata.userId)
   applyPlanMode(runtime, metadata.mode, metadata.planAction)
 
   return {

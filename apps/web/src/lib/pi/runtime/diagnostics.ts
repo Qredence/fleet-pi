@@ -1,8 +1,13 @@
 import { mirrorMetrics } from "../../db/pi-session-mirror"
 import { CHAT_TOOL_ALLOWLIST } from "../plan-mode"
-import { DEFAULT_MODEL } from "./types"
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./types"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
+
+/** Local anonymous-dev fallback (env/BYOK providers, e.g. GEMINI_API_KEY). */
+const LOCAL_DEFAULT_PROVIDER = "google"
+const LOCAL_DEFAULT_MODEL = "gemini-3.5-flash"
 
 type ModelDefaultSettingsLike = {
   getDefaultModel: () => string | undefined
@@ -96,9 +101,14 @@ export function collectDiagnostics(
 export function resolveDefaultModelSelection(
   settingsManager: ModelDefaultSettingsLike
 ) {
+  const deployed = isDeployedChatRuntimeSurface()
   return {
-    defaultProvider: settingsManager.getDefaultProvider() ?? "google",
-    defaultModel: settingsManager.getDefaultModel() ?? DEFAULT_MODEL,
+    defaultProvider:
+      settingsManager.getDefaultProvider() ??
+      (deployed ? DEFAULT_PROVIDER : LOCAL_DEFAULT_PROVIDER),
+    defaultModel:
+      settingsManager.getDefaultModel() ??
+      (deployed ? DEFAULT_MODEL : LOCAL_DEFAULT_MODEL),
   }
 }
 

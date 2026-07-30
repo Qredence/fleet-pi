@@ -1,7 +1,9 @@
 import { applyProjectSettingsToServices } from "./apply-project-settings"
-import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./fleet-default-project-settings"
+import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
+import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { mergeProjectSettingsRecords } from "./project-settings-merge"
 import { readProjectSettingsFile } from "./project-settings-file"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
@@ -13,22 +15,24 @@ export type ResolveProjectSettingsOptions = {
 export async function loadPersistedProjectSettingsOverrides(
   options: ResolveProjectSettingsOptions = {}
 ) {
-  if (process.env.VERCEL === "1") {
+  if (usesDatabaseBackedProjectSettings()) {
     const stored = await loadUserProjectSettings(options.userId)
-    return stored ? sanitizePortableResourcePaths(stored) : {}
+    const overrides = stored ? sanitizePortableResourcePaths(stored) : {}
+    return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
   }
 
   if (!options.projectRoot) return {}
-  return sanitizePortableResourcePaths(
+  const overrides = sanitizePortableResourcePaths(
     await readProjectSettingsFile(options.projectRoot)
   )
+  return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
 }
 
 export async function resolveProjectSettings(
   options: ResolveProjectSettingsOptions = {}
 ) {
   const overrides = await loadPersistedProjectSettingsOverrides(options)
-  return mergeProjectSettingsRecords(FLEET_PI_BASE_PROJECT_SETTINGS, overrides)
+  return mergeProjectSettingsRecords(getFleetBaseProjectSettings(), overrides)
 }
 
 /** Drop absolute machine paths that cannot work on Vercel. */

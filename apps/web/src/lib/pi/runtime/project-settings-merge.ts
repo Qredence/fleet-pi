@@ -1,5 +1,3 @@
-import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./fleet-default-project-settings"
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -74,7 +72,7 @@ export function mergeProjectSettingsRecords(
  */
 export function compactProjectSettingsForPersist(
   merged: Record<string, unknown>,
-  base: Record<string, unknown> = FLEET_PI_BASE_PROJECT_SETTINGS
+  base: Record<string, unknown>
 ) {
   const result: Record<string, unknown> = {}
 

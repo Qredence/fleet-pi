@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
-import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./runtime/fleet-default-project-settings"
+import { FLEET_PI_SHARED_PROJECT_SETTINGS } from "./runtime/fleet-default-project-settings"
 import { mergeProjectSettingsRecords } from "./runtime/project-settings-merge"
 import {
   EXPECTED_PROJECT_EXTENSION_NAMES,
@@ -39,6 +39,24 @@ describe("resource expectations", () => {
     )
   })
 
+  it("keeps committed .pi/settings.json aligned with Fleet shared defaults", async () => {
+    const committed = JSON.parse(
+      await readFile(
+        new URL("../../../../../.pi/settings.json", import.meta.url),
+        "utf8"
+      )
+    ) as Record<string, unknown>
+
+    expect(committed).toMatchObject({
+      packages: FLEET_PI_SHARED_PROJECT_SETTINGS.packages,
+      skills: FLEET_PI_SHARED_PROJECT_SETTINGS.skills,
+      prompts: FLEET_PI_SHARED_PROJECT_SETTINGS.prompts,
+      extensions: FLEET_PI_SHARED_PROJECT_SETTINGS.extensions,
+      defaultThinkingLevel:
+        FLEET_PI_SHARED_PROJECT_SETTINGS.defaultThinkingLevel,
+    })
+  })
+
   it("keeps expected project extensions registered in merged Pi settings", async () => {
     const overrides = JSON.parse(
       await readFile(
@@ -47,7 +65,7 @@ describe("resource expectations", () => {
       )
     ) as Record<string, unknown>
     const settings = mergeProjectSettingsRecords(
-      FLEET_PI_BASE_PROJECT_SETTINGS,
+      FLEET_PI_SHARED_PROJECT_SETTINGS,
       overrides
     ) as { extensions?: Array<string> }
 

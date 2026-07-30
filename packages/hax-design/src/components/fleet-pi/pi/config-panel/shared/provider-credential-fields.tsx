@@ -3,7 +3,7 @@ import { FieldGroup } from "../../../../field"
 import { SecretCredentialField, TextCredentialField } from "./credential-fields"
 
 const OPENAI_CHAT_BASE_URL_PLACEHOLDER = "https://opencode.ai/zen/v1"
-const OPENAI_CHAT_MODEL_PLACEHOLDER = "deepseek-v4-flash-free"
+const OPENAI_CHAT_MODEL_PLACEHOLDER = "qwen35-122b-a10b"
 
 export function ProviderCredentialFields({
   attemptedSave,

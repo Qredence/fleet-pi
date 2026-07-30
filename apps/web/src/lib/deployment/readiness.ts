@@ -10,6 +10,10 @@ import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../db/chat-pos
 import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
 import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
 import { CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID } from "../db/chat-postgres-rls-initplan"
+import {
+  assertSafeOpenAiCompatibleBaseUrl,
+  isAllowedNeonAiGatewayHostname,
+} from "../pi/runtime/openai-chat-completions-url"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
@@ -293,6 +297,33 @@ export function validateDeploymentReadiness(
       )
     }
   }
+
+  for (const name of [
+    "NEON_AI_GATEWAY_TOKEN",
+    "NEON_AI_GATEWAY_BASE_URL",
+  ] as const) {
+    const value = readEnv(name, env)
+    const set = value.length > 0
+    push(
+      `env:${name}`,
+      set,
+      set
+        ? `${name} is set for authenticated Neon AI Gateway chat.`
+        : `${name} is required on deployed when authenticated chat defaults to Neon AI Gateway.`
+    )
+  }
+
+  const gatewayBaseUrl = readEnv("NEON_AI_GATEWAY_BASE_URL", env)
+  if (gatewayBaseUrl.length > 0) {
+    const shapeError = validateNeonAiGatewayBaseUrlShape(gatewayBaseUrl)
+    push(
+      "env:NEON_AI_GATEWAY_BASE_URL:shape",
+      shapeError === undefined,
+      shapeError === undefined
+        ? "NEON_AI_GATEWAY_BASE_URL is a valid Neon AI Gateway URL."
+        : `NEON_AI_GATEWAY_BASE_URL is invalid: ${shapeError}`
+    )
+  }
   if (input.chatMigrationsApplied) {
     for (const migrationId of CHAT_MIGRATION_IDS) {
       const applied = input.chatMigrationsApplied.includes(migrationId)
@@ -374,4 +405,20 @@ export function validateDeploymentReadiness(
   )
 
   return { ok: checks.every((check) => check.ok), checks }
+}
+
+/** Returns an error message when the gateway URL is malformed or off-allowlist. */
+function validateNeonAiGatewayBaseUrlShape(
+  baseUrl: string
+): string | undefined {
+  try {
+    const safe = assertSafeOpenAiCompatibleBaseUrl(baseUrl)
+    const hostname = new URL(safe).hostname
+    if (!isAllowedNeonAiGatewayHostname(hostname)) {
+      return "host is not an allowed Neon AI Gateway host (*.neon.tech)"
+    }
+    return undefined
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
 }

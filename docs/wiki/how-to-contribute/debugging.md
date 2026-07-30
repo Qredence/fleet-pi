@@ -6,7 +6,7 @@
 
 **Symptom:** The chat stream returns an error event with `API_KEY_INVALID`, `API key not valid`, or HTTP 400 from `generativelanguage.googleapis.com`.
 
-**Cause:** Fleet Pi's default provider is Google Gemini (`google/gemini-3.5-flash` in `.pi/settings.json`). Pi reads credentials from `GEMINI_API_KEY`. The key may be missing, revoked, restricted, or the wrong credential type (OAuth secrets do not work for LLM calls).
+**Cause:** Local chat may use Google Gemini when configured via Settings or `GEMINI_API_KEY`. Deployed authenticated chat defaults to Neon AI Gateway (`openai-chat-completions/qwen35-122b-a10b`). For Gemini locally, Pi reads credentials from `GEMINI_API_KEY`. The key may be missing, revoked, restricted, or the wrong credential type (OAuth secrets do not work for LLM calls).
 
 **Fix:**
 
@@ -16,7 +16,7 @@
 4. Verify outside Fleet Pi: `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"` should return HTTP 200.
 5. Confirm provider status: `curl -s http://localhost:3000/api/chat/providers | jq '.providers[] | select(.id=="google")'`.
 
-You can also save credentials from the chat UI **Configurations → Provider Credentials** (writes to `.env.local`).
+You can also save credentials from the chat UI **Settings → Providers** (writes to `.env.local` locally or encrypted Postgres BYOK on Vercel).
 
 ### AWS credentials missing → Bedrock authentication failure
 

@@ -2,7 +2,15 @@ import {
   INFRA_PROVIDER_IDS,
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+import {
+  isLegacyFleetOccModelId,
+  resolveNeonAiGatewayConfig,
+} from "./neon-ai-gateway"
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
@@ -20,14 +28,43 @@ function readEnvLlmProviderSecrets(): Map<string, string> {
   return secrets
 }
 
+function shouldLoadUserByokFromDatabase() {
+  return isDeployedChatRuntimeSurface()
+}
+
+function stripLegacyOccByokWhenGatewayActive(
+  userId: string | undefined,
+  secrets: Map<string, string>,
+  modelId: string | undefined
+) {
+  if (!userId || !resolveNeonAiGatewayConfig(userId)) {
+    return secrets
+  }
+
+  if (
+    !secrets.has(OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) ||
+    !modelId ||
+    !isLegacyFleetOccModelId(modelId)
+  ) {
+    return secrets
+  }
+
+  const next = new Map(secrets)
+  next.delete(OPENAI_CHAT_COMPLETIONS_PROVIDER_ID)
+  next.delete(OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID)
+  next.delete(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)
+  return next
+}
+
 /**
  * On Vercel: only the signed-in user's BYOK rows (never org env).
+ * Neon Function chat runtime: same — platform Gateway + user BYOK only.
  * Local/dev: project env LLM keys.
  */
 export async function loadLlmProviderSecrets(
   userId: string | undefined
 ): Promise<Map<string, string>> {
-  if (process.env.VERCEL === "1") {
+  if (shouldLoadUserByokFromDatabase()) {
     const secrets = new Map<string, string>()
     if (userId) {
       const byok = await loadDecryptedUserProviderSecrets(userId, {
@@ -37,7 +74,11 @@ export async function loadLlmProviderSecrets(
         secrets.set(providerId, apiKey)
       }
     }
-    return secrets
+    return stripLegacyOccByokWhenGatewayActive(
+      userId,
+      secrets,
+      secrets.get(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)
+    )
   }
 
   return readEnvLlmProviderSecrets()
@@ -49,7 +90,7 @@ export async function resolveUserProviderSecret(
 ): Promise<string | undefined> {
   const provider = KNOWN_PROVIDERS.find((entry) => entry.id === providerId)
   if (!provider) {
-    if (process.env.VERCEL === "1") {
+    if (shouldLoadUserByokFromDatabase()) {
       if (!userId || INFRA_PROVIDER_ID_SET.has(providerId)) return undefined
       return (
         await loadDecryptedUserProviderSecrets(userId, { providerId })
@@ -62,7 +103,7 @@ export async function resolveUserProviderSecret(
     return (await loadLlmProviderSecrets(userId)).get(providerId)
   }
 
-  if (process.env.VERCEL === "1") {
+  if (shouldLoadUserByokFromDatabase()) {
     if (!userId) return undefined
     return (await loadDecryptedUserProviderSecrets(userId, { providerId })).get(
       providerId

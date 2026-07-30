@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
   assertSafeOpenAiCompatibleBaseUrl,
+  isAllowedNeonAiGatewayHostname,
   normalizeOpenAiCompatibleBaseUrl,
-} from "../openai-chat-completions-provider"
+} from "../openai-chat-completions-url"
+import { TEST_NEON_AI_GATEWAY_HOST } from "./gateway-test-fixtures"
 import { sanitizeProviderCredentialValue } from "@/lib/env-manager"
 
 describe("openai chat completions credential helpers", () => {
@@ -43,5 +45,10 @@ describe("openai chat completions credential helpers", () => {
     expect(() =>
       assertSafeOpenAiCompatibleBaseUrl("https://metadata.google.internal/")
     ).toThrow(/not allowed/i)
+  })
+
+  it("allows only neon.tech gateway hosts", () => {
+    expect(isAllowedNeonAiGatewayHostname(TEST_NEON_AI_GATEWAY_HOST)).toBe(true)
+    expect(isAllowedNeonAiGatewayHostname("evil.example.com")).toBe(false)
   })
 })

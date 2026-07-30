@@ -123,7 +123,10 @@ graph TD
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
         SandboxContext[resolveUserSandboxContext]
-        PlanMode[Plan Mode Extension]
+        SettingsRoute[/api/chat/settings]
+        ProvidersRoute[/api/chat/providers]
+        CommandsRoute[/api/chat/commands]
+        PlanMode[Agent Plan and Harness modes]
         WorkspaceServer[Workspace Server]
         ResourceCatalog[Workspace Resource Catalog]
         CircuitBreaker[Circuit Breaker]
@@ -161,8 +164,10 @@ graph TD
     end
 
     subgraph External["External Services"]
-        ConfiguredProvider[OpenAI-compatible provider via Pi openai-chat-completions]
-        Daytona[Daytona per-user sandboxes]
+        NeonAuth[Neon Managed Auth]
+        NeonGateway[Neon AI Gateway /v1]
+        NeonPostgres[Neon Postgres pi_* mirror]
+        Daytona[Daytona per-user BYOK sandboxes]
     end
 
     React --> AgentChat
@@ -182,7 +187,9 @@ graph TD
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
     PiServer --> CircuitBreaker
-    CircuitBreaker --> ConfiguredProvider
+    CircuitBreaker --> NeonGateway
+    PiServer --> NeonAuth
+    PiServer --> NeonPostgres
     PiServer --> SandboxContext
     SandboxContext --> Daytona
     PiServer --> PlanMode
@@ -260,7 +267,7 @@ structMd += `| @earendil-works/pi-coding-agent | Pi coding-agent runtime |\n`
 structMd += `| @earendil-works/pi-ai | Pi AI primitives |\n`
 structMd += `| @workspace/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |\n`
 structMd += `| @workspace/hax-design | Fleet Pi UI shell, agent-elements, openui renderer |\n`
-structMd += `| OpenAI-compatible provider (Pi openai-chat-completions) | Current default (nemotron-3-ultra-free) |\n`
+structMd += `| Neon AI Gateway (openai-chat-completions) | Authenticated default: qwen35-122b-a10b + gpt-oss-120b |\n`
 structMd += `| pino + pino-pretty | Structured logging |\n`
 structMd += `| opossum | Circuit breaker pattern |\n`
 structMd += `| zod + @asteasolutions/zod-to-openapi | Schema validation & OpenAPI generation |\n`
@@ -271,7 +278,7 @@ structMd += `\n`
 structMd += `## Data Flow\n\n`
 structMd += `1. The **Browser** sends a user message to \`/api/chat\` via NDJSON stream.\n`
 structMd += `2. The **Server Route** sanitizes input (PII), logs with correlation IDs, and delegates to \`handleChatTurn\`.\n`
-structMd += `3. The **Pi Server Module** invokes the configured Pi provider (currently OpenAI-compatible \`openai-chat-completions\` with \`nemotron-3-ultra-free\`) through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.\n`
+structMd += `3. The **Pi Server Module** invokes Neon AI Gateway (authenticated) or user BYOK providers through a circuit breaker; optional Daytona sandboxes mount per-user workspace volumes.\n`
 structMd += `4. Streaming events (\`start\`, \`delta\`, \`tool\`, \`plan\`, \`state\`, \`queue\`, \`thinking\`, \`compaction\`, \`retry\`, \`done\`, \`error\`) flow back to the client.\n`
 structMd += `5. The **Client** hydrates messages from the Pi session file on reload and opens supporting resources/workspace panels on demand.\n`
 structMd += `6. Supporting endpoints expose models, resources, workspace files, sessions, and health checks.\n`

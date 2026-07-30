@@ -1,5 +1,9 @@
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
+import {
+  reconcileOpenAiChatCompletionsModel,
+  reconcileRuntimeOccModel,
+} from "./openai-chat-completions-compat"
 import { createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type {
@@ -92,11 +96,13 @@ export async function loadChatModels(
 
 export async function applyModelSelection(
   runtime: AgentSessionRuntime,
-  selection?: ChatModelSelection
+  selection?: ChatModelSelection,
+  userId?: string
 ) {
   const { model, thinkingLevel } = resolveModelSelection(
     runtime.services,
-    selection
+    selection,
+    userId
   )
 
   if (
@@ -109,6 +115,8 @@ export async function applyModelSelection(
     await runtime.session.setModel(model)
   }
 
+  reconcileRuntimeOccModel(runtime, userId)
+
   if (thinkingLevel) {
     runtime.session.setThinkingLevel(thinkingLevel)
   }
@@ -116,7 +124,8 @@ export async function applyModelSelection(
 
 export function resolveModelSelection(
   services: AgentSessionServices,
-  selection?: ChatModelSelection
+  selection?: ChatModelSelection,
+  userId?: string
 ) {
   if (!selection) return {}
 
@@ -124,7 +133,7 @@ export function resolveModelSelection(
     typeof selection === "object"
       ? normalizeChatThinkingLevel(selection.thinkingLevel)
       : undefined
-  const model =
+  const resolved =
     typeof selection === "string"
       ? resolveLegacyModelSelection(services, selection)
       : resolveStructuredModelSelection(
@@ -132,6 +141,7 @@ export function resolveModelSelection(
           selection.provider,
           selection.id
         )
+  const model = reconcileOpenAiChatCompletionsModel(services, resolved, userId)
 
   return { model, thinkingLevel }
 }

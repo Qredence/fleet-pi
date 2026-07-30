@@ -150,7 +150,6 @@ describe("settings bridge", () => {
     )
 
     await updateChatSettings({ projectRoot } as never, {
-      defaultProvider: "google",
       packages: ["npm:pi-web-access"],
     })
 
