@@ -1,5 +1,9 @@
-import { assertSafeOpenAiCompatibleBaseUrl } from "./openai-chat-completions-url"
+import {
+  assertSafeOpenAiCompatibleBaseUrl,
+  isAllowedNeonAiGatewayHostname,
+} from "./openai-chat-completions-url"
 import { isEnvVarConfigured } from "@/lib/env-manager"
+import { logger } from "@/lib/logger"
 
 /** Curated Neon AI Gateway model IDs (OpenAI-compatible /v1 chat completions). */
 export const NEON_AI_GATEWAY_DEFAULT_MODEL_IDS = [
@@ -51,6 +55,7 @@ export type NeonAiGatewayConfig = {
  * read `NEON_AI_GATEWAY_*` while OCC registration still works.
  */
 let capturedGatewayConfig: NeonAiGatewayConfig | undefined
+let gatewayEnvCaptured = false
 
 function readGatewayEnv(): { apiKey?: string; baseUrl?: string } {
   const apiKey = isEnvVarConfigured("NEON_AI_GATEWAY_TOKEN")
@@ -62,21 +67,52 @@ function readGatewayEnv(): { apiKey?: string; baseUrl?: string } {
   return { apiKey, baseUrl }
 }
 
+function assertNeonAiGatewayBaseUrl(baseUrl: string): string {
+  const withV1 = stripTrailingV1(baseUrl) + "/v1"
+  const safeBaseUrl = assertSafeOpenAiCompatibleBaseUrl(withV1)
+  const hostname = new URL(safeBaseUrl).hostname
+  if (!isAllowedNeonAiGatewayHostname(hostname)) {
+    throw new Error("Neon AI Gateway base URL host is not allowed.")
+  }
+  return safeBaseUrl
+}
+
+/**
+ * Strip trailing slash and any number of trailing `/v1` segments so appending
+ * a single `/v1` is idempotent (accepts `...`, `.../v1`, `.../v1/v1`).
+ */
+function stripTrailingV1(baseUrl: string): string {
+  return baseUrl
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/(\/v1)+$/i, "")
+}
+
 function resolveGatewayConfigFromEnv(): NeonAiGatewayConfig | undefined {
   const { apiKey, baseUrl } = readGatewayEnv()
   if (!apiKey || !baseUrl) return undefined
 
-  let safeBaseUrl: string
   try {
-    safeBaseUrl = assertSafeOpenAiCompatibleBaseUrl(`${baseUrl}/v1`)
-  } catch {
+    return {
+      apiKey,
+      baseUrl: assertNeonAiGatewayBaseUrl(baseUrl),
+      modelIds: NEON_AI_GATEWAY_DEFAULT_MODEL_IDS,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    logger.warn(
+      { host: safeHostnameFromUrl(baseUrl), error: message },
+      "[neon-ai-gateway] invalid gateway env; skipping capture"
+    )
     return undefined
   }
+}
 
-  return {
-    apiKey,
-    baseUrl: safeBaseUrl,
-    modelIds: NEON_AI_GATEWAY_DEFAULT_MODEL_IDS,
+function safeHostnameFromUrl(baseUrl: string) {
+  try {
+    return new URL(baseUrl).hostname
+  } catch {
+    return "(invalid-url)"
   }
 }
 
@@ -84,21 +120,37 @@ function resolveGatewayConfigFromEnv(): NeonAiGatewayConfig | undefined {
  * Snapshot Gateway credentials into process memory, then delete the env vars
  * so agent bash/tools cannot `printenv` the platform token.
  * Call once at session-services boot on deployed chat surfaces.
+ *
+ * Env vars are scrubbed only after a successful capture so a bad/missing
+ * gateway URL does not poison warm instances.
  */
 export function captureAndScrubNeonAiGatewayEnv() {
+  if (gatewayEnvCaptured) return
+
   const fromEnv = resolveGatewayConfigFromEnv()
   if (fromEnv) {
     capturedGatewayConfig = fromEnv
+    for (const envVarName of NEON_AI_GATEWAY_ENV_VAR_NAMES) {
+      delete process.env[envVarName]
+    }
+    gatewayEnvCaptured = true
+    return
   }
 
-  for (const envVarName of NEON_AI_GATEWAY_ENV_VAR_NAMES) {
-    delete process.env[envVarName]
+  if (
+    isEnvVarConfigured("NEON_AI_GATEWAY_TOKEN") ||
+    isEnvVarConfigured("NEON_AI_GATEWAY_BASE_URL")
+  ) {
+    logger.warn(
+      "[neon-ai-gateway] gateway env present but invalid; leaving env vars for retry"
+    )
   }
 }
 
 /** Test helper: clear captured credentials between cases. */
 export function resetCapturedNeonAiGatewayCredentialsForTests() {
   capturedGatewayConfig = undefined
+  gatewayEnvCaptured = false
 }
 
 /**

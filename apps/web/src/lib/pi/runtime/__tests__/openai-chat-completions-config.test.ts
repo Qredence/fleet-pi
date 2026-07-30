@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  TEST_NEON_AI_GATEWAY_BASE_URL,
+  TEST_NEON_AI_GATEWAY_BASE_URL_V1,
+} from "./gateway-test-fixtures"
 
 const mocks = vi.hoisted(() => ({
   resolveUserProviderSecret: vi.fn(),
@@ -35,8 +39,7 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
 
   it("prefers OCC BYOK over Neon AI Gateway", async () => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
 
     mocks.resolveUserProviderSecret.mockImplementation(
       async (_userId: string | undefined, providerId: string) => {
@@ -64,8 +67,7 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
 
   it("ignores legacy OCC BYOK when Neon AI Gateway is active", async () => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
 
     mocks.resolveUserProviderSecret.mockImplementation(
       async (_userId: string | undefined, providerId: string) => {
@@ -86,15 +88,14 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
 
     expect(config).toEqual({
       apiKey: "nt_live_gateway",
-      baseUrl: "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech/v1",
+      baseUrl: TEST_NEON_AI_GATEWAY_BASE_URL_V1,
       modelIds: ["qwen35-122b-a10b", "gpt-oss-120b"],
     })
   })
 
   it("falls back to Neon AI Gateway for authenticated users without OCC BYOK", async () => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
     mocks.resolveUserProviderSecret.mockResolvedValue(undefined)
 
     const { resolveOpenAiChatCompletionsConfig } =
@@ -103,15 +104,14 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
 
     expect(config).toEqual({
       apiKey: "nt_live_gateway",
-      baseUrl: "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech/v1",
+      baseUrl: TEST_NEON_AI_GATEWAY_BASE_URL_V1,
       modelIds: ["qwen35-122b-a10b", "gpt-oss-120b"],
     })
   })
 
   it("returns undefined without user id even when gateway env is set", async () => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
     mocks.resolveUserProviderSecret.mockResolvedValue(undefined)
 
     const { resolveOpenAiChatCompletionsConfig } =

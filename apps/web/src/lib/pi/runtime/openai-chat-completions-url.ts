@@ -51,11 +51,6 @@ export function assertSafeOpenAiCompatibleBaseUrl(baseUrl: string): string {
   return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "")
 }
 
-function isLoopbackHostname(hostname: string) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
-  return host === "localhost" || host === "127.0.0.1" || host === "::1"
-}
-
 function isBlockedHostname(hostname: string) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
   if (
@@ -106,4 +101,15 @@ function isPrivateOrLinkLocalHost(host: string) {
   }
 
   return false
+}
+
+function isLoopbackHostname(hostname: string) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
+  return host === "localhost" || host === "127.0.0.1" || host === "::1"
+}
+
+/** Platform Neon AI Gateway hosts only — blocks token exfil to arbitrary HTTPS. */
+export function isAllowedNeonAiGatewayHostname(hostname: string) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
+  return host === "neon.tech" || host.endsWith(".neon.tech")
 }

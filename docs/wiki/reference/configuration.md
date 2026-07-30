@@ -79,7 +79,7 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ## `.pi/settings.json`
 
-Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file is usually `{}` — it holds **overrides only**. Fleet Pi merges code defaults (`apps/web/src/lib/pi/runtime/fleet-default-project-settings.ts`) with this file at runtime. On Vercel, per-user overrides live in Neon `pi_user_settings` instead.
+Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file includes stable resource paths (packages, skills, extensions, prompts); model defaults are merged from code at runtime (`fleet-default-project-settings.ts`). User-specific overrides and model curation still apply on top. On Vercel, per-user overrides live in Neon `pi_user_settings` instead.
 
 Edit overrides through the Settings dialog or `PATCH /api/chat/settings`. Saves compact values that differ from Fleet base defaults (auto-discovered `.pi/skills` and `.pi/extensions` paths are not re-written).
 

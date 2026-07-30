@@ -5,16 +5,12 @@ import {
 } from "@workspace/pi-protocol/provider-catalog"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
 import {
-  
   isLegacyFleetOccModelId,
-  resolveNeonAiGatewayConfig
+  resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
-import {
-  assertSafeOpenAiCompatibleBaseUrl,
-  normalizeOpenAiCompatibleBaseUrl,
-} from "./openai-chat-completions-url"
+import { assertSafeOpenAiCompatibleBaseUrl } from "./openai-chat-completions-url"
 import { resolveUserProviderSecret } from "./user-provider-secrets"
-import type {NeonAiGatewayConfig} from "./neon-ai-gateway";
+import type { NeonAiGatewayConfig } from "./neon-ai-gateway"
 import type {
   AgentSessionServices,
   ProviderConfig,

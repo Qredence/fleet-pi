@@ -1,11 +1,7 @@
 import { applyProjectSettingsToServices } from "./apply-project-settings"
-import { FLEET_PI_BASE_PROJECT_SETTINGS } from "./fleet-default-project-settings"
+import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
 import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { mergeProjectSettingsRecords } from "./project-settings-merge"
-import {
-  prepareProjectSettingsForPersist,
-  projectSettingsOverridesEqual,
-} from "./project-settings-persist"
 import { readProjectSettingsFile } from "./project-settings-file"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -22,7 +18,7 @@ export async function loadPersistedProjectSettingsOverrides(
   if (usesDatabaseBackedProjectSettings()) {
     const stored = await loadUserProjectSettings(options.userId)
     const overrides = stored ? sanitizePortableResourcePaths(stored) : {}
-    return persistLegacyGatewayMigrationIfNeeded(overrides, options.userId)
+    return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
   }
 
   if (!options.projectRoot) return {}
@@ -32,34 +28,11 @@ export async function loadPersistedProjectSettingsOverrides(
   return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
 }
 
-async function persistLegacyGatewayMigrationIfNeeded(
-  overrides: Record<string, unknown>,
-  userId: string | undefined
-) {
-  const migrated = migrateLegacyGatewayProjectOverrides(overrides, userId)
-  if (
-    !userId ||
-    projectSettingsOverridesEqual(
-      prepareProjectSettingsForPersist(overrides),
-      prepareProjectSettingsForPersist(migrated)
-    )
-  ) {
-    return migrated
-  }
-
-  const { upsertUserProjectSettings } = await import("@/lib/db/user-settings")
-  await upsertUserProjectSettings(
-    userId,
-    prepareProjectSettingsForPersist(migrated)
-  )
-  return migrated
-}
-
 export async function resolveProjectSettings(
   options: ResolveProjectSettingsOptions = {}
 ) {
   const overrides = await loadPersistedProjectSettingsOverrides(options)
-  return mergeProjectSettingsRecords(FLEET_PI_BASE_PROJECT_SETTINGS, overrides)
+  return mergeProjectSettingsRecords(getFleetBaseProjectSettings(), overrides)
 }
 
 /** Drop absolute machine paths that cannot work on Vercel. */

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { migrateLegacyGatewayProjectOverrides } from "../gateway-settings-migration"
 import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
+import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 describe("migrateLegacyGatewayProjectOverrides", () => {
   const originalToken = process.env.NEON_AI_GATEWAY_TOKEN
@@ -9,8 +10,7 @@ describe("migrateLegacyGatewayProjectOverrides", () => {
   beforeEach(() => {
     resetCapturedNeonAiGatewayCredentialsForTests()
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
   })
 
   afterEach(() => {

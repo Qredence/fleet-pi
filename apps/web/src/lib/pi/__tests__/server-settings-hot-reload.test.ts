@@ -59,11 +59,15 @@ describe("settings hot-reload runtime mechanism", () => {
       expect(mockReload.mock.invocationCallOrder[0]).toBeLessThan(
         mockResourceReload.mock.invocationCallOrder[0]
       )
-      expect(mocks.applyModelSelection).toHaveBeenCalledWith(mockRuntime, {
-        provider: "google",
-        id: "gemini-3.5-flash-new",
-        thinkingLevel: "high",
-      })
+      expect(mocks.applyModelSelection).toHaveBeenCalledWith(
+        mockRuntime,
+        {
+          provider: "google",
+          id: "gemini-3.5-flash-new",
+          thinkingLevel: "high",
+        },
+        "user-1"
+      )
       expect(mocks.applyRuntimeAuth).toHaveBeenCalledWith(
         (mockRuntime as { services: unknown }).services,
         {

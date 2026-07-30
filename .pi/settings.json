@@ -1,8 +1,4 @@
 {
-  "enabledModels": [
-    "openai-chat-completions/qwen35-122b-a10b",
-    "openai-chat-completions/gpt-oss-120b"
-  ],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
@@ -12,7 +8,5 @@
   "skills": ["../agent-workspace/pi/skills"],
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
   "prompts": ["../agent-workspace/pi/prompts"],
-  "defaultProvider": "openai-chat-completions",
-  "defaultModel": "qwen35-122b-a10b",
   "defaultThinkingLevel": "high"
 }

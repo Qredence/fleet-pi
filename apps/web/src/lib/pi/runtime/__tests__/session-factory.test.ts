@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 import { createMockSettingsManager } from "./mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
@@ -151,8 +152,7 @@ describe("session factory", () => {
   it("scrubs NEON_AI_GATEWAY env on Vercel after capturing credentials", async () => {
     process.env.VERCEL = "1"
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
     process.env.GEMINI_API_KEY = "secret"
     const { resetCapturedNeonAiGatewayCredentialsForTests } =
       await import("../neon-ai-gateway")

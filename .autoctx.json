@@ -1,7 +1,7 @@
 {
   "default_scenario": "grid_ctf",
   "provider": "openai",
-  "model": "deepseek-v4-flash-free",
+  "model": "qwen35-122b-a10b",
   "gens": 3,
   "knowledge_dir": "./knowledge",
   "runs_dir": "./runs"

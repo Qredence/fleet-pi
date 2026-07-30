@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { createAgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "../openai-chat-completions-compat"
 import { registerOpenAiChatCompletionsProvider } from "../openai-chat-completions-provider"
+import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
   const originalToken = process.env.NEON_AI_GATEWAY_TOKEN
@@ -9,8 +10,7 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
 
   beforeEach(() => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_test_token"
-    process.env.NEON_AI_GATEWAY_BASE_URL =
-      "https://branch-id-api.ai.aws-us-east-2.aws.neon.tech"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
   })
 
   afterEach(() => {

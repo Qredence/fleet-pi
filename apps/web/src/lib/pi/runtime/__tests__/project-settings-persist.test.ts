@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { FLEET_PI_BASE_PROJECT_SETTINGS } from "../fleet-default-project-settings"
+import { getFleetBaseProjectSettings } from "../fleet-default-project-settings"
 import {
   prepareProjectSettingsForPersist,
   projectSettingsOverridesEqual,
@@ -19,7 +19,7 @@ describe("project-settings-persist", () => {
   it("omits workspace paths that match base defaults", () => {
     expect(
       prepareProjectSettingsForPersist({
-        skills: FLEET_PI_BASE_PROJECT_SETTINGS.skills,
+        skills: getFleetBaseProjectSettings().skills,
       })
     ).toEqual({})
   })

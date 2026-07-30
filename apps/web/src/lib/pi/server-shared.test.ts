@@ -15,6 +15,7 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
 
 describe("createSessionServices", () => {
   const roots = new Set<string>()
+  const originalVercel = process.env.VERCEL
 
   beforeEach(() => {
     createAgentSessionServices.mockReset()
@@ -26,6 +27,8 @@ describe("createSessionServices", () => {
 
   afterEach(() => {
     vi.resetModules()
+    if (originalVercel === undefined) delete process.env.VERCEL
+    else process.env.VERCEL = originalVercel
     for (const root of roots) {
       rmSync(root, { force: true, recursive: true })
     }
@@ -68,7 +71,8 @@ describe("createSessionServices", () => {
     )
   })
 
-  it("applies the shared default model fallback when settings are unset", async () => {
+  it("applies the local default model fallback when settings are unset", async () => {
+    delete process.env.VERCEL
     const { resolveDefaultModelSelection } = await import("./server-shared")
 
     expect(

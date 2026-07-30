@@ -10,7 +10,11 @@ import {
   hotReloadActiveRuntimes,
   hotReloadActiveRuntimesForUser,
 } from "./hot-reload"
-import { prepareProjectSettingsForPersist } from "./project-settings-persist"
+import {
+  prepareProjectSettingsForPersist,
+  prepareProjectSettingsOverridesForPersist,
+  projectSettingsOverridesEqual,
+} from "./project-settings-persist"
 import {
   PROJECT_SETTINGS_PATH,
   projectSettingsPath,
@@ -78,9 +82,18 @@ export async function updateChatSettings(
   const patchedOverrides = sanitizePortableResourcePaths(
     patchProjectSettingsOverrides(currentOverrides, parsedUpdate)
   )
-  const toPersist = prepareProjectSettingsForPersist(patchedOverrides)
+  const migrated = await prepareProjectSettingsOverridesForPersist(
+    patchedOverrides,
+    options?.userId
+  )
+  const toPersist = prepareProjectSettingsForPersist(migrated.overrides)
 
-  await persistCompactProjectSettings(settingsPath, toPersist, options?.userId)
+  await persistCompactProjectSettings(
+    settingsPath,
+    toPersist,
+    options?.userId,
+    migrated.persisted
+  )
 
   if (!options?.skipHotReload) {
     if (options?.userId) {
@@ -107,20 +120,34 @@ export async function saveProjectSettingsOverrides(
   options?: { userId?: string }
 ) {
   const settingsPath = projectSettingsPath(context.projectRoot)
-  const toPersist = prepareProjectSettingsForPersist(overrides)
-  await persistCompactProjectSettings(settingsPath, toPersist, options?.userId)
+  const migrated = await prepareProjectSettingsOverridesForPersist(
+    overrides,
+    options?.userId
+  )
+  const toPersist = prepareProjectSettingsForPersist(migrated.overrides)
+  await persistCompactProjectSettings(
+    settingsPath,
+    toPersist,
+    options?.userId,
+    migrated.persisted
+  )
 }
 
 async function persistCompactProjectSettings(
   settingsPath: string,
   toPersist: Record<string, unknown>,
-  userId?: string
+  userId?: string,
+  persisted?: Record<string, unknown>
 ) {
   if (process.env.VERCEL === "1") {
     if (!userId) {
       throw new Error(
         "Authentication is required to save Pi settings on Vercel."
       )
+    }
+    // Migration flush already wrote this exact compacted record — one upsert.
+    if (persisted && projectSettingsOverridesEqual(persisted, toPersist)) {
+      return
     }
     await upsertUserProjectSettings(userId, toPersist)
     return

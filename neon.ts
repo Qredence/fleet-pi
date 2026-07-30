@@ -28,7 +28,6 @@ export default defineConfig({
           FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS: chatFunctionEnv(
             "FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS"
           ),
-          GEMINI_API_KEY: chatFunctionEnv("GEMINI_API_KEY"),
           NEON_AI_GATEWAY_TOKEN: chatFunctionEnv("NEON_AI_GATEWAY_TOKEN"),
           NEON_AI_GATEWAY_BASE_URL: chatFunctionEnv("NEON_AI_GATEWAY_BASE_URL"),
         },

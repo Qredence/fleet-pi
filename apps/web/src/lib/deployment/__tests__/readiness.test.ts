@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
+import { TEST_NEON_AI_GATEWAY_BASE_URL } from "../../pi/runtime/__tests__/gateway-test-fixtures"
 import { validateDeploymentReadiness } from "../readiness"
+
+const testGatewayEnv = {
+  NEON_AI_GATEWAY_TOKEN: "nt_live_test",
+  NEON_AI_GATEWAY_BASE_URL: TEST_NEON_AI_GATEWAY_BASE_URL,
+} as const
 
 describe("validateDeploymentReadiness", () => {
   it("passes in local mode without Vercel env vars", () => {
@@ -59,6 +65,7 @@ describe("validateDeploymentReadiness", () => {
         FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
         FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
         FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
+        ...testGatewayEnv,
       },
       authTablesRlsDisabled: true,
       chatMigrationsApplied: [
@@ -83,6 +90,28 @@ describe("validateDeploymentReadiness", () => {
     expect(result.ok).toBe(true)
   })
 
+  it("requires Neon AI Gateway env on Vercel", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "vercel-production",
+      env: {
+        BETTER_AUTH_SECRET: "secret",
+        BETTER_AUTH_URL: "https://app.example",
+        FLEET_PI_AUTH_DATABASE_URL: "postgres://auth",
+        FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://app.example",
+      },
+    })
+
+    expect(
+      result.checks.find((check) => check.id === "env:NEON_AI_GATEWAY_TOKEN")
+        ?.ok
+    ).toBe(false)
+    expect(
+      result.checks.find((check) => check.id === "env:NEON_AI_GATEWAY_BASE_URL")
+        ?.ok
+    ).toBe(false)
+  })
+
   it("accepts VERCEL_URL as preview auth URL fallback", () => {
     const result = validateDeploymentReadiness({
       trustZone: "vercel-preview",
@@ -96,6 +125,7 @@ describe("validateDeploymentReadiness", () => {
         FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
         FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
         FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
+        ...testGatewayEnv,
       },
       authTablesRlsDisabled: true,
       chatMigrationsApplied: [
@@ -180,6 +210,7 @@ describe("validateDeploymentReadiness", () => {
         FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
         FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
         FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
+        ...testGatewayEnv,
       },
     })
 
