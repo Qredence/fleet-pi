@@ -17,7 +17,10 @@ import {
   createSessionCircuitBreaker,
   createSessionFallbackError,
 } from "./circuit-breaker"
-import { applyModelSelection, resolveModelSelection } from "./runtime"
+import {
+  applyModelSelection,
+  resolveModelSelection,
+} from "./runtime/model-catalog"
 import { reconcileRuntimeOccModel } from "./runtime/openai-chat-completions-compat"
 import {
   collectDiagnostics,

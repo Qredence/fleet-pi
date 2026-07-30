@@ -38,7 +38,10 @@ type OpenAiChatCompletionsConfig = {
 
 type RegisteredModels = NonNullable<ProviderConfig["models"]>
 
-function buildModelEntry(modelId: string): RegisteredModels[number] {
+function buildModelEntry(
+  modelId: string,
+  usesGateway: boolean
+): RegisteredModels[number] {
   return {
     id: modelId,
     name: modelId,
@@ -48,7 +51,9 @@ function buildModelEntry(modelId: string): RegisteredModels[number] {
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128_000,
     maxTokens: 32_000,
-    compat: { ...OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT },
+    ...(usesGateway
+      ? { compat: { ...OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } }
+      : {}),
   }
 }
 
@@ -146,15 +151,15 @@ export async function registerOpenAiChatCompletionsProvider(
     return
   }
 
-  const models: RegisteredModels = config.modelIds.map((modelId) =>
-    buildModelEntry(modelId)
-  )
-
   const gateway = resolveNeonAiGatewayConfig(userId)
   const usesGateway =
     gateway !== undefined &&
     config.baseUrl === gateway.baseUrl &&
     config.apiKey === gateway.apiKey
+
+  const models: RegisteredModels = config.modelIds.map((modelId) =>
+    buildModelEntry(modelId, usesGateway)
+  )
 
   modelRuntime.registerProvider(PROVIDER_ID, {
     name: "OpenAI Chat Completions",

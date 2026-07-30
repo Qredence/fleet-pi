@@ -10,7 +10,7 @@ import {
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
@@ -29,7 +29,7 @@ function readEnvLlmProviderSecrets(): Map<string, string> {
 }
 
 function shouldLoadUserByokFromDatabase() {
-  return process.env.VERCEL === "1" || getChatAuthSurface() === "neon-function"
+  return isDeployedChatRuntimeSurface()
 }
 
 function stripLegacyOccByokWhenGatewayActive(

@@ -202,17 +202,17 @@ function resolveStructuredModelSelection(
       direct &&
       available.some((model) => modelKey(model) === modelKey(direct))
     ) {
-      return reconcileOpenAiChatCompletionsModel(services, direct)
+      return direct
     }
 
     if (provider === "openai") {
       const occ = services.modelRuntime.getModel("openai-chat-completions", id)
       if (occ && available.some((model) => modelKey(model) === modelKey(occ))) {
-        return reconcileOpenAiChatCompletionsModel(services, occ)
+        return occ
       }
     }
 
-    return reconcileOpenAiChatCompletionsModel(services, direct)
+    return direct
   }
 
   return bedrockModelCandidates(id)

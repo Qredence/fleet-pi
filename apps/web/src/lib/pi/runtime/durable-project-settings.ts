@@ -7,6 +7,7 @@ import {
   projectSettingsOverridesEqual,
 } from "./project-settings-persist"
 import { readProjectSettingsFile } from "./project-settings-file"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
@@ -18,7 +19,7 @@ export type ResolveProjectSettingsOptions = {
 export async function loadPersistedProjectSettingsOverrides(
   options: ResolveProjectSettingsOptions = {}
 ) {
-  if (process.env.VERCEL === "1") {
+  if (usesDatabaseBackedProjectSettings()) {
     const stored = await loadUserProjectSettings(options.userId)
     const overrides = stored ? sanitizePortableResourcePaths(stored) : {}
     return persistLegacyGatewayMigrationIfNeeded(overrides, options.userId)

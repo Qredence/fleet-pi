@@ -11,12 +11,12 @@ import {
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
 import type { ApplyRuntimeAuthOptions } from "./types"
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
@@ -39,7 +39,7 @@ export async function createSessionServices(
   overrides?: Parameters<typeof createAgentSessionServices>[0],
   options?: { userId?: string; projectRoot?: string }
 ) {
-  if (process.env.VERCEL === "1" || getChatAuthSurface() === "neon-function") {
+  if (isDeployedChatRuntimeSurface()) {
     // Capture platform Gateway creds in memory, then scrub org LLM + Gateway
     // env so bash/tools cannot read them. Chat uses BYOK rows + captured Gateway.
     captureAndScrubNeonAiGatewayEnv()
