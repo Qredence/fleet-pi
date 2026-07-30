@@ -533,6 +533,8 @@ jobs:
           BETTER_AUTH_URL: https://fleet-pi-web.vercel.app
           FLEET_PI_AUTH_DATABASE_URL: postgres://ci-auth
           FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
+          NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+          NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
 
       - name: Verify preview trust-zone contract
         run: pnpm verify-deployment-readiness
@@ -547,6 +549,8 @@ jobs:
           FLEET_PI_DEPLOYMENT_TRUST_ZONE: preview
           FLEET_PI_PREVIEW_DATABASE_MARKER: preview-neon
           FLEET_PI_PRODUCTION_DATABASE_MARKER: prod-neon
+          NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+          NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
 
       - name: Verify deployment readiness (migration probes)
         run: pnpm verify-deployment-readiness
@@ -559,3 +563,5 @@ jobs:
           FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
           FLEET_PI_AUTH_MIGRATION_DATABASE_URL: ${{ secrets.FLEET_PI_AUTH_MIGRATION_DATABASE_URL }}
           FLEET_PI_CHAT_MIGRATION_DATABASE_URL: ${{ secrets.FLEET_PI_CHAT_MIGRATION_DATABASE_URL }}
+          NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+          NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
