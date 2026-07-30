@@ -1,4 +1,0 @@
-- Backend selection is centralized in `auth-mode.ts` and applied uniformly via lazy `import()` of either `neon-managed-auth` or `legacy-better-auth-*` modules, keeping both implementations out of the active bundle until needed.
-- Public surfaces expose a stable shape regardless of backend: server-side `{ api.getSession, handler }` and client-side `authClient` plus `getChatAuthBearerToken()`, with consumers never importing backend-specific code directly.
-- Environment-driven configuration reads from `process.env` (server) and `import.meta.env` (client) with explicit fallback chains, and deployment detection (`isVercelDeployment`) gates behavior like anonymous local auth.
-- Error paths return null rather than throwing for token/session retrieval, letting callers handle missing authentication explicitly.

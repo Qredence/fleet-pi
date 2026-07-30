@@ -1,1 +1,0 @@
-Requires `FLEET_PI_AUTH_DATABASE_URL` for Neon PostgreSQL on Vercel; falls back to a local SQLite file at `<projectRoot>/.fleet/auth.sqlite` when unset. On Vercel, `BETTER_AUTH_SECRET` is mandatory (enforced by `requiredVercelEnv`). Optional Google OAuth needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Local dev secret defaults to a hardcoded placeholder string.

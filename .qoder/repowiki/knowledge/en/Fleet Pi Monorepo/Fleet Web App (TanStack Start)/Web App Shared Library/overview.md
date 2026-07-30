@@ -1,1 +1,0 @@
-Cross-cutting utilities and domain-specific sub-libraries for the Fleet web app, providing runtime context, environment management, logging, TanStack Query client, and shared abstractions consumed by API routes, auth, workspace, deployment, and feature modules.

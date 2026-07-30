@@ -1,1 +1,0 @@
-Defines the chat database schema, Row Level Security policies, and idempotent SQL migrations for sessions, runs, tool executions, file mutations, user providers, settings, and tombstones, plus a Neon Data API auth adapter.

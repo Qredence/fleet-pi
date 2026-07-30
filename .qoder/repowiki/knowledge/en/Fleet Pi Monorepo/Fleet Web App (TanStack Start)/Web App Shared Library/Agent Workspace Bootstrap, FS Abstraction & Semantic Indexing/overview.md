@@ -1,1 +1,0 @@
-Bootstraps the agent-workspace directory structure, provides a pluggable filesystem abstraction for local and sandboxed access, and classifies/parses workspace files into typed semantic records for indexing.

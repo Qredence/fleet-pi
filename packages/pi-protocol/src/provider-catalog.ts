@@ -1,5 +1,10 @@
+/** How a provider is authenticated: a static API key or an OAuth flow. */
 export type PiProviderAuthType = "apiKey" | "oauth"
 
+/**
+ * A provider as surfaced in Fleet's Settings UI, with the single environment
+ * variable used to detect whether it is configured.
+ */
 export type PiProviderCredentialEntry = {
   id: string
   name: string
@@ -7,6 +12,11 @@ export type PiProviderCredentialEntry = {
   authType?: PiProviderAuthType
 }
 
+/**
+ * Catalog of providers shown in Fleet's Settings. This is the user-facing
+ * credential surface; it is intentionally a subset of Pi's full provider list
+ * (see {@link PI_LLM_RUNTIME_PROVIDER_IDS}).
+ */
 export const PI_PROVIDER_CATALOG = [
   {
     id: "amazon-bedrock",
@@ -91,6 +101,12 @@ export const PI_PROVIDER_CATALOG = [
   },
 ] satisfies Array<PiProviderCredentialEntry>
 
+/**
+ * Providers in {@link PI_PROVIDER_CATALOG} that are infrastructure/config
+ * rather than end-user-selectable LLMs. Excluded from credential UI and LLM
+ * scrub-behavior (e.g. sandbox providers and the OpenAI-compatible companion
+ * base-URL/model entries).
+ */
 export const INFRA_PROVIDER_IDS = [
   "daytona",
   "daytona-target",
@@ -104,6 +120,11 @@ export const OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID =
 export const OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID =
   "openai-chat-completions-model"
 
+/**
+ * The Settings catalog as plain credential entries (structurally the same as
+ * {@link PI_PROVIDER_CATALOG}; a stable, widened-typing view used by callers
+ * that should not depend on the `as const` catalog literal).
+ */
 export const KNOWN_PROVIDERS: Array<PiProviderCredentialEntry> =
   PI_PROVIDER_CATALOG.map(({ id, name, envVarName, authType }) => ({
     id,
@@ -123,7 +144,12 @@ export const LLM_PROVIDER_ENV_SCRUB_IDS = KNOWN_PROVIDERS.filter(
 /**
  * Full Pi provider ids that can pick up org env / auth.json credentials.
  * On Vercel, `applyRuntimeAuth` clears these unless the user has BYOK.
- * Kept in sync with `@earendil-works/pi-ai` `getApiKeyEnvVars` / providers.md.
+ *
+ * Authoritative sync source: `@earendil-works/pi-ai`
+ * `packages/ai/src/env-api-keys.ts` (`envMap` / `getApiKeyEnvVars`); mirrored by
+ * `packages/coding-agent/docs/providers.md`. When Pi adds a provider there, add
+ * its id here and its env var to {@link PROVIDER_ENV_SCRUB_VAR_NAMES} — the
+ * `provider-catalog.test.ts` integrity test fails if they diverge.
  */
 export const PI_LLM_RUNTIME_PROVIDER_IDS = [
   "amazon-bedrock",
@@ -164,6 +190,11 @@ export const PI_LLM_RUNTIME_PROVIDER_IDS = [
   "openai-chat-completions",
 ] as const
 
+/**
+ * Providers shown in the Settings credential UI: the user-facing catalog minus
+ * infra/config entries and OAuth-only providers (which authenticate via a login
+ * flow rather than a pasted key).
+ */
 export const CREDENTIAL_UI_PROVIDERS = KNOWN_PROVIDERS.filter(
   (provider) =>
     !INFRA_PROVIDER_IDS.includes(
@@ -221,5 +252,8 @@ export const PROVIDER_ENV_SCRUB_VAR_NAMES = Array.from(
     // Org Daytona must not be readable by chat tools or Pi on Vercel
     "DAYTONA_API_KEY",
     "ORG_DAYTONA_API_KEY",
+    // Org Daytona target/region config (not a secret, but org infra config that
+    // must not be user-readable on Vercel, matching DAYTONA_API_KEY above).
+    "DAYTONA_TARGET",
   ])
 )

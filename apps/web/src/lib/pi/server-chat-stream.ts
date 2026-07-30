@@ -62,7 +62,11 @@ export function handleSessionEvent(
     if (!activeTurn) {
       activeTurn = beginAssistantTurn(startContext)
     }
-    appendTextPart(activeTurn.parts, event.assistantMessageEvent.delta)
+    // appendTextPart is immutable — must assign the returned array
+    activeTurn.parts = appendTextPart(
+      activeTurn.parts,
+      event.assistantMessageEvent.delta
+    )
     send({ type: "delta", text: event.assistantMessageEvent.delta })
     return activeTurn
   }
@@ -75,7 +79,7 @@ export function handleSessionEvent(
       activeTurn = beginAssistantTurn(startContext)
     }
     const nextThinkingText = `${activeTurn.thinkingText}${event.assistantMessageEvent.delta}`
-    upsertThinkingPart(
+    activeTurn.parts = upsertThinkingPart(
       activeTurn.parts,
       activeTurn.assistantId,
       nextThinkingText
@@ -100,7 +104,7 @@ export function handleSessionEvent(
         part.input as Record<string, unknown>
       )
     }
-    upsertToolPart(activeTurn.parts, part)
+    activeTurn.parts = upsertToolPart(activeTurn.parts, part)
     send({ type: "tool", part })
     return activeTurn
   }

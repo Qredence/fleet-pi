@@ -1,1 +1,0 @@
-Persists Pi session state to a Neon Postgres mirror (sessions, entries, runs, events, tool executions, file mutations), enforces user ownership via database functions, and provides deletion/recovery of JSONL session files backed by the mirror.

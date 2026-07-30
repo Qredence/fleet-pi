@@ -1,1 +1,0 @@
-TanStack Router v1 with file-based routing (`createFileRoute`, `createRootRoute`), React Query for data fetching, PostHog for analytics, and Sonner for toast notifications. Route trees are auto-generated via `./routeTree.gen`.

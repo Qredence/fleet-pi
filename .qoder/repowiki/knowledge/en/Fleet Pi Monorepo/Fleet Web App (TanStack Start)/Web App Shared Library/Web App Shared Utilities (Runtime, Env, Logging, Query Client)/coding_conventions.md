@@ -1,5 +1,0 @@
-- File mutations use a write-to-temp-then-rename pattern to ensure atomicity and avoid partial writes.
-- Environment variable access goes through helper functions (`isEnvVarConfigured`, `sanitizeProviderCredentialValue`) rather than reading `process.env` directly at call sites.
-- Conditional behavior based on deployment environment is detected via explicit `process.env` flags (`NEON_BRANCH`, `VERCEL`, `NODE_ENV`) rather than build-time constants.
-- Errors carry semantic meaning through custom subclasses (`RequestContextError extends Error`) with typed properties (e.g. `status`) instead of plain strings.
-- Singletons are exported as module-level instances (the `logger` pino instance, the `browserQueryClient` QueryClient) rather than being constructed on demand.

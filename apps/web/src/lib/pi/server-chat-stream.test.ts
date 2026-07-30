@@ -273,4 +273,112 @@ describe("server chat stream", () => {
       },
     })
   })
+
+  it("assigns immutable part helper returns so done keeps streamed content", () => {
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
+      "00000000-0000-0000-0000-000000000005"
+    )
+
+    const emitted: Array<ChatStreamEvent> = []
+    const startContext = createTurnStartContext({
+      diagnostics: [],
+      send: (event) => emitted.push(event),
+      session: {
+        sessionFile: ".fleet/sessions/session-5.jsonl",
+        sessionId: "session-5",
+      } as any,
+      sessionReset: false,
+    })
+
+    let activeTurn = handleSessionEvent(
+      {
+        type: "message_update",
+        assistantMessageEvent: {
+          type: "thinking_delta",
+          delta: "Checking package.json",
+        },
+      } as any,
+      undefined,
+      startContext
+    )
+
+    activeTurn = handleSessionEvent(
+      {
+        type: "tool_execution_start",
+        toolCallId: "tool-1",
+        toolName: "read",
+        args: { path: "package.json" },
+      } as any,
+      activeTurn,
+      startContext
+    )
+
+    activeTurn = handleSessionEvent(
+      {
+        type: "tool_execution_end",
+        toolCallId: "tool-1",
+        toolName: "read",
+        isError: false,
+        result: '{"name":"fleet-pi"}',
+      } as any,
+      activeTurn,
+      startContext
+    )
+
+    activeTurn = handleSessionEvent(
+      {
+        type: "message_update",
+        assistantMessageEvent: {
+          type: "text_delta",
+          delta: "Here is package.json",
+        },
+      } as any,
+      activeTurn,
+      startContext
+    )
+
+    expect(activeTurn?.parts.length).toBeGreaterThan(0)
+    expect(activeTurn?.parts.map((part) => part.type)).toEqual(
+      expect.arrayContaining(["tool-Thinking", "tool-Read", "text"])
+    )
+
+    const runtime = {
+      session: {
+        sessionManager: {
+          getBranch: () => [],
+        },
+      },
+    } as any
+
+    completeAssistantTurn({
+      activeTurn: activeTurn!,
+      body: {
+        message: "read package.json",
+        mode: "agent",
+      } as any,
+      runtime,
+      send: (event) => emitted.push(event),
+      session: {
+        sessionFile: ".fleet/sessions/session-5.jsonl",
+        sessionId: "session-5",
+      } as any,
+      sessionReset: false,
+    })
+
+    const done = emitted.find((event) => event.type === "done")
+    expect(done).toMatchObject({
+      type: "done",
+      message: {
+        role: "assistant",
+        parts: expect.arrayContaining([
+          expect.objectContaining({ type: "tool-Thinking" }),
+          expect.objectContaining({ type: "tool-Read" }),
+          expect.objectContaining({
+            type: "text",
+            text: "Here is package.json",
+          }),
+        ]),
+      },
+    })
+  })
 })

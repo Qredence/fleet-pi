@@ -1,1 +1,0 @@
-TypeScript against `@daytona/sdk` (Daytona client, Sandbox, Secret, Volume types); Node.js built-ins (`node:path`, `node:crypto`) for path resolution and SHA-256 fingerprints; integrates with `@workspace/pi-protocol/provider-catalog` for provider definitions and `../workspace/workspace-contract` for workspace volume layout.

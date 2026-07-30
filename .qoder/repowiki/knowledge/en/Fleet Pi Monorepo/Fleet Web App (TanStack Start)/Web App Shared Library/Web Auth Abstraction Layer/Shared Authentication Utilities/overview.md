@@ -1,1 +1,0 @@
-Cross-cutting auth helpers for the web app providing AES-GCM string encryption, CSRF token issuance/validation, Neon Managed Auth JWT verification via JWKS, and deployment-aware host/origin policy resolution.

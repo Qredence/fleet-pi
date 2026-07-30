@@ -1,1 +1,0 @@
-Database evolution is driven by applying the exported `*_SQL` strings in migration-ID order against a Postgres instance reachable via the URL resolved by `resolveChatDatabaseUrl`; there is no ORM or migration runner in this module — consumers must execute these strings themselves.

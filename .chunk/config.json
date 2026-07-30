@@ -1,0 +1,25 @@
+{
+  "validation": {
+    "sidecarImage": "26426608-e021-4f75-8fdd-4a85d705c216"
+  },
+  "orgID": "d0fc62ae-1f4a-4037-8ccb-d357adfdfda6",
+  "environment": {
+    "stack": "javascript",
+    "setup": [
+      {
+        "name": "system",
+        "command": "corepack enable && corepack prepare pnpm@11.1.3 --activate"
+      },
+      {
+        "name": "install",
+        "command": "pnpm install"
+      },
+      {
+        "name": "test",
+        "command": "pnpm test"
+      }
+    ],
+    "image": "cimg/node",
+    "image_version": "26.5.0"
+  }
+}

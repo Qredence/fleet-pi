@@ -84,6 +84,14 @@
                     "type": "string",
                     "enum": ["steer", "followUp"],
                     "description": "Streaming behavior"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "description": "Authenticated user ID (server-injected)"
+                  },
+                  "userEmail": {
+                    "type": "string",
+                    "description": "Authenticated user email (server-injected)"
                   }
                 },
                 "description": "Chat request body"

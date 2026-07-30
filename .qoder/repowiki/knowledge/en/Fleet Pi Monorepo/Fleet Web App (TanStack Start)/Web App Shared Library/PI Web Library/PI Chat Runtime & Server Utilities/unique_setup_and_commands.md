@@ -1,1 +1,0 @@
-Runtime TTL is controlled by the `FLEET_PI_RUNTIME_TTL_MS` environment variable (default 600_000 ms). The chat runtime URL can be overridden at build time via `VITE_FLEET_PI_CHAT_RUNTIME_URL`. Agent directory defaults to `process.env.PI_AGENT_DIR ?? getAgentDir()`.

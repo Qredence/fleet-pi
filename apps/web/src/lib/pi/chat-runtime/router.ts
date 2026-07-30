@@ -12,11 +12,21 @@ import {
 } from "@/lib/pi/chat-runtime/handlers/session"
 import { listChatSessionsHandler } from "@/lib/pi/chat-runtime/handlers/sessions"
 
+// Cache the parsed allowlist keyed by the raw env string so we only re-parse
+// when the value changes, while still picking up runtime env updates.
+let cachedAllowedOriginsSource: string | undefined
+let cachedAllowedOrigins: Array<string> = []
+
 function readAllowedOrigins() {
-  return (process.env.FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
+  const source = process.env.FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS ?? ""
+  if (source !== cachedAllowedOriginsSource) {
+    cachedAllowedOriginsSource = source
+    cachedAllowedOrigins = source
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  }
+  return cachedAllowedOrigins
 }
 
 function applyCors(request: Request, response: Response) {
@@ -35,6 +45,12 @@ function applyCors(request: Request, response: Response) {
       "Authorization, Content-Type, x-request-id"
     )
     headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+  } else if (origin) {
+    // Origin presented but not allowlisted: diagnose misconfiguration without
+    // reflecting arbitrary origins.
+    console.warn(
+      `[cors] rejected origin "${origin}" (allowlist size=${allowedOrigins.length})`
+    )
   }
 
   return new Response(response.body, {

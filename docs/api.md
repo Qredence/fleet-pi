@@ -22,7 +22,9 @@ Send a chat message and receive a streaming response
   "model": — Selected model,
   "mode": <string> — Chat mode,
   "planAction": <string> — Plan action,
-  "streamingBehavior": <string> — Streaming behavior
+  "streamingBehavior": <string> — Streaming behavior,
+  "userId": <string> — Authenticated user ID (server-injected),
+  "userEmail": <string> — Authenticated user email (server-injected)
 }
 ```
 
