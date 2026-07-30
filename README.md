@@ -41,7 +41,7 @@ cd fleet-pi
 corepack enable
 pnpm install
 cp .env.example .env
-# Set GEMINI_API_KEY or another Pi-compatible provider key
+# Set a provider key in Settings or .env (see docs/quickstart.md)
 pnpm dev
 ```
 
@@ -56,6 +56,7 @@ Open [http://localhost:3000](http://localhost:3000). Type `read package.json` to
 | **Chat**              | Persistent Pi sessions, streaming NDJSON, resume after refresh                   |
 | **Agent mode**        | Repo-scoped read, write, edit, bash plus approved Pi extensions                  |
 | **Plan mode**         | Read-only exploration, structured plans, InputBar questions, execute/refine/stay |
+| **Harness mode**      | Evaluation-oriented tools with workspace writes and Autocontext status           |
 | **OpenUI**            | Inline generative UI blocks inside assistant messages                            |
 | **Resources browser** | Browse skills, prompts, extensions, and workspace files from the side panel      |
 | **Workspace memory**  | Durable project memory under `agent-workspace/memory/`                           |
@@ -63,7 +64,8 @@ Open [http://localhost:3000](http://localhost:3000). Type `read package.json` to
 | **Subagents**         | Scout (fast recon), researcher (web research), worker (code changes)             |
 | **Extensions**        | Full TypeScript extension system; 5,300+ community Pi packages                   |
 | **Settings**          | Provider credentials, model selection, skills, appearance                        |
-| **Auth**              | Email/password, Google OAuth, Neon Managed Auth, or anonymous                    |
+| **Auth**              | Neon Managed Auth (deployed), local Better Auth fallback, or anonymous           |
+| **LLM (deployed)**    | Neon AI Gateway: `qwen35-122b-a10b` + `gpt-oss-120b` for signed-in users         |
 | **Sandbox**           | Optional Daytona sandbox for isolated execution                                  |
 
 ## How it works
@@ -87,6 +89,7 @@ You send a message from the web app. Fleet Pi creates or resumes a Pi session sc
 | **Database**      | Neon Postgres            | Session mirroring, settings persistence, auth         |
 | **Sandbox**       | Daytona                  | Per-user isolated execution environments              |
 | **Auth**          | Neon Managed Auth        | Cookie + JWT, BYOK credential encryption              |
+| **LLM**           | Neon AI Gateway          | Authenticated default via OpenAI-compatible `/v1`     |
 
 ## Project structure
 

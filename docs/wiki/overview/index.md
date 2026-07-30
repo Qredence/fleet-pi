@@ -4,9 +4,9 @@ Fleet Pi is a browser-based coding-agent workspace built on Qredence's Pi AI cod
 
 ## What it does
 
-- Streams responses from Pi through the current OpenAI-compatible `openai-chat-completions` provider (default model `deepseek-v4-flash-free`)
-- Runs Pi's built-in tools — `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls` — scoped to your project root
-- Supports **Agent mode** (full tools) and **Plan mode** (read-only planning with numbered steps)
+- Streams responses from Pi through **Neon AI Gateway** for authenticated deploys (`qwen35-122b-a10b`, `gpt-oss-120b`) or user BYOK providers locally
+- Runs Pi's built-in tools — `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls` — scoped to project/workspace roots
+- Supports **Agent**, **Plan**, and **Harness** chat modes
 - Maintains persistent Pi JSONL sessions; restores transcript on page refresh
 - Optionally mirrors sessions to Neon Postgres, provisions Daytona sandboxes per user, and renders inline generative UI via OpenUI
 
@@ -26,7 +26,8 @@ Fleet Pi is a browser-based coding-agent workspace built on Qredence's Pi AI cod
 ```
 fleet-pi/
 ├── apps/web/          TanStack Start app (React 19 + Vite + Nitro)
-├── packages/hax-design/       Shared component library (@workspace/hax-design)
+├── packages/hax-design/   Shared component library (@workspace/hax-design)
+├── packages/pi-protocol/  Chat wire types and Zod schemas
 ├── agent-workspace/   Durable agent home (skills, memory, plans)
 ├── .pi/               Pi runtime configuration and extensions
 └── scripts/           Tooling scripts (auth migration, doc generation)

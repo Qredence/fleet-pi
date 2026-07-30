@@ -1,96 +1,81 @@
 # Getting started
 
+See also [docs/quickstart.md](../../quickstart.md) for the recommended onboarding path.
+
 ## Prerequisites
 
 - Node.js 22+
-- pnpm 11+ (`npm install -g pnpm`)
-- AWS credentials with Bedrock access (for LLM calls)
+- pnpm 11.1.3 (`corepack enable`)
+- An LLM provider for local chat (Settings BYOK or env vars — see `.env.example`)
+
+Deployed Fleet Pi with Neon Managed Auth uses **Neon AI Gateway** defaults for signed-in users (`qwen35-122b-a10b`, `gpt-oss-120b`).
 
 ## Install
 
 ```bash
 git clone https://github.com/Qredence/fleet-pi.git
 cd fleet-pi
+corepack enable
 pnpm install
-```
-
-## Configure environment
-
-Copy `.env.example` to `.env` and fill in the required values:
-
-```bash
 cp .env.example .env
 ```
 
-Minimum required for local use:
+## Configure (local)
+
+Minimum for local chat — pick one:
 
 ```
-# AWS credentials for Amazon Bedrock
-AWS_REGION=us-east-1
-# AWS_PROFILE=your-profile        # if using named profiles
-# AWS_BEARER_TOKEN_BEDROCK=...    # if using bearer token auth
+# OpenAI-compatible BYOK (Settings or env)
+OPENAI_CHAT_COMPLETIONS_API_KEY=...
+OPENAI_CHAT_COMPLETIONS_BASE_URL=https://...
+OPENAI_CHAT_COMPLETIONS_MODEL=...
+
+# Or Google Gemini
+GEMINI_API_KEY=...
 ```
 
-Optional integrations:
+Optional:
 
 ```
-# Neon Postgres (enables session mirror + workspace indexing)
+# Neon Managed Auth (disables anonymous local chat when set)
+NEON_AUTH_BASE_URL=...
+VITE_NEON_AUTH_URL=...
+
+# Neon AI Gateway (authenticated default on deploy)
+NEON_AI_GATEWAY_TOKEN=nt_live_...
+NEON_AI_GATEWAY_BASE_URL=https://<branch>-api.ai.<region>.aws.neon.tech
+
 FLEET_PI_CHAT_DATABASE_URL=postgresql://...
-FLEET_PI_AUTH_DATABASE_URL=postgresql://...  # if separate from chat DB
-
-# Daytona sandboxes (enables per-user isolated execution)
-DAYTONA_API_KEY=...
-DAYTONA_API_URL=...
-
-# Override the repo root Pi operates inside
-FLEET_PI_REPO_ROOT=/path/to/your-repo
+DAYTONA_API_KEY=...   # local/dev only; Vercel users need BYOK daytona
 ```
 
 ## Run
 
 ```bash
-pnpm dev        # starts the web app on http://localhost:3000
+pnpm dev
 ```
 
-Visit `http://localhost:3000`. If authentication is configured, log in first.
+Visit `http://localhost:3000`.
 
 ## Verify
 
-1. Type a message. A streaming response should appear.
-2. Ask `read package.json` — a Read tool card should appear with file contents.
-3. Ask `run pnpm --version` in Agent mode — a Bash card should render.
-4. Refresh the page — the transcript should restore from the Pi session.
+1. Send `read package.json` — Read tool card appears.
+2. Run `pnpm --version` in Agent mode — Bash card renders.
+3. Refresh — transcript hydrates from Pi session metadata.
+4. Open Settings — providers/models load; save persists overrides.
 
-## Build
-
-```bash
-pnpm build      # builds all packages and the web app
-```
-
-The production build outputs to `apps/web/.output/`. Run it with `node apps/web/.output/server/index.mjs`.
-
-## Other commands
+## Build & test
 
 ```bash
-pnpm lint           # ESLint across all workspaces
-pnpm typecheck      # tsc --noEmit across all workspaces
-pnpm test           # vitest unit tests
-pnpm e2e            # Playwright end-to-end tests (requires running dev server)
-pnpm format         # Prettier formatting
-pnpm knip           # detect unused exports/dependencies
-pnpm syncpack       # check dependency version consistency
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm e2e
+pnpm generate:docs
+pnpm validate-agents-md
 ```
 
-## Auth database migration
+## Deploy
 
-If you add `FLEET_PI_AUTH_DATABASE_URL` to switch from SQLite to Neon, run the migration:
-
-```bash
-pnpm --filter web auth:migrate
-```
-
-For the chat session mirror:
-
-```bash
-FLEET_PI_CHAT_MIGRATION_DATABASE_URL=postgresql://... pnpm chat:migrate
-```
+See [deployment](../deployment.md) and [deployment release gate](../../runbooks/deployment-release-gate.md).

@@ -1921,6 +1921,1601 @@
         }
       }
     },
+    "/api/chat/settings": {
+      "get": {
+        "description": "Load Pi project settings (overrides merged with Fleet base defaults)",
+        "responses": {
+          "200": {
+            "description": "Settings snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "effective": {
+                      "type": "object",
+                      "properties": {
+                        "compaction": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "reserveTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "keepRecentTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "reserveTokens",
+                            "keepRecentTokens"
+                          ]
+                        },
+                        "defaultModel": {
+                          "type": "string"
+                        },
+                        "defaultProvider": {
+                          "type": "string"
+                        },
+                        "defaultThinkingLevel": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh",
+                            "max"
+                          ],
+                          "description": "Thinking level"
+                        },
+                        "enableSkillCommands": {
+                          "type": "boolean"
+                        },
+                        "enabledModels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "extensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "followUpMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "packages": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        },
+                        "prompts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "retry": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "maxRetries": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "baseDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["enabled", "maxRetries", "baseDelayMs"]
+                        },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "steeringMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "themes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "transport": {
+                          "type": "string",
+                          "enum": ["auto", "sse", "websocket"],
+                          "description": "Preferred provider transport"
+                        }
+                      },
+                      "required": [
+                        "compaction",
+                        "enableSkillCommands",
+                        "extensions",
+                        "followUpMode",
+                        "packages",
+                        "prompts",
+                        "retry",
+                        "skills",
+                        "steeringMode",
+                        "themes",
+                        "transport"
+                      ],
+                      "description": "Editable Pi settings"
+                    },
+                    "project": {
+                      "type": "object",
+                      "properties": {
+                        "compaction": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "reserveTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "keepRecentTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        },
+                        "defaultModel": {
+                          "type": "string"
+                        },
+                        "defaultProvider": {
+                          "type": "string"
+                        },
+                        "defaultThinkingLevel": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh",
+                            "max"
+                          ],
+                          "description": "Thinking level"
+                        },
+                        "enableSkillCommands": {
+                          "type": "boolean"
+                        },
+                        "enabledModels": {
+                          "type": ["array", "null"],
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "extensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "followUpMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "packages": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        },
+                        "prompts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "retry": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "maxRetries": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "baseDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          }
+                        },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "steeringMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "themes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "transport": {
+                          "type": "string",
+                          "enum": ["auto", "sse", "websocket"],
+                          "description": "Preferred provider transport"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "description": "Pi settings update"
+                    },
+                    "projectPath": {
+                      "type": "string"
+                    },
+                    "updateImpact": {
+                      "type": "object",
+                      "properties": {
+                        "newSessionRecommended": {
+                          "type": "boolean"
+                        },
+                        "resourceReloadRequired": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "newSessionRecommended",
+                        "resourceReloadRequired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "diagnostics",
+                    "effective",
+                    "project",
+                    "projectPath",
+                    "updateImpact"
+                  ],
+                  "description": "Pi settings response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Persist Pi project settings overrides and hot-reload active runtimes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "settings": {
+                    "type": "object",
+                    "properties": {
+                      "compaction": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "reserveTokens": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "keepRecentTokens": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      },
+                      "defaultModel": {
+                        "type": "string"
+                      },
+                      "defaultProvider": {
+                        "type": "string"
+                      },
+                      "defaultThinkingLevel": {
+                        "type": "string",
+                        "enum": [
+                          "off",
+                          "minimal",
+                          "low",
+                          "medium",
+                          "high",
+                          "xhigh",
+                          "max"
+                        ],
+                        "description": "Thinking level"
+                      },
+                      "enableSkillCommands": {
+                        "type": "boolean"
+                      },
+                      "enabledModels": {
+                        "type": ["array", "null"],
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "extensions": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "followUpMode": {
+                        "type": "string",
+                        "enum": ["all", "one-at-a-time"],
+                        "description": "Prompt delivery mode"
+                      },
+                      "packages": {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          ]
+                        }
+                      },
+                      "prompts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "retry": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "maxRetries": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "baseDelayMs": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "skills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "steeringMode": {
+                        "type": "string",
+                        "enum": ["all", "one-at-a-time"],
+                        "description": "Prompt delivery mode"
+                      },
+                      "themes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "transport": {
+                        "type": "string",
+                        "enum": ["auto", "sse", "websocket"],
+                        "description": "Preferred provider transport"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Pi settings update"
+                  }
+                },
+                "required": ["settings"],
+                "description": "Pi settings update request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "effective": {
+                      "type": "object",
+                      "properties": {
+                        "compaction": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "reserveTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "keepRecentTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "reserveTokens",
+                            "keepRecentTokens"
+                          ]
+                        },
+                        "defaultModel": {
+                          "type": "string"
+                        },
+                        "defaultProvider": {
+                          "type": "string"
+                        },
+                        "defaultThinkingLevel": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh",
+                            "max"
+                          ],
+                          "description": "Thinking level"
+                        },
+                        "enableSkillCommands": {
+                          "type": "boolean"
+                        },
+                        "enabledModels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "extensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "followUpMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "packages": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        },
+                        "prompts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "retry": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "maxRetries": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "baseDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["enabled", "maxRetries", "baseDelayMs"]
+                        },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "steeringMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "themes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "transport": {
+                          "type": "string",
+                          "enum": ["auto", "sse", "websocket"],
+                          "description": "Preferred provider transport"
+                        }
+                      },
+                      "required": [
+                        "compaction",
+                        "enableSkillCommands",
+                        "extensions",
+                        "followUpMode",
+                        "packages",
+                        "prompts",
+                        "retry",
+                        "skills",
+                        "steeringMode",
+                        "themes",
+                        "transport"
+                      ],
+                      "description": "Editable Pi settings"
+                    },
+                    "project": {
+                      "type": "object",
+                      "properties": {
+                        "compaction": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "reserveTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "keepRecentTokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        },
+                        "defaultModel": {
+                          "type": "string"
+                        },
+                        "defaultProvider": {
+                          "type": "string"
+                        },
+                        "defaultThinkingLevel": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh",
+                            "max"
+                          ],
+                          "description": "Thinking level"
+                        },
+                        "enableSkillCommands": {
+                          "type": "boolean"
+                        },
+                        "enabledModels": {
+                          "type": ["array", "null"],
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "extensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "followUpMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "packages": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        },
+                        "prompts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "retry": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "maxRetries": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "baseDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          }
+                        },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "steeringMode": {
+                          "type": "string",
+                          "enum": ["all", "one-at-a-time"],
+                          "description": "Prompt delivery mode"
+                        },
+                        "themes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "transport": {
+                          "type": "string",
+                          "enum": ["auto", "sse", "websocket"],
+                          "description": "Preferred provider transport"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "description": "Pi settings update"
+                    },
+                    "projectPath": {
+                      "type": "string"
+                    },
+                    "updateImpact": {
+                      "type": "object",
+                      "properties": {
+                        "newSessionRecommended": {
+                          "type": "boolean"
+                        },
+                        "resourceReloadRequired": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "newSessionRecommended",
+                        "resourceReloadRequired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "diagnostics",
+                    "effective",
+                    "project",
+                    "projectPath",
+                    "updateImpact"
+                  ],
+                  "description": "Pi settings response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/providers": {
+      "get": {
+        "description": "List provider credential configuration status",
+        "responses": {
+          "200": {
+            "description": "Provider catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "isConfigured": {
+                            "type": "boolean"
+                          },
+                          "envVarName": {
+                            "type": "string"
+                          },
+                          "authType": {
+                            "type": "string",
+                            "enum": ["apiKey", "oauth"]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "isConfigured",
+                          "envVarName"
+                        ],
+                        "description": "Chat provider info"
+                      }
+                    }
+                  },
+                  "required": ["providers"],
+                  "description": "Chat providers response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Save encrypted BYOK provider credentials",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "providerId": {
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "baseUrl": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "modelId": {
+                    "type": "string",
+                    "maxLength": 4096
+                  }
+                },
+                "required": ["providerId", "apiKey"],
+                "description": "Chat provider update request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "isConfigured": {
+                            "type": "boolean"
+                          },
+                          "envVarName": {
+                            "type": "string"
+                          },
+                          "authType": {
+                            "type": "string",
+                            "enum": ["apiKey", "oauth"]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "isConfigured",
+                          "envVarName"
+                        ],
+                        "description": "Chat provider info"
+                      }
+                    },
+                    "reloadRequired": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["success", "providers"],
+                  "description": "Chat provider update response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Remove BYOK provider credentials",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "providerId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["providerId"],
+                "description": "Chat provider remove request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "isConfigured": {
+                            "type": "boolean"
+                          },
+                          "envVarName": {
+                            "type": "string"
+                          },
+                          "authType": {
+                            "type": "string",
+                            "enum": ["apiKey", "oauth"]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "isConfigured",
+                          "envVarName"
+                        ],
+                        "description": "Chat provider info"
+                      }
+                    },
+                    "reloadRequired": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["success", "providers"],
+                  "description": "Chat provider remove response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/commands": {
+      "get": {
+        "description": "List slash commands for the InputBar",
+        "responses": {
+          "200": {
+            "description": "Slash commands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "commands": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "argumentHint": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": ["builtin", "extension", "prompt", "skill"]
+                          },
+                          "passThrough": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["name", "source"]
+                      }
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": ["commands", "diagnostics"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/models/discover": {
+      "post": {
+        "description": "Discover remote models from configured providers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": ["providerId"],
+                "description": "Discover models for a provider"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Discovered models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "providerId": {
+                      "type": "string"
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "reasoning": {
+                            "type": "boolean"
+                          },
+                          "input": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["text", "image"]
+                            }
+                          },
+                          "contextWindow": {
+                            "type": "number"
+                          },
+                          "maxTokens": {
+                            "type": "number"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "defaultThinkingLevel": {
+                            "type": "string",
+                            "enum": [
+                              "off",
+                              "minimal",
+                              "low",
+                              "medium",
+                              "high",
+                              "xhigh",
+                              "max"
+                            ],
+                            "description": "Thinking level"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "provider",
+                          "id",
+                          "name",
+                          "reasoning",
+                          "input",
+                          "available"
+                        ],
+                        "description": "Chat model info"
+                      }
+                    }
+                  },
+                  "required": ["providerId", "models"],
+                  "description": "Discovered models for a provider"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/tree": {
+      "get": {
+        "description": "List agent-workspace filesystem tree",
+        "responses": {
+          "200": {
+            "description": "Workspace tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "root": {
+                      "type": "string"
+                    },
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": ["root", "nodes"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/runs": {
+      "get": {
+        "description": "List chat runs for a session",
+        "responses": {
+          "200": {
+            "description": "Run list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": ["runs"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/run": {
+      "get": {
+        "description": "Fetch a single chat run",
+        "responses": {
+          "200": {
+            "description": "Run detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/provenance": {
+      "get": {
+        "description": "File mutation provenance for workspace paths",
+        "responses": {
+          "200": {
+            "description": "Provenance records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": ["records"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/file": {
+      "get": {
+        "description": "Read a file inside agent-workspace",
+        "responses": {
+          "200": {
+            "description": "File preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["path", "content"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/health": {
+      "get": {
+        "description": "Workspace bootstrap health",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sandbox/preview": {
+      "get": {
+        "description": "Preview URL for a Daytona sandbox port",
+        "responses": {
+          "200": {
+            "description": "Preview link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/daytona": {
+      "post": {
+        "description": "Daytona webhook receiver",
+        "responses": {
+          "200": {
+            "description": "Acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "description": "Health check endpoint",

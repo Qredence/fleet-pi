@@ -6,7 +6,15 @@ import {
 } from "@asteasolutions/zod-to-openapi"
 import { z } from "zod"
 import {
+  ChatCommandsResponseSchema,
+  ChatModelsDiscoverRequestSchema,
+  ChatModelsDiscoverResponseSchema,
   ChatModelsResponseSchema,
+  ChatProviderRemoveRequestSchema,
+  ChatProviderRemoveResponseSchema,
+  ChatProviderUpdateRequestSchema,
+  ChatProviderUpdateResponseSchema,
+  ChatProvidersResponseSchema,
   ChatQuestionAnswerRequestSchema,
   ChatQuestionAnswerResponseSchema,
   ChatRequestSchema,
@@ -14,6 +22,8 @@ import {
   ChatSessionMetadataSchema,
   ChatSessionResponseSchema,
   ChatSessionsResponseSchema,
+  ChatSettingsResponseSchema,
+  ChatSettingsUpdateRequestSchema,
   ChatStreamEventSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
@@ -408,6 +418,387 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: ChatQuestionAnswerResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/settings",
+  description:
+    "Load Pi project settings (overrides merged with Fleet base defaults)",
+  responses: {
+    200: {
+      description: "Settings snapshot",
+      content: {
+        "application/json": {
+          schema: ChatSettingsResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/chat/settings",
+  description:
+    "Persist Pi project settings overrides and hot-reload active runtimes",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: ChatSettingsUpdateRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Updated settings",
+      content: {
+        "application/json": {
+          schema: ChatSettingsResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/providers",
+  description: "List provider credential configuration status",
+  responses: {
+    200: {
+      description: "Provider catalog",
+      content: {
+        "application/json": {
+          schema: ChatProvidersResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/chat/providers",
+  description: "Save encrypted BYOK provider credentials",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: ChatProviderUpdateRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Provider saved",
+      content: {
+        "application/json": {
+          schema: ChatProviderUpdateResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "delete",
+  path: "/api/chat/providers",
+  description: "Remove BYOK provider credentials",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: ChatProviderRemoveRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Provider removed",
+      content: {
+        "application/json": {
+          schema: ChatProviderRemoveResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/commands",
+  description: "List slash commands for the InputBar",
+  responses: {
+    200: {
+      description: "Slash commands",
+      content: {
+        "application/json": {
+          schema: ChatCommandsResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/chat/models/discover",
+  description: "Discover remote models from configured providers",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: ChatModelsDiscoverRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Discovered models",
+      content: {
+        "application/json": {
+          schema: ChatModelsDiscoverResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/tree",
+  description: "List agent-workspace filesystem tree",
+  responses: {
+    200: {
+      description: "Workspace tree",
+      content: {
+        "application/json": {
+          schema: z.object({
+            root: z.string(),
+            nodes: z.array(z.record(z.string(), z.unknown())),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/runs",
+  description: "List chat runs for a session",
+  responses: {
+    200: {
+      description: "Run list",
+      content: {
+        "application/json": {
+          schema: z.object({
+            runs: z.array(z.record(z.string(), z.unknown())),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/run",
+  description: "Fetch a single chat run",
+  responses: {
+    200: {
+      description: "Run detail",
+      content: {
+        "application/json": {
+          schema: z.record(z.string(), z.unknown()),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: "Not found",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/chat/provenance",
+  description: "File mutation provenance for workspace paths",
+  responses: {
+    200: {
+      description: "Provenance records",
+      content: {
+        "application/json": {
+          schema: z.object({
+            records: z.array(z.record(z.string(), z.unknown())),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/file",
+  description: "Read a file inside agent-workspace",
+  responses: {
+    200: {
+      description: "File preview",
+      content: {
+        "application/json": {
+          schema: z.object({
+            path: z.string(),
+            content: z.string(),
+            mimeType: z.string().optional(),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/health",
+  description: "Workspace bootstrap health",
+  responses: {
+    200: {
+      description: "Health status",
+      content: {
+        "application/json": {
+          schema: z.record(z.string(), z.unknown()),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/sandbox/preview",
+  description: "Preview URL for a Daytona sandbox port",
+  responses: {
+    200: {
+      description: "Preview link",
+      content: {
+        "application/json": {
+          schema: z.object({ url: z.string().url().optional() }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/webhooks/daytona",
+  description: "Daytona webhook receiver",
+  responses: {
+    200: {
+      description: "Acknowledged",
+      content: {
+        "application/json": {
+          schema: z.object({ ok: z.boolean() }),
         },
       },
     },

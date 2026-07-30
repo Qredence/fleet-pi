@@ -71,7 +71,8 @@ compatibility bridge.
 
 ## Provider model
 
-- **Primary LLM:** OpenAI-compatible provider via Pi `openai-chat-completions` (current default model `deepseek-v4-flash-free`), configured through the project OCC settings. Google Gemini, Bedrock, and other providers remain optional integrations.
+- **Authenticated deploy default:** Neon AI Gateway via Pi `openai-chat-completions` (`qwen35-122b-a10b` primary, `gpt-oss-120b` enabled). Injected from `NEON_AI_GATEWAY_*` when `preview.aiGateway` is enabled in `neon.ts`.
+- **Local / BYOK:** OpenAI Chat Completions BYOK, Google Gemini, Bedrock, and other Pi providers via Settings or env.
 - **Credential IDs:** `packages/pi-protocol/src/provider-catalog.ts` (core only).
 - **Settings UI metadata:** `packages/hax-design/.../provider-metadata.ts` (icons, placeholders).
 

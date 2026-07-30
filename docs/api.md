@@ -469,6 +469,365 @@ Answer a question prompt from the assistant
 
 ---
 
+## GET /api/chat/settings
+
+Load Pi project settings (overrides merged with Fleet base defaults)
+
+### Responses
+
+- **200** — Settings snapshot
+  ```json
+  {
+    "diagnostics": <array> (required),
+    "effective": <object> (required) — Editable Pi settings,
+    "project": <object> (required) — Pi settings update,
+    "projectPath": <string> (required),
+    "updateImpact": <object> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## PATCH /api/chat/settings
+
+Persist Pi project settings overrides and hot-reload active runtimes
+
+### Request Body
+
+```json
+{
+  "settings": <object> (required) — Pi settings update
+}
+```
+
+### Responses
+
+- **200** — Updated settings
+  ```json
+  {
+    "diagnostics": <array> (required),
+    "effective": <object> (required) — Editable Pi settings,
+    "project": <object> (required) — Pi settings update,
+    "projectPath": <string> (required),
+    "updateImpact": <object> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/chat/providers
+
+List provider credential configuration status
+
+### Responses
+
+- **200** — Provider catalog
+  ```json
+  {
+    "providers": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/chat/providers
+
+Save encrypted BYOK provider credentials
+
+### Request Body
+
+```json
+{
+  "providerId": <string> (required),
+  "apiKey": <string> (required),
+  "baseUrl": <string>,
+  "modelId": <string>
+}
+```
+
+### Responses
+
+- **200** — Provider saved
+  ```json
+  {
+    "success": <boolean> (required),
+    "providers": <array> (required),
+    "reloadRequired": <boolean>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## DELETE /api/chat/providers
+
+Remove BYOK provider credentials
+
+### Request Body
+
+```json
+{
+  "providerId": <string> (required)
+}
+```
+
+### Responses
+
+- **200** — Provider removed
+  ```json
+  {
+    "success": <boolean> (required),
+    "providers": <array> (required),
+    "reloadRequired": <boolean>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/chat/commands
+
+List slash commands for the InputBar
+
+### Responses
+
+- **200** — Slash commands
+  ```json
+  {
+    "commands": <array> (required),
+    "diagnostics": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/chat/models/discover
+
+Discover remote models from configured providers
+
+### Request Body
+
+```json
+{
+  "providerId": <string> (required)
+}
+```
+
+### Responses
+
+- **200** — Discovered models
+  ```json
+  {
+    "providerId": <string> (required),
+    "models": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/tree
+
+List agent-workspace filesystem tree
+
+### Responses
+
+- **200** — Workspace tree
+  ```json
+  {
+    "root": <string> (required),
+    "nodes": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/chat/runs
+
+List chat runs for a session
+
+### Responses
+
+- **200** — Run list
+  ```json
+  {
+    "runs": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/chat/run
+
+Fetch a single chat run
+
+### Responses
+
+- **200** — Run detail
+  Type: `object`
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **404** — Not found
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/chat/provenance
+
+File mutation provenance for workspace paths
+
+### Responses
+
+- **200** — Provenance records
+  ```json
+  {
+    "records": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/file
+
+Read a file inside agent-workspace
+
+### Responses
+
+- **200** — File preview
+  ```json
+  {
+    "path": <string> (required),
+    "content": <string> (required),
+    "mimeType": <string>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/health
+
+Workspace bootstrap health
+
+### Responses
+
+- **200** — Health status
+  Type: `object`
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/sandbox/preview
+
+Preview URL for a Daytona sandbox port
+
+### Responses
+
+- **200** — Preview link
+  ```json
+  {
+    "url": <string>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/webhooks/daytona
+
+Daytona webhook receiver
+
+### Responses
+
+- **200** — Acknowledged
+  ```json
+  {
+    "ok": <boolean> (required)
+  }
+  ```
+
+---
+
 ## GET /api/health
 
 Health check endpoint

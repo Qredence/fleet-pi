@@ -1,195 +1,62 @@
 # Fleet Pi Workspace
 
+> Non-authoritative snapshot. Prefer [AGENTS.md](AGENTS.md), [CONTEXT.md](CONTEXT.md), and generated [docs/project-structure.md](docs/project-structure.md) for current facts.
+
 ## SNAPSHOT
 
 type: monorepo  
 langs: TypeScript, JSON, YAML  
 runtimes: Node.js ≥22  
-pkgManager: pnpm@11.0.9  
+pkgManager: pnpm@11.1.3  
 deliverables: web app (TanStack Start + Pi coding agent), hax-design UI, pi-protocol wire types  
-rootConfigs: pnpm-workspace.yaml, eslint.config.js, .prettierrc (via plugin), tsconfig (workspace root delegates)
+rootConfigs: pnpm-workspace.yaml, eslint.config.js, neon.ts, turbo.json
 
 ---
 
 ## PACKAGES
 
-| name                   | path                 | type | deps                                                             | usedBy         | role                                                                                    |
-| ---------------------- | -------------------- | ---- | ---------------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------- |
-| web                    | apps/web             | app  | @workspace/hax-design,@workspace/pi-protocol,pi-coding-agent     | —              | Browser-based Pi chat workspace with plan mode, durable agent-workspace, file I/O, auth |
-| @workspace/hax-design  | packages/hax-design  | lib  | react,tailwindcss,lucide-react,motion,base-ui,sonner,pi-protocol | web            | Fleet Pi UI shell, agent-elements chat UI, openui renderer, shadcn/base-nova primitives |
-| @workspace/pi-protocol | packages/pi-protocol | lib  | zod,openuidev/lang-core                                          | web,hax-design | Chat wire types, Zod schemas, provider IDs, OpenUI prompt (no React)                    |
+| name                   | path                 | role                                                                                    |
+| ---------------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| web                    | apps/web             | Browser Pi chat workspace (Agent/Plan/Harness), auth, workspace APIs                    |
+| @workspace/hax-design  | packages/hax-design  | Fleet Pi UI shell, agent-elements chat UI, openui renderer, shadcn/base-nova primitives |
+| @workspace/pi-protocol | packages/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt (no React)                    |
 
 ---
 
-## DEPENDENCY GRAPH
+## ARCHITECTURE (web)
 
-apps/web → packages/hax-design, packages/pi-protocol, @earendil-works/pi-* (pi-coding-agent, pi-ai, pi-agent-core)
-packages/hax-design → packages/pi-protocol
-
----
-
-## ARCHITECTURE
-
-## web (`apps/web`)
-
-entry: src/routes/\_\_root.tsx (TanStack Start), src/routes/index.tsx (main shell), src/router.tsx (router factory)  
-routing: File-based; routes/ → routeTree.gen.ts (auto-generated)  
-state: React Query (requests), localStorage (Pi session metadata), Pi persistent JSONL sessions (.fleet/sessions/)  
-api: /api/chat → server-streaming NDJSON, /api/chat/{models,resources,settings,new,resume,abort,sessions,question}, /api/auth/\* (Better Auth), /api/workspace/{tree,file,search,items,reindex}  
-db: SQLite via better-sqlite3; .fleet/auth.sqlite (auth), agent-workspace/indexes/workspace-projection.sqlite (workspace index)  
-auth: Better Auth (email/password + optional Google OAuth); session-based; cookies  
-build: Vite + TanStack Start plugin; dev :3000; bundle-report/stats.html  
-dirs: src/routes → file-based routing, src/lib/pi → Pi server integration + handleChatTurn, src/lib/daytona → resolveUserSandboxContext, src/lib/workspace → agent-workspace bootstrap/serving, src/lib/db → SQLite workspace projection schema, src/lib/auth → Better Auth setup (routes compose hax-design only)
-
-## @workspace/hax-design (`packages/hax-design`)
-
-exports: curated components/fleet-pi/_, components/agent-elements/_, components/openui/_, lib/_, globals.css  
-consumedBy: web  
-dirs: src/components/fleet-pi → product shell and panels, src/components/agent-elements → chat UI, src/components/openui → generative UI renderer, src/lib/pi → deprecated shims to pi-protocol
-
-## @workspace/pi-protocol (`packages/pi-protocol`)
-
-exports: chat-types, chat-protocol, chat-protocol.zod, model-patterns, provider-catalog, openui-prompt  
-consumedBy: web, hax-design  
-dirs: src/ → wire-format types and prompts (no React)
+entry: `apps/web/src/routes/index.tsx`  
+routing: TanStack Router file routes → `routeTree.gen.ts` (generated)  
+api: `/api/chat/*`, `/api/workspace/*`, `/api/auth/*`, `/api/sandbox/*`, `/api/health`  
+auth: Neon Managed Auth when `NEON_AUTH_*` set; local Better Auth/SQLite fallback  
+llm: Neon AI Gateway (`NEON_AI_GATEWAY_*`) for authenticated deploy; BYOK via `pi_user_providers`  
+db: Neon Postgres `pi_*` mirror + `pi_user_settings` on Vercel; local SQLite for auth when unset  
+sandbox: Daytona BYOK per user on Vercel (`daytona` in `pi_user_providers`)
 
 ---
 
 ## STACK
 
-web → framework: TanStack Start + React 19, routing: TanStack Router (file-based), state: React Query, db: better-sqlite3 (SQLite in-process), auth: better-auth (email/password + Google), runtime: Nitro/Hono, ai: Pi coding agent (pi-coding-agent v0.79.0), provider: google (gemini-3.5-flash)
-
-@workspace/hax-design → framework: React 19, styling: Tailwind CSS v4 + CVA, icons: Lucide, motion: Motion v12, toast: Sonner, ui: Base UI (accessible primitives)
-
-@workspace/pi-protocol → validation: Zod, generative UI: @openuidev/lang-core signatures
-
----
-
-## STYLE
-
-- imports: path aliases (@/_, @workspace/hax-design/_, @workspace/pi-protocol/*), relative paths inside packages
-- naming: camelCase functions, SCREAMING_SNAKE_CASE constants, PascalCase React components
-- typing: strict TypeScript, explicit return types, no `any`
-- errors: RequestContextError (status + message), proper HTTP status propagation
-- testing: Vitest (unit, globals=false, node environment), Playwright (e2e, chromium only)
-- lint: ESLint delegated per workspace; root config pulls app + ui configs
-- formatting: Prettier standardized across workspace; lint-staged pre-commit hook
-- patterns: Context/Provider hooks (usePiChat, auth hooks), composition over boolean props, streaming NDJSON events, plugin-based Pi extensions
+- **web:** TanStack Start, React 19, Pi coding agent `^0.80.10`, Nitro/Vercel preset
+- **default LLM (deploy):** Neon AI Gateway → `openai-chat-completions` / `qwen35-122b-a10b`
+- **hax-design:** Tailwind v4, Base UI, Motion, Sonner
+- **pi-protocol:** Zod, `@openuidev/lang-core` signatures
 
 ---
 
 ## STRUCTURE
 
-agent-workspace/ → Durable adaptive layer: memory/, plans/, artifacts/, evals/, pi/ (skills/prompts/extensions/packages), agent-home
-.fleet/ → Runtime state: sessions/ (Pi session JSONL files), auth.sqlite
-.pi/ → settings.json (Pi config), skills/, prompts/, extensions/ (project-local resources)
-apps/web/src/routes/api/ → Endpoint handlers: chat/, auth/, workspace/
-apps/web/src/lib/ → Core logic: pi/ (server runtime), workspace/ (bootstrap/serving), db/ (SQLite), auth/ (setup)
-packages/hax-design/src/components/agent-elements/ → Chat UI primitives: AgentChat, InputBar, MessageList, tools/, types/, hooks/
-packages/pi-protocol/src/ → Canonical chat wire types and OpenUI prompt
+- `agent-workspace/` — durable adaptive layer (memory, plans, artifacts, `pi/` resources)
+- `agent-workspace/pi/{skills,prompts,extensions,packages}` — workspace-installed Pi resources
+- `.pi/settings.json` — Pi compatibility bridge (overrides only; base defaults in code)
+- `apps/web/src/lib/pi/runtime/` — session factory, settings bridge, Gateway/OCC providers
+- `neon.ts` — Managed Auth + AI Gateway + chat Neon Function IaC
 
 ---
 
 ## BUILD
 
-workspaceScripts: dev (web only), build (all), lint, typecheck, test, e2e, format, syncpack, knip, jscpd, tech-debt, validate-agents-md, generate:docs
+workspaceScripts: see root `package.json` and [AGENTS.md](AGENTS.md) Validation section.
 
-envFiles: .env, .env.example  
-envPrefixes: AWS*\*, FLEET_PI*\_, LOG*LEVEL, BETTER_AUTH*\_, GOOGLE*CLIENT*\*, PI_AGENT_DIR  
-ci: .github/workflows/ci.yml (setup, lint, typecheck, build, test, e2e, codeql, qa); blacksmith runners; concurrency=cancel  
-docker: (none; local only)
-
----
-
-## LOOKUP
-
-add chat route → apps/web/src/routes/, apps/web/src/routes/api/chat/_.ts, export Route handler  
-add Pi tool/command → .pi/extensions/_.ts (register in handler), apps/web/src/lib/pi/command-policy.ts (allowlist), packages/hax-design/src/components/fleet-pi/ (UI)  
-add shared component → packages/hax-design/src/components/, update packages/hax-design/package.json exports  
-add workspace API → apps/web/src/routes/api/workspace/_.ts, apps/web/src/lib/workspace/server.ts (helpers)  
-modify auth → apps/web/src/lib/auth/server.ts (Better Auth config), .env (secrets)  
-modify chat protocol → packages/pi-protocol/src/, thin shims in packages/hax-design/src/lib/pi/  
-modify workspace projection schema → apps/web/src/lib/db/workspace-projection.ts (migrations array)  
-add test → _.test.ts or _.spec.ts; Vitest auto-discovers  
-add e2e test → e2e/_.e2e.ts; Playwright auto-runs
-
----
-
-## KEY FILES
-
-web::apps/web/src/routes/index.tsx → Main chat shell, SessionMenu, ChatHeader, ChatWorkspaceShell, mode toggle | readFor: overall UI structure | affects: all chat UX | related: InputBar, MessageList, right panels
-
-web::apps/web/src/lib/pi/server.ts → Pi exports (models, resources, settings, sessions, runtime, events) | readFor: server-side Pi integration | affects: /api/chat endpoints | related: server-runtime.ts, server-catalog.ts
-
-web::apps/web/src/lib/workspace/server.ts → ensureAgentWorkspace, loadAgentWorkspaceTree, loadAgentWorkspaceFile | readFor: workspace serving | affects: /api/workspace endpoints | related: bootstrap-agent-workspace.ts
-
-web::apps/web/src/lib/db/workspace-projection.ts → SQLite schema, migrations, seeding, queries | readFor: workspace indexing | affects: workspace tree/search | related: workspace-indexer.ts
-
-web::apps/web/src/lib/auth/server.ts → Better Auth setup | readFor: auth setup | affects: /api/auth routes | related: auth client
-
-web::apps/web/vite.config.ts → TanStack Start plugin, Tailwind, dotenv loader | readFor: build config | affects: dev server | related: tsconfig.json
-
-web::apps/web/src/routes/api/chat.ts → NDJSON adapter; auth, ownership, handleChatTurn pipe | readFor: chat request handling | affects: browser chat fetch | related: handle-chat-turn.ts
-
-web::apps/web/src/lib/pi/handle-chat-turn.ts → AsyncIterable chat turn module | readFor: streaming turn logic | affects: /api/chat | related: server-runtime.ts, run-provenance.ts
-
-web::packages/pi-protocol/src/chat-protocol.ts → ChatStreamEvent, ChatRequest types | readFor: browser-server chat contract | affects: client fetch, OpenAPI | related: chat-protocol.zod.ts
-
-ui::packages/hax-design/src/components/agent-elements/agent-chat.tsx → AgentChat component wrapper | readFor: chat UI integration | affects: main chat display | related: InputBar, MessageList
-
-ui::packages/pi-protocol/src/chat-types.ts → ChatMessage, ChatToolPart | readFor: chat protocol ↔ UI mapping | affects: tool rendering | related: agent-elements tools/
-
-web::apps/web/package.json | readFor: web dependencies, scripts | affects: dev/build targets | related: root package.json
-
-ui::packages/hax-design/package.json | readFor: hax-design exports, dependencies | affects: shared components | related: root package.json
-
-web::.pi/settings.json | readFor: Pi packages, skills, extensions, model config | affects: runtime catalog | related: .pi/extensions/, .pi/skills/
-
-web::apps/web/src/routes/api/chat/models.ts, resources.ts, settings.ts | readFor: catalog loading | affects: UI dropdowns, tool discovery | related: server-catalog.ts, server-settings.ts
-
-web::eslint.config.js | readFor: lint rules | affects: pre-commit ESLint | related: apps/web/eslint.config.js, packages/hax-design/eslint.config.ts
-
-web::.github/workflows/ci.yml | readFor: CI steps | affects: PR checks | related: no local config, GH Actions only
-
----
-
-## CONVENTIONS
-
-### Pi Session Management
-
-- Browser stores Pi session metadata in localStorage (`sessionFile`, `sessionId`).
-- Server maintains live `AgentSessionRuntime` instances with TTL (FLEET_PI_RUNTIME_TTL_MS, default 10 min).
-- Pi sessions are persistent JSONL files at .fleet/sessions/\*.jsonl.
-- Invalid/outside session files trigger fresh project-scoped session.
-
-### Tool Policy
-
-- Agent mode: full read/write/edit/bash + approved external Pi tools (init_experiment, run_experiment, subagent, etc.).
-- Plan mode: read-only tools only (read, bash, find, ls, grep, project_inventory, workspace_index).
-- Tool allowlist in command-policy.ts, injected via plan-mode.ts extension.
-
-### Agent Workspace Layout
-
-- agent-workspace/ owns durable project state: memory/{architecture,decisions,preferences}, plans/, artifacts/, evals/, pi/{skills,prompts,extensions}.
-- .pi/settings.json bridges backward compat, points to workspace-native resources.
-- .pi/extensions/trust-handler.ts implements Pi 0.79.0 project trust with auto-approval for workspace-native paths.
-- Canonical project memory in agent-workspace/memory/project/\*.md.
-
-### Chat Protocol
-
-- Browser → Server: POST /api/chat { message, sessionFile?, sessionId? }.
-- Server → Browser: newline-delimited JSON stream (ChatStreamEvent[]).
-- Events hydrated into Parts (tool-_, code-_, message-\*) on browser.
-
-### Workspace Projection
-
-- SQLite at agent-workspace/indexes/workspace-projection.sqlite.
-- Tables: projects, workspace_roots, items (files/dirs), item_versions, semantic_records.
-- Seeded on first run; migrations applied for schema upgrades.
-- Queried by /api/workspace/tree, /api/workspace/search.
-
-### Build Artifacts
-
-- Turbo cache at .turbo/cache.
-- Bundle report at apps/web/bundle-report/stats.html (Rollup visualizer).
-- Generated routes at apps/web/src/routeTree.gen.ts (DO NOT EDIT).
+Run `pnpm generate:docs` after OpenAPI or architecture generator changes.
+Run `pnpm validate-agents-md` after AGENTS.md command changes.

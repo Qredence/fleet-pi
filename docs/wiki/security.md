@@ -2,83 +2,56 @@
 
 ## Trust boundaries and tool scoping
 
-Pi tools (read, write, edit, bash) execute on the server inside the Node.js process. All file path operations are validated against `projectRoot` before execution. The workspace contract module (`apps/web/src/lib/pi/workspace-contract.ts`) rejects any path that would escape the project root via path traversal, symlink abuse, or absolute path injection.
+Pi tools (read, write, edit, bash) execute on the server. File paths are validated against the active project/workspace root before execution. The workspace contract (`apps/web/src/lib/workspace/workspace-contract.ts`) rejects paths outside `agent-workspace/` for workspace APIs.
 
-Bash commands in **Plan mode** are evaluated by `apps/web/src/lib/pi/command-policy.ts` before reaching Pi. The policy enforces a strict allowlist:
+Bash commands in **Plan mode** are evaluated by `apps/web/src/lib/pi/command-policy.ts` before reaching Pi. Mutating commands, network tools, and shell metacharacters are blocked; only read-only inspection commands are permitted.
 
-- Shell metacharacters — command substitution (`$(…)`, backticks), redirections (`>`, `>>`), process substitution — are blocked outright.
-- Command separators (`;`, `&&`, `||`) are not allowed.
-- A fixed set of mutating commands (`rm`, `mv`, `chmod`, `sudo`, `kill`, `systemctl`, etc.) and all network commands (`curl`, `wget`, `nc`, `ssh`, etc.) are blocked.
-- Only commands in a known read-only set (`cat`, `grep`, `find`, `ls`, `git status/log/diff/show`, `pnpm list`, etc.) are permitted.
-- Excessively long commands (> 10 000 characters) and control characters are rejected to prevent injection and denial-of-service.
-
-In **Agent mode** the full Pi bash tool is available; tool execution remains scoped to the active `projectRoot` but is not restricted to the read-only command set.
+In **Agent mode** the full Pi bash tool is available, scoped to the active project root. **Harness mode** allows evaluation-oriented writes under workspace rules.
 
 ## Authentication
 
-Authentication is provided by Better Auth (`apps/web/src/lib/auth/server.ts`):
+Fleet Pi supports two auth backends (`apps/web/src/lib/auth/auth-mode.ts`):
 
-- **Email and password** sign-in is enabled by default.
-- **Google OAuth** is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Account linking with Google is allowed for existing email/password accounts.
-- Session management uses the `tanstackStartCookies` adapter, which sets secure HTTP-only session cookies via TanStack Start's server-side cookie API.
-- Auth endpoints are mounted at `/api/auth/$` (all Better Auth routes).
-- The `secret` field uses `BETTER_AUTH_SECRET`. Production deployments must set this to a strong random value.
-- Trusted origins are controlled by `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated). When unset, only `BETTER_AUTH_URL` and common local development ports are trusted.
+| Surface                      | Backend                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deployed (Vercel + Neon)** | **Neon Managed Auth** when `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL` is set. Same-origin `/api/auth` proxy; JWKS-verified Bearer JWTs for Neon Function chat runtime. |
+| **Local**                    | **Better Auth** with SQLite (`.fleet/auth.sqlite`) when no Neon Auth URL is set. Anonymous chat/workspace is allowed locally only.                                  |
 
-**Database backend:**
+`BETTER_AUTH_SECRET` remains required on Vercel for BYOK provider AES-GCM encryption even under Managed Auth. Cookie gate prefers `NEON_AUTH_COOKIE_SECRET`.
 
-By default, Better Auth uses a SQLite file at `.fleet/auth.sqlite` relative to the project root. This is appropriate for single-user local use. For multi-user deployments, set `FLEET_PI_AUTH_DATABASE_URL` to a Neon Postgres (or compatible) connection string; Better Auth will use the Neon serverless driver instead.
+Session-scoped chat and workspace APIs require auth on Vercel, Neon Managed Auth, Neon Function surfaces, or when `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1`.
 
-The auth schema (user, session, account, verification tables) is created automatically by `migrateAuthSchema` on first run when SQLite is in use.
+## LLM credentials and org key scrubbing
+
+On Vercel (`VERCEL=1`), org LLM env keys (`GEMINI_API_KEY`, `HF_TOKEN`, etc.) are scrubbed from the process so bash/tools cannot read them. Chat uses:
+
+1. **Signed-in user BYOK** rows in encrypted `pi_user_providers`, and
+2. **Platform Neon AI Gateway** (`NEON_AI_GATEWAY_TOKEN` + `NEON_AI_GATEWAY_BASE_URL`) as the default OpenAI-compatible backend for authenticated users without OCC BYOK.
+
+Gateway credentials are not user-editable in Settings and are not exposed as BYOK provider rows.
 
 ## PII sanitization
 
-The module at `apps/web/src/lib/pii/sanitizer.ts` provides `sanitizePii(text)`, which scrubs user-supplied content before it is passed to logging or external systems. It replaces:
-
-- Email addresses matching a standard pattern with `[EMAIL_REDACTED]`
-- Phone numbers (7+ digits, various formats including international prefixes) with `[PHONE_REDACTED]`
-
-The chat API calls this sanitizer on user message content before forwarding it to Pi.
+`apps/web/src/lib/pii/sanitizer.ts` scrubs emails and phone numbers from user message content before logging or external forwarding.
 
 ## URL security
 
-The extension library at `.pi/extensions/lib/url-security.ts` provides `isPrivateNetworkAddress(host)`, used by the `fetch_content` tool to block requests to private and internal network addresses. Blocked ranges include loopback (127.0.0.0/8, `::1`), RFC 1918 private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local (169.254.0.0/16), and ULA/link-local IPv6. The `fetch_content` tool is only available in Agent and Harness mode, not Plan mode.
+`.pi/extensions/lib/url-security.ts` blocks `fetch_content` requests to private network addresses. `fetch_content` is Agent/Harness only.
 
 ## Daytona sandbox isolation
 
-When `DAYTONA_API_KEY` is set, Pi file and bash tools run inside a Daytona container rather than the host filesystem. This provides:
+On Vercel, **end-user sandboxes require BYOK** (`daytona` in `pi_user_providers`). Org `DAYTONA_API_KEY` must not back user sandboxes.
 
-- Process isolation: tool execution happens in a separate container with no access to host system files.
-- Filesystem isolation: writes are contained within the sandbox volume.
-- Optional network blocking: the `networkBlockAll` option can prevent the sandbox from making outbound network calls.
+Each user gets volume `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. Local/dev may use `DAYTONA_API_KEY` when no user BYOK is configured.
 
-Without `DAYTONA_API_KEY`, tools run directly in the server process. Daytona is recommended for multi-tenant or public-facing deployments.
+## Postgres isolation
+
+`pi_*` mirror tables use RLS with `FORCE ROW LEVEL SECURITY`. Runtime must use non-owner `fleet_pi_app` connection string. Neon Data API stays **disabled** (`dataApi: false` in `neon.ts`).
 
 ## Circuit breaker
 
-Bedrock API calls are wrapped with an Opossum circuit breaker (`apps/web/src/lib/pi/circuit-breaker.ts`). Configuration:
-
-| Parameter                  | Value      |
-| -------------------------- | ---------- |
-| `errorThresholdPercentage` | 50%        |
-| `volumeThreshold`          | 5 requests |
-| `timeout`                  | 30 seconds |
-| `resetTimeout`             | 30 seconds |
-
-When the error rate exceeds 50% over at least 5 requests, the breaker opens and subsequent calls fail immediately with a user-visible error rather than hammering Bedrock. The breaker resets after 30 seconds.
+External LLM calls can be wrapped with Opossum (`apps/web/src/lib/pi/circuit-breaker.ts`) to fail fast when error rates spike.
 
 ## Dependency management
 
-Dependabot is configured for the npm/pnpm ecosystem. It opens automated PRs for dependency updates. Transitive vulnerabilities are resolved via `overrides` in `package.json` where no direct-dependency update is available. Dependency version consistency across packages is enforced by `syncpack` in both CI and the release workflow.
-
-## Vulnerability reporting
-
-Refer to `SECURITY.md` for the full security policy. In summary:
-
-- Do not open public GitHub issues for security reports.
-- Use GitHub's private vulnerability reporting for this repository.
-- If private reporting is unavailable, contact the maintainers privately through GitHub.
-- Reports should include a description, affected files or routes, reproduction steps, and any mitigation ideas.
-- The maintainers aim to acknowledge reports within 3 business days.
-
-Only the `main` branch is supported for security fixes. Older tags and branches are not patched.
+Dependabot, `syncpack`, and `overrides` in root `package.json` manage dependency hygiene. See `SECURITY.md` for vulnerability reporting.
