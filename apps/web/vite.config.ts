@@ -13,7 +13,13 @@ const repoRoot = resolve(import.meta.dirname, "../..")
 
 // Load repo-root env files for server-side routes (.env.local overrides .env)
 dotenvConfig({ path: resolve(repoRoot, ".env"), override: false })
-dotenvConfig({ path: resolve(repoRoot, ".env.local"), override: true })
+// Validation launches pin auth/mirror env vars to empty via process env; the
+// flag keeps .env.local from re-injecting them (default behavior unchanged).
+const preserveProcessEnv = process.env.FLEET_PI_VALIDATION_PRESERVE_ENV === "1"
+dotenvConfig({
+  path: resolve(repoRoot, ".env.local"),
+  override: !preserveProcessEnv,
+})
 
 // Ensure server-side code resolves projectRoot to the monorepo root, not apps/web/
 if (!process.env.FLEET_PI_REPO_ROOT) {

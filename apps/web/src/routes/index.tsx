@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { FleetPiAgentChat } from "@workspace/hax-design/components/fleet-pi/chat/fleet-pi-agent-chat"
 import { ChatCommandPalette } from "@workspace/hax-design/components/fleet-pi/chat-command-palette"
@@ -46,7 +46,7 @@ import {
   parseSlashInput,
   resolveLocalSlashAction,
 } from "@/lib/pi/slash-commands"
-import { collectCompletedResourceInstallToolCallIds } from "@/lib/pi/resource-install-refresh"
+import { useResourceInstallRefresh } from "@/lib/pi/use-resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
 import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
 import {
@@ -129,7 +129,6 @@ function ChatWorkspaceShell() {
 
   const resources = resourcesData ?? null
   const workspaceTree = workspaceData ?? null
-  const handledResourceInstallToolCalls = useRef(new Set<string>())
 
   const refreshResources = useCallback(() => {
     void refetchResources()
@@ -177,34 +176,14 @@ function ChatWorkspaceShell() {
     persistSession,
   })
 
-  useEffect(() => {
-    handledResourceInstallToolCalls.current.clear()
-  }, [sessionMetadata.sessionId])
-
-  useEffect(() => {
-    const completedToolCallIds = collectCompletedResourceInstallToolCallIds(
-      messages
-    ).filter(
-      (toolCallId) => !handledResourceInstallToolCalls.current.has(toolCallId)
-    )
-
-    if (completedToolCallIds.length === 0) return
-
-    completedToolCallIds.forEach((toolCallId) => {
-      handledResourceInstallToolCalls.current.add(toolCallId)
-    })
-
-    refreshResources()
-    if (workspaceTree || shouldLoadWorkspaceTree) {
-      refreshWorkspace()
-    }
-  }, [
+  useResourceInstallRefresh({
     messages,
     refreshResources,
     refreshWorkspace,
+    sessionId: sessionMetadata.sessionId,
     shouldLoadWorkspaceTree,
     workspaceTree,
-  ])
+  })
 
   const infoDescription = queueLabel(queue) ?? activityLabel ?? planLabel
   const pendingQuestionBar = usePendingQuestionBar({
@@ -331,42 +310,43 @@ function ChatWorkspaceShell() {
     [discoverModelsMutation]
   )
 
-  const rightPanelContextValue = useRightPanelContextValue({
-    activityLabel,
-    handleThemePreferenceChange,
-    isLoadingProviders,
-    isUpdatingProvider: isUpdatingProvider || isRemovingProvider,
-    loadWorkspaceFile,
-    mode,
-    modelKey,
-    models,
-    modelCatalog,
-    onDiscoverModels,
-    onRemoveProvider,
-    onUpdateProvider,
-    openWorkspacePath,
-    planLabel,
-    providers: providersData?.providers ?? [],
-    queue,
-    refreshResources,
-    refreshWorkspace,
-    resources,
-    resourcesError,
-    resourcesLoading,
-    rightPanel,
-    saveSettings,
-    selectedWorkspacePath,
-    setRightPanel,
-    setSelectedWorkspacePath,
-    settings: settingsData ?? null,
-    settingsError,
-    settingsLoading: settingsLoading || updateSettings.isPending,
-    status,
-    themePreference,
-    workspaceError,
-    workspaceLoading,
-    workspaceTree,
-  })
+  const { chatPanelData, settingsActions, workspaceTreeContext } =
+    useRightPanelContextValue({
+      activityLabel,
+      handleThemePreferenceChange,
+      isLoadingProviders,
+      isUpdatingProvider: isUpdatingProvider || isRemovingProvider,
+      loadWorkspaceFile,
+      mode,
+      modelKey,
+      models,
+      modelCatalog,
+      onDiscoverModels,
+      onRemoveProvider,
+      onUpdateProvider,
+      openWorkspacePath,
+      planLabel,
+      providers: providersData?.providers ?? [],
+      queue,
+      refreshResources,
+      refreshWorkspace,
+      resources,
+      resourcesError,
+      resourcesLoading,
+      rightPanel,
+      saveSettings,
+      selectedWorkspacePath,
+      setRightPanel,
+      setSelectedWorkspacePath,
+      settings: settingsData ?? null,
+      settingsError,
+      settingsLoading: settingsLoading || updateSettings.isPending,
+      status,
+      themePreference,
+      workspaceError,
+      workspaceLoading,
+      workspaceTree,
+    })
 
   return (
     <>
@@ -389,7 +369,11 @@ function ChatWorkspaceShell() {
         isStreaming={status === "streaming"}
         themePreference={themePreference}
       />
-      <RightPanelProvider value={rightPanelContextValue}>
+      <RightPanelProvider
+        chatPanelData={chatPanelData}
+        settingsActions={settingsActions}
+        workspaceTree={workspaceTreeContext}
+      >
         <ChatWorkspaceLayout
           headerLeft={
             <AccountMenu

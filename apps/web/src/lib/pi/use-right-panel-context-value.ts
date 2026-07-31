@@ -1,5 +1,9 @@
 import { useMemo } from "react"
-import type { RightPanelContextValue } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
+import type {
+  ChatPanelDataContextValue,
+  SettingsActionsContextValue,
+  WorkspaceTreeContextValue,
+} from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
 import type {
   ChatMode,
   ChatPiSettingsUpdate,
@@ -64,6 +68,12 @@ type UseRightPanelContextValueArgs = {
   workspaceTree: WorkspaceTreeResponse | null
 }
 
+type RightPanelContextSlices = {
+  chatPanelData: ChatPanelDataContextValue
+  settingsActions: SettingsActionsContextValue
+  workspaceTreeContext: WorkspaceTreeContextValue
+}
+
 export function useRightPanelContextValue({
   activityLabel,
   handleThemePreferenceChange,
@@ -99,79 +109,95 @@ export function useRightPanelContextValue({
   workspaceError,
   workspaceLoading,
   workspaceTree,
-}: UseRightPanelContextValueArgs): RightPanelContextValue {
-  return useMemo(
+}: UseRightPanelContextValueArgs): RightPanelContextSlices {
+  const chatPanelData = useMemo<ChatPanelDataContextValue>(
     () => ({
       activityLabel,
-      isLoadingProviders,
-      isUpdatingProvider,
-      loadWorkspaceFile,
       mode,
       models,
-      modelCatalog,
-      onDiscoverModels,
-      onThemePreferenceChange: handleThemePreferenceChange,
-      onRemoveProvider,
-      onUpdateProvider,
-      openWorkspacePath,
       planLabel,
-      providers,
       queue,
       refreshResources,
-      refreshWorkspace,
       resources,
       resourcesError,
       resourcesLoading,
       rightPanel,
-      saveSettings,
       selectedModelKey: modelKey,
-      selectedWorkspacePath,
       setRightPanel,
-      setSelectedWorkspacePath,
-      settings,
-      settingsError,
-      settingsLoading,
       status,
-      themePreference,
+    }),
+    [
+      activityLabel,
+      mode,
+      models,
+      planLabel,
+      queue,
+      refreshResources,
+      resources,
+      resourcesError,
+      resourcesLoading,
+      rightPanel,
+      modelKey,
+      setRightPanel,
+      status,
+    ]
+  )
+
+  const workspaceTreeContext = useMemo<WorkspaceTreeContextValue>(
+    () => ({
+      loadWorkspaceFile,
+      openWorkspacePath,
+      refreshWorkspace,
+      selectedWorkspacePath,
+      setSelectedWorkspacePath,
       workspaceError,
       workspaceLoading,
       workspaceTree,
     }),
     [
-      activityLabel,
-      handleThemePreferenceChange,
-      isLoadingProviders,
-      isUpdatingProvider,
       loadWorkspaceFile,
-      mode,
-      modelKey,
-      models,
-      modelCatalog,
-      onDiscoverModels,
-      onRemoveProvider,
-      onUpdateProvider,
       openWorkspacePath,
-      planLabel,
-      providers,
-      queue,
-      refreshResources,
       refreshWorkspace,
-      resources,
-      resourcesError,
-      resourcesLoading,
-      rightPanel,
-      saveSettings,
       selectedWorkspacePath,
-      setRightPanel,
       setSelectedWorkspacePath,
-      settings,
-      settingsError,
-      settingsLoading,
-      status,
-      themePreference,
       workspaceError,
       workspaceLoading,
       workspaceTree,
     ]
   )
+
+  const settingsActions = useMemo<SettingsActionsContextValue>(
+    () => ({
+      isLoadingProviders,
+      isUpdatingProvider,
+      modelCatalog,
+      onDiscoverModels,
+      onRemoveProvider,
+      onThemePreferenceChange: handleThemePreferenceChange,
+      onUpdateProvider,
+      providers,
+      saveSettings,
+      settings,
+      settingsError,
+      settingsLoading,
+      themePreference,
+    }),
+    [
+      handleThemePreferenceChange,
+      isLoadingProviders,
+      isUpdatingProvider,
+      modelCatalog,
+      onDiscoverModels,
+      onRemoveProvider,
+      onUpdateProvider,
+      providers,
+      saveSettings,
+      settings,
+      settingsError,
+      settingsLoading,
+      themePreference,
+    ]
+  )
+
+  return { chatPanelData, settingsActions, workspaceTreeContext }
 }

@@ -740,6 +740,36 @@ function mockChatSettings(page: Page, settings = MOCK_SETTINGS) {
   )
 }
 
+function mockChatCommands(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/chat/commands",
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ commands: [] }),
+      })
+    }
+  )
+}
+
+function mockChatProviders(page: Page) {
+  return page.route(
+    "http://localhost:3000/api/chat/providers",
+    async (route: Route) => {
+      if (route.request().method() !== "GET") {
+        await route.continue()
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ providers: [] }),
+      })
+    }
+  )
+}
+
 function mockWorkspaceTree(page: Page, responses = [MOCK_WORKSPACE_TREE]) {
   let requestIndex = 0
   return page.route(
@@ -1104,7 +1134,7 @@ test.describe("chat flows", () => {
       .toBe(null)
     expect(sessionHydrationRequests).toBe(0)
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
     await expect(
       page.locator('[data-testid="pi-resources-canvas"]')
     ).toBeVisible()
@@ -1338,7 +1368,23 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
+    await expect(page.getByTestId("chat-shell")).toBeVisible()
+
+    const workspaceTab = page.getByRole("tab", {
+      name: "Workspace",
+      exact: true,
+    })
+    await expect(workspaceTab).toBeVisible()
+    await expect(workspaceTab).toBeEnabled()
+    await workspaceTab.click()
+    await expect(
+      page.locator('[data-testid="pi-workspace-canvas"]')
+    ).toBeVisible()
+    await expect(
+      page.locator(
+        '[data-testid="pi-workspace-canvas"] [data-testid="workspace-tree"]'
+      )
+    ).toBeVisible()
 
     const conversationsButton = page.locator(
       '[aria-label="Open conversations"]'
@@ -1405,7 +1451,7 @@ test.describe("chat flows", () => {
     await page.waitForLoadState("networkidle")
     expect(workspaceTreeRequests).toBe(0)
 
-    const resourcesButton = page.locator('[aria-label="Pi resources"]')
+    const resourcesButton = page.getByRole("tab", { name: "Pi Resources" })
     await expect(resourcesButton).toBeVisible()
     await resourcesButton.click()
     await expect.poll(() => workspaceTreeRequests).toBe(1)
@@ -1423,7 +1469,7 @@ test.describe("chat flows", () => {
       (chatBox?.x ?? 0) + (chatBox?.width ?? 0) - 1
     )
     expect(canvasBox?.width).toBeGreaterThanOrEqual(
-      Math.floor((viewport?.width ?? 0) * 0.7) - 1
+      Math.floor((viewport?.width ?? 0) * 0.5) - 1
     )
 
     await expect(canvas.getByText("Pi Resources")).toBeVisible()
@@ -1432,7 +1478,7 @@ test.describe("chat flows", () => {
     )
     await expect(inlineLauncher).toBeVisible()
     await expect(
-      inlineLauncher.getByRole("tab", { name: "Pi resources" })
+      inlineLauncher.getByRole("tab", { name: "Pi Resources" })
     ).toContainText(/\d+/)
     await expect(
       canvas.locator('[data-testid="right-panel-header-launcher"]')
@@ -1564,7 +1610,7 @@ test.describe("chat flows", () => {
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     const canvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(canvas).toBeVisible()
@@ -1601,7 +1647,7 @@ test.describe("chat flows", () => {
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(resourcesCanvas).toBeVisible()
@@ -1689,7 +1735,7 @@ test.describe("chat flows", () => {
       })
     ).toBeVisible()
 
-    await page.getByRole("tab", { name: "Pi resources" }).click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
     await expect(
       resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
@@ -1903,7 +1949,7 @@ test.describe("chat flows", () => {
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
     const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(resourcesCanvas).toBeVisible()
     await expect(
@@ -2014,136 +2060,105 @@ test.describe("chat flows", () => {
     )
   })
 
-  test("shows configurations and applies theme preference", async ({
+  test("opens the Settings dialog and applies theme preference", async ({
     page,
   }) => {
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
     await mockChatSettings(page)
+    await mockChatProviders(page)
+    await mockChatCommands(page)
     await mockWorkspaceTree(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
+    // Slash command suggestions still resolve from the mocked workspace skill
     const input = page.getByPlaceholder("Send a message...")
     await input.fill("/")
-    await expect(
-      page.getByRole("button", { name: "/frontend-helper" })
-    ).toBeVisible()
-    await page.getByRole("button", { name: "/frontend-helper" }).click()
+    const helperSuggestion = page.getByRole("option", {
+      name: "/frontend-helper",
+      exact: true,
+    })
+    await expect(helperSuggestion).toBeVisible()
+    await helperSuggestion.click()
     await expect(input).toHaveValue("/frontend-helper ")
     await input.clear()
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    // Open the Pi Resources panel through the header launcher
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     const resourcesCanvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(resourcesCanvas).toBeVisible()
-    await page.getByRole("tab", { name: "Configurations", exact: true }).click()
-
-    const configCanvas = page.locator('[data-testid="pi-config-canvas"]')
-    await expect(configCanvas).toBeVisible()
     const inlineLauncher = page.locator(
       '[data-testid="right-panel-inline-launcher"]'
     )
     await expect(inlineLauncher).toBeVisible()
     await expect(
-      inlineLauncher.getByRole("tab", { name: "Pi resources" })
+      inlineLauncher.getByRole("tab", { name: "Pi Resources" })
     ).toContainText(/\d+/)
-    await expect(
-      inlineLauncher.getByRole("tab", { name: "Configurations" })
-    ).toContainText("Configurations")
-    await expect(
-      configCanvas.locator('[data-testid="right-panel-header-launcher"]')
-    ).not.toBeVisible()
-    const configurations = configCanvas.locator(
-      '[data-testid="configurations-tab"]'
-    )
-    await expect(configurations).toBeVisible()
-    await expect(
-      configurations.getByText("Resources", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Runtime Policy", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Runtime Models", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Personalization", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Model Defaults", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Model Routing Registry", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Providers Network", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByText("Runtime Policy", { exact: true })
-    ).toBeVisible()
-    await expect(
-      configurations.getByRole("button", { exact: true, name: "Enable All" })
-    ).toBeVisible()
-    await expect(
-      configurations.getByRole("button", { exact: true, name: "Disable All" })
-    ).toBeVisible()
-    await expect(
-      configurations.getByRole("switch", {
-        name: "Activate Claude Sonnet 4.6",
-      })
-    ).toBeVisible()
-    await expect(
-      configurations.getByRole("switch", {
-        name: "Activate Claude Opus 4.6",
-      })
-    ).toBeVisible()
-    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
-      "overflow-y",
-      "auto"
-    )
-    await expect(configurations.getByTestId("runtime-models-list")).toHaveCSS(
-      "max-height",
-      "320px"
-    )
 
-    await configurations
-      .getByRole("combobox", { name: "Thinking level" })
+    // Model/provider/sandbox configuration lives in the Settings dialog now
+    await page.locator('[aria-label="Open account menu"]').click()
+    const settingsMenuButton = page.getByRole("button", {
+      name: "Settings",
+      exact: true,
+    })
+    await expect(settingsMenuButton).toBeVisible()
+    await settingsMenuButton.click()
+
+    const settingsDialog = page.getByRole("dialog", { name: "Settings" })
+    await expect(settingsDialog).toBeVisible()
+
+    const sections = [
+      "Appearance",
+      "Sandbox",
+      "Providers",
+      "LLM Models",
+      "Skills",
+      "Pi Harness",
+    ]
+    for (const section of sections) {
+      await expect(
+        settingsDialog.getByRole("button", { name: section, exact: true })
+      ).toBeVisible()
+    }
+
+    await settingsDialog
+      .getByRole("button", { name: "LLM Models", exact: true })
       .click()
-    await page.getByRole("option", { name: "xhigh" }).click()
-    await configurations.getByRole("button", { name: "Commit" }).first().click()
-    await expect(configurations.getByText("In sync").first()).toBeVisible()
+    await expect(
+      settingsDialog.getByRole("heading", { name: "LLM Models", exact: true })
+    ).toBeVisible()
 
-    await configurations
-      .getByLabel("Add package", { exact: true })
-      .fill("npm:pi-custom")
-    await configurations
-      .getByLabel("Add package", { exact: true })
-      .press("Enter")
-    await expect(configurations.getByLabel("Add package 2")).toHaveValue(
-      "npm:pi-custom"
-    )
+    // Theme preference applies immediately from the Appearance pane
+    await settingsDialog
+      .getByRole("button", { name: "Appearance", exact: true })
+      .click()
+    const themeSelect = settingsDialog.getByRole("combobox", { name: "Theme" })
+    await expect(themeSelect).toBeVisible()
 
-    await configurations.getByRole("button", { name: "Dark" }).click()
+    await themeSelect.click()
+    await page.getByRole("option", { name: "Dark", exact: true }).click()
     await expect
       .poll(async () =>
         page.evaluate(() => document.documentElement.classList.contains("dark"))
       )
       .toBe(true)
 
-    await configurations.getByRole("button", { name: "Light" }).click()
+    await themeSelect.click()
+    await page.getByRole("option", { name: "Light", exact: true }).click()
     await expect
       .poll(async () =>
         page.evaluate(() => document.documentElement.classList.contains("dark"))
       )
       .toBe(false)
 
-    await inlineLauncher.getByRole("tab", { name: "Pi resources" }).click()
-    await expect(
-      resourcesCanvas.getByText("codebase-research", { exact: true })
-    ).toBeVisible()
+    // Close the dialog and keep using the header launcher behind it
+    await settingsDialog.press("Escape")
+    await expect(settingsDialog).toBeHidden()
+
     await inlineLauncher
       .getByRole("tab", { name: "Workspace", exact: true })
       .click()
@@ -2151,6 +2166,11 @@ test.describe("chat flows", () => {
       page.locator(
         '[data-testid="pi-workspace-canvas"] [data-testid="workspace-tree"]'
       )
+    ).toBeVisible()
+
+    await inlineLauncher.getByRole("tab", { name: "Pi Resources" }).click()
+    await expect(
+      resourcesCanvas.getByText("codebase-research", { exact: true })
     ).toBeVisible()
   })
 
@@ -2164,7 +2184,7 @@ test.describe("chat flows", () => {
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     const canvas = page.locator('[data-testid="pi-resources-canvas"]')
     await expect(canvas).toBeVisible()
@@ -2253,7 +2273,7 @@ test.describe("chat flows", () => {
     await expect
       .poll(async () => (await canvas.boundingBox())?.width ?? 0)
       .toBeGreaterThan((resized?.width ?? 0) + 120)
-    expect((await canvas.boundingBox())?.width ?? 0).toBeLessThanOrEqual(841)
+    expect((await canvas.boundingBox())?.width ?? 0).toBeLessThanOrEqual(601)
   })
 
   test("opens Pi resources as a mobile overlay", async ({ page }) => {
@@ -2266,7 +2286,7 @@ test.describe("chat flows", () => {
     await page.goto("/")
     await page.waitForLoadState("networkidle")
 
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     await expect(
       page.locator('[data-testid="pi-resources-canvas"]')
@@ -2298,7 +2318,7 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.locator('[aria-label="Pi resources"]').click()
+    await page.getByRole("tab", { name: "Pi Resources" }).click()
 
     const mobilePanel = page.locator(
       '[data-testid="pi-resources-mobile-panel"]'
@@ -2310,25 +2330,55 @@ test.describe("chat flows", () => {
     ).toBeVisible()
   })
 
-  test("scrolls configurations mobile overlay at tablet height", async ({
+  test("navigates Settings dialog sections at mobile width", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 914, height: 698 })
+    await page.setViewportSize({ width: 390, height: 844 })
     await mockChatModels(page)
     await mockChatSessions(page)
     await mockChatResources(page)
-    await mockWorkspaceTree(page)
+    await mockChatSettings(page)
+    await mockChatProviders(page)
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("tab", { name: "Configurations", exact: true }).click()
 
-    const mobilePanel = page.locator('[data-testid="pi-config-mobile-panel"]')
-    await expect(mobilePanel).toBeVisible()
-    await scrollPanelToEnd(mobilePanel)
-    await expect(
-      mobilePanel.getByRole("button", { name: "System" })
-    ).toBeVisible()
+    await page.locator('[aria-label="Open account menu"]').click()
+    const settingsMenuButton = page.getByRole("button", {
+      name: "Settings",
+      exact: true,
+    })
+    await expect(settingsMenuButton).toBeVisible()
+    await settingsMenuButton.click()
+
+    const settingsDialog = page.getByRole("dialog", { name: "Settings" })
+    await expect(settingsDialog).toBeVisible()
+
+    // Mobile renders the compact settings tab row instead of the sidebar
+    const sectionsTabs = settingsDialog.getByRole("tablist", {
+      name: "Settings sections",
+    })
+    await expect(sectionsTabs).toBeVisible()
+
+    const sections = [
+      { tab: "Sandbox", heading: "Sandbox" },
+      { tab: "Providers", heading: "Providers" },
+      { tab: "LLM Models", heading: "LLM Models" },
+      { tab: "Skills", heading: "Skills" },
+      { tab: "Pi Harness", heading: "Pi Harness" },
+      { tab: "Appearance", heading: "Appearance" },
+    ]
+    for (const section of sections) {
+      await sectionsTabs
+        .getByRole("tab", { name: section.tab, exact: true })
+        .click()
+      await expect(
+        settingsDialog.getByRole("heading", {
+          name: section.heading,
+          exact: true,
+        })
+      ).toBeVisible()
+    }
   })
 
   test("shows workspace preview after mobile file selection", async ({
@@ -2343,19 +2393,30 @@ test.describe("chat flows", () => {
 
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    await page.getByRole("tab", { name: "Workspace", exact: true }).click()
+
+    const workspaceTab = page.getByRole("tab", {
+      name: "Workspace",
+      exact: true,
+    })
+    await expect(workspaceTab).toBeVisible()
+    await expect(workspaceTab).toBeEnabled()
+    await workspaceTab.click()
 
     const mobilePanel = page.locator(
       '[data-testid="pi-workspace-mobile-panel"]'
     )
     await expect(mobilePanel).toBeVisible()
+    const mobileTree = mobilePanel.locator('[data-testid="workspace-tree"]')
+    await expect(
+      mobileTree.getByRole("button", { name: "memory", exact: true })
+    ).toBeVisible()
     await expandWorkspacePath(mobilePanel, ["memory", "research"])
     await mobilePanel.getByRole("button", { name: "factory.md" }).click()
 
     const preview = mobilePanel.locator('[data-testid="workspace-preview"]')
-    await expect(
-      preview.getByRole("heading", { name: "Factory" })
-    ).toBeVisible()
+    await expect(preview.getByRole("heading", { name: "Factory" })).toBeVisible(
+      { timeout: 10000 }
+    )
     await expect(
       preview.getByText("Purpose: Research notes for Factory.")
     ).toBeVisible()

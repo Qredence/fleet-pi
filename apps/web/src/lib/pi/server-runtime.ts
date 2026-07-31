@@ -208,27 +208,7 @@ export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
-  const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
-  const daytonaEnabled = isDaytonaEnabled(metadata.userId, daytonaApiKey)
-  let pendingWarmUp: Promise<unknown> | undefined
-  if (daytonaEnabled && !context.workspaceFS && metadata.userId) {
-    const cachedSandbox = getCachedUserSandbox(metadata.userId)
-    if (cachedSandbox) {
-      context.workspaceFS = createSandboxWorkspaceFS({
-        executeCommand: (cmd, cwd) =>
-          executeCommand(cachedSandbox.sandbox, cmd, cwd),
-      })
-      context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
-      context.workspaceBootstrap = undefined
-    } else {
-      pendingWarmUp = resolveUserSandboxContext({
-        userId: metadata.userId,
-        userEmail: metadata.userEmail,
-        apiKey: daytonaApiKey!,
-        surface: "chat",
-      })
-    }
-  }
+  const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
 
   const services = await createSessionServices(context, undefined, {
     userId: metadata.userId,
@@ -243,33 +223,12 @@ export async function createPiRuntime(
   const reusable = mayReuseRuntime ? findRuntimeRecord(metadata) : undefined
 
   if (reusable) {
-    if (reusable.disposeTimer) {
-      clearTimeout(reusable.disposeTimer)
-      reusable.disposeTimer = undefined
-    }
-    reusable.lastUsedAt = Date.now()
-    try {
-      await applyModelSelection(
-        reusable.runtime,
-        modelSelection,
-        metadata.userId
-      )
-      applyPlanMode(reusable.runtime, metadata.mode, metadata.planAction)
-    } catch (error) {
-      scheduleRuntimeDisposal(reusable)
-      throw error
-    }
-    return {
-      runtime: reusable.runtime,
-      sessionReset: false,
-      diagnostics: mergeDiagnostics(
-        requestDiagnostics,
-        collectDiagnostics(
-          reusable.runtime.services,
-          reusable.runtime.modelFallbackMessage
-        )
-      ),
-    }
+    return tryReuseRuntime(
+      reusable,
+      modelSelection,
+      metadata,
+      requestDiagnostics
+    )
   }
 
   const { sessionManager, sessionReset } = await createSessionManager(
@@ -279,14 +238,14 @@ export async function createPiRuntime(
     { userId: metadata.userId }
   )
   // Only track Daytona sessions when enabled — adapter fail-closed uses this.
-  if (daytonaEnabled) {
+  if (daytona.enabled) {
     trackDaytonaToolSession(
       sessionManager.getSessionId(),
       sessionManager.getSessionFile(),
       metadata.userId
     )
-    if (pendingWarmUp) {
-      void pendingWarmUp.catch((error) => {
+    if (daytona.warmUp) {
+      void daytona.warmUp.catch((error) => {
         logger.warn(
           { error, userId: metadata.userId },
           "[daytona] background warm-up failed; clearing fail-closed tracking"
@@ -349,6 +308,76 @@ export async function createPiRuntime(
       runtime.modelFallbackMessage
     ),
     sessionReset,
+  }
+}
+
+// Resolves Daytona per-user state for a chat request: applies a cached sandbox
+// to the context (workspaceFS + sandbox workspace root) or kicks off a
+// background warm-up. Mutates `context` exactly as the inline block did.
+async function resolveDaytonaWorkspaceForUser(
+  context: AppRuntimeContext,
+  metadata: ChatRuntimeMetadata
+): Promise<{ enabled: boolean; warmUp: Promise<unknown> | undefined }> {
+  const daytonaApiKey = await resolveDaytonaRuntimeApiKey(metadata.userId)
+  const enabled = isDaytonaEnabled(metadata.userId, daytonaApiKey)
+  if (!enabled || context.workspaceFS || !metadata.userId) {
+    return { enabled, warmUp: undefined }
+  }
+
+  const cachedSandbox = getCachedUserSandbox(metadata.userId)
+  if (cachedSandbox) {
+    context.workspaceFS = createSandboxWorkspaceFS({
+      executeCommand: (cmd, cwd) =>
+        executeCommand(cachedSandbox.sandbox, cmd, cwd),
+    })
+    context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
+    context.workspaceBootstrap = undefined
+    return { enabled, warmUp: undefined }
+  }
+
+  return {
+    enabled,
+    warmUp: resolveUserSandboxContext({
+      userId: metadata.userId,
+      userEmail: metadata.userEmail,
+      apiKey: daytonaApiKey!,
+      surface: "chat",
+    }),
+  }
+}
+
+// Reuse path for a still-active runtime record: cancels the disposal timer,
+// bumps lastUsedAt, applies the new model selection and plan mode, and merges
+// request diagnostics with the runtime diagnostics (de-duplicated). Failures
+// schedule disposal and propagate so a broken runtime is not reused again.
+async function tryReuseRuntime(
+  record: ActiveSessionRecord,
+  modelSelection: ChatModelSelection | undefined,
+  metadata: ChatRuntimeMetadata,
+  requestDiagnostics: Array<string>
+) {
+  if (record.disposeTimer) {
+    clearTimeout(record.disposeTimer)
+    record.disposeTimer = undefined
+  }
+  record.lastUsedAt = Date.now()
+  try {
+    await applyModelSelection(record.runtime, modelSelection, metadata.userId)
+    applyPlanMode(record.runtime, metadata.mode, metadata.planAction)
+  } catch (error) {
+    scheduleRuntimeDisposal(record)
+    throw error
+  }
+  return {
+    runtime: record.runtime,
+    sessionReset: false,
+    diagnostics: mergeDiagnostics(
+      requestDiagnostics,
+      collectDiagnostics(
+        record.runtime.services,
+        record.runtime.modelFallbackMessage
+      )
+    ),
   }
 }
 

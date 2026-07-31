@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
   Cpu,
@@ -43,7 +43,10 @@ import {
   SidebarProvider,
 } from "../../sidebar"
 
-import { useRightPanelContext } from "../layout/right-panel-context"
+import {
+  useChatPanelDataContext,
+  useSettingsActionsContext,
+} from "../layout/right-panel-context"
 import { DiscreteTabs } from "../primitives/discrete-tab"
 import { PersonalizationSection } from "./config-panel/sections/personalization-section"
 import { ProviderCredentialsSection } from "./config-panel/sections/provider-credentials-section"
@@ -51,26 +54,19 @@ import { ModelDefaultsSection } from "./config-panel/sections/model-defaults-sec
 import { ResourcesSection } from "./config-panel/sections/resources-section"
 import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider-section"
 
-import { CREDENTIAL_UI_PROVIDERS } from "./config-panel/shared/provider-metadata"
 import {
-  customModelKey,
-  nextEnabledModelPatterns,
-} from "./config-panel/shared/model-patterns"
-import {
-  comparableModelSettings,
-  formatPackageSourceRows,
   modelSettings,
-  parsePackageSourceRows,
   resourceSettings,
   sameJson,
   summarizeResources,
 } from "./config-panel/shared/settings-mappers"
+import { useModelDefaultsForm } from "./settings/use-model-defaults-form"
+import { useResourcesForm } from "./settings/use-resources-form"
 import type { ReactNode } from "react"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
 } from "../../../lib/pi/chat-protocol"
-import type { ConfigModelInfo } from "./config-panel/shared/types"
 
 type LucideIcon = typeof Cpu
 
@@ -102,147 +98,31 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
 }
 
 /**
- * Custom hook to encapsulate the settings dialog state logic, satisfying ESLint function line limits.
+ * Thin composer over the per-section form hooks; keeps the dialog-level
+ * draft core, tab state, saving orchestration, and the discard flow.
  */
 function useSettingsForm() {
   const {
     isLoadingProviders,
     isUpdatingProvider,
-    models,
     modelCatalog,
     onDiscoverModels,
     onRemoveProvider,
     onThemePreferenceChange,
     onUpdateProvider,
     providers = [],
-    resources,
     saveSettings,
     settings,
     settingsLoading,
     themePreference,
-  } = useRightPanelContext()
+  } = useSettingsActionsContext()
+  const { models, resources } = useChatPanelDataContext()
 
   const [draft, setDraft] = useState<ChatPiSettings | null>(null)
   const [savingSection, setSavingSection] = useState<string | null>(null)
-  const [packageRows, setPackageRows] = useState<Array<string>>([])
-  const [packageError, setPackageError] = useState<string | undefined>()
-  const [modelFilter, setModelFilter] = useState("")
   const [activeTab, setActiveTab] = useState<SettingsSectionId>("appearance")
-  const [discoveredModels, setDiscoveredModels] = useState<
-    Array<ConfigModelInfo>
-  >([])
-  const [discoveringProviderId, setDiscoveringProviderId] = useState<
-    string | null
-  >(null)
-  const lastCommittedModelSettings = useRef<ChatPiSettingsUpdate | null>(null)
 
   const resourceSummary = summarizeResources(resources)
-
-  const configuredProviderIds = useMemo(() => {
-    const credentialIds = new Set(
-      CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
-    )
-    const ids = new Set<string>()
-    for (const provider of providers) {
-      if (provider.isConfigured && credentialIds.has(provider.id)) {
-        ids.add(provider.id)
-      }
-    }
-    return ids
-  }, [providers])
-
-  const catalogModels = modelCatalog ?? models
-
-  const modelOptions = useMemo(() => {
-    const byId = new Map<string, ConfigModelInfo>()
-    for (const model of catalogModels) {
-      if (configuredProviderIds.has(model.provider)) {
-        byId.set(model.id, model)
-      }
-    }
-    for (const model of discoveredModels) {
-      if (configuredProviderIds.has(model.provider)) {
-        byId.set(model.id, model)
-      }
-    }
-    const merged = [...byId.values()]
-    if (!draft?.defaultProvider || !draft.defaultModel) return merged
-    if (
-      merged.some(
-        (model) =>
-          model.provider === draft.defaultProvider &&
-          model.modelId === draft.defaultModel
-      )
-    ) {
-      return merged
-    }
-
-    if (!configuredProviderIds.has(draft.defaultProvider)) return merged
-
-    return [
-      {
-        id: customModelKey(draft.defaultProvider, draft.defaultModel),
-        name: draft.defaultModel,
-        provider: draft.defaultProvider,
-        modelId: draft.defaultModel,
-        available: false,
-      },
-      ...merged,
-    ]
-  }, [catalogModels, configuredProviderIds, discoveredModels, draft])
-
-  const modelBaseline =
-    lastCommittedModelSettings.current ??
-    (settings ? comparableModelSettings(settings.effective) : null)
-
-  const modelDirty =
-    !!draft &&
-    !!modelBaseline &&
-    !sameJson(comparableModelSettings(draft), modelBaseline)
-
-  const resourceDirty =
-    !!draft &&
-    !!settings &&
-    (!sameJson(resourceSettings(draft), resourceSettings(settings.effective)) ||
-      !sameJson(
-        packageRows.filter((row) => row.trim()),
-        formatPackageSourceRows(settings.effective.packages)
-      ))
-
-  const hasUnsavedChanges = modelDirty || resourceDirty
-
-  const resetCommittedModelBaseline = () => {
-    lastCommittedModelSettings.current = null
-  }
-
-  const resetDraft = () => {
-    if (!settings) return
-    const nextDraft = settings.effective
-    setDraft(nextDraft)
-    setPackageRows(formatPackageSourceRows(nextDraft.packages))
-    setPackageError(undefined)
-  }
-
-  useEffect(() => {
-    if (!settings) return
-
-    const nextDraft = settings.effective
-    const nextPackageRows = formatPackageSourceRows(nextDraft.packages)
-
-    if (draft && hasUnsavedChanges) return
-    if (
-      draft &&
-      sameJson(draft, nextDraft) &&
-      sameJson(packageRows, nextPackageRows) &&
-      packageError === undefined
-    ) {
-      return
-    }
-
-    setDraft(nextDraft)
-    setPackageRows(nextPackageRows)
-    setPackageError(undefined)
-  }, [draft, hasUnsavedChanges, packageError, packageRows, settings])
 
   const updateDraft = (
     updater: (current: ChatPiSettings) => ChatPiSettings
@@ -252,112 +132,58 @@ function useSettingsForm() {
     )
   }
 
-  const handlePackageRowsChange = (rows: Array<string>) => {
-    setPackageRows(rows)
-    try {
-      const packages = parsePackageSourceRows(rows)
-      setPackageError(undefined)
-      updateDraft((current) => ({ ...current, packages }))
-    } catch (error) {
-      setPackageError(error instanceof Error ? error.message : String(error))
-    }
+  const {
+    packageRows,
+    packageError,
+    resourceDirty,
+    handlePackageRowsChange,
+    revertResourceDraft,
+  } = useResourcesForm({ draft, settings, updateDraft })
+
+  const {
+    modelFilter,
+    setModelFilter,
+    modelOptions,
+    modelDirty,
+    addModels,
+    removeModel,
+    discoverProvider,
+    discoveringProviderId,
+    commitModelSettings,
+    revertModelDraft,
+    resetCommittedModelBaseline,
+  } = useModelDefaultsForm({
+    draft,
+    setDraft,
+    updateDraft,
+    settings,
+    providers,
+    models,
+    modelCatalog,
+    onDiscoverModels,
+    saveSettings,
+    setSavingSection,
+  })
+
+  const hasUnsavedChanges = modelDirty || resourceDirty
+
+  const resetDraft = () => {
+    if (!settings) return
+    // Only the draft is owned here; package rows/error reconcile in
+    // useResourcesForm's sync effect once draft settles.
+    setDraft(settings.effective)
   }
 
-  const commitModelSettings = async (
-    nextDraft: ChatPiSettings,
-    options?: { silent?: boolean }
-  ): Promise<boolean> => {
+  useEffect(() => {
+    if (!settings) return
+
+    const nextDraft = settings.effective
+
+    if (draft && hasUnsavedChanges) return
+    if (draft && sameJson(draft, nextDraft)) return
+
     setDraft(nextDraft)
-    setSavingSection("models")
-    try {
-      const response = await saveSettings(modelSettings(nextDraft))
-      const committed: ChatPiSettings = {
-        ...response.effective,
-        enabledModels:
-          response.project.enabledModels ??
-          nextDraft.enabledModels ??
-          response.effective.enabledModels,
-        defaultProvider:
-          response.project.defaultProvider ??
-          nextDraft.defaultProvider ??
-          response.effective.defaultProvider,
-        defaultModel:
-          response.project.defaultModel ??
-          nextDraft.defaultModel ??
-          response.effective.defaultModel,
-        defaultThinkingLevel:
-          response.project.defaultThinkingLevel ??
-          nextDraft.defaultThinkingLevel ??
-          response.effective.defaultThinkingLevel,
-      }
-      lastCommittedModelSettings.current = comparableModelSettings(committed)
-      setDraft(committed)
-      if (!options?.silent) {
-        toast.success("Pi settings saved")
-      }
-      return true
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Settings save failed"
-      )
-      return false
-    } finally {
-      setSavingSection(null)
-    }
-  }
-
-  const persistModelSettings = (nextDraft: ChatPiSettings) => {
-    void commitModelSettings(nextDraft)
-  }
-
-  const setModelEnabled = (model: ConfigModelInfo, enabled: boolean) => {
-    if (!draft) return
-    const nextDraft: ChatPiSettings = {
-      ...draft,
-      enabledModels: nextEnabledModelPatterns({
-        currentPatterns: draft.enabledModels,
-        enabled,
-        model,
-        models: modelOptions,
-      }),
-    }
-    void persistModelSettings(nextDraft)
-  }
-
-  const addModels = (modelsToAdd: Array<ConfigModelInfo>) => {
-    if (!draft || modelsToAdd.length === 0) return
-    let patterns = draft.enabledModels
-    for (const model of modelsToAdd) {
-      patterns = nextEnabledModelPatterns({
-        currentPatterns: patterns,
-        enabled: true,
-        model,
-        models: modelOptions,
-      })
-    }
-    void persistModelSettings({ ...draft, enabledModels: patterns })
-  }
-
-  const removeModel = (model: ConfigModelInfo) => {
-    setModelEnabled(model, false)
-  }
-
-  const discoverProvider = async (providerId: string) => {
-    if (!onDiscoverModels) return
-    setDiscoveringProviderId(providerId)
-    try {
-      const discovered = await onDiscoverModels(providerId)
-      setDiscoveredModels((current) => {
-        const byId = new Map(current.map((model) => [model.id, model]))
-        for (const model of discovered) {
-          byId.set(model.id, model)
-        }
-        return [...byId.values()]
-      })
-    } finally {
-      setDiscoveringProviderId(null)
-    }
-  }
+  }, [draft, hasUnsavedChanges, settings])
 
   const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
     if (section === "models" && draft) {
@@ -388,7 +214,7 @@ function useSettingsForm() {
     if (savingSection === "models") return "wait"
     if (resourceDirty) return "discard-prompt"
     // modelDirty already requires a non-null draft
-    if (modelDirty) {
+    if (modelDirty && draft) {
       return (await commitModelSettings(draft, { silent: true }))
         ? "close"
         : "discard-prompt"
@@ -404,15 +230,12 @@ function useSettingsForm() {
     onUpdateProvider,
     providers,
     resources,
-    settings,
     settingsLoading,
     themePreference,
     draft,
     savingSection,
     packageRows,
-    setPackageRows,
     packageError,
-    setPackageError,
     modelFilter,
     setModelFilter,
     activeTab,
@@ -421,7 +244,8 @@ function useSettingsForm() {
     modelOptions,
     modelDirty,
     resourceDirty,
-    hasUnsavedChanges,
+    revertResourceDraft,
+    revertModelDraft,
     resetDraft,
     updateDraft,
     handlePackageRowsChange,
@@ -474,15 +298,12 @@ export function SettingsDialog({
     onUpdateProvider,
     providers,
     resources,
-    settings,
     settingsLoading,
     themePreference,
     draft,
     savingSection,
     packageRows,
-    setPackageRows,
     packageError,
-    setPackageError,
     modelFilter,
     setModelFilter,
     activeTab,
@@ -491,6 +312,8 @@ export function SettingsDialog({
     modelOptions,
     modelDirty,
     resourceDirty,
+    revertResourceDraft,
+    revertModelDraft,
     resetDraft,
     updateDraft,
     handlePackageRowsChange,
@@ -569,20 +392,7 @@ export function SettingsDialog({
       onPromptsChange={(prompts) =>
         updateDraft((current) => ({ ...current, prompts }))
       }
-      onRevert={() => {
-        if (!settings) return
-        updateDraft((current) => ({
-          ...current,
-          packages: settings.effective.packages,
-          extensions: settings.effective.extensions,
-          skills: settings.effective.skills,
-          prompts: settings.effective.prompts,
-          themes: settings.effective.themes,
-          enableSkillCommands: settings.effective.enableSkillCommands,
-        }))
-        setPackageRows(formatPackageSourceRows(settings.effective.packages))
-        setPackageError(undefined)
-      }}
+      onRevert={revertResourceDraft}
       onSave={() => draft && saveSection("resources", resourceSettings(draft))}
       onSkillsChange={(skills) =>
         updateDraft((current) => ({ ...current, skills }))
@@ -644,16 +454,7 @@ export function SettingsDialog({
         onModelFilterChange={setModelFilter}
         onRemoveModel={removeModel}
         providers={providers}
-        onRevert={() => {
-          if (!settings) return
-          updateDraft((current) => ({
-            ...current,
-            defaultProvider: settings.effective.defaultProvider,
-            defaultModel: settings.effective.defaultModel,
-            defaultThinkingLevel: settings.effective.defaultThinkingLevel,
-            enabledModels: settings.effective.enabledModels,
-          }))
-        }}
+        onRevert={revertModelDraft}
         onSave={() => draft && saveSection("models", modelSettings(draft))}
         saving={savingSection === "models"}
         settingsLoading={settingsLoading}

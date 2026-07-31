@@ -9,33 +9,24 @@ import {
 } from "node:fs"
 import { join, relative } from "node:path"
 import {
-  appendRunEvent,
-  finalizeRun,
-  insertRunStart,
   normalizeCanonicalPath,
   normalizeSessionFilePath,
   openWorkspaceProvenance,
-  replaceRunMutations,
-  upsertToolCall,
 } from "../db/workspace-provenance"
+import { createChatPostgresOperationQueue } from "../db/pi-session-mirror"
 import {
-  appendPiRunEvent,
-  createChatPostgresOperationQueue,
-  finalizePiRun,
-  insertPiRunStart,
-  replacePiFileMutations,
-  upsertPiToolExecution,
-} from "../db/pi-session-mirror"
+  CompositeProvenanceSink,
+  PostgresMirrorSink,
+  SqliteProvenanceSink,
+} from "../db/provenance-sink"
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import type {
-  ProvenanceMutationKind,
-  WorkspaceProvenanceConnection,
-} from "../db/workspace-provenance"
+import type { ProvenanceMutationKind } from "../db/workspace-provenance"
+import type { ProvenanceSink } from "../db/provenance-sink"
 import type {
   ChatMessage,
   ChatToolPart,
@@ -110,12 +101,11 @@ export function createRunProvenanceRecorder(
   context: AppRuntimeContext,
   options: RecorderOptions = {}
 ): RunProvenanceRecorder {
-  let connection: WorkspaceProvenanceConnection | undefined
   let activeRun: ActiveRunState | undefined
-  const postgresQueue = createChatPostgresOperationQueue()
+  const sinks: Array<ProvenanceSink> = []
 
   try {
-    connection = openWorkspaceProvenance(context)
+    sinks.push(new SqliteProvenanceSink(openWorkspaceProvenance(context)))
   } catch (error) {
     console.warn(
       "[run-provenance] workspace provenance unavailable (non-fatal):",
@@ -123,6 +113,15 @@ export function createRunProvenanceRecorder(
     )
     // Continue without local provenance; Postgres mirroring is still active.
   }
+
+  sinks.push(
+    new PostgresMirrorSink(createChatPostgresOperationQueue(), {
+      cwd: context.projectRoot,
+      userId: options.userId,
+    })
+  )
+
+  const sink: ProvenanceSink = new CompositeProvenanceSink(sinks)
 
   const record = (event: ChatStreamEvent) => {
     try {
@@ -142,34 +141,15 @@ export function createRunProvenanceRecorder(
           sequence: 0,
           toolCalls: [],
         }
-        const startedAt = timestamp()
-        if (connection) {
-          insertRunStart(connection.db, {
-            runId: activeRun.runId,
-            assistantMessageId: activeRun.runId,
-            sessionId: activeRun.sessionId,
-            sessionFile: activeRun.sessionFile,
-            mode: options.mode,
-            planAction: options.planAction,
-            startedAt,
-          })
-        }
-        const startedRun = { ...activeRun }
-        postgresQueue.enqueue(
-          (client) =>
-            insertPiRunStart(client, {
-              runId: startedRun.runId,
-              assistantMessageId: startedRun.runId,
-              sessionId: startedRun.sessionId,
-              sessionFile: startedRun.sessionFile,
-              cwd: context.projectRoot,
-              mode: options.mode,
-              planAction: options.planAction,
-              startedAt,
-              userId: options.userId,
-            }),
-          options.userId
-        )
+        sink.insertRunStart({
+          runId: activeRun.runId,
+          assistantMessageId: activeRun.runId,
+          sessionId: activeRun.sessionId,
+          sessionFile: activeRun.sessionFile,
+          mode: options.mode,
+          planAction: options.planAction,
+          startedAt: timestamp(),
+        })
       }
 
       if (!activeRun) {
@@ -177,32 +157,14 @@ export function createRunProvenanceRecorder(
       }
 
       activeRun.sequence += 1
-      const recordedAt = timestamp()
-      if (connection) {
-        appendRunEvent(connection.db, {
-          runId: activeRun.runId,
-          sequence: activeRun.sequence,
-          eventType: event.type,
-          summary: summarizeStreamEvent(event),
-          payload: event,
-          recordedAt,
-        })
-      }
-      const eventRunId = activeRun.runId
-      const eventSequence = activeRun.sequence
-      const eventSummary = summarizeStreamEvent(event)
-      postgresQueue.enqueue(
-        (client) =>
-          appendPiRunEvent(client, {
-            runId: eventRunId,
-            sequence: eventSequence,
-            eventType: event.type,
-            summary: eventSummary,
-            payload: event,
-            recordedAt,
-          }),
-        options.userId
-      )
+      sink.appendRunEvent({
+        runId: activeRun.runId,
+        sequence: activeRun.sequence,
+        eventType: event.type,
+        summary: summarizeStreamEvent(event),
+        payload: event,
+        recordedAt: timestamp(),
+      })
 
       if (event.type === "tool") {
         recordToolEvent(event.part)
@@ -226,9 +188,7 @@ export function createRunProvenanceRecorder(
         finalizeActiveRun("aborted", undefined, "Run recorder closed early.")
       }
     } finally {
-      connection?.close()
-      connection = undefined
-      await postgresQueue.close()
+      await sink.close()
     }
   }
 
@@ -236,7 +196,6 @@ export function createRunProvenanceRecorder(
 
   function recordToolEvent(part: ChatToolPart) {
     if (!activeRun || !part.toolCallId) return
-    const activeConnection = connection
 
     const toolName = part.type.startsWith("tool-")
       ? part.type.slice("tool-".length)
@@ -286,39 +245,19 @@ export function createRunProvenanceRecorder(
       activeRun.toolCalls.push(nextToolCall)
     }
 
-    if (activeConnection) {
-      upsertToolCall(activeConnection.db, {
-        runId: activeRun.runId,
-        toolCallId: nextToolCall.toolCallId,
-        toolName: nextToolCall.toolName,
-        state: nextToolCall.state,
-        isError: nextToolCall.isError,
-        input: asRecord(part.input),
-        output: asRecordOrNull(part.output),
-        claimedPaths: nextToolCall.claimedPaths,
-        firstSequence: nextToolCall.firstSequence,
-        lastSequence: nextToolCall.lastSequence,
-      })
-    }
-    const runId = activeRun.runId
-    const sessionId = activeRun.sessionId
-    postgresQueue.enqueue(
-      (client) =>
-        upsertPiToolExecution(client, {
-          sessionId,
-          runId,
-          toolCallId: nextToolCall.toolCallId,
-          toolName: nextToolCall.toolName,
-          state: nextToolCall.state,
-          isError: nextToolCall.isError,
-          input: asRecord(part.input),
-          output: asRecordOrNull(part.output),
-          claimedPaths: nextToolCall.claimedPaths,
-          firstSequence: nextToolCall.firstSequence,
-          lastSequence: nextToolCall.lastSequence,
-        }),
-      options.userId
-    )
+    sink.upsertToolExecution({
+      sessionId: activeRun.sessionId,
+      runId: activeRun.runId,
+      toolCallId: nextToolCall.toolCallId,
+      toolName: nextToolCall.toolName,
+      state: nextToolCall.state,
+      isError: nextToolCall.isError,
+      input: asRecord(part.input),
+      output: asRecordOrNull(part.output),
+      claimedPaths: nextToolCall.claimedPaths,
+      firstSequence: nextToolCall.firstSequence,
+      lastSequence: nextToolCall.lastSequence,
+    })
   }
 
   function finalizeActiveRun(
@@ -327,7 +266,6 @@ export function createRunProvenanceRecorder(
     errorMessage?: string
   ) {
     if (!activeRun) return
-    const activeConnection = connection
 
     const runToFinalize = activeRun
     activeRun = undefined
@@ -340,44 +278,18 @@ export function createRunProvenanceRecorder(
         )
       : []
 
-    const recordedAt = timestamp()
-    if (activeConnection) {
-      replaceRunMutations(activeConnection.db, {
-        runId: runToFinalize.runId,
-        recordedAt,
-        mutations,
-      })
-    }
-    postgresQueue.enqueue(
-      (client) =>
-        replacePiFileMutations(client, {
-          runId: runToFinalize.runId,
-          recordedAt,
-          mutations,
-        }),
-      options.userId
-    )
-    const completedAt = timestamp()
-    if (activeConnection) {
-      finalizeRun(activeConnection.db, {
-        runId: runToFinalize.runId,
-        status,
-        assistantPreview: message ? summarizeAssistantMessage(message) : null,
-        errorMessage: errorMessage ?? null,
-        completedAt,
-      })
-    }
-    postgresQueue.enqueue(
-      (client) =>
-        finalizePiRun(client, {
-          runId: runToFinalize.runId,
-          status,
-          assistantPreview: message ? summarizeAssistantMessage(message) : null,
-          errorMessage: errorMessage ?? null,
-          completedAt,
-        }),
-      options.userId
-    )
+    sink.replaceFileMutations({
+      runId: runToFinalize.runId,
+      recordedAt: timestamp(),
+      mutations,
+    })
+    sink.finalizeRun({
+      runId: runToFinalize.runId,
+      status,
+      assistantPreview: message ? summarizeAssistantMessage(message) : null,
+      errorMessage: errorMessage ?? null,
+      completedAt: timestamp(),
+    })
   }
 }
 

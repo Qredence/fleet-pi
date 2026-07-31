@@ -1,7 +1,0 @@
-{
-  "enabledPlugins": {
-    "neondatabase-agent-skills@qoder-marketplace": true,
-    "design-review@qoder-marketplace": true,
-    "vercel@qoder-marketplace": true
-  }
-}
