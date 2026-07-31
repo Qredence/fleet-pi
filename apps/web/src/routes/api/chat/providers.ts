@@ -116,6 +116,11 @@ async function handleNamedOccInstanceUpsert(
   let baseUrl: string
   try {
     baseUrl = assertSafeOpenAiCompatibleBaseUrl(body.baseUrl ?? "")
+    // Named instances are https-only everywhere (the default OCC slot alone
+    // may use http://localhost in local dev).
+    if (new URL(baseUrl).protocol !== "https:") {
+      throw new Error("Named OCC instances require an https base URL.")
+    }
   } catch (error) {
     return jsonError(
       error instanceof Error

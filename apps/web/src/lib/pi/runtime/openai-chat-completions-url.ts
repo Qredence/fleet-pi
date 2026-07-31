@@ -91,16 +91,43 @@ function isPrivateOrLinkLocalHost(host: string) {
     return false
   }
 
-  // IPv6 unique-local / link-local
-  if (
-    host.startsWith("fc") ||
-    host.startsWith("fd") ||
-    host.startsWith("fe80")
-  ) {
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10). Parse the first
+  // hextet instead of naive prefix matching so public hostnames that happen to
+  // start with fc/fd/fe80* nibbles are not false-blocked.
+  if (isPrivateOrLinkLocalIpv6(host)) {
     return true
   }
 
   return false
+}
+
+/**
+ * True for IPv6 unique-local (`fc00::/7` → first hextet 0xfc00–0xfdff) and
+ * link-local (`fe80::/10` → first hextet in [0xfe80, 0xfebf]). Accepts a bare
+ * hostname (no brackets) or a bracketed IPv6 literal.
+ */
+function isPrivateOrLinkLocalIpv6(host: string) {
+  const firstHextet = firstIpv6Hextet(host)
+  if (firstHextet === null) return false
+  if (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) return true // fc00::/7
+  if (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) return true // fe80::/10
+  return false
+}
+
+function firstIpv6Hextet(host: string): number | null {
+  const unwrapped = host
+    .trim()
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+  // Not an IPv6 literal (IPv4/hostname handled elsewhere).
+  if (!unwrapped.includes(":")) return null
+  const firstSegment = unwrapped.split(":", 1)[0]
+  // Empty first segment means a leading "::" — the address starts with zeroes,
+  // so it cannot be fc00::/7 or fe80::/10 (those begin with a nonzero nibble).
+  if (firstSegment === "") return null
+  const value = Number.parseInt(firstSegment, 16)
+  if (Number.isNaN(value) || value < 0 || value > 0xffff) return null
+  return value
 }
 
 function isLoopbackHostname(hostname: string) {

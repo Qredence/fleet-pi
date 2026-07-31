@@ -227,6 +227,11 @@ async function listOccRegistrations(userId: string | undefined): Promise<{
     let baseUrl: string
     try {
       baseUrl = assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
+      // Named instances are https-only everywhere (unlike the default OCC
+      // slot, which may use http://localhost in local dev).
+      if (new URL(baseUrl).protocol !== "https:") {
+        throw new Error("Named OCC instances require an https base URL.")
+      }
     } catch {
       skipped.push({
         id: instance.id,
