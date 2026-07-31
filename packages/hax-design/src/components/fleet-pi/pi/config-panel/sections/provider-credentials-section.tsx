@@ -25,7 +25,9 @@ import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
 import {
   CREDENTIAL_UI_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   PROVIDER_METADATA,
+  isNamedOccInstanceId,
   isOccProviderId,
 } from "../shared/provider-metadata"
 import { ProviderBrandIcon } from "../shared/provider-brand-icon"
@@ -37,16 +39,6 @@ import type {
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
 } from "../../../../../lib/pi/chat-protocol"
-
-/**
- * Determines whether a provider uses the OpenAI-compatible chat completions API.
- *
- * @param providerId - The provider identifier to evaluate
- * @returns `true` if the provider uses the OpenAI-compatible chat completions API, `false` otherwise.
- */
-function isOpenAiChatCompletionsProvider(providerId: string) {
-  return isOccProviderId(providerId)
-}
 
 /**
  * Determines whether a provider matches a search query by name, environment variable, ID, or relevant provider terms.
@@ -61,7 +53,7 @@ function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
     provider.name,
     provider.envVarName,
     provider.id,
-    isOpenAiChatCompletionsProvider(provider.id)
+    isOccProviderId(provider.id)
       ? "api key base url model name chat completions"
       : "",
   ]
@@ -138,7 +130,7 @@ export function ProviderCredentialsSection({
       credentialProviders.filter(
         (provider) =>
           !provider.isConfigured ||
-          (provider.id === "openai-chat-completions" &&
+          (provider.id === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID &&
             provider.providerFamily === undefined)
       ),
     [credentialProviders]
@@ -228,8 +220,8 @@ export function ProviderCredentialsSection({
     if (!onUpdateProvider) return
 
     setAttemptedSave(true)
-    const openAiChat = isOpenAiChatCompletionsProvider(providerId)
-    const isNamedOcc = openAiChat && providerId !== "openai-chat-completions"
+    const openAiChat = isOccProviderId(providerId)
+    const isNamedOcc = openAiChat && isNamedOccInstanceId(providerId)
     const isOccLike = openAiChat && (isNamedOcc || editingIsNewOccInstance)
     if (!apiKey.trim()) return
     if (openAiChat && (!baseUrl.trim() || !modelId.trim())) return
@@ -280,9 +272,9 @@ export function ProviderCredentialsSection({
   const canSave = useMemo(() => {
     if (apiKey.trim().length === 0) return false
     if (!editingProvider) return true
-    if (!isOpenAiChatCompletionsProvider(editingProvider)) return true
+    if (!isOccProviderId(editingProvider)) return true
     if (baseUrl.trim().length === 0 || modelId.trim().length === 0) return false
-    const isNamedOcc = editingProvider !== "openai-chat-completions"
+    const isNamedOcc = isNamedOccInstanceId(editingProvider)
     if (isNamedOcc || editingIsNewOccInstance) {
       return displayName.trim().length > 0
     }
@@ -394,7 +386,7 @@ export function ProviderCredentialsSection({
                 const meta =
                   PROVIDER_METADATA[provider.id] ??
                   PROVIDER_METADATA["openai-chat-completions"]
-                const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
+                const openAiChat = isOccProviderId(provider.id)
 
                 return (
                   <div key={provider.id} className="flex flex-col">
@@ -672,7 +664,7 @@ function AddProviderEditorPanel({
     placeholder: "Enter credentials…",
     help: "Stored securely in your local environment overrides.",
   }
-  const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
+  const openAiChat = isOccProviderId(provider.id)
 
   return (
     <div className="flex flex-col gap-3">
@@ -791,7 +783,7 @@ function ProviderPickerRow({
   onSelect: () => void
   provider: ChatProviderInfo
 }) {
-  const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
+  const openAiChat = isOccProviderId(provider.id)
 
   return (
     <button

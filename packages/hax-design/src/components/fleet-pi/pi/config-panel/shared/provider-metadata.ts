@@ -20,6 +20,7 @@ export type {
 export {
   CREDENTIAL_UI_PROVIDERS,
   INFRA_PROVIDER_IDS,
+  isNamedOccInstanceId,
   isOccProviderId,
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,

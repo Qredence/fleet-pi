@@ -1,4 +1,5 @@
 import {
+  OCC_INSTANCE_ID_PREFIX,
   isNamedOccInstanceId,
   toOccInstanceId,
   toOccInstanceSlug,
@@ -156,15 +157,63 @@ export async function listOccInstances(
       const res = await client.query<OccInstanceMetaRow>(
         `SELECT provider_id, encrypted_payload
          FROM pi_user_providers
-         WHERE user_id = $1 AND encrypted_payload IS NOT NULL
-         AND auth_type = 'apiKey'`,
-        [userId]
+         WHERE user_id = $1 AND auth_type = 'apiKey'
+         AND provider_id LIKE $2`,
+        [userId, `${OCC_INSTANCE_ID_PREFIX}%`]
       )
+      // Canonical discriminator is the id prefix; JS filter is a re-check for
+      // defense-in-depth, not a second source of truth.
       return res.rows
         .map((row) => rowToInstance(row, secret))
         .filter(
           (i): i is OccInstance => i !== null && isNamedOccInstanceId(i.id)
         )
+    },
+    []
+  )
+}
+
+export type OccInstanceWithApiKey = OccInstance & { apiKey: string }
+
+/**
+ * Instances together with their decrypted apiKey, in one query + one decrypt
+ * pass. Used by the Settings providers list so it does not re-query per
+ * instance (avoids an N+1 on every GET/mutation response).
+ */
+export async function listOccInstancesWithApiKey(
+  userId: string | undefined
+): Promise<Array<OccInstanceWithApiKey>> {
+  if (!userId || !isChatDatabaseConfigured()) return []
+  const secret = requireEncryptionSecret()
+  return withOccInstancesRead(
+    userId,
+    async (client) => {
+      const res = await client.query<{
+        provider_id: string
+        encrypted_key: string
+        encrypted_payload: string | null
+      }>(
+        `SELECT provider_id, encrypted_key, encrypted_payload
+         FROM pi_user_providers
+         WHERE user_id = $1 AND auth_type = 'apiKey'
+         AND provider_id LIKE $2`,
+        [userId, `${OCC_INSTANCE_ID_PREFIX}%`]
+      )
+      const rows: Array<OccInstanceWithApiKey> = []
+      for (const row of res.rows) {
+        const instance = rowToInstance(
+          {
+            provider_id: row.provider_id,
+            encrypted_payload: row.encrypted_payload,
+          },
+          secret
+        )
+        if (!instance) continue
+        const apiKey = decryptString(row.encrypted_key, secret)
+        if (!apiKey) continue
+        rows.push({ ...instance, apiKey })
+      }
+      return rows
     },
     []
   )

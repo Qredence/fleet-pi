@@ -175,10 +175,23 @@ export async function resolveOpenAiChatCompletionsConfig(
  * Collect every OCC provider to register for a user: the reserved default
  * (BYOK triple or Neon AI Gateway) slot plus every configured named instance.
  */
-async function listOccRegistrations(
-  userId: string | undefined
-): Promise<Array<RegisteredInstance>> {
+/**
+ * Reason a configured named instance could not be registered. Surfaced as a
+ * diagnostic so Settings/`/api/chat/models` don't show a misleading healthy
+ * "Configured" row for a provider that never reached the model picker.
+ */
+export type OccInstanceSkipReason = {
+  id: string
+  displayName: string
+  reason: "api-key-unreadable" | "invalid-base-url"
+}
+
+async function listOccRegistrations(userId: string | undefined): Promise<{
+  registrations: Array<RegisteredInstance>
+  skipped: Array<OccInstanceSkipReason>
+}> {
   const registrations: Array<RegisteredInstance> = []
+  const skipped: Array<OccInstanceSkipReason> = []
 
   const config = await resolveOpenAiChatCompletionsConfig(userId)
   if (config) {
@@ -203,11 +216,28 @@ async function listOccRegistrations(
   const instances = await listOccInstances(userId)
   for (const instance of instances) {
     const apiKey = await loadOccInstanceApiKey(userId, instance.id)
-    if (!apiKey) continue
+    if (!apiKey) {
+      skipped.push({
+        id: instance.id,
+        displayName: instance.displayName,
+        reason: "api-key-unreadable",
+      })
+      continue
+    }
     let baseUrl: string
     try {
       baseUrl = assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
+      // Named instances are https-only everywhere (unlike the default OCC
+      // slot, which may use http://localhost in local dev).
+      if (new URL(baseUrl).protocol !== "https:") {
+        throw new Error("Named OCC instances require an https base URL.")
+      }
     } catch {
+      skipped.push({
+        id: instance.id,
+        displayName: instance.displayName,
+        reason: "invalid-base-url",
+      })
       continue
     }
     registrations.push({
@@ -220,7 +250,7 @@ async function listOccRegistrations(
     })
   }
 
-  return registrations
+  return { registrations, skipped }
 }
 
 /**
@@ -234,8 +264,21 @@ export async function registerOpenAiChatCompletionsProvider(
 ) {
   const { modelRuntime } = services
 
-  const registrations = await listOccRegistrations(userId)
+  const { registrations, skipped } = await listOccRegistrations(userId)
   const registeredInstanceIds = registrations.map((r) => r.id)
+
+  // Surface skipped configured instances so users don't see a misleading
+  // healthy "Configured" row for a provider that never registered.
+  for (const skip of skipped) {
+    services.diagnostics.push({
+      type: "warning",
+      message: `[OCC instance] "${skip.displayName}" (${skip.id}) skipped: ${
+        skip.reason === "api-key-unreadable"
+          ? "stored API key could not be read (secret rotation or corruption)"
+          : "base URL failed validation (https + allowed host required)"
+      }. The model is unavailable until fixed.`,
+    })
+  }
 
   if (registrations.length === 0) {
     modelRuntime.unregisterProvider(PROVIDER_ID)

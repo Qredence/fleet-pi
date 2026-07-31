@@ -47,6 +47,40 @@ describe("openai chat completions credential helpers", () => {
     ).toThrow(/not allowed/i)
   })
 
+  it("blocks IPv6 ULA + link-local but not public hostnames sharing those nibbles", () => {
+    // Link-local fe80::/10 across the whole fe80..febf range.
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://[fe80::1]/v1")
+    ).toThrow(/not allowed/i)
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://[fe90::1]/v1")
+    ).toThrow(/not allowed/i)
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://[feb5::1]/v1")
+    ).toThrow(/not allowed/i)
+    // Unique-local fc00::/7.
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://[fd00::1]/v1")
+    ).toThrow(/not allowed/i)
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://[fc12:ab::1]/v1")
+    ).toThrow(/not allowed/i)
+
+    // Loopback is allowed off-Vercel (local dev only) and is parsed as IPv6, not
+    // mistaken for a public/private-block edge.
+    expect(assertSafeOpenAiCompatibleBaseUrl("https://[::1]/v1")).toBe(
+      "https://[::1]/v1"
+    )
+
+    // Public hostnames that merely start with fc/fd/fe80* characters are allowed.
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://fd.example.com/v1")
+    ).not.toThrow()
+    expect(() =>
+      assertSafeOpenAiCompatibleBaseUrl("https://fe80.example.com/v1")
+    ).not.toThrow()
+  })
+
   it("allows only neon.tech gateway hosts", () => {
     expect(isAllowedNeonAiGatewayHostname(TEST_NEON_AI_GATEWAY_HOST)).toBe(true)
     expect(isAllowedNeonAiGatewayHostname("evil.example.com")).toBe(false)
