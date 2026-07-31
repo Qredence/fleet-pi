@@ -30,6 +30,7 @@ import {
   allocateOccInstanceId,
   getOccInstanceById,
   listOccInstances,
+  loadOccInstanceApiKey,
   removeOccInstance,
   upsertOccInstance,
 } from "@/lib/db/occ-instances"
@@ -57,16 +58,34 @@ async function getProviderRows(userId: string | undefined) {
   const instances = await listOccInstances(userId)
   const rows: Array<ChatProviderInfo> = [...base]
   for (const instance of instances) {
+    const isUsable = await isInstanceUsable(userId, instance)
     rows.push({
       id: instance.id,
       name: instance.displayName,
-      isConfigured: true,
+      isConfigured: isUsable,
       envVarName: "OPENAI_CHAT_COMPLETIONS_API_KEY",
       providerFamily: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
       displayName: instance.displayName,
     })
   }
   return rows
+}
+
+/** Configured only when the api key reads back and the base URL validates. */
+async function isInstanceUsable(
+  userId: string | undefined,
+  instance: { id: string; baseUrl: string }
+): Promise<boolean> {
+  const apiKey = await loadOccInstanceApiKey(userId, instance.id).catch(
+    () => undefined
+  )
+  if (!apiKey) return false
+  try {
+    assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const Route = createFileRoute("/api/chat/providers")({

@@ -116,6 +116,45 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     expect(model?.compat).toMatchObject(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
   })
 
+  it("emits a diagnostic for instances that cannot be registered", async () => {
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}broken-key`,
+        displayName: "Broken Key",
+        baseUrl: "https://opencode.ai/zen/v1",
+        modelId: "kimi-k2.6",
+      },
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}bad-url`,
+        displayName: "Bad URL",
+        baseUrl: "not-a-url",
+        modelId: "kimi-k2.6",
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockImplementation(
+      async (_userId: string, id: string) =>
+        id.endsWith("broken-key") ? undefined : "valid-key"
+    )
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const diagnosticsBefore = services.diagnostics.length
+    await registerOpenAiChatCompletionsProvider(services, "user-1")
+
+    const newDiagnostics = services.diagnostics.slice(diagnosticsBefore)
+    const messages = newDiagnostics.map((d) => d.message).join("\n")
+    expect(messages).toContain("broken-key")
+    expect(messages).toContain("could not be read")
+    expect(messages).toContain("bad-url")
+    expect(messages).toContain("base URL failed validation")
+    // Neither broken instance registered.
+    expect(
+      services.modelRuntime.getModel(
+        `${OCC_INSTANCE_ID_PREFIX}broken-key`,
+        "kimi-k2.6"
+      )
+    ).toBeUndefined()
+  })
+
   it("drops stale named instances not in the user's current set", async () => {
     const staleId = `${OCC_INSTANCE_ID_PREFIX}stale`
     listOccInstancesMock.mockResolvedValue([])
