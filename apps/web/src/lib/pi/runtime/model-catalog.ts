@@ -1,3 +1,4 @@
+import { isOccProviderId } from "@workspace/pi-protocol/provider-catalog"
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
@@ -209,9 +210,11 @@ function resolveStructuredModelSelection(
     }
 
     if (provider === "openai") {
-      const occ = services.modelRuntime.getModel("openai-chat-completions", id)
-      if (occ && available.some((model) => modelKey(model) === modelKey(occ))) {
-        return occ
+      for (const candidate of available) {
+        if (isOccProviderId(candidate.provider) && candidate.id === id) {
+          const occ = services.modelRuntime.getModel(candidate.provider, id)
+          if (occ) return occ
+        }
       }
     }
 
@@ -247,7 +250,7 @@ function pickSelectedChatModel(
   if (defaultProvider === "openai") {
     const occMatch = models.find(
       (model) =>
-        model.provider === "openai-chat-completions" &&
+        isOccProviderId(model.provider) &&
         model.id === defaultModel &&
         model.available
     )

@@ -9,7 +9,10 @@ import {
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isNamedOccInstanceId,
+  isOccProviderId,
 } from "@workspace/pi-protocol/provider-catalog"
+import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import {
@@ -23,6 +26,13 @@ import {
 } from "@/lib/auth/chat-api-auth"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
+import {
+  allocateOccInstanceId,
+  getOccInstanceById,
+  listOccInstances,
+  removeOccInstance,
+  upsertOccInstance,
+} from "@/lib/db/occ-instances"
 import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
 import {
   getProviderConfigStatus,
@@ -36,6 +46,24 @@ import {
   resolveProviderCredentialBundle,
 } from "@/lib/pi/runtime/provider-credential-bundle"
 
+/** OCC config rows include the user-added named instances for this account. */
+async function getProviderRows(userId: string | undefined) {
+  const base = await getProviderConfigStatus({ userId })
+  const instances = await listOccInstances(userId)
+  const rows: Array<ChatProviderInfo> = [...base]
+  for (const instance of instances) {
+    rows.push({
+      id: instance.id,
+      name: instance.displayName,
+      isConfigured: true,
+      envVarName: "OPENAI_CHAT_COMPLETIONS_API_KEY",
+      providerFamily: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+      displayName: instance.displayName,
+    })
+  }
+  return rows
+}
+
 export const Route = createFileRoute("/api/chat/providers")({
   server: {
     handlers: {
@@ -43,9 +71,7 @@ export const Route = createFileRoute("/api/chat/providers")({
         try {
           const authSession = await getChatAuthSession(request)
 
-          const providers = await getProviderConfigStatus({
-            userId: authSession?.user.id,
-          })
+          const providers = await getProviderRows(authSession?.user.id)
           return Response.json({ providers })
         } catch (error) {
           return Response.json(
@@ -61,17 +87,42 @@ export const Route = createFileRoute("/api/chat/providers")({
             async ({ userId }) => {
               const rawBody = await request.json()
               const body = ChatProviderUpdateRequestSchema.parse(rawBody)
+
+              const isOccRequest = isOccProviderId(body.providerId)
+              // Named-instance path is explicit only: an existing
+              // `openai-chat-completions+<slug>` row, or an opt-in create.
+              const wantsNamedInstance =
+                isNamedOccInstanceId(body.providerId) ||
+                body.createOccInstance === true
+
+              // A `displayName` on the reserved default OCC id without the
+              // explicit create flag must not silently fork an instance.
+              if (
+                body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID &&
+                typeof body.displayName === "string" &&
+                body.displayName.trim() !== "" &&
+                !wantsNamedInstance
+              ) {
+                return Response.json(
+                  {
+                    message:
+                      "OCC updates with a display name require an explicit named-instance request (`createOccInstance: true`) or an existing instance id.",
+                  },
+                  { status: 400 }
+                )
+              }
+
               const provider = KNOWN_PROVIDERS.find(
                 (p) => p.id === body.providerId
               )
-              if (!provider) {
+              if (!provider && !isOccRequest) {
                 return Response.json(
                   { message: "Unknown provider" },
                   { status: 400 }
                 )
               }
 
-              if (provider.authType === "oauth") {
+              if (provider?.authType === "oauth") {
                 return Response.json(
                   {
                     message: `${provider.name} uses OAuth and cannot be configured with an API key here.`,
@@ -81,12 +132,11 @@ export const Route = createFileRoute("/api/chat/providers")({
               }
 
               const apiKey = sanitizeProviderCredentialValue(body.apiKey)
-              const isOpenAiChatCompletions =
-                body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
 
+              // OCC (default slot or named instance): requires baseUrl + modelId.
               let baseUrl: string | undefined
               let modelId: string | undefined
-              if (isOpenAiChatCompletions) {
+              if (isOccRequest) {
                 try {
                   baseUrl = assertSafeOpenAiCompatibleBaseUrl(
                     body.baseUrl ?? ""
@@ -130,9 +180,50 @@ export const Route = createFileRoute("/api/chat/providers")({
                 )
               }
 
-              if (isVercelDeployment()) {
-                await storeUserProviderApiKey(userId!, provider.id, apiKey)
-                if (isOpenAiChatCompletions && baseUrl && modelId) {
+              if (wantsNamedInstance) {
+                const displayName = body.displayName!.trim()
+                if (!displayName) {
+                  return Response.json(
+                    { message: "A display name is required." },
+                    { status: 400 }
+                  )
+                }
+
+                // Update an existing named instance in place (`openai-chat-
+                // completions+slug`), else allocate a fresh id from the name.
+                const instanceId = isNamedOccInstanceId(body.providerId)
+                  ? body.providerId
+                  : await allocateOccInstanceId(userId, displayName)
+
+                if (!isVercelDeployment()) {
+                  // Local dev stores OCC in env; multi-instance named storage is
+                  // a deployed/DB feature.
+                  return Response.json(
+                    {
+                      message:
+                        "Named OpenAI-compatible instances require a database-backed account (deployed chat).",
+                    },
+                    { status: 400 }
+                  )
+                }
+
+                await upsertOccInstance(
+                  userId!,
+                  {
+                    id: instanceId,
+                    displayName,
+                    baseUrl: baseUrl!,
+                    modelId: modelId!,
+                  },
+                  apiKey
+                )
+              } else if (isVercelDeployment()) {
+                await storeUserProviderApiKey(userId!, provider!.id, apiKey)
+                if (
+                  body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID &&
+                  baseUrl &&
+                  modelId
+                ) {
                   await storeUserProviderApiKey(
                     userId!,
                     OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
@@ -146,9 +237,13 @@ export const Route = createFileRoute("/api/chat/providers")({
                 }
               } else {
                 const envEntries: Record<string, string> = {
-                  [provider.envVarName]: apiKey,
+                  [provider!.envVarName]: apiKey,
                 }
-                if (isOpenAiChatCompletions && baseUrl && modelId) {
+                if (
+                  body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID &&
+                  baseUrl &&
+                  modelId
+                ) {
                   const baseUrlProvider = KNOWN_PROVIDERS.find(
                     (entry) =>
                       entry.id === OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
@@ -184,7 +279,7 @@ export const Route = createFileRoute("/api/chat/providers")({
                 await hotReloadProviderAuthForActiveRuntimes()
               }
 
-              const updatedProviders = await getProviderConfigStatus({ userId })
+              const updatedProviders = await getProviderRows(userId)
 
               const response = ChatProviderUpdateResponseSchema.parse({
                 success: true,
@@ -208,24 +303,6 @@ export const Route = createFileRoute("/api/chat/providers")({
             async ({ userId }) => {
               const rawBody = await request.json()
               const body = ChatProviderRemoveRequestSchema.parse(rawBody)
-              if (!isRemovableCredentialProvider(body.providerId)) {
-                return Response.json(
-                  { message: "This provider cannot be removed here." },
-                  { status: 400 }
-                )
-              }
-
-              const context = resolveAppRuntimeContext()
-              const { providerIds } = resolveProviderCredentialBundle(
-                body.providerId
-              )
-
-              if (providerIds.length === 0) {
-                return Response.json(
-                  { message: "Unknown provider" },
-                  { status: 400 }
-                )
-              }
 
               if (isChatAuthRequired() && !userId) {
                 return Response.json(
@@ -234,11 +311,54 @@ export const Route = createFileRoute("/api/chat/providers")({
                 )
               }
 
-              await removeProviderBundle({
-                context,
-                providerId: body.providerId,
-                userId,
-              })
+              const context = resolveAppRuntimeContext()
+
+              if (isNamedOccInstanceId(body.providerId)) {
+                if (!isVercelDeployment()) {
+                  return Response.json(
+                    {
+                      message:
+                        "Named OpenAI-compatible instances require a database-backed account (deployed chat).",
+                    },
+                    { status: 400 }
+                  )
+                }
+                const existing = await getOccInstanceById(
+                  userId,
+                  body.providerId
+                )
+                if (!existing) {
+                  return Response.json(
+                    { message: "Unknown provider" },
+                    { status: 400 }
+                  )
+                }
+                await removeOccInstance(userId!, body.providerId)
+              } else {
+                if (!isRemovableCredentialProvider(body.providerId)) {
+                  return Response.json(
+                    { message: "This provider cannot be removed here." },
+                    { status: 400 }
+                  )
+                }
+
+                const { providerIds } = resolveProviderCredentialBundle(
+                  body.providerId
+                )
+
+                if (providerIds.length === 0) {
+                  return Response.json(
+                    { message: "Unknown provider" },
+                    { status: 400 }
+                  )
+                }
+
+                await removeProviderBundle({
+                  context,
+                  providerId: body.providerId,
+                  userId,
+                })
+              }
 
               if (userId) {
                 await hotReloadActiveRuntimesForUser(
@@ -255,7 +375,7 @@ export const Route = createFileRoute("/api/chat/providers")({
                 await hotReloadProviderAuthForActiveRuntimes()
               }
 
-              const updatedProviders = await getProviderConfigStatus({ userId })
+              const updatedProviders = await getProviderRows(userId)
               const response = ChatProviderUpdateResponseSchema.parse({
                 success: true,
                 providers: updatedProviders,

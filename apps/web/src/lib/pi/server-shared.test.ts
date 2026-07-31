@@ -206,6 +206,7 @@ function createMockSessionServices() {
       getError: () => undefined,
       unregisterProvider: vi.fn(),
       registerProvider: vi.fn(),
+      getRegisteredProviderIds: vi.fn(() => []),
     },
     settingsManager: createMockSettingsManager(),
     resourceLoader: {

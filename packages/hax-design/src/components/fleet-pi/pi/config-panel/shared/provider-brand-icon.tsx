@@ -1,5 +1,9 @@
 import { Cpu } from "lucide-react"
-import { KNOWN_PROVIDERS, PROVIDER_METADATA } from "../shared/provider-metadata"
+import {
+  KNOWN_PROVIDERS,
+  PROVIDER_METADATA,
+  isOccProviderId,
+} from "../shared/provider-metadata"
 import { cn } from "../../../../../lib/utils"
 
 const BRAND_CLASS = "size-4"
@@ -70,11 +74,7 @@ export function ProviderBrandIcon({
   className?: string
 }) {
   const id = provider.toLowerCase()
-  if (
-    id === "openai" ||
-    id === "openai-codex" ||
-    id === "openai-chat-completions"
-  ) {
+  if (id === "openai" || id === "openai-codex" || isOccProviderId(id)) {
     return <OpenAiMark className={className} />
   }
   if (id === "anthropic") {

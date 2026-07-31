@@ -48,6 +48,7 @@ describe("session factory", () => {
         removeRuntimeApiKey: vi.fn(),
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
       },
       settingsManager: createMockSettingsManager(),
       resourceLoader: {
@@ -96,6 +97,7 @@ describe("session factory", () => {
         removeRuntimeApiKey,
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
       },
     }
 
@@ -121,6 +123,7 @@ describe("session factory", () => {
         removeRuntimeApiKey,
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
       },
     }
 
@@ -195,6 +198,7 @@ describe("session factory", () => {
           removeRuntimeApiKey,
           unregisterProvider: vi.fn(),
           registerProvider: vi.fn(),
+          getRegisteredProviderIds: vi.fn(() => []),
         },
       } as never,
       { userId: "user-1" }

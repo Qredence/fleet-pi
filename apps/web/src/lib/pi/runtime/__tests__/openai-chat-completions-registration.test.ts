@@ -1,24 +1,40 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createAgentSessionServices } from "@earendil-works/pi-coding-agent"
+import { OCC_INSTANCE_ID_PREFIX } from "@workspace/pi-protocol/provider-catalog"
+import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "../openai-chat-completions-compat"
 import { registerOpenAiChatCompletionsProvider } from "../openai-chat-completions-provider"
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
+
+const { listOccInstancesMock, loadOccInstanceApiKeyMock } = vi.hoisted(() => ({
+  listOccInstancesMock: vi.fn(),
+  loadOccInstanceApiKeyMock: vi.fn(),
+}))
+
+vi.mock("@/lib/db/occ-instances", () => ({
+  listOccInstances: listOccInstancesMock,
+  loadOccInstanceApiKey: loadOccInstanceApiKeyMock,
+}))
 
 describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
   const originalToken = process.env.NEON_AI_GATEWAY_TOKEN
   const originalBaseUrl = process.env.NEON_AI_GATEWAY_BASE_URL
 
   beforeEach(() => {
+    resetCapturedNeonAiGatewayCredentialsForTests()
+    vi.clearAllMocks()
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_test_token"
     process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
   })
 
   afterEach(() => {
+    resetCapturedNeonAiGatewayCredentialsForTests()
     process.env.NEON_AI_GATEWAY_TOKEN = originalToken
     process.env.NEON_AI_GATEWAY_BASE_URL = originalBaseUrl
   })
 
   it("registers gateway models with Neon-safe compat flags", async () => {
+    listOccInstancesMock.mockResolvedValue([])
     const services = await createAgentSessionServices({
       cwd: process.cwd(),
     })
@@ -30,5 +46,100 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     )
     expect(model).toBeDefined()
     expect(model?.compat).toMatchObject(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
+    expect(model?.maxTokens).toBe(25_000)
+  })
+
+  it("registers each named OCC instance as its own provider + model", async () => {
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}nebius`,
+        displayName: "Nebius AI",
+        baseUrl: "https://api.nebius.com/v1",
+        modelId: "deepseek-v3",
+      },
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}zen`,
+        displayName: "OpenCode Zen",
+        baseUrl: "https://opencode.ai/zen/v1",
+        modelId: "kimi-k2.6",
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockImplementation(
+      async (_userId: string, id: string) => `key-for-${id}`
+    )
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    await registerOpenAiChatCompletionsProvider(services, "user-1")
+
+    for (const id of [
+      `${OCC_INSTANCE_ID_PREFIX}nebius`,
+      `${OCC_INSTANCE_ID_PREFIX}zen`,
+    ]) {
+      const provider = services.modelRuntime.getProvider(id)
+      expect(provider).toBeDefined()
+      const modelId = id.endsWith("nebius") ? "deepseek-v3" : "kimi-k2.6"
+      const model = services.modelRuntime.getModel(id, modelId)
+      expect(model).toBeDefined()
+      // Non-gateway OCC hosts keep 32k and the OpenAI auto-detect compat (no gateway flags).
+      expect(model?.maxTokens).toBe(32_000)
+    }
+
+    // The reserved default/gateway slot is still present alongside instances.
+    expect(
+      services.modelRuntime.getModel(
+        "openai-chat-completions",
+        "qwen35-122b-a10b"
+      )
+    ).toBeDefined()
+  })
+
+  it("applies the gateway 25k cap to an instance whose host is a Neon AI Gateway host", async () => {
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}gw`,
+        displayName: "Team Gateway",
+        baseUrl: "https://br-foo-api.ai.c-3.us-east-2.aws.neon.tech/v1",
+        modelId: "qwen35-122b-a10b",
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockResolvedValue("gw-key")
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    await registerOpenAiChatCompletionsProvider(services, "user-1")
+
+    const model = services.modelRuntime.getModel(
+      `${OCC_INSTANCE_ID_PREFIX}gw`,
+      "qwen35-122b-a10b"
+    )
+    expect(model).toBeDefined()
+    expect(model?.maxTokens).toBe(25_000)
+    expect(model?.compat).toMatchObject(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
+  })
+
+  it("drops stale named instances not in the user's current set", async () => {
+    const staleId = `${OCC_INSTANCE_ID_PREFIX}stale`
+    listOccInstancesMock.mockResolvedValue([])
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const unregisterSpy = vi.spyOn(services.modelRuntime, "unregisterProvider")
+    // Register the stale instance first via a prior pass.
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: staleId,
+        displayName: "Stale",
+        baseUrl: "https://opencode.ai/zen/v1",
+        modelId: "kimi-k2.6",
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockResolvedValue("stale-key")
+    await registerOpenAiChatCompletionsProvider(services, "user-1")
+    expect(services.modelRuntime.getModel(staleId, "kimi-k2.6")).toBeDefined()
+
+    // Now the user removed it.
+    listOccInstancesMock.mockResolvedValue([])
+    await registerOpenAiChatCompletionsProvider(services, "user-1")
+
+    expect(services.modelRuntime.getModel(staleId, "kimi-k2.6")).toBeUndefined()
+    expect(unregisterSpy).toHaveBeenCalledWith(staleId)
   })
 })
