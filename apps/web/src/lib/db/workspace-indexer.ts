@@ -6,6 +6,7 @@ import {
   classifyWorkspacePath,
   parseWorkspaceFile,
 } from "../workspace/workspace-semantic-parsers"
+import { deterministicId } from "./json-storage"
 import {
   listWorkspaceProjectionItems,
   openWorkspaceProjection,
@@ -391,7 +392,7 @@ function applyWorkspaceIndexPlan(
 
   const writePlan = db.transaction(() => {
     for (const snapshot of plan.insertions) {
-      const itemId = createDeterministicId(
+      const itemId = deterministicId(
         "workspace-item",
         snapshot.classification.canonicalPath
       )
@@ -580,19 +581,15 @@ function createWorkspaceContentHash(buffer: Buffer) {
   return createHash("sha256").update(buffer).digest("hex")
 }
 
-function createDeterministicId(kind: string, value: string) {
-  return createHash("sha256").update(`${kind}:${value}`).digest("hex")
-}
-
 function createVersionId(itemId: string, versionNumber: number) {
-  return createDeterministicId(
+  return deterministicId(
     "workspace-item-version",
     `${itemId}:${versionNumber}:${WORKSPACE_SEMANTIC_PARSER_VERSION}`
   )
 }
 
 function createRecordId(versionId: string, record: WorkspaceSemanticRecord) {
-  return createDeterministicId(
+  return deterministicId(
     "workspace-semantic-record",
     `${versionId}:${record.stableKey}`
   )
