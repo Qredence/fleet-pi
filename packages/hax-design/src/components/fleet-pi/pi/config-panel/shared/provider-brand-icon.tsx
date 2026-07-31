@@ -64,7 +64,11 @@ function GitHubMark({ className }: { className?: string }) {
 }
 
 /**
- * Brand-ish provider glyph for list rows. Falls back to catalog Lucide icon.
+ * Renders the brand icon associated with a provider.
+ *
+ * @param provider - The provider identifier used to select the icon
+ * @param className - Optional additional CSS class names
+ * @returns The provider brand icon, catalog icon, or a generic CPU icon
  */
 export function ProviderBrandIcon({
   provider,

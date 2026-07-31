@@ -13,12 +13,12 @@ export const FLEET_PI_SHARED_PROJECT_SETTINGS = {
 } as const
 
 /**
- * Fleet Pi base project settings (code defaults). `.pi/settings.json` and Neon
- * `pi_user_settings` store overrides only; runtime merges base + overrides.
+ * Provides the provider-agnostic Fleet Pi project settings used as code defaults.
  *
- * No `defaultProvider`/`defaultModel`/`enabledModels` are baked in: the user
- * chooses the provider and LLM model in Settings. Local and deployed surfaces
- * share the same provider-agnostic base until the user configures one.
+ * Runtime settings merge these defaults with overrides from `.pi/settings.json` and
+ * Neon `pi_user_settings`.
+ *
+ * @returns A shallow copy of the shared Fleet Pi project settings
  */
 export function getFleetBaseProjectSettings(): Record<string, unknown> {
   return { ...FLEET_PI_SHARED_PROJECT_SETTINGS }

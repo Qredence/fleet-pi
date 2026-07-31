@@ -12,6 +12,12 @@ type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
 }
 
+/**
+ * Collects and deduplicates workspace, service, resource, tool, and database synchronization diagnostics.
+ *
+ * @param modelFallbackMessage - Optional message describing a model fallback.
+ * @returns An array of unique diagnostic messages.
+ */
 export function collectDiagnostics(
   services: AgentSessionServices,
   modelFallbackMessage?: string
@@ -93,9 +99,9 @@ export function collectDiagnostics(
 }
 
 /**
- * No platform-imposed default provider/model: the user picks one explicitly in
- * Settings. When nothing is chosen yet these stay `undefined` so callers do not
- * silently fall back to a Fleet-chosen provider.
+ * Resolves the explicitly configured default provider and model.
+ *
+ * @returns The configured provider and model, preserving `undefined` for values that are not set
  */
 export function resolveDefaultModelSelection(
   settingsManager: ModelDefaultSettingsLike

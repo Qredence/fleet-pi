@@ -9,6 +9,15 @@ import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage, loadChatModels } from "@/lib/pi/server"
 import { getOccInstanceById } from "@/lib/db/occ-instances"
 
+/**
+ * Discovers chat models available for the requested provider.
+ *
+ * Named OCC providers expose their configured model, while other providers
+ * expose matching entries from the chat model catalog. Unrecognized providers
+ * return a 400 response.
+ *
+ * @returns An HTTP response containing the provider's available models or an error message.
+ */
 export async function chatModelsDiscoverHandler(request: Request) {
   return withAuthenticatedChatRequest(request, async ({ userId }) => {
     try {

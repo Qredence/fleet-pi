@@ -6,6 +6,14 @@ const OPENAI_CHAT_BASE_URL_PLACEHOLDER = "https://opencode.ai/zen/v1"
 const OPENAI_CHAT_MODEL_PLACEHOLDER = "qwen35-122b-a10b"
 const OPENAI_CHAT_NAME_PLACEHOLDER = "e.g. OpenCode Zen, Nebius, Groq…"
 
+/**
+ * Renders credential fields for a provider, including OpenAI Chat-specific settings when enabled.
+ *
+ * @param attemptedSave - Whether the form has been submitted for validation
+ * @param openAiChat - Whether to include OpenAI Chat provider fields
+ * @param displayName - The optional provider display name
+ * @param onDisplayNameChange - Handles changes to the provider display name
+ */
 export function ProviderCredentialFields({
   attemptedSave,
   apiKey,

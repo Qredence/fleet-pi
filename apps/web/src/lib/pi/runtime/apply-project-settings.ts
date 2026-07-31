@@ -62,8 +62,13 @@ function assignProjectSetting(
 }
 
 /**
- * Apply durable project settings onto a live SettingsManager without relying
- * on a writable `.pi/settings.json` (Vercel / Neon path).
+ * Applies validated project and runtime settings to a live settings manager.
+ *
+ * On deployed chat runtimes, applies Fleet-provided default provider and model
+ * settings, removing project-level overrides when those values are unset.
+ *
+ * @param services - The session services containing the settings manager
+ * @param settings - Project and runtime settings to apply
  */
 export function applyProjectSettingsToServices(
   services: AgentSessionServices,

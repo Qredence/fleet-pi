@@ -27,6 +27,13 @@ export type LoadChatModelsOptions = {
   userId?: string
 }
 
+/**
+ * Loads chat model metadata, defaults, selection, and diagnostics for a session.
+ *
+ * @param context - Context used to create session services and discover models
+ * @param options - Optional scope and user identity used to load models
+ * @returns The discovered models, configured defaults, selected model key, and diagnostics
+ */
 export async function loadChatModels(
   context: Parameters<typeof createSessionServices>[0],
   options?: LoadChatModelsOptions
@@ -194,6 +201,16 @@ function resolveLegacyModelSelection(
   )
 }
 
+/**
+ * Resolves a structured provider and model identifier to a runtime model.
+ *
+ * OpenAI selections may resolve to a matching OpenAI-compatible provider, while
+ * Amazon Bedrock selections support normalized regional model identifiers.
+ *
+ * @param provider - The model provider identifier
+ * @param id - The model identifier
+ * @returns The matching runtime model, or `undefined` when no model is found
+ */
 function resolveStructuredModelSelection(
   services: AgentSessionServices,
   provider: string,
@@ -235,6 +252,14 @@ function bedrockModelCandidates(id: string, extra: Array<string> = []) {
   return [...new Set(candidates)]
 }
 
+/**
+ * Selects the chat model that best matches the configured provider and model.
+ *
+ * @param models - The available chat models to search
+ * @param defaultProvider - The configured model provider
+ * @param defaultModel - The configured model identifier
+ * @returns The matching chat model, the first available model, or the first model when no match is found
+ */
 function pickSelectedChatModel(
   models: Array<ChatModelInfo>,
   defaultProvider: string,

@@ -48,6 +48,13 @@ type RegisteredInstance = {
 
 type RegisteredModels = NonNullable<ProviderConfig["models"]>
 
+/**
+ * Builds a model registration for an OpenAI Chat Completions model.
+ *
+ * @param modelId - The model identifier.
+ * @param usesGateway - Whether the model uses the Neon AI Gateway endpoint.
+ * @returns The model registration with endpoint-specific token limits and compatibility settings.
+ */
 function buildModelEntry(
   modelId: string,
   usesGateway: boolean
@@ -80,6 +87,14 @@ function isGatewayHost(baseUrl: string): boolean {
   }
 }
 
+/**
+ * Resolves a user’s OpenAI-compatible BYOK configuration.
+ *
+ * Uses user-specific secrets with environment variable fallbacks for the base URL and model. Returns no configuration when required values are missing, the base URL is unsafe, or a legacy fleet model is selected alongside a Neon AI Gateway configuration.
+ *
+ * @param userId - The user whose provider secrets should be resolved
+ * @returns The validated BYOK configuration, or `undefined` when it cannot be resolved
+ */
 async function resolveOccByokConfig(
   userId: string | undefined
 ): Promise<OpenAiChatCompletionsConfig | undefined> {
@@ -138,6 +153,12 @@ function gatewayToOccConfig(
   }
 }
 
+/**
+ * Resolves the OpenAI Chat Completions configuration for a user.
+ *
+ * @param userId - The user whose configuration should be resolved
+ * @returns The user's BYOK configuration, the Neon AI Gateway configuration, or `undefined` when neither is available
+ */
 export async function resolveOpenAiChatCompletionsConfig(
   userId: string | undefined
 ): Promise<OpenAiChatCompletionsConfig | undefined> {
@@ -202,6 +223,11 @@ async function listOccRegistrations(
   return registrations
 }
 
+/**
+ * Registers the user's OpenAI Chat Completions providers and removes stale named providers.
+ *
+ * @param userId - The user whose provider configurations should be registered.
+ */
 export async function registerOpenAiChatCompletionsProvider(
   services: AgentSessionServices,
   userId: string | undefined
@@ -237,7 +263,10 @@ export async function registerOpenAiChatCompletionsProvider(
   unregisterStaleOccInstances(modelRuntime, registeredInstanceIds)
 }
 
-/** Drop named-instance providers that no longer exist for this user. */
+/** Remove named OCC providers that are absent from the active instance IDs.
+
+ * @param activeInstanceIds - Provider IDs for the user's currently configured named OCC instances.
+ */
 function unregisterStaleOccInstances(
   modelRuntime: AgentSessionServices["modelRuntime"],
   activeInstanceIds: Array<string>

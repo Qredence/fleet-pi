@@ -46,7 +46,12 @@ import {
   resolveProviderCredentialBundle,
 } from "@/lib/pi/runtime/provider-credential-bundle"
 
-/** OCC config rows include the user-added named instances for this account. */
+/**
+ * Combines provider configuration statuses with named OpenAI-compatible instances for an account.
+ *
+ * @param userId - The account's user identifier, if available.
+ * @returns Provider rows including configured named instances.
+ */
 async function getProviderRows(userId: string | undefined) {
   const base = await getProviderConfigStatus({ userId })
   const instances = await listOccInstances(userId)

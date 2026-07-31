@@ -41,16 +41,32 @@ type OccInstanceMetaRow = {
   encrypted_payload: string | null
 }
 
+/**
+ * Determines whether the chat database connection is configured.
+ *
+ * @returns `true` if `FLEET_PI_CHAT_DATABASE_URL` contains a non-whitespace value, `false` otherwise.
+ */
 function isChatDatabaseConfigured() {
   return Boolean(process.env.FLEET_PI_CHAT_DATABASE_URL?.trim())
 }
 
+/**
+ * Ensures the chat database is configured when running on Vercel.
+ *
+ * @throws `ChatPostgresUnavailableError` if running on Vercel without chat database configuration
+ */
 function requireChatDatabaseOnVercel() {
   if (process.env.VERCEL === "1" && !isChatDatabaseConfigured()) {
     throw new ChatPostgresUnavailableError()
   }
 }
 
+/**
+ * Retrieves the secret used to encrypt user provider credentials.
+ *
+ * @returns The configured encryption secret
+ * @throws Error if `BETTER_AUTH_SECRET` is not configured
+ */
 function requireEncryptionSecret() {
   if (!process.env.BETTER_AUTH_SECRET) {
     throw new Error(
@@ -60,6 +76,13 @@ function requireEncryptionSecret() {
   return process.env.BETTER_AUTH_SECRET
 }
 
+/**
+ * Decrypts and validates serialized instance metadata.
+ *
+ * @param payload - The encrypted metadata payload, or `null` when unavailable
+ * @param secret - The secret used to decrypt the payload
+ * @returns The validated instance metadata, or `null` when the payload is missing, invalid, or cannot be decrypted
+ */
 function parseInstanceMeta(
   payload: string | null,
   secret: string
@@ -86,6 +109,14 @@ function parseInstanceMeta(
   }
 }
 
+/**
+ * Executes a read operation against the chat database when configured for a user.
+ *
+ * @param userId - The user whose stored instances are being read
+ * @param operation - The database operation to execute
+ * @param fallback - The value returned when the user or chat database is unavailable
+ * @returns The operation result, or `fallback` when the read cannot be performed
+ */
 async function withOccInstancesRead<T>(
   userId: string | undefined,
   operation: (client: PostgresQueryClient) => Promise<T>,
@@ -109,9 +140,10 @@ function rowToInstance(
 }
 
 /**
- * List configured OCC instances for a user (named instances with metadata).
- * The reserved default OCC slot (no payload meta) is excluded — it is managed
- * by the legacy OCC path / Neon AI Gateway, not the named-instance UI.
+ * Lists the named OCC instances configured for a user.
+ *
+ * @param userId - The user whose instances should be listed, or `undefined` when no user is authenticated
+ * @returns The user's configured named OCC instances, or an empty array when no user or chat database is available
  */
 export async function listOccInstances(
   userId: string | undefined
@@ -138,6 +170,13 @@ export async function listOccInstances(
   )
 }
 
+/**
+ * Retrieves a named OCC instance for a user.
+ *
+ * @param userId - The user whose instance should be retrieved
+ * @param instanceId - The provider ID of the instance
+ * @returns The matching OCC instance, or `null` when the user, database configuration, or instance is unavailable
+ */
 export async function getOccInstanceById(
   userId: string | undefined,
   instanceId: string
@@ -160,8 +199,11 @@ export async function getOccInstanceById(
 }
 
 /**
- * Resolve a unique instance id for a display name within the user's existing
- * instance ids. Collisions get a numeric suffix (e.g. `-2`).
+ * Allocates an available instance ID for a display name.
+ *
+ * @param userId - The user whose existing instance IDs are checked
+ * @param displayName - The display name used to derive the instance ID
+ * @returns A unique instance ID, using a numeric suffix or timestamp suffix when needed
  */
 export async function allocateOccInstanceId(
   userId: string | undefined,
@@ -177,6 +219,13 @@ export async function allocateOccInstanceId(
   return toOccInstanceId(`${baseSlug}-${Date.now().toString(36)}`)
 }
 
+/**
+ * Stores or updates a named OCC instance and its API key for a user.
+ *
+ * @param userId - The user who owns the instance
+ * @param instance - The instance metadata to store
+ * @param apiKey - The API key used to authenticate with the instance
+ */
 export async function upsertOccInstance(
   userId: string,
   instance: OccInstance,
@@ -221,6 +270,12 @@ export async function upsertOccInstance(
   }, userId)
 }
 
+/**
+ * Removes a named OCC instance for a user.
+ *
+ * @param userId - The user whose instance should be removed
+ * @param instanceId - The identifier of the instance to remove
+ */
 export async function removeOccInstance(userId: string, instanceId: string) {
   requireChatDatabaseOnVercel()
   await withChatPostgresTransaction(async (client) => {
@@ -231,6 +286,13 @@ export async function removeOccInstance(userId: string, instanceId: string) {
   }, userId)
 }
 
+/**
+ * Loads the decrypted API key for a stored OCC instance.
+ *
+ * @param userId - The user who owns the instance
+ * @param instanceId - The instance identifier
+ * @returns The decrypted API key, or `undefined` when the user, database configuration, or stored key is unavailable
+ */
 export async function loadOccInstanceApiKey(
   userId: string | undefined,
   instanceId: string

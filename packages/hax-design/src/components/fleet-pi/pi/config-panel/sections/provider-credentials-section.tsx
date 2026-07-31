@@ -38,10 +38,23 @@ import type {
   ChatProviderUpdateResponse,
 } from "../../../../../lib/pi/chat-protocol"
 
+/**
+ * Determines whether a provider uses the OpenAI-compatible chat completions API.
+ *
+ * @param providerId - The provider identifier to evaluate
+ * @returns `true` if the provider uses the OpenAI-compatible chat completions API, `false` otherwise.
+ */
 function isOpenAiChatCompletionsProvider(providerId: string) {
   return isOccProviderId(providerId)
 }
 
+/**
+ * Determines whether a provider matches a search query by name, environment variable, ID, or relevant provider terms.
+ *
+ * @param provider - The provider to search
+ * @param query - The search text
+ * @returns `true` if the provider matches the query, `false` otherwise
+ */
 function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
   if (!query) return true
   const haystack = [
@@ -57,6 +70,15 @@ function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
   return haystack.includes(query)
 }
 
+/**
+ * Manages provider credential configuration, including adding, updating, searching, and removing providers.
+ *
+ * @param isLoading - Whether provider credentials are loading.
+ * @param isPending - Whether a credential update or removal is pending.
+ * @param onRemoveProvider - Handles provider credential removal.
+ * @param onUpdateProvider - Handles provider credential updates.
+ * @param providers - The available provider credential information.
+ */
 export function ProviderCredentialsSection({
   isLoading,
   isPending,
@@ -600,6 +622,15 @@ function AddProviderPickerPanel({
   )
 }
 
+/**
+ * Renders the credential editor for a provider, including provider-specific fields, guidance, and save controls.
+ *
+ * @param provider - The provider whose credentials are being configured.
+ * @param displayName - The optional name for an OpenAI-compatible provider instance.
+ * @param attemptedSave - Whether the save action has been attempted, enabling validation feedback.
+ * @param isPending - Whether saving is in progress.
+ * @param canSave - Whether the current form values satisfy save requirements.
+ */
 function AddProviderEditorPanel({
   provider,
   apiKey,
