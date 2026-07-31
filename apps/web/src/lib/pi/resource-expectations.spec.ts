@@ -57,6 +57,19 @@ describe("resource expectations", () => {
     })
   })
 
+  it("keeps deployed-only model overrides out of local project settings", async () => {
+    const committed = JSON.parse(
+      await readFile(
+        new URL("../../../../../.pi/settings.json", import.meta.url),
+        "utf8"
+      )
+    ) as Record<string, unknown>
+
+    expect(committed).not.toHaveProperty("enabledModels")
+    expect(committed).not.toHaveProperty("defaultProvider")
+    expect(committed).not.toHaveProperty("defaultModel")
+  })
+
   it("keeps expected project extensions registered in merged Pi settings", async () => {
     const overrides = JSON.parse(
       await readFile(
