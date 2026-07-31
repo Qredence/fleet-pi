@@ -1,7 +1,11 @@
-import { createHash } from "node:crypto"
 import { shouldFailClosedOnMirrorError } from "../deployment/trust-zone"
 import { logger } from "../logger"
 import { resolveChatDatabaseUrl } from "./chat-database-url"
+import {
+  MIRROR_JSON_SANITIZE_OPTIONS,
+  deterministicId,
+  sanitizeJsonForStorage,
+} from "./json-storage"
 import {
   PI_SESSION_USER_ID_ON_CONFLICT_SQL,
   assertMirrorOwnerForPersistence,
@@ -440,7 +444,7 @@ export async function appendPiRunEvent(
       input.sequence,
       input.eventType,
       input.summary ?? null,
-      JSON.stringify(sanitizeForJson(input.payload)),
+      JSON.stringify(sanitizeForMirror(input.payload)),
       input.recordedAt,
     ]
   )
@@ -479,7 +483,8 @@ export async function upsertPiToolExecution(
     [
       deterministicId(
         "pi-tool-execution",
-        `${input.runId}:${input.toolCallId}`
+        `${input.runId}:${input.toolCallId}`,
+        { hexLength: 32 }
       ),
       input.sessionId,
       input.runId,
@@ -487,10 +492,10 @@ export async function upsertPiToolExecution(
       input.toolName,
       input.state,
       input.isError,
-      JSON.stringify(sanitizeForJson(input.input)),
+      JSON.stringify(sanitizeForMirror(input.input)),
       input.output === null || input.output === undefined
         ? null
-        : JSON.stringify(sanitizeForJson(input.output)),
+        : JSON.stringify(sanitizeForMirror(input.output)),
       input.claimedPaths,
       input.firstSequence,
       input.lastSequence,
@@ -528,7 +533,8 @@ export async function replacePiFileMutations(
     serializeRow: (mutation) => [
       deterministicId(
         "pi-file-mutation",
-        `${input.runId}:${mutation.canonicalPath}`
+        `${input.runId}:${mutation.canonicalPath}`,
+        { hexLength: 32 }
       ),
       input.runId,
       mutation.canonicalPath,
@@ -705,7 +711,7 @@ async function upsertPiSessionEntriesBatch(
       entry.isError,
       entry.tokensTotal ?? null,
       entry.costTotal ?? null,
-      JSON.stringify(sanitizeForJson(entry.rawEntry)),
+      JSON.stringify(sanitizeForMirror(entry.rawEntry)),
       entry.entryTimestamp,
     ],
     onConflictSql: PI_SESSION_ENTRIES_ON_CONFLICT_SQL,
@@ -893,31 +899,15 @@ function textFromUnknown(value: unknown): string | undefined {
     return text || undefined
   }
   if (value === undefined || value === null) return undefined
-  return JSON.stringify(sanitizeForJson(value))
+  return JSON.stringify(sanitizeForMirror(value))
 }
 
-function sanitizeForJson(value: unknown): unknown {
-  if (typeof value === "bigint") return value.toString()
-  if (Array.isArray(value)) return value.map(sanitizeForJson)
-  if (!value || typeof value !== "object") return value
-
-  const result: Record<string, unknown> = {}
-  for (const [key, nested] of Object.entries(value)) {
-    if (typeof nested === "function" || typeof nested === "symbol") continue
-    result[key] = sanitizeForJson(nested)
-  }
-  return result
+function sanitizeForMirror(value: unknown): unknown {
+  return sanitizeJsonForStorage(value, MIRROR_JSON_SANITIZE_OPTIONS)
 }
 
 function asRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {}
-}
-
-function deterministicId(namespace: string, value: string) {
-  return createHash("sha256")
-    .update(`${namespace}:${value}`)
-    .digest("hex")
-    .slice(0, 32)
 }

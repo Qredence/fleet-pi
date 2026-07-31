@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto"
 import { relative, resolve } from "node:path"
+import { deterministicId, sanitizeJsonForStorage } from "./json-storage"
 import { openWorkspaceProjection } from "./workspace-projection"
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
@@ -88,6 +88,61 @@ export type ProvenancePathRecord = {
 }
 
 export type WorkspaceProvenanceConnection = WorkspaceProjectionConnection
+
+const RUN_SUMMARY_COLUMN_PAIRS: ReadonlyArray<
+  readonly [column: string, alias: string]
+> = [
+  ["id", "runId"],
+  ["assistant_message_id", "assistantMessageId"],
+  ["session_id", "sessionId"],
+  ["session_file_path", "sessionFile"],
+  ["session_turn_index", "sessionTurnIndex"],
+  ["mode", "mode"],
+  ["plan_action", "planAction"],
+  ["status", "status"],
+  ["assistant_preview", "assistantPreview"],
+  ["error_message", "errorMessage"],
+  ["event_count", "eventCount"],
+  ["tool_call_count", "toolCallCount"],
+  ["mutation_count", "mutationCount"],
+  ["started_at", "startedAt"],
+  ["completed_at", "completedAt"],
+]
+
+function renderSelectColumns(
+  columns: ReadonlyArray<readonly [column: string, alias: string]>,
+  qualify?: string
+) {
+  return columns
+    .map(([column, alias]) => {
+      const expression = qualify ? `${qualify}.${column}` : column
+      return alias === column ? expression : `${expression} AS ${alias}`
+    })
+    .join(",\n        ")
+}
+
+/**
+ * Column list projecting one run-summary row out of `provenance_runs`.
+ * `RUN_SUMMARY_SELECT_QUALIFIED` is the same list prefixed with
+ * `provenance_runs.` for queries that join mutation/tool-call tables.
+ */
+const RUN_SUMMARY_SELECT = renderSelectColumns(RUN_SUMMARY_COLUMN_PAIRS)
+const RUN_SUMMARY_SELECT_QUALIFIED = renderSelectColumns(
+  RUN_SUMMARY_COLUMN_PAIRS,
+  "provenance_runs"
+)
+
+/** Column list projecting one mutation row (with joined tool name). */
+const MUTATION_SELECT = `provenance_mutations.canonical_path AS canonicalPath,
+        provenance_mutations.kind AS kind,
+        provenance_mutations.tool_call_id AS toolCallId,
+        provenance_tool_calls.tool_name AS toolName,
+        provenance_mutations.event_sequence AS eventSequence,
+        provenance_mutations.before_digest AS beforeDigest,
+        provenance_mutations.after_digest AS afterDigest,
+        provenance_mutations.before_size AS beforeSize,
+        provenance_mutations.after_size AS afterSize,
+        provenance_mutations.summary AS summary`
 
 export type InsertRunInput = {
   runId: string
@@ -348,7 +403,7 @@ export function appendRunEvent(
     )
   `
   ).run({
-    id: createDeterministicId(
+    id: deterministicId(
       "provenance-run-event",
       `${input.runId}:${input.sequence}`
     ),
@@ -356,7 +411,7 @@ export function appendRunEvent(
     sequence: input.sequence,
     eventType: input.eventType,
     summary: input.summary ?? null,
-    payloadJson: JSON.stringify(sanitizeForStorage(input.payload)),
+    payloadJson: JSON.stringify(sanitizeJsonForStorage(input.payload)),
     recordedAt: input.recordedAt,
   })
 }
@@ -403,7 +458,7 @@ export function upsertToolCall(
       last_sequence = MAX(provenance_tool_calls.last_sequence, excluded.last_sequence)
   `
   ).run({
-    id: createDeterministicId(
+    id: deterministicId(
       "provenance-tool-call",
       `${input.runId}:${input.toolCallId}`
     ),
@@ -412,11 +467,11 @@ export function upsertToolCall(
     toolName: input.toolName,
     state: input.state,
     isError: input.isError ? 1 : 0,
-    inputJson: JSON.stringify(sanitizeForStorage(input.input)),
+    inputJson: JSON.stringify(sanitizeJsonForStorage(input.input)),
     outputJson:
       input.output === undefined
         ? null
-        : JSON.stringify(sanitizeForStorage(input.output)),
+        : JSON.stringify(sanitizeJsonForStorage(input.output)),
     claimedPathsJson: JSON.stringify([...new Set(input.claimedPaths)].sort()),
     firstSequence: input.firstSequence,
     lastSequence: input.lastSequence,
@@ -464,7 +519,7 @@ export function replaceRunMutations(
     deleteMutations.run(input.runId)
     for (const mutation of input.mutations) {
       insertMutation.run({
-        id: createDeterministicId(
+        id: deterministicId(
           "provenance-mutation",
           `${input.runId}:${mutation.canonicalPath}`
         ),
@@ -548,21 +603,7 @@ export function listSessionRuns(
     .prepare<Record<string, string>, ProvenanceRunSummary>(
       `
       SELECT
-        id AS runId,
-        assistant_message_id AS assistantMessageId,
-        session_id AS sessionId,
-        session_file_path AS sessionFile,
-        session_turn_index AS sessionTurnIndex,
-        mode,
-        plan_action AS planAction,
-        status,
-        assistant_preview AS assistantPreview,
-        error_message AS errorMessage,
-        event_count AS eventCount,
-        tool_call_count AS toolCallCount,
-        mutation_count AS mutationCount,
-        started_at AS startedAt,
-        completed_at AS completedAt
+        ${RUN_SUMMARY_SELECT}
       FROM provenance_runs
       WHERE ${clauses.join(" AND ")}
       ORDER BY session_turn_index
@@ -579,21 +620,7 @@ export function getRunDetail(
     .prepare<[string], ProvenanceRunSummary>(
       `
       SELECT
-        id AS runId,
-        assistant_message_id AS assistantMessageId,
-        session_id AS sessionId,
-        session_file_path AS sessionFile,
-        session_turn_index AS sessionTurnIndex,
-        mode,
-        plan_action AS planAction,
-        status,
-        assistant_preview AS assistantPreview,
-        error_message AS errorMessage,
-        event_count AS eventCount,
-        tool_call_count AS toolCallCount,
-        mutation_count AS mutationCount,
-        started_at AS startedAt,
-        completed_at AS completedAt
+        ${RUN_SUMMARY_SELECT}
       FROM provenance_runs
       WHERE id = ?
     `
@@ -675,16 +702,7 @@ export function getRunDetail(
     >(
       `
       SELECT
-        provenance_mutations.canonical_path AS canonicalPath,
-        provenance_mutations.kind,
-        provenance_mutations.tool_call_id AS toolCallId,
-        provenance_tool_calls.tool_name AS toolName,
-        provenance_mutations.event_sequence AS eventSequence,
-        provenance_mutations.before_digest AS beforeDigest,
-        provenance_mutations.after_digest AS afterDigest,
-        provenance_mutations.before_size AS beforeSize,
-        provenance_mutations.after_size AS afterSize,
-        provenance_mutations.summary AS summary
+        ${MUTATION_SELECT}
       FROM provenance_mutations
       LEFT JOIN provenance_tool_calls
         ON provenance_tool_calls.run_id = provenance_mutations.run_id
@@ -716,31 +734,8 @@ export function listPathProvenance(
     >(
       `
       SELECT
-        provenance_runs.id AS runId,
-        provenance_runs.assistant_message_id AS assistantMessageId,
-        provenance_runs.session_id AS sessionId,
-        provenance_runs.session_file_path AS sessionFile,
-        provenance_runs.session_turn_index AS sessionTurnIndex,
-        provenance_runs.mode,
-        provenance_runs.plan_action AS planAction,
-        provenance_runs.status,
-        provenance_runs.assistant_preview AS assistantPreview,
-        provenance_runs.error_message AS errorMessage,
-        provenance_runs.event_count AS eventCount,
-        provenance_runs.tool_call_count AS toolCallCount,
-        provenance_runs.mutation_count AS mutationCount,
-        provenance_runs.started_at AS startedAt,
-        provenance_runs.completed_at AS completedAt,
-        provenance_mutations.canonical_path AS canonicalPath,
-        provenance_mutations.kind,
-        provenance_mutations.tool_call_id AS toolCallId,
-        provenance_tool_calls.tool_name AS toolName,
-        provenance_mutations.event_sequence AS eventSequence,
-        provenance_mutations.before_digest AS beforeDigest,
-        provenance_mutations.after_digest AS afterDigest,
-        provenance_mutations.before_size AS beforeSize,
-        provenance_mutations.after_size AS afterSize,
-        provenance_mutations.summary AS summary
+        ${RUN_SUMMARY_SELECT_QUALIFIED},
+        ${MUTATION_SELECT}
       FROM provenance_mutations
       JOIN provenance_runs
         ON provenance_runs.id = provenance_mutations.run_id
@@ -908,43 +903,6 @@ function parseJsonValue(value: string) {
   }
 }
 
-function sanitizeForStorage(value: unknown, depth = 0): unknown {
-  if (depth > 4) {
-    return "[truncated-depth]"
-  }
-
-  if (typeof value === "string") {
-    return value.length > 8_000 ? `${value.slice(0, 8_000)}…` : value
-  }
-
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value === null ||
-    value === undefined
-  ) {
-    return value
-  }
-
-  if (Array.isArray(value)) {
-    return value.slice(0, 50).map((item) => sanitizeForStorage(item, depth + 1))
-  }
-
-  if (!isRecord(value)) {
-    return String(value)
-  }
-
-  return Object.fromEntries(
-    Object.entries(value)
-      .slice(0, 50)
-      .map(([key, nested]) => [key, sanitizeForStorage(nested, depth + 1)])
-  )
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function createDeterministicId(kind: string, value: string) {
-  return createHash("sha256").update(`${kind}:${value}`).digest("hex")
 }
