@@ -1,23 +1,20 @@
 "use client"
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  IconChevronDown,
-  IconChevronUp,
-  IconMessageCircleQuestion,
-  IconX,
-} from "@tabler/icons-react"
 import { cn } from "./utils/cn"
 
 import { SendButton } from "./input/send-button"
 import { AttachmentButton } from "./input/attachment-button"
 import { FileAttachment } from "./input/file-attachment"
+import { InputInfoBar } from "./input/info-bar"
+import { InputQuestionBar } from "./input/question-bar"
 import { useInputTyping } from "./input/input-typing"
-import { QuestionPrompt } from "./question/question-prompt"
 import { Suggestions } from "./input/suggestions"
+import { useQuestionBarNavigation } from "./hooks/use-question-bar-navigation"
+import type { InputInfoBarData } from "./input/info-bar"
 import type { SuggestionItem } from "./input/suggestions"
 import type { ChatStatus } from "./chat-types"
-import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
+import type { QuestionBarData } from "./hooks/use-question-bar-navigation"
 import type { RefObject } from "react"
 
 type InputConfig = {
@@ -97,31 +94,9 @@ export type InputBarProps = {
     onComplete: () => void
   }
 
-  infoBar?: {
-    title?: string
-    description?: string
-    onClose?: () => void
-    position?: "top" | "bottom"
-    /** Optional primary action rendered on the right (e.g. "Upgrade"). */
-    action?: {
-      label: string
-      onClick: () => void
-    }
-  }
+  infoBar?: InputInfoBarData
 
-  questionBar?: {
-    id: string
-    questions: Array<QuestionConfig>
-    questionIndex?: number
-    totalQuestions?: number
-    onPreviousQuestion?: () => void
-    onNextQuestion?: () => void
-    submitLabel?: string
-    skipLabel?: string
-    allowSkip?: boolean
-    onSubmit: (answer: QuestionAnswer) => void
-    onSkip?: () => void
-  }
+  questionBar?: QuestionBarData
 
   /** Content rendered on the left of the toolbar, next to the attachment button. */
   leftActions?: React.ReactNode
@@ -161,7 +136,6 @@ export const InputBar = memo(function InputBar({
   const [dismissedQuestionId, setDismissedQuestionId] = useState<string | null>(
     null
   )
-  const [questionBarIndex, setQuestionBarIndex] = useState(1)
   const isControlled = controlledValue !== undefined
   const input = isControlled ? controlledValue : internalInput
   const setInput = useCallback(
@@ -224,160 +198,30 @@ export const InputBar = memo(function InputBar({
   const shouldShowInfoBar = Boolean(
     infoBar && (infoBar.title || infoBar.description)
   )
-  const infoBarData = infoBar ?? {}
 
-  const infoBarNode = shouldShowInfoBar ? (
-    <div
-      className={cn(
-        "flex h-[34px] items-center justify-between gap-3 px-3",
-        "overflow-hidden transition-[max-height,opacity] duration-150 ease-out",
-        isInfoBarOpen ? "max-h-[34px] opacity-100" : "max-h-0 opacity-0",
-        infoBarPosition === "top"
-          ? "rounded-t-an-input-border-radius"
-          : "rounded-b-an-input-border-radius"
-      )}
-    >
-      <div className="min-w-0 truncate text-xs text-an-foreground">
-        {infoBarData.title && (
-          <span className="font-medium">{infoBarData.title}</span>
-        )}
-        {infoBarData.description && (
-          <span className="text-an-foreground-muted/80">
-            {infoBarData.title
-              ? ` ${infoBarData.description}`
-              : infoBarData.description}
-          </span>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        {infoBarData.action && (
-          <button
-            type="button"
-            onClick={infoBarData.action.onClick}
-            className="h-6 rounded-[4px] bg-an-primary-color px-2 text-xs font-medium text-an-send-button-color transition-[background-color,transform] duration-150 hover:bg-an-primary-color/90 active:scale-[0.96]"
-          >
-            {infoBarData.action.label}
-          </button>
-        )}
-        {infoBarData.onClose && (
-          <button
-            type="button"
-            onClick={handleInfoBarClose}
-            className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-an-foreground-muted/70 transition-[background-color,color,transform] duration-150 after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-x-1/2 after:-translate-y-1/2 hover:bg-an-background-secondary hover:text-an-foreground active:scale-[0.96]"
-            aria-label="Close"
-          >
-            <IconX className="h-3.5 w-3.5" strokeWidth={2} />
-          </button>
-        )}
-      </div>
-    </div>
-  ) : null
+  const infoBarNode =
+    shouldShowInfoBar && infoBar ? (
+      <InputInfoBar
+        infoBar={infoBar}
+        isOpen={isInfoBarOpen}
+        position={infoBarPosition}
+        onClose={handleInfoBarClose}
+      />
+    ) : null
 
   const shouldShowQuestionBar = Boolean(
     questionBar && questionBar.id !== dismissedQuestionId
   )
-  const questionBarData = questionBar
-  const questionSet = questionBarData?.questions ?? []
-  const hasQuestions = questionSet.length > 0
-  const derivedTotal = hasQuestions ? questionSet.length : 1
-  const totalQuestions = questionBarData?.totalQuestions ?? derivedTotal
-  const hasExternalQuestionNavigation = Boolean(
-    questionBarData?.onPreviousQuestion || questionBarData?.onNextQuestion
-  )
-  const questionIndex = hasExternalQuestionNavigation
-    ? (questionBarData?.questionIndex ?? 1)
-    : questionBarIndex
-  const clampedQuestionIndex = Math.max(
-    1,
-    Math.min(questionIndex, totalQuestions)
-  )
-  const activeQuestion = hasQuestions
-    ? questionSet[clampedQuestionIndex - 1]
-    : undefined
-  const showQuestionNavigation = totalQuestions > 1
-  const canGoPrev = clampedQuestionIndex > 1
-  const canGoNext = clampedQuestionIndex < totalQuestions
-
-  const handleQuestionPrevious = useCallback(() => {
-    if (!canGoPrev) return
-    if (questionBarData?.onPreviousQuestion) {
-      questionBarData.onPreviousQuestion()
-      return
-    }
-    setQuestionBarIndex((prev) => Math.max(1, prev - 1))
-  }, [canGoPrev, questionBarData])
-
-  const handleQuestionNext = useCallback(() => {
-    if (!canGoNext) return
-    if (questionBarData?.onNextQuestion) {
-      questionBarData.onNextQuestion()
-      return
-    }
-    setQuestionBarIndex((prev) => Math.min(totalQuestions, prev + 1))
-  }, [canGoNext, questionBarData, totalQuestions])
+  const questionBarNavigation = useQuestionBarNavigation(questionBar)
 
   const questionBarNode =
-    shouldShowQuestionBar && activeQuestion ? (
-      <div
-        className={cn(
-          "mx-auto w-full max-w-[calc(100%-24px)] border-x border-t border-border",
-          !shouldShowInfoBar || infoBarPosition === "bottom"
-            ? "rounded-t-an-input-border-radius"
-            : null
-        )}
-      >
-        <div className="flex h-7 items-center justify-between border-b border-border px-3 text-xs text-an-tool-color-muted">
-          <div className="inline-flex items-center gap-1.5">
-            <IconMessageCircleQuestion className="h-3.5 w-3.5" />
-            Question
-          </div>
-          {showQuestionNavigation && (
-            <div className="inline-flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleQuestionPrevious}
-                disabled={!canGoPrev}
-                className="relative inline-flex size-5 items-center justify-center rounded-[4px] transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-2.5 after:-bottom-2.5 hover:bg-an-background-secondary active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100"
-                aria-label="Previous question"
-              >
-                <IconChevronUp className="h-3.5 w-3.5" />
-              </button>
-              <span className="tabular-nums">
-                {clampedQuestionIndex} of {totalQuestions}
-              </span>
-              <button
-                type="button"
-                onClick={handleQuestionNext}
-                disabled={!canGoNext}
-                className="relative inline-flex size-5 items-center justify-center rounded-[4px] transition-[background-color,transform] duration-150 after:absolute after:inset-x-0 after:-top-2.5 after:-bottom-2.5 hover:bg-an-background-secondary active:scale-[0.96] disabled:opacity-40 disabled:active:scale-100"
-                aria-label="Next question"
-              >
-                <IconChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-        </div>
-        <QuestionPrompt
-          key={`${clampedQuestionIndex}-${activeQuestion?.title ?? "question"}`}
-          questions={questionSet}
-          questionIndex={clampedQuestionIndex}
-          totalQuestions={totalQuestions}
-          submitLabel={questionBarData!.submitLabel}
-          skipLabel={questionBarData!.skipLabel}
-          allowSkip={questionBarData!.allowSkip}
-          onSubmit={(answer) => {
-            questionBarData!.onSubmit(answer)
-            if (clampedQuestionIndex >= totalQuestions) {
-              setDismissedQuestionId(questionBarData!.id)
-            } else {
-              setQuestionBarIndex((prev) => Math.min(totalQuestions, prev + 1))
-            }
-          }}
-          onSkip={() => {
-            questionBarData!.onSkip?.()
-          }}
-        />
-      </div>
+    shouldShowQuestionBar && questionBar ? (
+      <InputQuestionBar
+        questionBar={questionBar}
+        navigation={questionBarNavigation}
+        roundedTop={!shouldShowInfoBar || infoBarPosition === "bottom"}
+        onDismiss={setDismissedQuestionId}
+      />
     ) : null
 
   const handleKeyDown = useCallback(
