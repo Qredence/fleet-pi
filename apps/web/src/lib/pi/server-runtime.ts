@@ -586,6 +586,5 @@ export {
   resolveDaytonaRuntimeApiKey,
   resolveUserDaytonaApiKey,
   resolveUserProviderSecret,
-  DEFAULT_MODEL,
   RESOURCE_SETTING_KEYS,
 } from "./runtime/index"

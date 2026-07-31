@@ -82,7 +82,10 @@ export async function loadChatModels(
       defaultThinkingLevel,
     })
   }
-  const selected = pickSelectedChatModel(models, defaultProvider, defaultModel)
+  const selected =
+    defaultProvider && defaultModel
+      ? pickSelectedChatModel(models, defaultProvider, defaultModel)
+      : undefined
 
   return {
     models,

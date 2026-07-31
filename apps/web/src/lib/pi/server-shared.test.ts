@@ -71,7 +71,7 @@ describe("createSessionServices", () => {
     )
   })
 
-  it("applies the local default model fallback when settings are unset", async () => {
+  it("returns no default provider/model when the user has not configured one", async () => {
     delete process.env.VERCEL
     const { resolveDefaultModelSelection } = await import("./server-shared")
 
@@ -81,8 +81,22 @@ describe("createSessionServices", () => {
         getDefaultProvider: () => undefined,
       })
     ).toEqual({
-      defaultProvider: "google",
-      defaultModel: "gemini-3.5-flash",
+      defaultProvider: undefined,
+      defaultModel: undefined,
+    })
+  })
+
+  it("surfaces the user-configured default provider/model", async () => {
+    const { resolveDefaultModelSelection } = await import("./server-shared")
+
+    expect(
+      resolveDefaultModelSelection({
+        getDefaultModel: () => "qwen35-122b-a10b",
+        getDefaultProvider: () => "openai-chat-completions",
+      })
+    ).toEqual({
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "qwen35-122b-a10b",
     })
   })
 

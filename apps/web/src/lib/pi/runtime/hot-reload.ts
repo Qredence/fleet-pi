@@ -35,18 +35,22 @@ async function reloadRuntimeForRecord(
     const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
       runtime.services.settingsManager
     )
-    const defaultThinkingLevel =
-      runtime.services.settingsManager.getDefaultThinkingLevel()
+    // Only (re)assert a model the user actually configured; never apply a
+    // platform default when none is set.
+    if (defaultProvider && defaultModel) {
+      const defaultThinkingLevel =
+        runtime.services.settingsManager.getDefaultThinkingLevel()
 
-    await applyModelSelection(
-      runtime,
-      {
-        provider: defaultProvider,
-        id: defaultModel,
-        thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
-      },
-      record.userId
-    )
+      await applyModelSelection(
+        runtime,
+        {
+          provider: defaultProvider,
+          id: defaultModel,
+          thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
+        },
+        record.userId
+      )
+    }
   }
 
   await applyRuntimeAuth(runtime.services, { userId: record.userId })

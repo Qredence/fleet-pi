@@ -26,5 +26,5 @@ export {
   resolveUserDaytonaApiKey,
   resolveUserProviderSecret,
 } from "./user-provider-secrets"
-export { DEFAULT_MODEL, DEFAULT_PROVIDER, RESOURCE_SETTING_KEYS } from "./types"
+export { RESOURCE_SETTING_KEYS } from "./types"
 export type { ApplyRuntimeAuthOptions } from "./types"

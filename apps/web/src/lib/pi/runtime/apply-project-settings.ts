@@ -1,3 +1,4 @@
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import type {
   AgentSessionServices,
   CompactionSettings,
@@ -102,18 +103,29 @@ export function applyProjectSettingsToServices(
     }
   }
 
-  if (typeof settings.defaultProvider === "string") {
-    assignProjectSetting(
-      manager,
-      "defaultProvider",
-      settings.defaultProvider,
-      () => manager.setDefaultProvider(settings.defaultProvider as string)
-    )
-  }
-  if (typeof settings.defaultModel === "string") {
-    assignProjectSetting(manager, "defaultModel", settings.defaultModel, () =>
-      manager.setDefaultModel(settings.defaultModel as string)
-    )
+  // On deployed/Neon surfaces (Vercel + Daytona-backed Neon chat), Fleet
+  // settings (Neon `pi_user_settings`) own the default provider/model. Write the
+  // value into project scope — or delete the project key when unset so a Pi
+  // global-layer default (`~/.pi/agent/settings.json`, env, Daytona sandbox
+  // `~/.pi/...`) no longer drives model selection. Deleting via the project
+  // layer (not an `applyOverrides` shadow) survives `settingsManager.reload()`.
+  // Local dev keeps the user's own Pi/project config untouched.
+  if (isDeployedChatRuntimeSurface()) {
+    const fleetProvider =
+      typeof settings.defaultProvider === "string"
+        ? settings.defaultProvider
+        : undefined
+    const fleetModel =
+      typeof settings.defaultModel === "string"
+        ? settings.defaultModel
+        : undefined
+
+    assignProjectSetting(manager, "defaultProvider", fleetProvider, () => {
+      if (fleetProvider) manager.setDefaultProvider(fleetProvider)
+    })
+    assignProjectSetting(manager, "defaultModel", fleetModel, () => {
+      if (fleetModel) manager.setDefaultModel(fleetModel)
+    })
   }
   if (
     typeof settings.defaultThinkingLevel === "string" &&

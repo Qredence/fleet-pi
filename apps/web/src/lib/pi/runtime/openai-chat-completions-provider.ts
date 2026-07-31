@@ -46,7 +46,11 @@ function buildModelEntry(
     input: ["text" as const],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128_000,
-    maxTokens: 32_000,
+    // Neon AI Gateway rejects max_tokens above each model's max_output_tokens
+    // (25_000 for qwen35-122b-a10b / gpt-oss-120b) with a 400 ("max_new_tokens
+    // … cannot be greater than max_output_tokens 25000"). Cap gateway models at
+    // the gateway limit; keep 32k for BYOK OCC endpoints that allow it.
+    maxTokens: usesGateway ? 25_000 : 32_000,
     ...(usesGateway
       ? { compat: { ...OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } }
       : {}),
