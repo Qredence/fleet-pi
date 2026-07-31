@@ -94,14 +94,16 @@ test.describe("Settings Dialog E2E Tests", () => {
       name: /Appearance/,
     })
     const sandboxTab = settingsDialog.getByRole("button", { name: /Sandbox/ })
-    const llmTab = settingsDialog.getByRole("button", { name: /LLM Provider/ })
+    const llmModelsTab = settingsDialog.getByRole("button", {
+      name: /LLM Models/,
+    })
     const piHarnessTab = settingsDialog.getByRole("button", {
       name: /Pi Harness/,
     })
 
     await expect(appearanceTab).toBeVisible()
     await expect(sandboxTab).toBeVisible()
-    await expect(llmTab).toBeVisible()
+    await expect(llmModelsTab).toBeVisible()
     await expect(piHarnessTab).toBeVisible()
   })
 
@@ -126,19 +128,23 @@ test.describe("Settings Dialog E2E Tests", () => {
       settingsDialog.getByText("Customize the look and feel of the interface.")
     ).toBeVisible()
 
-    // Test Tab 2: Sandbox Provider
-    await settingsDialog.getByRole("button", { name: /Sandbox/ }).click()
+    // Test Tab 2: Sandbox
+    await settingsDialog
+      .getByRole("button", { name: "Sandbox", exact: true })
+      .click()
     await expect(
       settingsDialog.getByRole("heading", {
-        name: "Sandbox Provider",
+        name: "Sandbox",
         exact: true,
       })
     ).toBeVisible()
 
-    // Test Tab 3: LLM Provider
-    await settingsDialog.getByRole("button", { name: /LLM Provider/ }).click()
+    // Test Tab 3: LLM Models
+    await settingsDialog
+      .getByRole("button", { name: "LLM Models", exact: true })
+      .click()
     await expect(
-      settingsDialog.getByRole("heading", { name: "LLM Provider", exact: true })
+      settingsDialog.getByRole("heading", { name: "LLM Models", exact: true })
     ).toBeVisible()
 
     // Test Tab 4: Pi Harness
@@ -163,33 +169,32 @@ test.describe("Settings Dialog E2E Tests", () => {
     // Make sure we are on Appearance tab
     await settingsDialog.getByRole("button", { name: /Appearance/ }).click()
 
-    // Find theme customization buttons using exact match to avoid matching the parent tab labels
-    const lightBtn = settingsDialog.getByRole("button", {
-      name: "Light",
-      exact: true,
+    // The theme customizer is a Select control labeled "Theme" with
+    // System / Light / Dark options (Base UI combobox + option roles).
+    const themeSelect = settingsDialog.getByRole("combobox", {
+      name: "Theme",
     })
-    const darkBtn = settingsDialog.getByRole("button", {
-      name: "Dark",
-      exact: true,
-    })
-    const systemBtn = settingsDialog.getByRole("button", {
-      name: "System",
-      exact: true,
-    })
+    await expect(themeSelect).toBeVisible()
 
-    await expect(lightBtn).toBeVisible()
-    await expect(darkBtn).toBeVisible()
-    await expect(systemBtn).toBeVisible()
+    // Switch to Dark and verify the preference applies to the document
+    await themeSelect.click()
+    await page.getByRole("option", { name: "Dark", exact: true }).click()
+    await expect(themeSelect).toContainText("Dark")
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.classList.contains("dark"))
+      )
+      .toBe(true)
 
-    // Click 'Dark' and verify the button aria-pressed state or custom behaviors
-    await darkBtn.click()
-    await expect(darkBtn).toHaveAttribute("aria-pressed", "true")
-    await expect(lightBtn).toHaveAttribute("aria-pressed", "false")
-
-    // Click 'Light' and verify state changes
-    await lightBtn.click()
-    await expect(lightBtn).toHaveAttribute("aria-pressed", "true")
-    await expect(darkBtn).toHaveAttribute("aria-pressed", "false")
+    // Switch to Light and verify the preference reverts
+    await themeSelect.click()
+    await page.getByRole("option", { name: "Light", exact: true }).click()
+    await expect(themeSelect).toContainText("Light")
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.classList.contains("dark"))
+      )
+      .toBe(false)
   })
 
   // Cleanup mocked routes after each test to prevent interference
