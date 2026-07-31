@@ -3,8 +3,17 @@
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "npm:@samfp/pi-memory"
   ],
+  "enabledModels": [
+    "openai-chat-completions/nemotron-3-ultra-free",
+    "openai-chat-completions/qwen35-122b-a10b",
+    "openai-chat-completions/gpt-oss-120b",
+    "openai-chat-completions/moonshotai/Kimi-K3"
+  ],
+  "defaultProvider": "openai-chat-completions",
+  "defaultModel": "nemotron-3-ultra-free",
   "skills": ["../agent-workspace/pi/skills"],
   "extensions": ["../agent-workspace/pi/extensions/enabled"],
   "prompts": ["../agent-workspace/pi/prompts"],
