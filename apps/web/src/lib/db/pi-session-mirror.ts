@@ -10,6 +10,7 @@ import {
   withUserContext,
 } from "./pi-session-ownership-db"
 import { isPiSessionDeleted } from "./pi-session-tombstones"
+import { insertRowsChunked } from "./postgres-batch"
 import type { PostgresQueryClient } from "./pi-session-ownership-db"
 import type {
   SessionEntry,
@@ -230,15 +231,17 @@ export function extractPiSessionMirrorInput(
  * Get the last synced entry ID as watermark for incremental sync.
  * Uses the second-to-last entry by index for robustness against compaction reordering.
  */
-function getLastSyncedEntryId(sessionManager: SessionManager): string | undefined {
+function getLastSyncedEntryId(
+  sessionManager: SessionManager
+): string | undefined {
   const entries = sessionManager.getEntries()
-  
+
   // Revert to index-based for safety - Pi library guarantees chronological order
   if (entries.length >= 2) {
     // Return the ID of the second-to-last entry
     return entries[entries.length - 2].id
   }
-  
+
   return entries.length === 1 ? entries[0].id : undefined
 }
 
@@ -504,56 +507,42 @@ export async function replacePiFileMutations(
     input.runId,
   ])
 
-  if (input.mutations.length === 0) return
-
   // Batch insert all mutations in a single query instead of one INSERT per mutation
-  const CHUNK_SIZE = 50
-  for (let i = 0; i < input.mutations.length; i += CHUNK_SIZE) {
-    const chunk = input.mutations.slice(i, i + CHUNK_SIZE)
-    const values: Array<unknown> = []
-    const rowPlaceholders = chunk.map((mutation, rowIdx) => {
-      const base = rowIdx * 12 + 1
-      const mutationId = deterministicId(
+  await insertRowsChunked(client, {
+    table: "pi_file_mutations",
+    columns: [
+      "id",
+      "run_id",
+      "canonical_path",
+      "kind",
+      "tool_call_id",
+      "event_sequence",
+      "before_digest",
+      "after_digest",
+      "before_size",
+      "after_size",
+      "summary",
+      "recorded_at",
+    ],
+    rows: input.mutations,
+    serializeRow: (mutation) => [
+      deterministicId(
         "pi-file-mutation",
         `${input.runId}:${mutation.canonicalPath}`
-      )
-      values.push(
-        mutationId,
-        input.runId,
-        mutation.canonicalPath,
-        mutation.kind,
-        mutation.toolCallId ?? null,
-        mutation.eventSequence ?? null,
-        mutation.beforeDigest ?? null,
-        mutation.afterDigest ?? null,
-        mutation.beforeSize ?? null,
-        mutation.afterSize ?? null,
-        mutation.summary ?? null,
-        input.recordedAt
-      )
-      const p = (n: number) => `$${base + n}`
-      return `(${p(0)},${p(1)},${p(2)},${p(3)},${p(4)},${p(5)},${p(6)},${p(7)},${p(8)},${p(9)},${p(10)},${p(11)})`
-    })
-    await client.query(
-      `
-        INSERT INTO pi_file_mutations (
-          id,
-          run_id,
-          canonical_path,
-          kind,
-          tool_call_id,
-          event_sequence,
-          before_digest,
-          after_digest,
-          before_size,
-          after_size,
-          summary,
-          recorded_at
-        ) VALUES ${rowPlaceholders.join(",")}
-      `,
-      values
-    )
-  }
+      ),
+      input.runId,
+      mutation.canonicalPath,
+      mutation.kind,
+      mutation.toolCallId ?? null,
+      mutation.eventSequence ?? null,
+      mutation.beforeDigest ?? null,
+      mutation.afterDigest ?? null,
+      mutation.beforeSize ?? null,
+      mutation.afterSize ?? null,
+      mutation.summary ?? null,
+      input.recordedAt,
+    ],
+  })
 }
 
 export async function finalizePiRun(
@@ -649,53 +638,8 @@ export async function withChatPostgresTransaction(
   await withUserContext(pool, userId, operation)
 }
 
-async function upsertPiSessionEntriesBatch(
-  client: PostgresQueryClient,
-  entries: Array<PiSessionEntryMirrorInput>
-) {
-  if (entries.length === 0) return
-
-  // Build a multi-row VALUES clause with positional parameters.
-  // Each row has 18 columns; chunk in groups of 50 to stay within pg param limit.
-  const CHUNK_SIZE = 50
-  const COLS = 18
-  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
-    const chunk = entries.slice(i, i + CHUNK_SIZE)
-    const values: Array<unknown> = []
-    const rowPlaceholders = chunk.map((entry, rowIdx) => {
-      const base = rowIdx * COLS + 1
-      values.push(
-        entry.sessionId,
-        entry.entryId,
-        entry.parentEntryId,
-        entry.entryType,
-        entry.role ?? null,
-        entry.customType ?? null,
-        entry.provider ?? null,
-        entry.modelId ?? null,
-        entry.thinkingLevel ?? null,
-        entry.targetEntryId ?? null,
-        entry.fromEntryId ?? null,
-        entry.contentText ?? null,
-        entry.summary ?? null,
-        entry.isError,
-        entry.tokensTotal ?? null,
-        entry.costTotal ?? null,
-        JSON.stringify(sanitizeForJson(entry.rawEntry)),
-        entry.entryTimestamp
-      )
-      const p = (n: number) => `$${base + n}`
-      return `(${p(0)},${p(1)},${p(2)},${p(3)},${p(4)},${p(5)},${p(6)},${p(7)},${p(8)},${p(9)},${p(10)},${p(11)},${p(12)},${p(13)},${p(14)},${p(15)},${p(16)}::jsonb,${p(17)},now())`
-    })
-    await client.query(
-      `
-        INSERT INTO pi_session_entries (
-          session_id, entry_id, parent_entry_id, entry_type,
-          role, custom_type, provider, model_id, thinking_level,
-          target_entry_id, from_entry_id, content_text, summary,
-          is_error, tokens_total, cost_total, raw_entry, entry_timestamp, synced_at
-        ) VALUES ${rowPlaceholders.join(",")}
-        ON CONFLICT (session_id, entry_id) DO UPDATE SET
+// On conflict, refresh every mirrored column and bump the sync timestamp.
+const PI_SESSION_ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) DO UPDATE SET
           parent_entry_id = EXCLUDED.parent_entry_id,
           entry_type = EXCLUDED.entry_type,
           role = EXCLUDED.role,
@@ -712,11 +656,60 @@ async function upsertPiSessionEntriesBatch(
           cost_total = EXCLUDED.cost_total,
           raw_entry = EXCLUDED.raw_entry,
           entry_timestamp = EXCLUDED.entry_timestamp,
-          synced_at = now()
-      `,
-      values
-    )
-  }
+          synced_at = now()`
+
+async function upsertPiSessionEntriesBatch(
+  client: PostgresQueryClient,
+  entries: Array<PiSessionEntryMirrorInput>
+) {
+  // 18 bound columns per row (+ inline now() for synced_at); chunked in
+  // groups of 50 to stay within the pg parameter limit.
+  await insertRowsChunked(client, {
+    table: "pi_session_entries",
+    columns: [
+      "session_id",
+      "entry_id",
+      "parent_entry_id",
+      "entry_type",
+      "role",
+      "custom_type",
+      "provider",
+      "model_id",
+      "thinking_level",
+      "target_entry_id",
+      "from_entry_id",
+      "content_text",
+      "summary",
+      "is_error",
+      "tokens_total",
+      "cost_total",
+      { name: "raw_entry", cast: "jsonb" },
+      "entry_timestamp",
+      { name: "synced_at", expression: "now()" },
+    ],
+    rows: entries,
+    serializeRow: (entry) => [
+      entry.sessionId,
+      entry.entryId,
+      entry.parentEntryId,
+      entry.entryType,
+      entry.role ?? null,
+      entry.customType ?? null,
+      entry.provider ?? null,
+      entry.modelId ?? null,
+      entry.thinkingLevel ?? null,
+      entry.targetEntryId ?? null,
+      entry.fromEntryId ?? null,
+      entry.contentText ?? null,
+      entry.summary ?? null,
+      entry.isError,
+      entry.tokensTotal ?? null,
+      entry.costTotal ?? null,
+      JSON.stringify(sanitizeForJson(entry.rawEntry)),
+      entry.entryTimestamp,
+    ],
+    onConflictSql: PI_SESSION_ENTRIES_ON_CONFLICT_SQL,
+  })
 }
 
 // Incremental sync: only insert/update entries newer than lastSyncedEntryId
