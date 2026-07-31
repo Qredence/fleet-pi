@@ -45,169 +45,136 @@ export function classifyWorkspacePath(
   const workspaceRelativePath = normalizedPath.slice(
     AGENT_WORKSPACE_PREFIX.length
   )
-  const topLevel = segments[1]
-  if (topLevel === "indexes") {
+  const context: ClassificationContext = {
+    segments,
+    workspaceRelativePath,
+    fileName,
+  }
+
+  const rule = CLASSIFICATION_RULES.find((entry) => entry.match(context))
+  if (!rule) {
     return null
   }
 
-  const parserKind = resolveParserKind(fileName, normalizedPath)
-
-  if (workspaceRelativePath === "manifest.json") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "manifest",
-      "workspace-manifest",
-      "canonical-files",
-      "manifest-json"
-    )
-  }
-
-  if (topLevel === "memory") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "memory",
-      resolveMemoryPathType(segments, fileName),
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "plans") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "plan",
-      "plan",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "skills") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "skill",
-      fileName === "SKILL.md" ? "skill-definition" : "skill-support",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "evals") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "eval",
-      "eval",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "artifacts") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "artifact",
-      "artifact",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "pi") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "pi-resource",
-      "workspace-pi-resource",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "scratch") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "scratch",
-      "scratch",
-      "temporary-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "system") {
-    if (segments.length === 3 && CANONICAL_SYSTEM_POLICY_FILES.has(fileName)) {
-      return createClassification(
-        normalizedPath,
-        workspaceRelativePath,
-        "policy",
-        "policy",
-        "canonical-files",
-        parserKind
-      )
-    }
-
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "unknown",
-      "workspace-system",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (topLevel === "policies") {
+  const details = rule.classify(context)
+  if (!details) {
     return null
-  }
-
-  if (topLevel === "instructions") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "unknown",
-      "instruction",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (workspaceRelativePath === "README.md") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "unknown",
-      "workspace-readme",
-      "canonical-files",
-      parserKind
-    )
-  }
-
-  if (workspaceRelativePath === "index.md") {
-    return createClassification(
-      normalizedPath,
-      workspaceRelativePath,
-      "unknown",
-      "workspace-index",
-      "canonical-files",
-      parserKind
-    )
   }
 
   return createClassification(
     normalizedPath,
     workspaceRelativePath,
-    "unknown",
-    "workspace-unknown",
-    "canonical-files",
-    parserKind
+    details.category,
+    details.pathType,
+    details.sourceOfTruth,
+    resolveParserKind(fileName, normalizedPath)
   )
 }
+
+type ClassificationDetails = {
+  category: WorkspacePathClassification["category"]
+  pathType: WorkspacePathClassification["pathType"]
+  sourceOfTruth: WorkspacePathClassification["sourceOfTruth"]
+}
+
+interface ClassificationContext {
+  segments: Array<string>
+  workspaceRelativePath: string
+  fileName: string
+}
+
+interface ClassificationRule {
+  match: (context: ClassificationContext) => boolean
+  classify: (context: ClassificationContext) => ClassificationDetails | null
+}
+
+function matchTopLevel(topLevel: string) {
+  return (context: ClassificationContext) => context.segments[1] === topLevel
+}
+
+function matchWorkspacePath(workspaceRelativePath: string) {
+  return (context: ClassificationContext) =>
+    context.workspaceRelativePath === workspaceRelativePath
+}
+
+function simpleRule(
+  match: ClassificationRule["match"],
+  details: ClassificationDetails
+): ClassificationRule {
+  return { match, classify: () => details }
+}
+
+const CLASSIFICATION_RULES: Array<ClassificationRule> = [
+  { match: matchTopLevel("indexes"), classify: () => null },
+  simpleRule(matchWorkspacePath("manifest.json"), {
+    category: "manifest",
+    pathType: "workspace-manifest",
+    sourceOfTruth: "canonical-files",
+  }),
+  {
+    match: matchTopLevel("memory"),
+    classify: (context) => ({
+      category: "memory",
+      pathType: resolveMemoryPathType(context.segments, context.fileName),
+      sourceOfTruth: "canonical-files",
+    }),
+  },
+  simpleRule(matchTopLevel("plans"), {
+    category: "plan",
+    pathType: "plan",
+    sourceOfTruth: "canonical-files",
+  }),
+  {
+    match: matchTopLevel("skills"),
+    classify: (context) => ({
+      category: "skill",
+      pathType: resolveSkillPathType(context.fileName),
+      sourceOfTruth: "canonical-files",
+    }),
+  },
+  simpleRule(matchTopLevel("evals"), {
+    category: "eval",
+    pathType: "eval",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(matchTopLevel("artifacts"), {
+    category: "artifact",
+    pathType: "artifact",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(matchTopLevel("pi"), {
+    category: "pi-resource",
+    pathType: "workspace-pi-resource",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(matchTopLevel("scratch"), {
+    category: "scratch",
+    pathType: "scratch",
+    sourceOfTruth: "temporary-files",
+  }),
+  { match: matchTopLevel("system"), classify: resolveSystemClassification },
+  { match: matchTopLevel("policies"), classify: () => null },
+  simpleRule(matchTopLevel("instructions"), {
+    category: "unknown",
+    pathType: "instruction",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(matchWorkspacePath("README.md"), {
+    category: "unknown",
+    pathType: "workspace-readme",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(matchWorkspacePath("index.md"), {
+    category: "unknown",
+    pathType: "workspace-index",
+    sourceOfTruth: "canonical-files",
+  }),
+  simpleRule(() => true, {
+    category: "unknown",
+    pathType: "workspace-unknown",
+    sourceOfTruth: "canonical-files",
+  }),
+]
 
 export function parseWorkspaceFile(
   classification: WorkspacePathClassification,
@@ -263,6 +230,31 @@ function resolveMemoryPathType(segments: Array<string>, fileName: string) {
   return "workspace-unknown"
 }
 
+function resolveSkillPathType(fileName: string): WorkspacePathType {
+  return fileName === "SKILL.md" ? "skill-definition" : "skill-support"
+}
+
+function resolveSystemClassification(
+  context: ClassificationContext
+): ClassificationDetails {
+  if (
+    context.segments.length === 3 &&
+    CANONICAL_SYSTEM_POLICY_FILES.has(context.fileName)
+  ) {
+    return {
+      category: "policy",
+      pathType: "policy",
+      sourceOfTruth: "canonical-files",
+    }
+  }
+
+  return {
+    category: "unknown",
+    pathType: "workspace-system",
+    sourceOfTruth: "canonical-files",
+  }
+}
+
 function resolveParserKind(
   fileName: string,
   canonicalPath: string
@@ -283,94 +275,66 @@ function resolveParserKind(
   return "text"
 }
 
-function parseManifestWorkspaceFile(
+type WorkspaceParseBaseMetadata = {
+  category: WorkspacePathClassification["category"]
+  canonicalPath: string
+  pathType: WorkspacePathClassification["pathType"]
+  sourceOfTruth: WorkspacePathClassification["sourceOfTruth"]
+}
+
+interface WorkspaceParseSpec {
+  title: string
+  buildSuccess: (
+    baseMetadata: WorkspaceParseBaseMetadata
+  ) => WorkspaceSemanticParseResult
+}
+
+export function parseWithFallback(
   classification: WorkspacePathClassification,
-  content: string
+  content: string,
+  spec: WorkspaceParseSpec
 ): WorkspaceSemanticParseResult {
-  const baseMetadata = {
+  const baseMetadata = createParseBaseMetadata(classification)
+
+  try {
+    return spec.buildSuccess(baseMetadata)
+  } catch (error) {
+    const parseError = error instanceof Error ? error.message : String(error)
+    const metadata = { ...baseMetadata, valid: false, parseError }
+    return {
+      parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
+      parserKind: classification.parserKind,
+      title: spec.title,
+      summary: createSummary(content),
+      contentText: content,
+      metadata,
+      records: [
+        createRecord("document", "document", spec.title, content, metadata, 0),
+      ],
+    }
+  }
+}
+
+function createParseBaseMetadata(
+  classification: WorkspacePathClassification
+): WorkspaceParseBaseMetadata {
+  return {
     category: classification.category,
     canonicalPath: classification.canonicalPath,
     pathType: classification.pathType,
     sourceOfTruth: classification.sourceOfTruth,
   }
+}
 
-  try {
-    const manifest = workspaceManifestSchema.parse(JSON.parse(content))
-    const records: Array<WorkspaceSemanticRecord> = [
-      createRecord(
-        "document",
-        "document",
-        "Agent Workspace Manifest",
-        content,
-        {
-          ...baseMetadata,
-          manifestVersion: manifest.version,
-          workspaceRoot: manifest.workspaceRoot,
-          sectionCount: manifest.sections.length,
-          policyCount: manifest.policies.length,
-        },
-        0
-      ),
-      ...manifest.sections.map((section, index) =>
-        createRecord(
-          `section:${section.name}`,
-          "manifest-section",
-          section.name,
-          `${section.path} (${section.kind})`,
-          {
-            ...baseMetadata,
-            name: section.name,
-            path: section.path,
-            kind: section.kind,
-          },
-          index + 1
-        )
-      ),
-      ...manifest.policies.map((policy, index) =>
-        createRecord(
-          `policy:${policy.key}`,
-          "manifest-policy",
-          policy.key,
-          policy.path,
-          {
-            ...baseMetadata,
-            key: policy.key,
-            path: policy.path,
-          },
-          manifest.sections.length + index + 1
-        )
-      ),
-    ]
-
-    return {
-      parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
-      parserKind: classification.parserKind,
-      title: "Agent Workspace Manifest",
-      summary: `Workspace manifest with ${manifest.sections.length} sections and ${manifest.policies.length} policies.`,
-      contentText: content,
-      metadata: {
-        ...baseMetadata,
-        valid: true,
-        manifestVersion: manifest.version,
-        workspaceRoot: manifest.workspaceRoot,
-        sectionCount: manifest.sections.length,
-        policyCount: manifest.policies.length,
-      },
-      records,
-    }
-  } catch (error) {
-    return {
-      parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
-      parserKind: classification.parserKind,
-      title: "Agent Workspace Manifest",
-      summary: createSummary(content),
-      contentText: content,
-      metadata: {
-        ...baseMetadata,
-        valid: false,
-        parseError: error instanceof Error ? error.message : String(error),
-      },
-      records: [
+function parseManifestWorkspaceFile(
+  classification: WorkspacePathClassification,
+  content: string
+): WorkspaceSemanticParseResult {
+  return parseWithFallback(classification, content, {
+    title: "Agent Workspace Manifest",
+    buildSuccess(baseMetadata) {
+      const manifest = workspaceManifestSchema.parse(JSON.parse(content))
+      const records: Array<WorkspaceSemanticRecord> = [
         createRecord(
           "document",
           "document",
@@ -378,101 +342,120 @@ function parseManifestWorkspaceFile(
           content,
           {
             ...baseMetadata,
-            valid: false,
-            parseError: error instanceof Error ? error.message : String(error),
+            manifestVersion: manifest.version,
+            workspaceRoot: manifest.workspaceRoot,
+            sectionCount: manifest.sections.length,
+            policyCount: manifest.policies.length,
           },
           0
         ),
-      ],
-    }
-  }
+        ...manifest.sections.map((section, index) =>
+          createRecord(
+            `section:${section.name}`,
+            "manifest-section",
+            section.name,
+            `${section.path} (${section.kind})`,
+            {
+              ...baseMetadata,
+              name: section.name,
+              path: section.path,
+              kind: section.kind,
+            },
+            index + 1
+          )
+        ),
+        ...manifest.policies.map((policy, index) =>
+          createRecord(
+            `policy:${policy.key}`,
+            "manifest-policy",
+            policy.key,
+            policy.path,
+            {
+              ...baseMetadata,
+              key: policy.key,
+              path: policy.path,
+            },
+            manifest.sections.length + index + 1
+          )
+        ),
+      ]
+
+      return {
+        parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
+        parserKind: classification.parserKind,
+        title: "Agent Workspace Manifest",
+        summary: `Workspace manifest with ${manifest.sections.length} sections and ${manifest.policies.length} policies.`,
+        contentText: content,
+        metadata: {
+          ...baseMetadata,
+          valid: true,
+          manifestVersion: manifest.version,
+          workspaceRoot: manifest.workspaceRoot,
+          sectionCount: manifest.sections.length,
+          policyCount: manifest.policies.length,
+        },
+        records,
+      }
+    },
+  })
 }
 
 function parseJsonWorkspaceFile(
   classification: WorkspacePathClassification,
   content: string
 ): WorkspaceSemanticParseResult {
-  const baseMetadata = {
-    category: classification.category,
-    canonicalPath: classification.canonicalPath,
-    pathType: classification.pathType,
-    sourceOfTruth: classification.sourceOfTruth,
-  }
+  const title = titleFromPath(classification.canonicalPath)
 
-  try {
-    const parsed = JSON.parse(content) as unknown
-    const topLevelEntries = isRecord(parsed)
-      ? Object.entries(parsed).slice(0, 12)
-      : []
-    const records: Array<WorkspaceSemanticRecord> = [
-      createRecord(
-        "document",
-        "document",
-        titleFromPath(classification.canonicalPath),
-        content,
-        {
-          ...baseMetadata,
-          valid: true,
-          topLevelType: Array.isArray(parsed) ? "array" : typeof parsed,
-        },
-        0
-      ),
-      ...topLevelEntries.map(([key, value], index) =>
-        createRecord(
-          `key:${key}`,
-          "json-entry",
-          key,
-          summarizeJsonValue(value),
-          {
-            ...baseMetadata,
-            key,
-          },
-          index + 1
-        )
-      ),
-    ]
-
-    return {
-      parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
-      parserKind: classification.parserKind,
-      title: titleFromPath(classification.canonicalPath),
-      summary: createSummary(content),
-      contentText: content,
-      metadata: {
-        ...baseMetadata,
-        valid: true,
-        topLevelKeys: topLevelEntries.map(([key]) => key),
-      },
-      records,
-    }
-  } catch (error) {
-    return {
-      parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
-      parserKind: classification.parserKind,
-      title: titleFromPath(classification.canonicalPath),
-      summary: createSummary(content),
-      contentText: content,
-      metadata: {
-        ...baseMetadata,
-        valid: false,
-        parseError: error instanceof Error ? error.message : String(error),
-      },
-      records: [
+  return parseWithFallback(classification, content, {
+    title,
+    buildSuccess(baseMetadata) {
+      const parsed = JSON.parse(content) as unknown
+      const topLevelEntries = isRecord(parsed)
+        ? Object.entries(parsed).slice(0, 12)
+        : []
+      const records: Array<WorkspaceSemanticRecord> = [
         createRecord(
           "document",
           "document",
-          titleFromPath(classification.canonicalPath),
+          title,
           content,
           {
             ...baseMetadata,
-            valid: false,
-            parseError: error instanceof Error ? error.message : String(error),
+            valid: true,
+            topLevelType: Array.isArray(parsed) ? "array" : typeof parsed,
           },
           0
         ),
-      ],
-    }
-  }
+        ...topLevelEntries.map(([key, value], index) =>
+          createRecord(
+            `key:${key}`,
+            "json-entry",
+            key,
+            summarizeJsonValue(value),
+            {
+              ...baseMetadata,
+              key,
+            },
+            index + 1
+          )
+        ),
+      ]
+
+      return {
+        parserVersion: WORKSPACE_SEMANTIC_PARSER_VERSION,
+        parserKind: classification.parserKind,
+        title,
+        summary: createSummary(content),
+        contentText: content,
+        metadata: {
+          ...baseMetadata,
+          valid: true,
+          topLevelKeys: topLevelEntries.map(([key]) => key),
+        },
+        records,
+      }
+    },
+  })
 }
 
 function parseJsonlWorkspaceFile(
