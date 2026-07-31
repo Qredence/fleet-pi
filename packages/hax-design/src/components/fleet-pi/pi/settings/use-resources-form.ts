@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import {
   formatPackageSourceRows,
@@ -62,11 +62,24 @@ export function useResourcesForm({
     setPackageError(undefined)
   }
 
+  // Reconcile package rows with the settings source-of-truth whenever it is
+  // NOT carrying user edits. The dialog still owns the draft; this hook owns
+  // the derived rows/error so callers don't orchestrate raw setters.
+  useEffect(() => {
+    if (!settings) return
+    if (resourceDirty) return
+
+    const nextPackageRows = formatPackageSourceRows(settings.effective.packages)
+    if (sameJson(packageRows, nextPackageRows) && packageError === undefined) {
+      return
+    }
+    setPackageRows(nextPackageRows)
+    setPackageError(undefined)
+  }, [packageError, packageRows, resourceDirty, settings])
+
   return {
     packageRows,
-    setPackageRows,
     packageError,
-    setPackageError,
     resourceDirty,
     handlePackageRowsChange,
     revertResourceDraft,

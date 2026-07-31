@@ -2,6 +2,7 @@ import { memo, useState } from "react"
 import { cn } from "./utils/cn"
 import { FileAttachment } from "./input/file-attachment"
 import { ImageLightbox } from "./image-lightbox"
+import { isTextPart } from "./utils/chat-message-parts"
 import type { ChatMessage } from "./chat-types"
 
 export type UserMessageProps = {
@@ -14,17 +15,8 @@ export type UserMessageProps = {
   enableImagePreview?: boolean
 }
 
-type MessagePart = ChatMessage["parts"][number]
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
-}
-
-function isTextPart(part: MessagePart): part is { type: "text"; text: string } {
-  return (
-    part.type === "text" &&
-    typeof (part as { text?: unknown }).text === "string"
-  )
 }
 
 function getImageUrlFromPart(part: unknown): string | null {

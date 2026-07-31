@@ -55,7 +55,6 @@ import { ResourcesSection } from "./config-panel/sections/resources-section"
 import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider-section"
 
 import {
-  formatPackageSourceRows,
   modelSettings,
   resourceSettings,
   sameJson,
@@ -135,9 +134,7 @@ function useSettingsForm() {
 
   const {
     packageRows,
-    setPackageRows,
     packageError,
-    setPackageError,
     resourceDirty,
     handlePackageRowsChange,
     revertResourceDraft,
@@ -172,32 +169,21 @@ function useSettingsForm() {
 
   const resetDraft = () => {
     if (!settings) return
-    const nextDraft = settings.effective
-    setDraft(nextDraft)
-    setPackageRows(formatPackageSourceRows(nextDraft.packages))
-    setPackageError(undefined)
+    // Only the draft is owned here; package rows/error reconcile in
+    // useResourcesForm's sync effect once draft settles.
+    setDraft(settings.effective)
   }
 
   useEffect(() => {
     if (!settings) return
 
     const nextDraft = settings.effective
-    const nextPackageRows = formatPackageSourceRows(nextDraft.packages)
 
     if (draft && hasUnsavedChanges) return
-    if (
-      draft &&
-      sameJson(draft, nextDraft) &&
-      sameJson(packageRows, nextPackageRows) &&
-      packageError === undefined
-    ) {
-      return
-    }
+    if (draft && sameJson(draft, nextDraft)) return
 
     setDraft(nextDraft)
-    setPackageRows(nextPackageRows)
-    setPackageError(undefined)
-  }, [draft, hasUnsavedChanges, packageError, packageRows, settings])
+  }, [draft, hasUnsavedChanges, settings])
 
   const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
     if (section === "models" && draft) {

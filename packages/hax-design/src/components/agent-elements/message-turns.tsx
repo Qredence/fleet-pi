@@ -165,7 +165,7 @@ export const AssistantTurn = memo(function AssistantTurn({
   )
 })
 
-export type BuildAssistantElementsOptions = {
+type BuildAssistantElementsOptions = {
   messageId: string
   isLast: boolean
   isStreaming: boolean
