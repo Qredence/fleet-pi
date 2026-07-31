@@ -1,35 +1,130 @@
-import { createContext, useContext } from "react"
+import { createContext, useContext, useMemo } from "react"
 import type { ReactNode } from "react"
 import type { RightPanel } from "../../../lib/canvas-utils"
 import type { RightPanelContentProps } from "./right-panel-registry"
 
-export type RightPanelContextValue = RightPanelContentProps & {
+export type ChatPanelDataContextValue = Pick<
+  RightPanelContentProps,
+  | "activityLabel"
+  | "mode"
+  | "models"
+  | "planLabel"
+  | "queue"
+  | "refreshResources"
+  | "resources"
+  | "resourcesError"
+  | "resourcesLoading"
+  | "selectedModelKey"
+  | "status"
+> & {
   rightPanel: RightPanel
   setRightPanel: (panel: RightPanel) => void
 }
 
-const RightPanelContext = createContext<RightPanelContextValue | null>(null)
+export type WorkspaceTreeContextValue = Pick<
+  RightPanelContentProps,
+  | "loadWorkspaceFile"
+  | "openWorkspacePath"
+  | "refreshWorkspace"
+  | "selectedWorkspacePath"
+  | "setSelectedWorkspacePath"
+  | "workspaceError"
+  | "workspaceLoading"
+  | "workspaceTree"
+>
+
+export type SettingsActionsContextValue = Pick<
+  RightPanelContentProps,
+  | "isLoadingProviders"
+  | "isUpdatingProvider"
+  | "modelCatalog"
+  | "onDiscoverModels"
+  | "onRemoveProvider"
+  | "onThemePreferenceChange"
+  | "onUpdateProvider"
+  | "providers"
+  | "saveSettings"
+  | "settings"
+  | "settingsError"
+  | "settingsLoading"
+  | "themePreference"
+>
+
+export type RightPanelContextValue = ChatPanelDataContextValue &
+  WorkspaceTreeContextValue &
+  SettingsActionsContextValue
+
+const ChatPanelDataContext = createContext<ChatPanelDataContextValue | null>(
+  null
+)
+const WorkspaceTreeContext = createContext<WorkspaceTreeContextValue | null>(
+  null
+)
+const SettingsActionsContext =
+  createContext<SettingsActionsContextValue | null>(null)
 
 export function RightPanelProvider({
-  value,
+  chatPanelData,
   children,
+  settingsActions,
+  workspaceTree,
 }: {
-  value: RightPanelContextValue
+  chatPanelData: ChatPanelDataContextValue
   children: ReactNode
+  settingsActions: SettingsActionsContextValue
+  workspaceTree: WorkspaceTreeContextValue
 }) {
   return (
-    <RightPanelContext.Provider value={value}>
-      {children}
-    </RightPanelContext.Provider>
+    <SettingsActionsContext.Provider value={settingsActions}>
+      <WorkspaceTreeContext.Provider value={workspaceTree}>
+        <ChatPanelDataContext.Provider value={chatPanelData}>
+          {children}
+        </ChatPanelDataContext.Provider>
+      </WorkspaceTreeContext.Provider>
+    </SettingsActionsContext.Provider>
   )
 }
 
-export function useRightPanelContext() {
-  const context = useContext(RightPanelContext)
+export function useChatPanelDataContext() {
+  const context = useContext(ChatPanelDataContext)
   if (!context) {
     throw new Error(
-      "useRightPanelContext must be used within RightPanelProvider"
+      "useChatPanelDataContext must be used within RightPanelProvider"
     )
   }
   return context
+}
+
+export function useWorkspaceTreeContext() {
+  const context = useContext(WorkspaceTreeContext)
+  if (!context) {
+    throw new Error(
+      "useWorkspaceTreeContext must be used within RightPanelProvider"
+    )
+  }
+  return context
+}
+
+export function useSettingsActionsContext() {
+  const context = useContext(SettingsActionsContext)
+  if (!context) {
+    throw new Error(
+      "useSettingsActionsContext must be used within RightPanelProvider"
+    )
+  }
+  return context
+}
+
+/**
+ * Compatibility shim for consumers that still need the full merged value.
+ * Prefer the narrowed hooks where a consumer only reads one slice.
+ */
+export function useRightPanelContext(): RightPanelContextValue {
+  const chatPanelData = useChatPanelDataContext()
+  const workspaceTree = useWorkspaceTreeContext()
+  const settingsActions = useSettingsActionsContext()
+  return useMemo(
+    () => ({ ...chatPanelData, ...workspaceTree, ...settingsActions }),
+    [chatPanelData, workspaceTree, settingsActions]
+  )
 }

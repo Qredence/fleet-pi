@@ -43,7 +43,10 @@ import {
   SidebarProvider,
 } from "../../sidebar"
 
-import { useRightPanelContext } from "../layout/right-panel-context"
+import {
+  useChatPanelDataContext,
+  useSettingsActionsContext,
+} from "../layout/right-panel-context"
 import { DiscreteTabs } from "../primitives/discrete-tab"
 import { PersonalizationSection } from "./config-panel/sections/personalization-section"
 import { ProviderCredentialsSection } from "./config-panel/sections/provider-credentials-section"
@@ -103,19 +106,18 @@ function useSettingsForm() {
   const {
     isLoadingProviders,
     isUpdatingProvider,
-    models,
     modelCatalog,
     onDiscoverModels,
     onRemoveProvider,
     onThemePreferenceChange,
     onUpdateProvider,
     providers = [],
-    resources,
     saveSettings,
     settings,
     settingsLoading,
     themePreference,
-  } = useRightPanelContext()
+  } = useSettingsActionsContext()
+  const { models, resources } = useChatPanelDataContext()
 
   const [draft, setDraft] = useState<ChatPiSettings | null>(null)
   const [savingSection, setSavingSection] = useState<string | null>(null)

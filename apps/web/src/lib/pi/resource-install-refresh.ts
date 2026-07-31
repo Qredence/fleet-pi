@@ -1,4 +1,38 @@
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
+import type { WorkspaceTreeResponse } from "@workspace/pi-protocol/chat-protocol"
+
+export type ResourceInstallRefreshPlan = {
+  shouldRefreshWorkspace: boolean
+  toolCallIds: Array<string>
+}
+
+/**
+ * Pure decision for the resource-install refresh effect: which install tool
+ * calls are new since the last run, and whether the workspace tree needs a
+ * refresh. Returns null when nothing unhandled completed (no refresh).
+ */
+export function planResourceInstallRefresh({
+  handledToolCallIds,
+  messages,
+  shouldLoadWorkspaceTree,
+  workspaceTree,
+}: {
+  handledToolCallIds: ReadonlySet<string>
+  messages: Array<ChatMessage>
+  shouldLoadWorkspaceTree: boolean
+  workspaceTree: WorkspaceTreeResponse | null
+}): ResourceInstallRefreshPlan | null {
+  const toolCallIds = collectCompletedResourceInstallToolCallIds(
+    messages
+  ).filter((toolCallId) => !handledToolCallIds.has(toolCallId))
+
+  if (toolCallIds.length === 0) return null
+
+  return {
+    shouldRefreshWorkspace: workspaceTree !== null || shouldLoadWorkspaceTree,
+    toolCallIds,
+  }
+}
 
 export function collectCompletedResourceInstallToolCallIds(
   messages: Array<ChatMessage>

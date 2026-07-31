@@ -5,7 +5,7 @@ import { GenericTool } from "../../agent-elements/tools/generic-tool"
 import { EditTool } from "../../agent-elements/tools/edit-tool"
 import { toolRegistry } from "../../agent-elements/tools/tool-registry"
 import { resolveWorkspacePathFromToolInput } from "../../../lib/workspace-path-nav"
-import { useRightPanelContext } from "../layout/right-panel-context"
+import { useWorkspaceTreeContext } from "../layout/right-panel-context"
 import {
   PI_TOOL_RENDERERS,
   WorkspaceWriteToolRenderer,
@@ -24,7 +24,7 @@ function getToolInput(part: ToolRendererProps["part"]) {
 export const FleetPiToolRenderer = memo(function FleetPiToolRenderer(
   props: ToolRendererProps
 ) {
-  const { openWorkspacePath } = useRightPanelContext()
+  const { openWorkspacePath } = useWorkspaceTreeContext()
   const partType = props.part.type as string
   const toolInput = getToolInput(props.part)
 
