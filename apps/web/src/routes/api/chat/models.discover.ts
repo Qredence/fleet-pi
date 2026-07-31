@@ -3,28 +3,44 @@ import {
   ChatModelsDiscoverRequestSchema,
   ChatModelsDiscoverResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
-import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+import { isNamedOccInstanceId } from "@workspace/pi-protocol/provider-catalog"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage, loadChatModels } from "@/lib/pi/server"
-import { discoverOpenAiChatCompletionsModels } from "@/lib/pi/runtime/openai-chat-completions-provider"
+import { getOccInstanceById } from "@/lib/db/occ-instances"
 
+/**
+ * Discovers chat models available for the requested provider.
+ *
+ * Named OCC providers expose their configured model, while other providers
+ * expose matching entries from the chat model catalog. Unrecognized providers
+ * return a 400 response.
+ *
+ * @returns An HTTP response containing the provider's available models or an error message.
+ */
 export async function chatModelsDiscoverHandler(request: Request) {
   return withAuthenticatedChatRequest(request, async ({ userId }) => {
     try {
       const body = ChatModelsDiscoverRequestSchema.parse(await request.json())
 
-      if (body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) {
-        const discovered = await discoverOpenAiChatCompletionsModels(userId)
-        const models = discovered.map((entry) => ({
-          key: `${OPENAI_CHAT_COMPLETIONS_PROVIDER_ID}/${entry.id}`,
-          provider: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-          id: entry.id,
-          name: entry.name,
-          reasoning: false,
-          input: ["text" as const],
-          available: true,
-        }))
+      // A named OCC instance: expose only its configured model id (do not
+      // ingest full remote /models catalogs for known gateways).
+      if (isNamedOccInstanceId(body.providerId)) {
+        const instance = await getOccInstanceById(userId, body.providerId)
+        if (!instance) {
+          return Response.json({ message: "Unknown provider" }, { status: 400 })
+        }
+        const models = [
+          {
+            key: `${instance.id}/${instance.modelId}`,
+            provider: instance.id,
+            id: instance.modelId,
+            name: instance.modelId,
+            reasoning: false,
+            input: ["text" as const],
+            available: true,
+          },
+        ]
         return Response.json(
           ChatModelsDiscoverResponseSchema.parse({
             providerId: body.providerId,

@@ -10,6 +10,13 @@ import { normalizeChatThinkingLevel } from "./thinking-level"
 import type { ActiveSessionRecord } from "./active-sessions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
 
+/**
+ * Reloads a session runtime's settings, project configuration, resources, model selection, and authentication.
+ *
+ * @param record - The active session record whose runtime should be reloaded
+ * @param update - Optional settings update that may require resource reloading and reapplication of the configured default model
+ * @param projectRoot - Optional project root used to resolve project settings
+ */
 async function reloadRuntimeForRecord(
   record: ActiveSessionRecord,
   update?: ChatPiSettingsUpdate,
@@ -35,18 +42,22 @@ async function reloadRuntimeForRecord(
     const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
       runtime.services.settingsManager
     )
-    const defaultThinkingLevel =
-      runtime.services.settingsManager.getDefaultThinkingLevel()
+    // Only (re)assert a model the user actually configured; never apply a
+    // platform default when none is set.
+    if (defaultProvider && defaultModel) {
+      const defaultThinkingLevel =
+        runtime.services.settingsManager.getDefaultThinkingLevel()
 
-    await applyModelSelection(
-      runtime,
-      {
-        provider: defaultProvider,
-        id: defaultModel,
-        thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
-      },
-      record.userId
-    )
+      await applyModelSelection(
+        runtime,
+        {
+          provider: defaultProvider,
+          id: defaultModel,
+          thinkingLevel: normalizeChatThinkingLevel(defaultThinkingLevel),
+        },
+        record.userId
+      )
+    }
   }
 
   await applyRuntimeAuth(runtime.services, { userId: record.userId })

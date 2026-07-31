@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
 import {
-  FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
   FLEET_PI_SHARED_PROJECT_SETTINGS,
   getFleetBaseProjectSettings,
 } from "../fleet-default-project-settings"
@@ -30,10 +29,10 @@ describe("project-settings-merge", () => {
     expect(
       compactProjectSettingsForPersist(
         {
-          ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
+          ...FLEET_PI_SHARED_PROJECT_SETTINGS,
           enabledModels: ["google/*", "/*"],
         },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({})
   })
@@ -41,8 +40,8 @@ describe("project-settings-merge", () => {
   it("returns empty overrides when merged equals base", () => {
     expect(
       compactProjectSettingsForPersist(
-        { ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        { ...FLEET_PI_SHARED_PROJECT_SETTINGS },
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({})
   })
@@ -51,12 +50,12 @@ describe("project-settings-merge", () => {
     expect(
       compactProjectSettingsForPersist(
         {
-          ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
+          ...FLEET_PI_SHARED_PROJECT_SETTINGS,
           skills: ["../agent-workspace/pi/skills"],
           prompts: ["../agent-workspace/pi/prompts"],
           extensions: ["../agent-workspace/pi/extensions/enabled"],
         },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({})
   })
@@ -65,10 +64,10 @@ describe("project-settings-merge", () => {
     expect(
       compactProjectSettingsForPersist(
         {
-          ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
+          ...FLEET_PI_SHARED_PROJECT_SETTINGS,
           skills: ["../agent-workspace/pi/skills/custom-skill"],
         },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({
       skills: ["../agent-workspace/pi/skills/custom-skill"],
@@ -79,14 +78,14 @@ describe("project-settings-merge", () => {
     expect(
       compactProjectSettingsForPersist(
         {
-          ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
+          ...FLEET_PI_SHARED_PROJECT_SETTINGS,
           extensions: [
             "extensions/project-inventory",
             "../agent-workspace/pi/extensions/enabled/foo.ts",
           ],
           skills: ["skills", "../agent-workspace/pi/skills/helper"],
         },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({
       extensions: ["../agent-workspace/pi/extensions/enabled/foo.ts"],
@@ -96,35 +95,37 @@ describe("project-settings-merge", () => {
 
   it("merges base settings with overrides", () => {
     expect(
-      mergeProjectSettingsRecords(FLEET_PI_DEPLOYED_PROJECT_SETTINGS, {
+      mergeProjectSettingsRecords(FLEET_PI_SHARED_PROJECT_SETTINGS, {
         defaultModel: "gemini-3.1-pro-preview",
       }).defaultModel
     ).toBe("gemini-3.1-pro-preview")
   })
 
-  it("preserves a deny-all enabledModels override on deployed base settings", () => {
+  it("preserves a deny-all enabledModels override on base settings", () => {
     expect(
       compactProjectSettingsForPersist(
         {
-          ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
+          ...FLEET_PI_SHARED_PROJECT_SETTINGS,
           enabledModels: [],
         },
-        FLEET_PI_DEPLOYED_PROJECT_SETTINGS
+        FLEET_PI_SHARED_PROJECT_SETTINGS
       )
     ).toEqual({ enabledModels: [] })
   })
 
-  it("omits gateway model defaults from local base settings", () => {
+  it("omits model defaults everywhere: base settings carry no default provider/model locally or deployed", () => {
     delete process.env.VERCEL
-    expect(getFleetBaseProjectSettings()).toEqual({
-      ...FLEET_PI_SHARED_PROJECT_SETTINGS,
-    })
-  })
+    const localBase = getFleetBaseProjectSettings()
+    expect(localBase).toEqual({ ...FLEET_PI_SHARED_PROJECT_SETTINGS })
+    expect(localBase).not.toHaveProperty("defaultProvider")
+    expect(localBase).not.toHaveProperty("defaultModel")
+    expect(localBase).not.toHaveProperty("enabledModels")
 
-  it("includes gateway model defaults in deployed base settings", () => {
     process.env.VERCEL = "1"
-    expect(getFleetBaseProjectSettings()).toEqual({
-      ...FLEET_PI_DEPLOYED_PROJECT_SETTINGS,
-    })
+    const deployedBase = getFleetBaseProjectSettings()
+    expect(deployedBase).toEqual({ ...FLEET_PI_SHARED_PROJECT_SETTINGS })
+    expect(deployedBase).not.toHaveProperty("defaultProvider")
+    expect(deployedBase).not.toHaveProperty("defaultModel")
+    expect(deployedBase).not.toHaveProperty("enabledModels")
   })
 })

@@ -1,13 +1,7 @@
 import { mirrorMetrics } from "../../db/pi-session-mirror"
 import { CHAT_TOOL_ALLOWLIST } from "../plan-mode"
-import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./types"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
-
-/** Local anonymous-dev fallback (env/BYOK providers, e.g. GEMINI_API_KEY). */
-const LOCAL_DEFAULT_PROVIDER = "google"
-const LOCAL_DEFAULT_MODEL = "gemini-3.5-flash"
 
 type ModelDefaultSettingsLike = {
   getDefaultModel: () => string | undefined
@@ -18,6 +12,12 @@ type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
 }
 
+/**
+ * Collects and deduplicates workspace, service, resource, tool, and database synchronization diagnostics.
+ *
+ * @param modelFallbackMessage - Optional message describing a model fallback.
+ * @returns An array of unique diagnostic messages.
+ */
 export function collectDiagnostics(
   services: AgentSessionServices,
   modelFallbackMessage?: string
@@ -98,17 +98,17 @@ export function collectDiagnostics(
   return [...diagnostics]
 }
 
+/**
+ * Resolves the explicitly configured default provider and model.
+ *
+ * @returns The configured provider and model, preserving `undefined` for values that are not set
+ */
 export function resolveDefaultModelSelection(
   settingsManager: ModelDefaultSettingsLike
-) {
-  const deployed = isDeployedChatRuntimeSurface()
+): { defaultProvider?: string; defaultModel?: string } {
   return {
-    defaultProvider:
-      settingsManager.getDefaultProvider() ??
-      (deployed ? DEFAULT_PROVIDER : LOCAL_DEFAULT_PROVIDER),
-    defaultModel:
-      settingsManager.getDefaultModel() ??
-      (deployed ? DEFAULT_MODEL : LOCAL_DEFAULT_MODEL),
+    defaultProvider: settingsManager.getDefaultProvider(),
+    defaultModel: settingsManager.getDefaultModel(),
   }
 }
 

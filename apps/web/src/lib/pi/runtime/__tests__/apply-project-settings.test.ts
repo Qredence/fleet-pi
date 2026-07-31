@@ -1,107 +1,102 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { applyProjectSettingsToServices } from "../apply-project-settings"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+
+const originalVercel = process.env.VERCEL
+
+afterEach(() => {
+  if (originalVercel === undefined) delete process.env.VERCEL
+  else process.env.VERCEL = originalVercel
+})
+
+type SettingsStore = Record<string, unknown>
+
+/**
+ * Thin project-layer SettingsManager stub: `updateProjectSettings` mirrors Pi's
+ * behavior (read-modify-write on the project layer). It never touches a global
+ * layer — deployed masking must land in project scope, not the user's global
+ * `~/.pi/agent/settings.json`.
+ */
+function createManagerStub(initialProject: SettingsStore = {}) {
+  const state = { project: structuredClone(initialProject) }
+  const updateProjectSettings = vi.fn(
+    (_field: string, update: (settings: SettingsStore) => void) => {
+      const next = structuredClone(state.project)
+      update(next)
+      state.project = next
+    }
+  )
+  return {
+    state,
+    updateProjectSettings,
+    setDefaultProvider: vi.fn(),
+    setDefaultModel: vi.fn(),
+    applyOverrides: vi.fn(),
+    // Unused setters for the apply path.
+    setProjectPackages: vi.fn(),
+    setProjectSkillPaths: vi.fn(),
+    setProjectExtensionPaths: vi.fn(),
+    setProjectPromptTemplatePaths: vi.fn(),
+    setProjectThemePaths: vi.fn(),
+    setEnableSkillCommands: vi.fn(),
+    setEnabledModels: vi.fn(),
+    setDefaultThinkingLevel: vi.fn(),
+    setSteeringMode: vi.fn(),
+    setFollowUpMode: vi.fn(),
+  }
+}
+
+function servicesFor(manager: ReturnType<typeof createManagerStub>) {
+  return { settingsManager: manager } as unknown as AgentSessionServices
+}
 
 describe("applyProjectSettingsToServices", () => {
-  it("applies compaction, retry, and transport via applyOverrides", () => {
-    const applyOverrides = vi.fn()
-    const services = {
-      settingsManager: {
-        applyOverrides,
-        setProjectPackages: vi.fn(),
-        setEnableSkillCommands: vi.fn(),
-        setSteeringMode: vi.fn(),
-        setFollowUpMode: vi.fn(),
-      },
-    }
+  it("deletes project defaultProvider/defaultModel on deployed surfaces when Fleet settings have none", () => {
+    process.env.VERCEL = "1"
+    const manager = createManagerStub({
+      defaultProvider: "opencode",
+      defaultModel: "deepseek-v4-flash-free",
+    })
 
-    applyProjectSettingsToServices(services as never, {
-      compaction: {
-        enabled: false,
-        reserveTokens: 4096,
-        keepRecentTokens: 8192,
-      },
-      retry: {
-        enabled: false,
-        maxRetries: 5,
-        baseDelayMs: 1500,
-      },
-      transport: "sse",
+    applyProjectSettingsToServices(servicesFor(manager), {
+      packages: ["npm:pi-autoresearch"],
     })
-    expect(applyOverrides).toHaveBeenCalledWith({
-      compaction: {
-        enabled: false,
-        reserveTokens: 4096,
-        keepRecentTokens: 8192,
-      },
-      retry: {
-        enabled: false,
-        maxRetries: 5,
-        baseDelayMs: 1500,
-      },
-      transport: "sse",
-    })
+
+    // Clearing lands in the project layer (survives reload), never a global write.
+    expect(manager.state.project).not.toHaveProperty("defaultProvider")
+    expect(manager.state.project).not.toHaveProperty("defaultModel")
+    expect(manager.setDefaultProvider).not.toHaveBeenCalled()
+    expect(manager.setDefaultModel).not.toHaveBeenCalled()
   })
 
-  it("applies enabledModels via project settings so Neon overrides win over disk", () => {
-    const updateProjectSettings = vi.fn(
-      (_field: string, update: (settings: Record<string, unknown>) => void) => {
-        const project: Record<string, unknown> = {
-          enabledModels: ["openai-chat-completions/stale"],
-        }
-        update(project)
-        expect(project.enabledModels).toEqual(["google/gemini-3.5-flash"])
-      }
-    )
-    const setEnabledModels = vi.fn()
+  it("applies a Fleet-configured default provider/model in project scope", () => {
+    process.env.VERCEL = "1"
+    const manager = createManagerStub()
 
-    applyProjectSettingsToServices(
-      {
-        settingsManager: {
-          applyOverrides: vi.fn(),
-          setProjectPackages: vi.fn(),
-          setEnableSkillCommands: vi.fn(),
-          setSteeringMode: vi.fn(),
-          setFollowUpMode: vi.fn(),
-          updateProjectSettings,
-          setEnabledModels,
-        },
-      } as never,
-      { enabledModels: ["google/gemini-3.5-flash"] }
-    )
+    applyProjectSettingsToServices(servicesFor(manager), {
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "qwen35-122b-a10b",
+    })
 
-    expect(updateProjectSettings).toHaveBeenCalledWith(
-      "enabledModels",
-      expect.any(Function)
+    expect(manager.state.project.defaultProvider).toBe(
+      "openai-chat-completions"
     )
-    expect(setEnabledModels).not.toHaveBeenCalled()
+    expect(manager.state.project.defaultModel).toBe("qwen35-122b-a10b")
   })
 
-  it("clears project enabledModels when override is null (allow-all)", () => {
-    const updateProjectSettings = vi.fn(
-      (_field: string, update: (settings: Record<string, unknown>) => void) => {
-        const project: Record<string, unknown> = {
-          enabledModels: ["openai-chat-completions/stale"],
-        }
-        update(project)
-        expect(project.enabledModels).toBeUndefined()
-      }
-    )
+  it("leaves the project default untouched in local dev (non-deployed)", () => {
+    delete process.env.VERCEL
+    const manager = createManagerStub({
+      defaultProvider: "opencode",
+      defaultModel: "deepseek-v4-flash-free",
+    })
 
-    applyProjectSettingsToServices(
-      {
-        settingsManager: {
-          applyOverrides: vi.fn(),
-          setProjectPackages: vi.fn(),
-          setEnableSkillCommands: vi.fn(),
-          setSteeringMode: vi.fn(),
-          setFollowUpMode: vi.fn(),
-          updateProjectSettings,
-          setEnabledModels: vi.fn(),
-        },
-      } as never,
-      { enabledModels: null }
-    )
+    applyProjectSettingsToServices(servicesFor(manager), {
+      packages: ["npm:pi-autoresearch"],
+    })
 
-    expect(updateProjectSettings).toHaveBeenCalled()
+    expect(manager.state.project.defaultProvider).toBe("opencode")
+    expect(manager.state.project.defaultModel).toBe("deepseek-v4-flash-free")
+    expect(manager.updateProjectSettings).not.toHaveBeenCalled()
   })
 })

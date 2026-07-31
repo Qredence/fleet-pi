@@ -1,7 +1,6 @@
 import { mkdirSync, realpathSync } from "node:fs"
 import { resolve } from "node:path"
 import { createSessionServices } from "./runtime/session-factory"
-import { DEFAULT_MODEL } from "./runtime/types"
 import {
   collectDiagnostics,
   resolveDefaultModelSelection,
@@ -14,7 +13,6 @@ import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export {
-  DEFAULT_MODEL,
   collectDiagnostics,
   createSessionServices,
   resolveDefaultModelSelection,

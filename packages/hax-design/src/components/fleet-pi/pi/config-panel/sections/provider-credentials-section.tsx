@@ -25,8 +25,8 @@ import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
 import {
   CREDENTIAL_UI_PROVIDERS,
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   PROVIDER_METADATA,
+  isOccProviderId,
 } from "../shared/provider-metadata"
 import { ProviderBrandIcon } from "../shared/provider-brand-icon"
 import { ProviderCredentialFields } from "../shared/provider-credential-fields"
@@ -38,10 +38,23 @@ import type {
   ChatProviderUpdateResponse,
 } from "../../../../../lib/pi/chat-protocol"
 
+/**
+ * Determines whether a provider uses the OpenAI-compatible chat completions API.
+ *
+ * @param providerId - The provider identifier to evaluate
+ * @returns `true` if the provider uses the OpenAI-compatible chat completions API, `false` otherwise.
+ */
 function isOpenAiChatCompletionsProvider(providerId: string) {
-  return providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+  return isOccProviderId(providerId)
 }
 
+/**
+ * Determines whether a provider matches a search query by name, environment variable, ID, or relevant provider terms.
+ *
+ * @param provider - The provider to search
+ * @param query - The search text
+ * @returns `true` if the provider matches the query, `false` otherwise
+ */
 function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
   if (!query) return true
   const haystack = [
@@ -57,6 +70,15 @@ function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
   return haystack.includes(query)
 }
 
+/**
+ * Manages provider credential configuration, including adding, updating, searching, and removing providers.
+ *
+ * @param isLoading - Whether provider credentials are loading.
+ * @param isPending - Whether a credential update or removal is pending.
+ * @param onRemoveProvider - Handles provider credential removal.
+ * @param onUpdateProvider - Handles provider credential updates.
+ * @param providers - The available provider credential information.
+ */
 export function ProviderCredentialsSection({
   isLoading,
   isPending,
@@ -75,9 +97,11 @@ export function ProviderCredentialsSection({
   providers: Array<ChatProviderInfo>
 }) {
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
+  const [editingIsNewOccInstance, setEditingIsNewOccInstance] = useState(false)
   const [apiKey, setApiKey] = useState("")
   const [baseUrl, setBaseUrl] = useState("")
   const [modelId, setModelId] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [attemptedSave, setAttemptedSave] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -91,9 +115,14 @@ export function ProviderCredentialsSection({
     []
   )
 
+  // Named OCC instances (id `openai-chat-completions+…`) are not in the static
+  // catalog but still editable credential rows.
   const credentialProviders = useMemo(
     () =>
-      providers.filter((provider) => credentialProviderIds.has(provider.id)),
+      providers.filter(
+        (provider) =>
+          credentialProviderIds.has(provider.id) || isOccProviderId(provider.id)
+      ),
     [credentialProviderIds, providers]
   )
 
@@ -102,8 +131,16 @@ export function ProviderCredentialsSection({
     [credentialProviders]
   )
 
+  // The generic OCC entry stays "unconfigured" so users can add further named
+  // instances even after configuring one.
   const unconfiguredProviders = useMemo(
-    () => credentialProviders.filter((provider) => !provider.isConfigured),
+    () =>
+      credentialProviders.filter(
+        (provider) =>
+          !provider.isConfigured ||
+          (provider.id === "openai-chat-completions" &&
+            provider.providerFamily === undefined)
+      ),
     [credentialProviders]
   )
 
@@ -145,20 +182,28 @@ export function ProviderCredentialsSection({
     setApiKey("")
     setBaseUrl("")
     setModelId("")
+    setDisplayName("")
     setShowPassword(false)
     setAttemptedSave(false)
   }
 
   const closeEditor = () => {
     setEditingProvider(null)
+    setEditingIsNewOccInstance(false)
     resetEditor()
   }
 
-  const openEditor = (providerId: string) => {
+  const openEditor = (
+    providerId: string,
+    opts?: { newOccInstance?: boolean }
+  ) => {
     setAddPickerOpen(false)
     setAddPickerQuery("")
     setEditingProvider(providerId)
+    setEditingIsNewOccInstance(opts?.newOccInstance === true)
     resetEditor()
+    const existing = providers.find((provider) => provider.id === providerId)
+    setDisplayName(existing?.displayName ?? "")
   }
 
   const openAddPicker = () => {
@@ -173,7 +218,10 @@ export function ProviderCredentialsSection({
   }
 
   const selectProviderFromPicker = (providerId: string) => {
-    openEditor(providerId)
+    // Picker entries are templates; an OCC pick starts a new named instance.
+    openEditor(providerId, {
+      newOccInstance: isOccProviderId(providerId),
+    })
   }
 
   const handleSave = async (providerId: string) => {
@@ -181,8 +229,11 @@ export function ProviderCredentialsSection({
 
     setAttemptedSave(true)
     const openAiChat = isOpenAiChatCompletionsProvider(providerId)
+    const isNamedOcc = openAiChat && providerId !== "openai-chat-completions"
+    const isOccLike = openAiChat && (isNamedOcc || editingIsNewOccInstance)
     if (!apiKey.trim()) return
     if (openAiChat && (!baseUrl.trim() || !modelId.trim())) return
+    if (isOccLike && !displayName.trim()) return
 
     try {
       await onUpdateProvider({
@@ -192,6 +243,9 @@ export function ProviderCredentialsSection({
           ? {
               baseUrl: baseUrl.trim(),
               modelId: modelId.trim(),
+              // Name is only meaningful for a named instance (new or existing).
+              ...(isOccLike ? { displayName: displayName.trim() } : {}),
+              ...(editingIsNewOccInstance ? { createOccInstance: true } : {}),
             }
           : {}),
       })
@@ -223,11 +277,24 @@ export function ProviderCredentialsSection({
     }
   }
 
-  const canSave =
-    apiKey.trim().length > 0 &&
-    (!editingProvider ||
-      !isOpenAiChatCompletionsProvider(editingProvider) ||
-      (baseUrl.trim().length > 0 && modelId.trim().length > 0))
+  const canSave = useMemo(() => {
+    if (apiKey.trim().length === 0) return false
+    if (!editingProvider) return true
+    if (!isOpenAiChatCompletionsProvider(editingProvider)) return true
+    if (baseUrl.trim().length === 0 || modelId.trim().length === 0) return false
+    const isNamedOcc = editingProvider !== "openai-chat-completions"
+    if (isNamedOcc || editingIsNewOccInstance) {
+      return displayName.trim().length > 0
+    }
+    return true
+  }, [
+    apiKey,
+    baseUrl,
+    modelId,
+    displayName,
+    editingProvider,
+    editingIsNewOccInstance,
+  ])
 
   return (
     <SettingsPane
@@ -251,6 +318,7 @@ export function ProviderCredentialsSection({
           apiKey={apiKey}
           baseUrl={baseUrl}
           modelId={modelId}
+          displayName={displayName}
           showPassword={showPassword}
           attemptedSave={attemptedSave}
           isPending={isPending}
@@ -258,6 +326,7 @@ export function ProviderCredentialsSection({
           onApiKeyChange={setApiKey}
           onBaseUrlChange={setBaseUrl}
           onModelIdChange={setModelId}
+          onDisplayNameChange={setDisplayName}
           onTogglePassword={() => setShowPassword((current) => !current)}
           onBack={openAddPicker}
           onCancel={closeEditor}
@@ -322,10 +391,9 @@ export function ProviderCredentialsSection({
             <div className="flex flex-col gap-1.5">
               {filteredActiveProviders.map((provider) => {
                 const isEditing = editingProvider === provider.id
-                const meta = PROVIDER_METADATA[provider.id] ?? {
-                  placeholder: "Enter credentials…",
-                  help: "Stored securely in your local environment overrides.",
-                }
+                const meta =
+                  PROVIDER_METADATA[provider.id] ??
+                  PROVIDER_METADATA["openai-chat-completions"]
                 const openAiChat = isOpenAiChatCompletionsProvider(provider.id)
 
                 return (
@@ -334,14 +402,14 @@ export function ProviderCredentialsSection({
                       interactive={false}
                       icon={
                         <ProviderBrandIcon
-                          provider={provider.id}
+                          provider={provider.providerFamily ?? provider.id}
                           className="text-foreground/80"
                         />
                       }
                       title={provider.name}
                       subtitle={
                         openAiChat
-                          ? "API key + base URL + model name"
+                          ? "OpenAI-compatible · API key + base URL + model name"
                           : provider.envVarName
                       }
                       trailing={
@@ -395,12 +463,20 @@ export function ProviderCredentialsSection({
                           apiKey={apiKey}
                           baseUrl={baseUrl}
                           modelId={modelId}
+                          displayName={displayName}
                           openAiChat={openAiChat}
                           placeholder={meta.placeholder}
                           showPassword={showPassword}
                           onApiKeyChange={setApiKey}
                           onBaseUrlChange={setBaseUrl}
                           onModelIdChange={setModelId}
+                          // Name is only editable on a named OCC instance, not
+                          // on the reserved default OCC slot.
+                          onDisplayNameChange={
+                            provider.providerFamily === undefined
+                              ? undefined
+                              : setDisplayName
+                          }
                           onTogglePassword={() =>
                             setShowPassword((current) => !current)
                           }
@@ -546,11 +622,21 @@ function AddProviderPickerPanel({
   )
 }
 
+/**
+ * Renders the credential editor for a provider, including provider-specific fields, guidance, and save controls.
+ *
+ * @param provider - The provider whose credentials are being configured.
+ * @param displayName - The optional name for an OpenAI-compatible provider instance.
+ * @param attemptedSave - Whether the save action has been attempted, enabling validation feedback.
+ * @param isPending - Whether saving is in progress.
+ * @param canSave - Whether the current form values satisfy save requirements.
+ */
 function AddProviderEditorPanel({
   provider,
   apiKey,
   baseUrl,
   modelId,
+  displayName,
   showPassword,
   attemptedSave,
   isPending,
@@ -558,6 +644,7 @@ function AddProviderEditorPanel({
   onApiKeyChange,
   onBaseUrlChange,
   onModelIdChange,
+  onDisplayNameChange,
   onTogglePassword,
   onBack,
   onCancel,
@@ -567,6 +654,7 @@ function AddProviderEditorPanel({
   apiKey: string
   baseUrl: string
   modelId: string
+  displayName?: string
   showPassword: boolean
   attemptedSave: boolean
   isPending: boolean
@@ -574,6 +662,7 @@ function AddProviderEditorPanel({
   onApiKeyChange: (value: string) => void
   onBaseUrlChange: (value: string) => void
   onModelIdChange: (value: string) => void
+  onDisplayNameChange?: (value: string) => void
   onTogglePassword: () => void
   onBack: () => void
   onCancel: () => void
@@ -601,7 +690,7 @@ function AddProviderEditorPanel({
           <p className="text-sm font-medium">Configure {provider.name}</p>
           <p className="text-xs text-pretty text-muted-foreground">
             {openAiChat
-              ? "Enter your API key, base URL, and model name."
+              ? "Name this OpenAI-compatible provider, then enter its API key, base URL, and model name."
               : `Stored as ${provider.envVarName} for this account.`}
           </p>
         </div>
@@ -612,12 +701,14 @@ function AddProviderEditorPanel({
         apiKey={apiKey}
         baseUrl={baseUrl}
         modelId={modelId}
+        displayName={displayName}
         openAiChat={openAiChat}
         placeholder={meta.placeholder}
         showPassword={showPassword}
         onApiKeyChange={onApiKeyChange}
         onBaseUrlChange={onBaseUrlChange}
         onModelIdChange={onModelIdChange}
+        onDisplayNameChange={onDisplayNameChange}
         onTogglePassword={onTogglePassword}
       />
 

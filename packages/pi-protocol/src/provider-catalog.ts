@@ -121,6 +121,68 @@ export const OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID =
   "openai-chat-completions-model"
 
 /**
+ * Prefix for **named OpenAI Chat Completions instance** provider ids. The
+ * reserved {@link OPENAI_CHAT_COMPLETIONS_PROVIDER_ID} id stays the
+ * default/gateway slot; additional user-added instances get ids of the form
+ * `openai-chat-completions+<slug>` so a user can configure multiple
+ * OpenAI-compatible backends (e.g. OpenCode Zen, Nebius) independently.
+ */
+export const OCC_INSTANCE_ID_PREFIX = `${OPENAI_CHAT_COMPLETIONS_PROVIDER_ID}+`
+
+/**
+ * Determines whether a provider ID belongs to the OpenAI Chat Completions family.
+ *
+ * @param providerId - The provider ID to classify
+ * @returns `true` if the ID is the default or a named OpenAI Chat Completions provider ID, `false` otherwise
+ */
+export function isOccProviderId(providerId: string): boolean {
+  return (
+    providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID ||
+    providerId.startsWith(OCC_INSTANCE_ID_PREFIX)
+  )
+}
+
+/**
+ * Determines whether a provider ID uses the named OpenAI Chat Completions instance prefix.
+ *
+ * @returns `true` if the provider ID starts with the named instance prefix, `false` otherwise.
+ */
+export function isNamedOccInstanceId(providerId: string): boolean {
+  return providerId.startsWith(OCC_INSTANCE_ID_PREFIX)
+}
+
+const OCC_SLUG_MAX_LENGTH = 48
+
+/**
+ * Creates a normalized slug for an OpenAI Chat Completions instance from a display name.
+ *
+ * @param displayName - The instance display name to normalize
+ * @returns A lowercase, accent-free, hyphenated slug of up to 48 characters, or `occ` when the name produces an empty slug
+ */
+export function toOccInstanceSlug(displayName: string): string {
+  const slug = displayName
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, OCC_SLUG_MAX_LENGTH)
+    .replace(/^-+|-+$/g, "")
+  return slug || "occ"
+}
+
+/**
+ * Constructs an OpenAI Chat Completions instance ID from a validated slug.
+ *
+ * @param slug - The validated instance slug
+ * @returns The instance ID with the OpenAI Chat Completions prefix
+ */
+export function toOccInstanceId(slug: string): string {
+  return `${OCC_INSTANCE_ID_PREFIX}${slug}`
+}
+
+/**
  * The Settings catalog as plain credential entries (structurally the same as
  * {@link PI_PROVIDER_CATALOG}; a stable, widened-typing view used by callers
  * that should not depend on the `as const` catalog literal).

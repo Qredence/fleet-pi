@@ -266,6 +266,10 @@ export type ChatProviderInfo = {
   isConfigured: boolean
   envVarName: string
   authType?: "apiKey" | "oauth"
+  /** OCC family only: the named instance this row belongs to. */
+  providerFamily?: string
+  /** OCC family only: user-supplied display label for the instance. */
+  displayName?: string
 }
 
 export type ChatProviderUpdateRequest = {
@@ -275,6 +279,10 @@ export type ChatProviderUpdateRequest = {
   baseUrl?: string
   /** OpenAI Chat Completions companion: model id */
   modelId?: string
+  /** OCC family only: display label for a named instance */
+  displayName?: string
+  /** OCC family only: explicitly create a new named instance (never an update of the default slot) */
+  createOccInstance?: boolean
 }
 
 export type ChatProviderUpdateResponse = {

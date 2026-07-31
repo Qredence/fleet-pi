@@ -93,6 +93,8 @@ export const ChatProviderInfoSchema = z
     isConfigured: z.boolean(),
     envVarName: z.string(),
     authType: z.enum(["apiKey", "oauth"]).optional(),
+    providerFamily: z.string().optional(),
+    displayName: z.string().optional(),
   })
   .openapi({ description: "Chat provider info" })
 
@@ -108,6 +110,8 @@ export const ChatProviderUpdateRequestSchema = z
     apiKey: z.string().max(4096),
     baseUrl: z.string().max(4096).optional(),
     modelId: z.string().max(4096).optional(),
+    displayName: z.string().max(256).optional(),
+    createOccInstance: z.boolean().optional(),
   })
   .openapi({ description: "Chat provider update request" })
 
