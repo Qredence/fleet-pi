@@ -4,6 +4,7 @@ import {
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   INFRA_PROVIDER_IDS as PROTOCOL_INFRA_PROVIDER_IDS,
+  isNamedOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
 import { loadDecryptedUserProviderSecrets } from "../db/user-providers"
 import { isEnvVarConfigured } from "../env-manager"
@@ -103,7 +104,12 @@ export async function loadConfiguredProviderSecrets(
 ): Promise<Map<string, string>> {
   if (process.env.VERCEL === "1") {
     if (!userId) return new Map()
-    return loadDecryptedUserProviderSecrets(userId)
+    // Named OCC instances are excluded structurally: the Daytona sandbox sync
+    // covers only the reserved default OCC slot + static builtins (their auth
+    // path lives in the chat runtime, not the sandbox credential store).
+    return loadDecryptedUserProviderSecrets(userId, {
+      providerFilter: (id) => !isNamedOccInstanceId(id),
+    })
   }
 
   const secrets = new Map<string, string>()
