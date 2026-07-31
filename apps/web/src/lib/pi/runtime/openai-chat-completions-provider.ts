@@ -80,17 +80,6 @@ function isGatewayHost(baseUrl: string): boolean {
   }
 }
 
-export async function discoverOpenAiChatCompletionsModels(
-  userId: string | undefined
-): Promise<Array<{ id: string; name: string }>> {
-  const config = await resolveOpenAiChatCompletionsConfig(userId)
-  if (!config) return []
-
-  // OpenCode Zen (and similar gateways) may advertise many models on /models.
-  // Fleet Pi only exposes explicitly configured model ids for this provider.
-  return config.modelIds.map((id) => ({ id, name: id }))
-}
-
 async function resolveOccByokConfig(
   userId: string | undefined
 ): Promise<OpenAiChatCompletionsConfig | undefined> {

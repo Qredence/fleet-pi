@@ -43,10 +43,6 @@ vi.mock("@/lib/app-runtime", () => ({
   getResponseStatus: () => 500,
 }))
 
-vi.mock("@/lib/pi/runtime/openai-chat-completions-provider", () => ({
-  discoverOpenAiChatCompletionsModels: vi.fn(() => Promise.resolve([])),
-}))
-
 const originalVercel = process.env.VERCEL
 const originalNeonAuthBase = process.env.NEON_AUTH_BASE_URL
 const originalNeonAuthUrl = process.env.NEON_AUTH_URL
