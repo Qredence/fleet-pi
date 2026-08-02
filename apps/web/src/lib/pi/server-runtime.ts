@@ -208,6 +208,18 @@ export async function createPiRuntime(
   metadata: ChatRuntimeMetadata,
   modelSelection?: ChatModelSelection
 ) {
+  if (!metadata.sessionFile) {
+    const reusable = findRuntimeRecord(metadata)
+    if (reusable) {
+      return tryReuseRuntime(
+        reusable,
+        modelSelection,
+        metadata,
+        collectDiagnostics(reusable.runtime.services)
+      )
+    }
+  }
+
   const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
 
   const services = await createSessionServices(context, undefined, {

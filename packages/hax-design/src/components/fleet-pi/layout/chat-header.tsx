@@ -59,81 +59,86 @@ export function AccountMenu({
     "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-foreground transition-colors hover:bg-foreground/6"
 
   return (
-    <Popover
-      side="bottom"
-      align="start"
-      trigger={
-        <ChromePillButton ariaLabel="Open account menu">
-          <QredenceLogo className="size-3.5 shrink-0" />
-          <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
-        </ChromePillButton>
-      }
-    >
-      {user ? (
-        <>
-          <div className="px-2 py-1.5 text-[12px] leading-4 text-foreground/50">
-            {user.name || user.email}
-          </div>
-          <button type="button" className={menuItemClass}>
-            <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Account</span>
-          </button>
-          <a
-            href={DOCUMENTATION_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={menuItemClass}
-          >
-            <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Documentation</span>
-          </a>
-          {onOpenSettings && (
+    <div className="flex items-center gap-2">
+      <Popover
+        side="bottom"
+        align="start"
+        trigger={
+          <ChromePillButton ariaLabel="Open account menu">
+            <QredenceLogo className="size-3.5 shrink-0" />
+            <span className="text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap">
+              Qredence Fleet
+            </span>
+            <ChevronDown className="size-3.5 shrink-0 text-foreground/35" />
+          </ChromePillButton>
+        }
+      >
+        {user ? (
+          <>
+            <div className="px-2 py-1.5 text-[12px] leading-4 text-foreground/50">
+              {user.name || user.email}
+            </div>
+            <button type="button" className={menuItemClass}>
+              <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Account</span>
+            </button>
+            <a
+              href={DOCUMENTATION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className={menuItemClass}
+            >
+              <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Documentation</span>
+            </a>
+            {onOpenSettings && (
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={onOpenSettings}
+              >
+                <Settings className="size-3.5 shrink-0 text-foreground/50" />
+                <span className="truncate">Settings</span>
+              </button>
+            )}
             <button
               type="button"
               className={menuItemClass}
-              onClick={onOpenSettings}
+              onClick={() => void onSignOut()}
             >
-              <Settings className="size-3.5 shrink-0 text-foreground/50" />
-              <span className="truncate">Settings</span>
+              <LogOut className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Sign out</span>
             </button>
-          )}
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={() => void onSignOut()}
-          >
-            <LogOut className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Sign out</span>
-          </button>
-        </>
-      ) : (
-        <>
-          <button type="button" className={menuItemClass} onClick={onSignIn}>
-            <LogIn className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Sign in</span>
-          </button>
-          <a
-            href={DOCUMENTATION_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={menuItemClass}
-          >
-            <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-            <span className="truncate">Documentation</span>
-          </a>
-          {onOpenSettings && (
-            <button
-              type="button"
+          </>
+        ) : (
+          <>
+            <button type="button" className={menuItemClass} onClick={onSignIn}>
+              <LogIn className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Sign in</span>
+            </button>
+            <a
+              href={DOCUMENTATION_URL}
+              target="_blank"
+              rel="noreferrer"
               className={menuItemClass}
-              onClick={onOpenSettings}
             >
-              <Settings className="size-3.5 shrink-0 text-foreground/50" />
-              <span className="truncate">Settings</span>
-            </button>
-          )}
-        </>
-      )}
-    </Popover>
+              <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
+              <span className="truncate">Documentation</span>
+            </a>
+            {onOpenSettings && (
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={onOpenSettings}
+              >
+                <Settings className="size-3.5 shrink-0 text-foreground/50" />
+                <span className="truncate">Settings</span>
+              </button>
+            )}
+          </>
+        )}
+      </Popover>
+    </div>
   )
 }
 
@@ -204,7 +209,6 @@ export function SessionControls({
       </Popover>
       <ChromePillButton ariaLabel="New session" onClick={onNewSession}>
         <Plus className="size-3.5 shrink-0" />
-        <span className="hidden whitespace-nowrap sm:inline">New session</span>
       </ChromePillButton>
     </>
   )
