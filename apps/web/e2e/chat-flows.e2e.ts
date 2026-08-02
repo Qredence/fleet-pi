@@ -1048,7 +1048,7 @@ test.describe("chat flows", () => {
 
     const newSessionButton = page.locator('[aria-label="New session"]')
     await expect(newSessionButton).toBeVisible()
-    await expect(newSessionButton).toContainText("New session")
+    await expect(newSessionButton).not.toContainText("New session")
 
     const accountMenuButton = page.locator('[aria-label="Open account menu"]')
     await expect(accountMenuButton).toBeVisible()
@@ -1406,19 +1406,13 @@ test.describe("chat flows", () => {
         ((conversationsBox?.x ?? 0) + (conversationsBox?.width ?? 0))
     ).toBeLessThanOrEqual(12)
 
-    const newSessionText = newSessionButton.getByText("New session", {
-      exact: true,
-    })
-    if (await newSessionText.isVisible()) {
-      expect(
-        (await newSessionText.boundingBox())?.height ?? 0
-      ).toBeLessThanOrEqual(20)
-    } else {
-      expect(newSessionBox?.width ?? 0).toBeLessThanOrEqual(48)
-    }
+    await expect(
+      newSessionButton.getByText("New session", { exact: true })
+    ).toHaveCount(0)
+    expect(newSessionBox?.width ?? 0).toBeLessThanOrEqual(48)
   })
 
-  test("collapses New session to icon-only on mobile", async ({ page }) => {
+  test("keeps New session icon-only on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await mockChatModels(page)
     await mockChatSessions(page)
@@ -1500,7 +1494,10 @@ test.describe("chat flows", () => {
     ).toBeVisible()
     await expect(
       canvas.getByTestId("resource-chip-section-diagnostics")
-    ).toBeVisible()
+    ).toHaveCount(0)
+    await expect(
+      page.locator('[aria-label="Open account menu"]')
+    ).toContainText("Qredence Fleet")
     await expect(canvas.getByText("Skills", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Prompts", { exact: true })).toBeVisible()
     await expect(canvas.getByText("Extensions", { exact: true })).toBeVisible()
@@ -1592,9 +1589,6 @@ test.describe("chat flows", () => {
     ).toBeVisible()
     await expect(canvas.getByText("AGENTS.md", { exact: true })).toBeVisible()
     await expect(canvas.getByText("/tmp/fleet-pi/AGENTS.md")).toHaveCount(0)
-    await expect(
-      canvas.getByRole("listitem", { name: /needs a reload/i })
-    ).toBeVisible()
   })
 
   test("resizes chat content when a side panel opens near desktop width", async ({
@@ -1934,7 +1928,7 @@ test.describe("chat flows", () => {
     ).toBeVisible()
   })
 
-  test("keeps diagnostics visible while workspace browsing and chat stay usable", async ({
+  test("keeps workspace browsing and chat usable after resource browsing", async ({
     page,
   }) => {
     await mockChatModels(page)
@@ -1954,10 +1948,7 @@ test.describe("chat flows", () => {
     await expect(resourcesCanvas).toBeVisible()
     await expect(
       resourcesCanvas.getByTestId("resource-chip-section-diagnostics")
-    ).toBeVisible()
-    await expect(
-      resourcesCanvas.getByRole("listitem", { name: /needs a reload/i })
-    ).toBeVisible()
+    ).toHaveCount(0)
 
     await page.getByRole("tab", { name: "Workspace", exact: true }).click()
     const workspaceCanvas = page.locator('[data-testid="pi-workspace-canvas"]')

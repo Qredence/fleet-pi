@@ -22,7 +22,6 @@ export function ResourcesPanelContent({
   workspace: WorkspaceTreeResponse | null
 }) {
   const groups = getResourceGroups(resources, workspace)
-  const diagnostics = resources?.diagnostics ?? []
 
   return (
     <>
@@ -39,19 +38,6 @@ export function ResourcesPanelContent({
         groups.map((group) => (
           <ResourceChipSection key={group.id} {...group} />
         ))}
-      {!error && diagnostics.length > 0 && (
-        <div className="mt-4 border-t border-border/60 pt-3">
-          <ResourceChipSection
-            id="diagnostics"
-            label="Diagnostics"
-            icon={CircleAlert}
-            items={diagnostics.map((diagnostic, index) => ({
-              name: `Diagnostic ${index + 1}`,
-              description: diagnostic,
-            }))}
-          />
-        </div>
-      )}
     </>
   )
 }
