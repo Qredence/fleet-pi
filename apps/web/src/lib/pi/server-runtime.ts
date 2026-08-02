@@ -229,10 +229,11 @@ export async function createPiRuntime(
   const sessionDir = getSessionDir(context.projectRoot, services, {
     userId: metadata.userId,
   })
-  const mayReuseRuntime =
-    !metadata.sessionFile ||
-    isUsableSessionFile(metadata.sessionFile, sessionDir)
-  const reusable = mayReuseRuntime ? findRuntimeRecord(metadata) : undefined
+  const reusable = metadata.sessionFile
+    ? isUsableSessionFile(metadata.sessionFile, sessionDir)
+      ? findRuntimeRecord(metadata)
+      : undefined
+    : undefined
 
   if (reusable) {
     return tryReuseRuntime(
