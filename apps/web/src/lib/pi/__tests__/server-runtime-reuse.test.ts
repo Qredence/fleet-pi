@@ -11,9 +11,9 @@ const mocks = vi.hoisted(() => {
     applyModelSelection: vi.fn(),
     applyPlanMode: vi.fn(),
     applyRuntimeAuth: vi.fn(),
-    collectDiagnostics: vi.fn((services: { marker?: string }) =>
-      services.marker ? ["runtime-diagnostic"] : ["request-diagnostic"]
-    ),
+    collectDiagnostics: vi.fn((services: { marker?: string }) => [
+      `${services.marker ?? "unknown"}-diagnostic`,
+    ]),
     createAgentSessionFromServices: vi.fn(),
     createAgentSessionRuntime: vi.fn(),
     createSessionManager: vi.fn(),
@@ -187,8 +187,9 @@ describe("createPiRuntime active reuse", () => {
     mocks.resolveDaytonaWorkspace.mockResolvedValue(undefined)
     mocks.safeRealpath.mockImplementation((path: string) => path)
     mocks.collectDiagnostics.mockImplementation(
-      (services: { marker?: string }) =>
-        services.marker ? ["runtime-diagnostic"] : ["request-diagnostic"]
+      (services: { marker?: string }) => [
+        `${services.marker ?? "unknown"}-diagnostic`,
+      ]
     )
   })
 
