@@ -10,6 +10,7 @@ import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../db/chat-pos
 import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
 import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
 import { CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID } from "../db/chat-postgres-rls-initplan"
+import { CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID } from "../db/chat-postgres-db-optimization"
 import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
@@ -64,6 +65,7 @@ const CHAT_MIGRATION_IDS = [
   CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
   CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+  CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
 ] as const
 
 function readEnv(name: string, env: NodeJS.ProcessEnv) {

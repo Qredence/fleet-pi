@@ -1,5 +1,8 @@
+// The id here must match the value recorded in the live fleet_pi_chat_migrations
+// ledger (20260725_db_optimization). If it drifts, `pnpm chat:migrate` re-runs the
+// already-applied optimization and fails on DROP/ALTER of absent objects.
 export const CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID =
-  "20260725_drop_unused_indexes_add_version_check"
+  "20260725_db_optimization"
 
 /**
  * Drop duplicate/unused indexes, redundant unique constraint, add schema

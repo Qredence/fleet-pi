@@ -72,7 +72,8 @@ describe("occ-instances persistence", () => {
     expect(decMeta(metaCiphertext)).toEqual({
       displayName: "Nebius AI",
       baseUrl: "https://api.nebius.com/v1",
-      modelId: "deepseek-v3",
+      api: "openai-completions",
+      modelIds: ["deepseek-v3"],
     })
 
     queryMock.mockResolvedValueOnce({
@@ -85,7 +86,13 @@ describe("occ-instances persistence", () => {
       ],
     })
     const listed = await listOccInstances(USER)
-    expect(listed).toEqual([instance])
+    expect(listed).toEqual([
+      {
+        ...instance,
+        api: "openai-completions",
+        modelIds: ["deepseek-v3"],
+      },
+    ])
   })
 
   it("skips rows without instance metadata and ignores non-named ids", async () => {
@@ -115,6 +122,8 @@ describe("occ-instances persistence", () => {
         displayName: "Zen",
         baseUrl: "https://z",
         modelId: "m",
+        api: "openai-completions",
+        modelIds: ["m"],
       },
     ])
   })
@@ -145,6 +154,8 @@ describe("occ-instances persistence", () => {
       displayName: "Zen",
       baseUrl: "https://z",
       modelId: "m",
+      api: "openai-completions",
+      modelIds: ["m"],
     })
   })
 

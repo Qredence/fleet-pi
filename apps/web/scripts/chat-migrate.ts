@@ -46,6 +46,10 @@ import {
   CHAT_POSTGRES_DB_OPTIMIZATION_SQL,
 } from "../src/lib/db/chat-postgres-db-optimization"
 import {
+  CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
+  CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
+} from "../src/lib/db/chat-postgres-drop-unused-indexes"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -172,6 +176,11 @@ async function main() {
       client,
       CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
       CHAT_POSTGRES_DB_OPTIMIZATION_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
+      CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL
     )
 
     await client.query("COMMIT")

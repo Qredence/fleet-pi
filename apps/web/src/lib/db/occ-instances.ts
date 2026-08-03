@@ -1,11 +1,15 @@
 import {
+  CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
+  isCustomProviderId,
   isNamedOccInstanceId,
+  toCustomProviderId,
+  toInstanceSlug,
   toOccInstanceId,
-  toOccInstanceSlug,
 } from "@workspace/pi-protocol/provider-catalog"
 import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
+import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
 /**
@@ -19,6 +23,10 @@ export type OccInstance = {
   displayName: string
   baseUrl: string
   modelId: string
+  /** Native Pi API family. Defaults to `openai-completions` for legacy rows. */
+  api?: PiCustomProviderApi
+  /** Model ids registered for the provider. Defaults to `[modelId]` for legacy rows. */
+  modelIds?: Array<string>
 }
 
 export class ChatPostgresUnavailableError extends Error {
@@ -33,7 +41,11 @@ export class ChatPostgresUnavailableError extends Error {
 type OccInstanceMeta = {
   displayName: string
   baseUrl: string
-  modelId: string
+  /** Legacy single-model payload. */
+  modelId?: string
+  api?: PiCustomProviderApi
+  /** Generalized multi-model payload. */
+  modelIds?: Array<string>
 }
 
 /** Row shape used when only instance metadata (not the secret key) is needed. */
@@ -95,13 +107,15 @@ function parseInstanceMeta(
     const parsed = JSON.parse(decrypted) as Partial<OccInstanceMeta>
     if (
       typeof parsed.displayName === "string" &&
-      typeof parsed.baseUrl === "string" &&
-      typeof parsed.modelId === "string"
+      typeof parsed.baseUrl === "string"
     ) {
       return {
         displayName: parsed.displayName,
         baseUrl: parsed.baseUrl,
+        // Legacy single-model rows store `modelId`; new rows store `modelIds`.
         modelId: parsed.modelId,
+        api: parsed.api,
+        modelIds: parsed.modelIds,
       }
     }
     return null
@@ -137,7 +151,20 @@ function rowToInstance(
 ): OccInstance | null {
   const meta = parseInstanceMeta(row.encrypted_payload, secret)
   if (!meta) return null
-  return { id: row.provider_id, ...meta }
+  const modelIds =
+    meta.modelIds && meta.modelIds.length > 0
+      ? meta.modelIds
+      : meta.modelId
+        ? [meta.modelId]
+        : []
+  return {
+    id: row.provider_id,
+    displayName: meta.displayName,
+    baseUrl: meta.baseUrl,
+    modelId: modelIds[0] ?? "",
+    api: meta.api ?? "openai-completions",
+    modelIds,
+  }
 }
 
 /**
@@ -158,15 +185,17 @@ export async function listOccInstances(
         `SELECT provider_id, encrypted_payload
          FROM pi_user_providers
          WHERE user_id = $1 AND auth_type = 'apiKey'
-         AND provider_id LIKE $2`,
-        [userId, `${OCC_INSTANCE_ID_PREFIX}%`]
+         AND (provider_id LIKE $2 OR provider_id LIKE $3)`,
+        [userId, `${OCC_INSTANCE_ID_PREFIX}%`, `${CUSTOM_PROVIDER_ID_PREFIX}%`]
       )
       // Canonical discriminator is the id prefix; JS filter is a re-check for
       // defense-in-depth, not a second source of truth.
       return res.rows
         .map((row) => rowToInstance(row, secret))
         .filter(
-          (i): i is OccInstance => i !== null && isNamedOccInstanceId(i.id)
+          (i): i is OccInstance =>
+            i !== null &&
+            (isNamedOccInstanceId(i.id) || isCustomProviderId(i.id))
         )
     },
     []
@@ -196,8 +225,8 @@ export async function listOccInstancesWithApiKey(
         `SELECT provider_id, encrypted_key, encrypted_payload
          FROM pi_user_providers
          WHERE user_id = $1 AND auth_type = 'apiKey'
-         AND provider_id LIKE $2`,
-        [userId, `${OCC_INSTANCE_ID_PREFIX}%`]
+         AND (provider_id LIKE $2 OR provider_id LIKE $3)`,
+        [userId, `${OCC_INSTANCE_ID_PREFIX}%`, `${CUSTOM_PROVIDER_ID_PREFIX}%`]
       )
       const rows: Array<OccInstanceWithApiKey> = []
       for (const row of res.rows) {
@@ -252,20 +281,50 @@ export async function getOccInstanceById(
  *
  * @param userId - The user whose existing instance IDs are checked
  * @param displayName - The display name used to derive the instance ID
+ * @param toId - A function that builds the provider id from a slug
+ * @returns A unique instance ID, using a numeric suffix or timestamp suffix when needed
+ */
+async function allocateInstanceId(
+  userId: string | undefined,
+  displayName: string,
+  toId: (slug: string) => string
+): Promise<string> {
+  const baseSlug = toInstanceSlug(displayName)
+  const existing = new Set((await listOccInstances(userId)).map((i) => i.id))
+  for (let attempt = 1; attempt <= 50; attempt++) {
+    const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
+    const id = toId(slug)
+    if (!existing.has(id)) return id
+  }
+  return toId(`${baseSlug}-${Date.now().toString(36)}`)
+}
+
+/**
+ * Allocates an available OCC instance ID for a display name.
+ *
+ * @param userId - The user whose existing instance IDs are checked
+ * @param displayName - The display name used to derive the instance ID
  * @returns A unique instance ID, using a numeric suffix or timestamp suffix when needed
  */
 export async function allocateOccInstanceId(
   userId: string | undefined,
   displayName: string
 ): Promise<string> {
-  const baseSlug = toOccInstanceSlug(displayName)
-  const existing = new Set((await listOccInstances(userId)).map((i) => i.id))
-  for (let attempt = 1; attempt <= 50; attempt++) {
-    const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
-    const id = toOccInstanceId(slug)
-    if (!existing.has(id)) return id
-  }
-  return toOccInstanceId(`${baseSlug}-${Date.now().toString(36)}`)
+  return allocateInstanceId(userId, displayName, toOccInstanceId)
+}
+
+/**
+ * Allocates an available general custom provider ID for a display name.
+ *
+ * @param userId - The user whose existing instance IDs are checked
+ * @param displayName - The display name used to derive the provider ID
+ * @returns A unique provider ID, using a numeric suffix or timestamp suffix when needed
+ */
+export async function allocateCustomProviderId(
+  userId: string | undefined,
+  displayName: string
+): Promise<string> {
+  return allocateInstanceId(userId, displayName, toCustomProviderId)
 }
 
 /**
@@ -285,7 +344,10 @@ export async function upsertOccInstance(
   const meta: OccInstanceMeta = {
     displayName: instance.displayName,
     baseUrl: instance.baseUrl,
-    modelId: instance.modelId,
+    api: instance.api ?? "openai-completions",
+    modelIds: instance.modelIds?.length
+      ? instance.modelIds
+      : [instance.modelId],
   }
   await withChatPostgresTransaction(async (client) => {
     await client.query(

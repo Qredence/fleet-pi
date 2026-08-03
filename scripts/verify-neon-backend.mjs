@@ -141,10 +141,13 @@ async function checkObjectStorage(results) {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim()
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim()
   if (!endpoint || !accessKeyId || !secretAccessKey) {
+    // Neon Object Storage is not part of the Fleet Pi architecture (no buckets
+    // declared in neon.ts). Treat unconfigured as an informational skip, not a
+    // failure, so `pnpm neon:verify` stays green on the intended setup.
     results.push({
       id: "object-storage",
-      ok: false,
-      message: "AWS_* object storage env vars not configured",
+      ok: true,
+      message: "Skipped (Neon Object Storage is not configured; not required)",
     })
     return
   }
