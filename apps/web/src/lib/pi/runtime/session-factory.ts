@@ -84,6 +84,9 @@ export async function createSessionServices(
     options?.userId
   )
 
+  const { registerCustomProviders } = await import("./custom-provider-registry")
+  await registerCustomProviders(servicesWithBootstrap, options?.userId)
+
   return servicesWithBootstrap
 }
 
@@ -113,6 +116,9 @@ export async function applyRuntimeAuth(
   const { registerOpenAiChatCompletionsProvider } =
     await import("./openai-chat-completions-provider")
   await registerOpenAiChatCompletionsProvider(services, options.userId)
+
+  const { registerCustomProviders } = await import("./custom-provider-registry")
+  await registerCustomProviders(services, options.userId)
 }
 
 async function loadBestEffortWorkspaceHealth(

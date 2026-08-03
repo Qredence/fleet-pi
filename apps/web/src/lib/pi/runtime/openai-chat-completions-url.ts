@@ -135,6 +135,40 @@ function isLoopbackHostname(hostname: string) {
   return host === "localhost" || host === "127.0.0.1" || host === "::1"
 }
 
+/**
+ * Normalize + harden a general custom-provider base URL. Unlike the OCC
+ * variant this keeps the path as-is (no `/chat/completions` stripping) since
+ * Anthropic/Google-family endpoints do not use OpenAI path conventions.
+ */
+export function assertSafeCustomProviderBaseUrl(baseUrl: string): string {
+  const normalized = baseUrl.trim().replace(/\/+$/, "")
+  let parsed: URL
+  try {
+    parsed = new URL(normalized)
+  } catch {
+    throw new Error("Invalid custom provider base URL.")
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Custom provider base URL must use https.")
+  }
+
+  if (isBlockedHostname(parsed.hostname)) {
+    throw new Error("Custom provider base URL host is not allowed.")
+  }
+
+  return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "")
+}
+
+/** Gateway cap applies to any OCC host on the Neon AI Gateway hostname family. */
+export function isGatewayHost(baseUrl: string): boolean {
+  try {
+    return isAllowedNeonAiGatewayHostname(new URL(baseUrl).hostname)
+  } catch {
+    return false
+  }
+}
+
 /** Platform Neon AI Gateway hosts only — blocks token exfil to arbitrary HTTPS. */
 export function isAllowedNeonAiGatewayHostname(hostname: string) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
