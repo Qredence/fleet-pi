@@ -31,6 +31,7 @@ import { isVercelDeployment } from "@/lib/deployment/environment"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import {
   allocateCustomProviderId,
+  allocateOccInstanceId,
   getOccInstanceById,
   listOccInstancesWithApiKey,
   removeOccInstance,
@@ -139,6 +140,18 @@ async function handleCustomProviderUpsert(
 
   const api: PiCustomProviderApi = body.api ?? "openai-completions"
 
+  // Named OCC targets: an existing `openai-chat-completions+<slug>` id, or a
+  // create against the reserved OCC id. Their `openai-chat-completions+`
+  // prefix promises OpenAI-compatible semantics, so non-OCC APIs are rejected.
+  const isNamedOccTarget =
+    isNamedOccInstanceId(body.providerId) ||
+    body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+  if (isNamedOccTarget && !OCC_FAMILY_APIS.has(api)) {
+    return jsonError(
+      "Named OpenAI Chat Completions instances only support OpenAI-compatible APIs."
+    )
+  }
+
   let baseUrl: string
   try {
     // OCC-family endpoints normalize OpenAI paths; Anthropic/Google-family
@@ -187,11 +200,15 @@ async function handleCustomProviderUpsert(
   }
 
   // Update an existing instance in place (`openai-chat-completions+<slug>` or
-  // `custom+<slug>`), else allocate a fresh `custom+` id from the display name.
+  // `custom+<slug>`). Otherwise allocate a fresh id from the display name:
+  // creates against the reserved OCC id keep the legacy
+  // `openai-chat-completions+` namespace, everything else gets `custom+`.
   const instanceId =
     isNamedOccInstanceId(body.providerId) || isCustomProviderId(body.providerId)
       ? body.providerId
-      : await allocateCustomProviderId(userId, displayName)
+      : isNamedOccTarget
+        ? await allocateOccInstanceId(userId, displayName)
+        : await allocateCustomProviderId(userId, displayName)
 
   await upsertOccInstance(
     userId!,
