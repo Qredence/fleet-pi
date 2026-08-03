@@ -156,11 +156,15 @@ function rowToInstance(
       : meta.modelId
         ? [meta.modelId]
         : []
+  // Rows with neither modelIds nor modelId are malformed; skip them like other
+  // invalid metadata instead of surfacing a provider with an empty model id.
+  const firstModelId = modelIds[0]
+  if (!firstModelId) return null
   return {
     id: row.provider_id,
     displayName: meta.displayName,
     baseUrl: meta.baseUrl,
-    modelId: modelIds[0] ?? "",
+    modelId: firstModelId,
     api: meta.api ?? "openai-completions",
     modelIds,
   }
