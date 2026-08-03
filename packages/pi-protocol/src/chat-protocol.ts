@@ -260,6 +260,13 @@ export type ChatModelsDiscoverResponse = {
   models: Array<ChatModelInfo>
 }
 
+/** Pi API families supported by native custom providers. */
+export type PiCustomProviderApi =
+  | "openai-completions"
+  | "openai-responses"
+  | "anthropic-messages"
+  | "google-genai"
+
 export type ChatProviderInfo = {
   id: string
   name: string
@@ -270,6 +277,10 @@ export type ChatProviderInfo = {
   providerFamily?: string
   /** OCC family only: user-supplied display label for the instance. */
   displayName?: string
+  /** Native Pi API family for a custom provider (absent for catalog rows). */
+  api?: PiCustomProviderApi
+  /** Custom provider only: model ids registered for this provider. */
+  modelIds?: Array<string>
 }
 
 export type ChatProviderUpdateRequest = {
@@ -281,8 +292,12 @@ export type ChatProviderUpdateRequest = {
   modelId?: string
   /** OCC family only: display label for a named instance */
   displayName?: string
-  /** OCC family only: explicitly create a new named instance (never an update of the default slot) */
+  /** Explicitly create a new custom provider instance (legacy OCC name kept for wire compatibility) */
   createOccInstance?: boolean
+  /** Custom provider only: native Pi API family. */
+  api?: PiCustomProviderApi
+  /** Custom provider only: model ids to register. */
+  models?: Array<string>
 }
 
 export type ChatProviderUpdateResponse = {

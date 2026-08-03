@@ -95,6 +95,15 @@ export const ChatProviderInfoSchema = z
     authType: z.enum(["apiKey", "oauth"]).optional(),
     providerFamily: z.string().optional(),
     displayName: z.string().optional(),
+    api: z
+      .enum([
+        "openai-completions",
+        "openai-responses",
+        "anthropic-messages",
+        "google-genai",
+      ])
+      .optional(),
+    modelIds: z.array(z.string()).optional(),
   })
   .openapi({ description: "Chat provider info" })
 
@@ -112,6 +121,15 @@ export const ChatProviderUpdateRequestSchema = z
     modelId: z.string().max(4096).optional(),
     displayName: z.string().max(256).optional(),
     createOccInstance: z.boolean().optional(),
+    api: z
+      .enum([
+        "openai-completions",
+        "openai-responses",
+        "anthropic-messages",
+        "google-genai",
+      ])
+      .optional(),
+    models: z.array(z.string().max(4096)).max(64).optional(),
   })
   .openapi({ description: "Chat provider update request" })
 
