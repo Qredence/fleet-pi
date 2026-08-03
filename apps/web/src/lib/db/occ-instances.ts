@@ -3,6 +3,7 @@ import {
   OCC_INSTANCE_ID_PREFIX,
   isCustomProviderId,
   isNamedOccInstanceId,
+  toCustomProviderId,
   toInstanceSlug,
   toOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
@@ -314,6 +315,20 @@ export async function allocateOccInstanceId(
   displayName: string
 ): Promise<string> {
   return allocateInstanceId(userId, displayName, toOccInstanceId)
+}
+
+/**
+ * Allocates an available general custom provider ID for a display name.
+ *
+ * @param userId - The user whose existing instance IDs are checked
+ * @param displayName - The display name used to derive the provider ID
+ * @returns A unique provider ID, using a numeric suffix or timestamp suffix when needed
+ */
+export async function allocateCustomProviderId(
+  userId: string | undefined,
+  displayName: string
+): Promise<string> {
+  return allocateInstanceId(userId, displayName, toCustomProviderId)
 }
 
 /**
