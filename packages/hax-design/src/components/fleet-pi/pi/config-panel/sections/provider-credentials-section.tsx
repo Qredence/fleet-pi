@@ -393,12 +393,13 @@ function ActiveProviderList({
                   onBaseUrlChange={onBaseUrlChange}
                   onModelIdChange={onModelIdChange}
                   onModelsChange={onModelsChange}
-                  // Name is only editable on a named OCC instance, not
-                  // on the reserved default OCC slot.
+                  // Name is editable on named OCC instances and custom
+                  // providers, not on the reserved default OCC slot
+                  // (which carries no providerFamily).
                   onDisplayNameChange={
-                    provider.providerFamily === undefined
-                      ? undefined
-                      : onDisplayNameChange
+                    isCustom || provider.providerFamily !== undefined
+                      ? onDisplayNameChange
+                      : undefined
                   }
                   onTogglePassword={onTogglePassword}
                 />

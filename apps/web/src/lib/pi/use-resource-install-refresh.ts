@@ -26,10 +26,7 @@ export function useResourceInstallRefresh({
   shouldLoadWorkspaceTree,
   workspaceTree,
 }: UseResourceInstallRefreshArgs) {
-  const handledResourceInstallToolCalls = useRef<Set<string> | null>(null)
-  if (handledResourceInstallToolCalls.current === null) {
-    handledResourceInstallToolCalls.current = new Set<string>()
-  }
+  const handledResourceInstallToolCalls = useRef(new Set<string>())
   const handledToolCallIds = handledResourceInstallToolCalls.current
 
   useEffect(() => {
