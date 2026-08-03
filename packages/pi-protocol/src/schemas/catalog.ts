@@ -103,7 +103,7 @@ export const ChatProviderInfoSchema = z
         "google-genai",
       ])
       .optional(),
-    modelIds: z.array(z.string()).optional(),
+    modelIds: z.array(z.string().max(4096)).max(64).optional(),
   })
   .openapi({ description: "Chat provider info" })
 
