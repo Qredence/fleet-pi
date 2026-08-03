@@ -292,7 +292,12 @@ export type ChatProviderUpdateRequest = {
   modelId?: string
   /** OCC family only: display label for a named instance */
   displayName?: string
-  /** Explicitly create a new custom provider instance (legacy OCC name kept for wire compatibility) */
+  /**
+   * Explicitly create a new provider instance: an OCC named instance
+   * (`openai-chat-completions+<slug>`) or a general custom provider
+   * (`custom+<slug>`). The OCC-specific field name is legacy, kept for wire
+   * compatibility.
+   */
   createOccInstance?: boolean
   /** Custom provider only: native Pi API family. */
   api?: PiCustomProviderApi
