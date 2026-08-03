@@ -12,7 +12,7 @@ import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
 import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
 import { resetAnalytics } from "@/lib/analytics/posthog"
 
-type ChatWorkspaceHeaderProps = {
+type UseChatWorkspaceHeaderOptions = {
   activeSessionId: string | undefined
   activeSessionLabel: string
   sessions: Array<ChatSessionInfo>
@@ -21,14 +21,14 @@ type ChatWorkspaceHeaderProps = {
   onOpenSettings: () => void
 }
 
-export function ChatWorkspaceHeader({
+export function useChatWorkspaceHeader({
   activeSessionId,
   activeSessionLabel,
   sessions,
   onNewSession,
   onResumeSession,
   onOpenSettings,
-}: ChatWorkspaceHeaderProps) {
+}: UseChatWorkspaceHeaderOptions) {
   const navigate = useNavigate()
   const user = useOptionalUser()
 

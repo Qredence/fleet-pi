@@ -16,7 +16,7 @@ import type {
 } from "@workspace/pi-protocol/chat-protocol"
 import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
 import type { SettingsSlashTab } from "@/lib/pi/slash-commands"
-import { ChatWorkspaceHeader } from "@/lib/pi/chat-workspace-header"
+import { useChatWorkspaceHeader } from "@/lib/pi/use-chat-workspace-header"
 import { ChatPanel } from "@/lib/pi/chat-panel"
 import { useLocalSlashActions } from "@/lib/pi/use-local-slash-actions"
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
@@ -291,7 +291,7 @@ function ChatWorkspaceShell() {
       workspaceTree,
     })
 
-  const header = ChatWorkspaceHeader({
+  const header = useChatWorkspaceHeader({
     activeSessionId: sessionMetadata.sessionId,
     activeSessionLabel,
     sessions,
