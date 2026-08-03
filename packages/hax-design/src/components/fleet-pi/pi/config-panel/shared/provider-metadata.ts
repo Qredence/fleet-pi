@@ -4,6 +4,7 @@ import {
   Cpu,
   GitBranch,
   Globe,
+  Plug,
   Server,
   ShieldCheck,
   Sparkles,
@@ -17,9 +18,13 @@ export type {
   PiProviderCredentialEntry,
 } from "@workspace/pi-protocol/provider-catalog"
 
+export type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
+
 export {
   CREDENTIAL_UI_PROVIDERS,
+  CUSTOM_PROVIDER_ID_PREFIX,
   INFRA_PROVIDER_IDS,
+  isCustomProviderId,
   isNamedOccInstanceId,
   isOccProviderId,
   KNOWN_PROVIDERS,
@@ -111,5 +116,10 @@ export const PROVIDER_METADATA: Record<string, PiProviderUiMetadata> = {
     icon: Cpu,
     placeholder: "http://localhost:11434 (default)",
     help: "Configure local Ollama execution endpoints. Overrides the active OLLAMA_BASE_URL environment variable.",
+  },
+  custom: {
+    icon: Plug,
+    placeholder: "sk-... / provider key",
+    help: "Register any OpenAI-, Anthropic-, or Google-compatible endpoint through Pi's native custom-provider mechanism. Requires a name, API key, https base URL, API family, and at least one model id. Deployed accounts only.",
   },
 }

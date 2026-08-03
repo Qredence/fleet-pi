@@ -34,7 +34,6 @@ export function useChatAutoScroll({
 }: UseChatAutoScrollOptions) {
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const contentWrapperRef = useRef<HTMLDivElement>(null)
-  const chatContainerObserverRef = useRef<ResizeObserver | null>(null)
   const shouldAutoScrollRef = useRef(true)
   const prevScrollTopRef = useRef(0)
   const lastMessageIdRef = useRef<string | null>(initialLastMessageId)
@@ -44,27 +43,21 @@ export function useChatAutoScroll({
 
   const containerRefCallback = useCallback((el: HTMLDivElement | null) => {
     chatContainerRef.current = el
-
-    if (chatContainerObserverRef.current) {
-      chatContainerObserverRef.current.disconnect()
-      chatContainerObserverRef.current = null
-    }
-    if (el) {
-      el.style.setProperty("--chat-container-height", `${el.clientHeight}px`)
-      const observer = new ResizeObserver((entries) => {
-        const height = entries[0]?.contentRect.height ?? 0
-        el.style.setProperty("--chat-container-height", `${height}px`)
-      })
-      observer.observe(el)
-      chatContainerObserverRef.current = observer
-    }
   }, [])
 
   useEffect(() => {
-    return () => {
-      if (chatContainerObserverRef.current)
-        chatContainerObserverRef.current.disconnect()
-    }
+    const container = chatContainerRef.current
+    if (!container) return
+    container.style.setProperty(
+      "--chat-container-height",
+      `${container.clientHeight}px`
+    )
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? 0
+      container.style.setProperty("--chat-container-height", `${height}px`)
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
   }, [])
 
   const scrollToBottomInstant = useCallback(() => {

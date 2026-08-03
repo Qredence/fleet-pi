@@ -1,6 +1,4 @@
 import { ArrowLeft, Info, Plus, Search, Trash2 } from "lucide-react"
-import { useMemo, useState } from "react"
-import { toast } from "sonner"
 import { Alert, AlertDescription } from "../../../../alert"
 import {
   AlertDialog,
@@ -24,43 +22,24 @@ import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
 import {
-  CREDENTIAL_UI_PROVIDERS,
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   PROVIDER_METADATA,
-  isNamedOccInstanceId,
+  isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
 import { ProviderBrandIcon } from "../shared/provider-brand-icon"
 import { ProviderCredentialFields } from "../shared/provider-credential-fields"
+import {
+  CUSTOM_PROVIDER_PICKER_ID,
+  useProviderCredentialsController,
+} from "./use-provider-credentials-controller"
 import type {
   ChatProviderInfo,
   ChatProviderRemoveRequest,
   ChatProviderRemoveResponse,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
+  PiCustomProviderApi,
 } from "../../../../../lib/pi/chat-protocol"
-
-/**
- * Determines whether a provider matches a search query by name, environment variable, ID, or relevant provider terms.
- *
- * @param provider - The provider to search
- * @param query - The search text
- * @returns `true` if the provider matches the query, `false` otherwise
- */
-function providerMatchesQuery(provider: ChatProviderInfo, query: string) {
-  if (!query) return true
-  const haystack = [
-    provider.name,
-    provider.envVarName,
-    provider.id,
-    isOccProviderId(provider.id)
-      ? "api key base url model name chat completions"
-      : "",
-  ]
-    .join(" ")
-    .toLowerCase()
-  return haystack.includes(query)
-}
 
 /**
  * Manages provider credential configuration, including adding, updating, searching, and removing providers.
@@ -88,205 +67,50 @@ export function ProviderCredentialsSection({
   ) => Promise<ChatProviderUpdateResponse>
   providers: Array<ChatProviderInfo>
 }) {
-  const [editingProvider, setEditingProvider] = useState<string | null>(null)
-  const [editingIsNewOccInstance, setEditingIsNewOccInstance] = useState(false)
-  const [apiKey, setApiKey] = useState("")
-  const [baseUrl, setBaseUrl] = useState("")
-  const [modelId, setModelId] = useState("")
-  const [displayName, setDisplayName] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [attemptedSave, setAttemptedSave] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [addPickerOpen, setAddPickerOpen] = useState(false)
-  const [addPickerQuery, setAddPickerQuery] = useState("")
-  const [confirmRemoveProvider, setConfirmRemoveProvider] =
-    useState<ChatProviderInfo | null>(null)
-
-  const credentialProviderIds = useMemo(
-    () => new Set(CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)),
-    []
-  )
-
-  // Named OCC instances (id `openai-chat-completions+…`) are not in the static
-  // catalog but still editable credential rows.
-  const credentialProviders = useMemo(
-    () =>
-      providers.filter(
-        (provider) =>
-          credentialProviderIds.has(provider.id) || isOccProviderId(provider.id)
-      ),
-    [credentialProviderIds, providers]
-  )
-
-  const activeProviders = useMemo(
-    () => credentialProviders.filter((provider) => provider.isConfigured),
-    [credentialProviders]
-  )
-
-  // The generic OCC entry stays "unconfigured" so users can add further named
-  // instances even after configuring one.
-  const unconfiguredProviders = useMemo(
-    () =>
-      credentialProviders.filter(
-        (provider) =>
-          !provider.isConfigured ||
-          (provider.id === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID &&
-            provider.providerFamily === undefined)
-      ),
-    [credentialProviders]
-  )
-
-  const filteredActiveProviders = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    if (!query) return activeProviders
-    return activeProviders.filter(
-      (provider) =>
-        provider.name.toLowerCase().includes(query) ||
-        provider.envVarName.toLowerCase().includes(query)
-    )
-  }, [activeProviders, searchQuery])
-
-  const filteredPickerAvailable = useMemo(() => {
-    const query = addPickerQuery.trim().toLowerCase()
-    return unconfiguredProviders.filter((provider) =>
-      providerMatchesQuery(provider, query)
-    )
-  }, [addPickerQuery, unconfiguredProviders])
-
-  const filteredPickerConfigured = useMemo(() => {
-    const query = addPickerQuery.trim().toLowerCase()
-    return activeProviders.filter((provider) =>
-      providerMatchesQuery(provider, query)
-    )
-  }, [activeProviders, addPickerQuery])
-
-  const pickerHasResults =
-    filteredPickerAvailable.length > 0 || filteredPickerConfigured.length > 0
-
-  const editingUnconfiguredProvider =
-    editingProvider &&
-    !activeProviders.some((provider) => provider.id === editingProvider)
-      ? (credentialProviders.find((entry) => entry.id === editingProvider) ??
-        null)
-      : null
-
-  const resetEditor = () => {
-    setApiKey("")
-    setBaseUrl("")
-    setModelId("")
-    setDisplayName("")
-    setShowPassword(false)
-    setAttemptedSave(false)
-  }
-
-  const closeEditor = () => {
-    setEditingProvider(null)
-    setEditingIsNewOccInstance(false)
-    resetEditor()
-  }
-
-  const openEditor = (
-    providerId: string,
-    opts?: { newOccInstance?: boolean }
-  ) => {
-    setAddPickerOpen(false)
-    setAddPickerQuery("")
-    setEditingProvider(providerId)
-    setEditingIsNewOccInstance(opts?.newOccInstance === true)
-    resetEditor()
-    const existing = providers.find((provider) => provider.id === providerId)
-    setDisplayName(existing?.displayName ?? "")
-  }
-
-  const openAddPicker = () => {
-    closeEditor()
-    setAddPickerQuery("")
-    setAddPickerOpen(true)
-  }
-
-  const closeAddPicker = () => {
-    setAddPickerOpen(false)
-    setAddPickerQuery("")
-  }
-
-  const selectProviderFromPicker = (providerId: string) => {
-    // Picker entries are templates; an OCC pick starts a new named instance.
-    openEditor(providerId, {
-      newOccInstance: isOccProviderId(providerId),
-    })
-  }
-
-  const handleSave = async (providerId: string) => {
-    if (!onUpdateProvider) return
-
-    setAttemptedSave(true)
-    const openAiChat = isOccProviderId(providerId)
-    const isNamedOcc = openAiChat && isNamedOccInstanceId(providerId)
-    const isOccLike = openAiChat && (isNamedOcc || editingIsNewOccInstance)
-    if (!apiKey.trim()) return
-    if (openAiChat && (!baseUrl.trim() || !modelId.trim())) return
-    if (isOccLike && !displayName.trim()) return
-
-    try {
-      await onUpdateProvider({
-        providerId,
-        apiKey: apiKey.trim(),
-        ...(openAiChat
-          ? {
-              baseUrl: baseUrl.trim(),
-              modelId: modelId.trim(),
-              // Name is only meaningful for a named instance (new or existing).
-              ...(isOccLike ? { displayName: displayName.trim() } : {}),
-              ...(editingIsNewOccInstance ? { createOccInstance: true } : {}),
-            }
-          : {}),
-      })
-
-      toast.success("Provider credentials applied to your active sessions.")
-      closeEditor()
-      closeAddPicker()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update provider"
-      )
-    }
-  }
-
-  const handleRemove = async (provider: ChatProviderInfo) => {
-    if (!onRemoveProvider) return
-
-    try {
-      await onRemoveProvider({ providerId: provider.id })
-      if (editingProvider === provider.id) {
-        closeEditor()
-      }
-      toast.success(`${provider.name} removed from your configured providers.`)
-      setConfirmRemoveProvider(null)
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to remove provider"
-      )
-    }
-  }
-
-  const canSave = useMemo(() => {
-    if (apiKey.trim().length === 0) return false
-    if (!editingProvider) return true
-    if (!isOccProviderId(editingProvider)) return true
-    if (baseUrl.trim().length === 0 || modelId.trim().length === 0) return false
-    const isNamedOcc = isNamedOccInstanceId(editingProvider)
-    if (isNamedOcc || editingIsNewOccInstance) {
-      return displayName.trim().length > 0
-    }
-    return true
-  }, [
+  const {
+    activeProviders,
+    addPickerOpen,
+    addPickerQuery,
+    api,
     apiKey,
+    attemptedSave,
     baseUrl,
-    modelId,
+    canSave,
+    closeAddPicker,
+    closeEditor,
+    confirmRemoveProvider,
+    credentialProviders,
     displayName,
     editingProvider,
-    editingIsNewOccInstance,
-  ])
+    editingUnconfiguredProvider,
+    filteredActiveProviders,
+    filteredPickerAvailable,
+    filteredPickerConfigured,
+    handleRemove,
+    handleSave,
+    modelId,
+    models,
+    openAddPicker,
+    openEditor,
+    pickerHasResults,
+    searchQuery,
+    selectProviderFromPicker,
+    setAddPickerQuery,
+    setApi,
+    setApiKey,
+    setBaseUrl,
+    setConfirmRemoveProvider,
+    setDisplayName,
+    setModelId,
+    setModels,
+    setSearchQuery,
+    setShowPassword,
+    showPassword,
+  } = useProviderCredentialsController({
+    onRemoveProvider,
+    onUpdateProvider,
+    providers,
+  })
 
   return (
     <SettingsPane
@@ -307,17 +131,21 @@ export function ProviderCredentialsSection({
       ) : editingUnconfiguredProvider ? (
         <AddProviderEditorPanel
           provider={editingUnconfiguredProvider}
+          api={api}
           apiKey={apiKey}
           baseUrl={baseUrl}
           modelId={modelId}
+          models={models}
           displayName={displayName}
           showPassword={showPassword}
           attemptedSave={attemptedSave}
           isPending={isPending}
           canSave={canSave}
           onApiKeyChange={setApiKey}
+          onApiChange={setApi}
           onBaseUrlChange={setBaseUrl}
           onModelIdChange={setModelId}
+          onModelsChange={setModels}
           onDisplayNameChange={setDisplayName}
           onTogglePassword={() => setShowPassword((current) => !current)}
           onBack={openAddPicker}
@@ -380,126 +208,32 @@ export function ProviderCredentialsSection({
               No matching providers found.
             </p>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {filteredActiveProviders.map((provider) => {
-                const isEditing = editingProvider === provider.id
-                const meta =
-                  PROVIDER_METADATA[provider.id] ??
-                  PROVIDER_METADATA["openai-chat-completions"]
-                const openAiChat = isOccProviderId(provider.id)
-
-                return (
-                  <div key={provider.id} className="flex flex-col">
-                    <ItemRow
-                      interactive={false}
-                      icon={
-                        <ProviderBrandIcon
-                          provider={provider.providerFamily ?? provider.id}
-                          className="text-foreground/80"
-                        />
-                      }
-                      title={provider.name}
-                      subtitle={
-                        openAiChat
-                          ? "OpenAI-compatible · API key + base URL + model name"
-                          : provider.envVarName
-                      }
-                      trailing={
-                        <div className="flex items-center gap-0.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              HIT_AREA_EXPAND_DENSE_CLASS,
-                              "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
-                            )}
-                            disabled={isPending || !onRemoveProvider}
-                            aria-label={`Remove ${provider.name}`}
-                            onClick={() => setConfirmRemoveProvider(provider)}
-                          >
-                            <Trash2 data-icon="inline-start" />
-                            Remove
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              HIT_AREA_EXPAND_DENSE_CLASS,
-                              "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
-                            )}
-                            disabled={isPending}
-                            onClick={() => {
-                              if (isEditing) {
-                                closeEditor()
-                                return
-                              }
-                              openEditor(provider.id)
-                            }}
-                          >
-                            {isEditing ? "Cancel" : "Update"}
-                          </Button>
-                        </div>
-                      }
-                    />
-
-                    {isEditing ? (
-                      <RowSurface
-                        tone="inset"
-                        padding="md"
-                        className="flex flex-col gap-2 border-t border-border/30"
-                      >
-                        <ProviderCredentialFields
-                          attemptedSave={attemptedSave}
-                          apiKey={apiKey}
-                          baseUrl={baseUrl}
-                          modelId={modelId}
-                          displayName={displayName}
-                          openAiChat={openAiChat}
-                          placeholder={meta.placeholder}
-                          showPassword={showPassword}
-                          onApiKeyChange={setApiKey}
-                          onBaseUrlChange={setBaseUrl}
-                          onModelIdChange={setModelId}
-                          // Name is only editable on a named OCC instance, not
-                          // on the reserved default OCC slot.
-                          onDisplayNameChange={
-                            provider.providerFamily === undefined
-                              ? undefined
-                              : setDisplayName
-                          }
-                          onTogglePassword={() =>
-                            setShowPassword((current) => !current)
-                          }
-                        />
-
-                        <Alert className="px-3 py-2">
-                          <Info />
-                          <AlertDescription className="text-xs text-pretty">
-                            {meta.help}
-                          </AlertDescription>
-                        </Alert>
-
-                        <div className="flex items-center justify-end">
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={isPending || !canSave}
-                            onClick={() => void handleSave(provider.id)}
-                          >
-                            {isPending ? (
-                              <Spinner data-icon="inline-start" />
-                            ) : null}
-                            Save
-                          </Button>
-                        </div>
-                      </RowSurface>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
+            <ActiveProviderList
+              providers={filteredActiveProviders}
+              editingProvider={editingProvider}
+              api={api}
+              apiKey={apiKey}
+              baseUrl={baseUrl}
+              modelId={modelId}
+              models={models}
+              displayName={displayName}
+              showPassword={showPassword}
+              attemptedSave={attemptedSave}
+              isPending={isPending}
+              canSave={canSave}
+              canRemove={!!onRemoveProvider}
+              onApiKeyChange={setApiKey}
+              onApiChange={setApi}
+              onBaseUrlChange={setBaseUrl}
+              onModelIdChange={setModelId}
+              onModelsChange={setModels}
+              onDisplayNameChange={setDisplayName}
+              onTogglePassword={() => setShowPassword((current) => !current)}
+              onEdit={openEditor}
+              onCancelEdit={closeEditor}
+              onSave={(providerId) => void handleSave(providerId)}
+              onRemove={setConfirmRemoveProvider}
+            />
           )}
         </div>
       )}
@@ -513,6 +247,186 @@ export function ProviderCredentialsSection({
         }}
       />
     </SettingsPane>
+  )
+}
+
+function ActiveProviderList({
+  providers,
+  editingProvider,
+  api,
+  apiKey,
+  baseUrl,
+  modelId,
+  models,
+  displayName,
+  showPassword,
+  attemptedSave,
+  isPending,
+  canSave,
+  canRemove,
+  onApiKeyChange,
+  onApiChange,
+  onBaseUrlChange,
+  onModelIdChange,
+  onModelsChange,
+  onDisplayNameChange,
+  onTogglePassword,
+  onEdit,
+  onCancelEdit,
+  onSave,
+  onRemove,
+}: {
+  providers: Array<ChatProviderInfo>
+  editingProvider: string | null
+  api: PiCustomProviderApi
+  apiKey: string
+  baseUrl: string
+  modelId: string
+  models: string
+  displayName: string
+  showPassword: boolean
+  attemptedSave: boolean
+  isPending: boolean
+  canSave: boolean
+  canRemove: boolean
+  onApiKeyChange: (value: string) => void
+  onApiChange: (value: PiCustomProviderApi) => void
+  onBaseUrlChange: (value: string) => void
+  onModelIdChange: (value: string) => void
+  onModelsChange: (value: string) => void
+  onDisplayNameChange: (value: string) => void
+  onTogglePassword: () => void
+  onEdit: (providerId: string) => void
+  onCancelEdit: () => void
+  onSave: (providerId: string) => void
+  onRemove: (provider: ChatProviderInfo) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {providers.map((provider) => {
+        const isEditing = editingProvider === provider.id
+        const isCustom = isCustomProviderId(provider.id)
+        const meta =
+          PROVIDER_METADATA[provider.id] ??
+          PROVIDER_METADATA[isCustom ? "custom" : "openai-chat-completions"]
+        const openAiChat = isOccProviderId(provider.id)
+
+        return (
+          <div key={provider.id} className="flex flex-col">
+            <ItemRow
+              interactive={false}
+              icon={
+                <ProviderBrandIcon
+                  provider={provider.id}
+                  api={provider.api}
+                  className="text-foreground/80"
+                />
+              }
+              title={provider.name}
+              subtitle={
+                isCustom
+                  ? "Custom provider · API key + base URL + models"
+                  : openAiChat
+                    ? "OpenAI-compatible · API key + base URL + model name"
+                    : provider.envVarName
+              }
+              trailing={
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      HIT_AREA_EXPAND_DENSE_CLASS,
+                      "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
+                    )}
+                    disabled={isPending || !canRemove}
+                    aria-label={`Remove ${provider.name}`}
+                    onClick={() => onRemove(provider)}
+                  >
+                    <Trash2 data-icon="inline-start" />
+                    Remove
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      HIT_AREA_EXPAND_DENSE_CLASS,
+                      "h-7 px-2 text-xs transition-[background-color,transform] duration-150 active:scale-[0.96]"
+                    )}
+                    disabled={isPending}
+                    onClick={() => {
+                      if (isEditing) {
+                        onCancelEdit()
+                        return
+                      }
+                      onEdit(provider.id)
+                    }}
+                  >
+                    {isEditing ? "Cancel" : "Update"}
+                  </Button>
+                </div>
+              }
+            />
+
+            {isEditing ? (
+              <RowSurface
+                tone="inset"
+                padding="md"
+                className="flex flex-col gap-2 border-t border-border/30"
+              >
+                <ProviderCredentialFields
+                  attemptedSave={attemptedSave}
+                  api={provider.api ?? api}
+                  apiKey={apiKey}
+                  baseUrl={baseUrl}
+                  modelId={modelId}
+                  models={models}
+                  displayName={displayName}
+                  isCustom={isCustom}
+                  openAiChat={openAiChat}
+                  placeholder={meta.placeholder}
+                  showPassword={showPassword}
+                  onApiKeyChange={onApiKeyChange}
+                  onApiChange={onApiChange}
+                  onBaseUrlChange={onBaseUrlChange}
+                  onModelIdChange={onModelIdChange}
+                  onModelsChange={onModelsChange}
+                  // Name is only editable on a named OCC instance, not
+                  // on the reserved default OCC slot.
+                  onDisplayNameChange={
+                    provider.providerFamily === undefined
+                      ? undefined
+                      : onDisplayNameChange
+                  }
+                  onTogglePassword={onTogglePassword}
+                />
+
+                <Alert className="px-3 py-2">
+                  <Info />
+                  <AlertDescription className="text-xs text-pretty">
+                    {meta.help}
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isPending || !canSave}
+                    onClick={() => onSave(provider.id)}
+                  >
+                    {isPending ? <Spinner data-icon="inline-start" /> : null}
+                    Save
+                  </Button>
+                </div>
+              </RowSurface>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -625,17 +539,21 @@ function AddProviderPickerPanel({
  */
 function AddProviderEditorPanel({
   provider,
+  api,
   apiKey,
   baseUrl,
   modelId,
+  models,
   displayName,
   showPassword,
   attemptedSave,
   isPending,
   canSave,
   onApiKeyChange,
+  onApiChange,
   onBaseUrlChange,
   onModelIdChange,
+  onModelsChange,
   onDisplayNameChange,
   onTogglePassword,
   onBack,
@@ -643,28 +561,38 @@ function AddProviderEditorPanel({
   onSave,
 }: {
   provider: ChatProviderInfo
+  api: PiCustomProviderApi
   apiKey: string
   baseUrl: string
   modelId: string
+  models: string
   displayName?: string
   showPassword: boolean
   attemptedSave: boolean
   isPending: boolean
   canSave: boolean
   onApiKeyChange: (value: string) => void
+  onApiChange: (value: PiCustomProviderApi) => void
   onBaseUrlChange: (value: string) => void
   onModelIdChange: (value: string) => void
+  onModelsChange: (value: string) => void
   onDisplayNameChange?: (value: string) => void
   onTogglePassword: () => void
   onBack: () => void
   onCancel: () => void
   onSave: () => void
 }) {
-  const meta = PROVIDER_METADATA[provider.id] ?? {
-    placeholder: "Enter credentials…",
-    help: "Stored securely in your local environment overrides.",
-  }
-  const openAiChat = isOccProviderId(provider.id)
+  const isCustomTemplate =
+    provider.id === CUSTOM_PROVIDER_PICKER_ID || isCustomProviderId(provider.id)
+  const meta =
+    PROVIDER_METADATA[provider.id] ??
+    (isCustomTemplate
+      ? PROVIDER_METADATA["custom"]
+      : {
+          placeholder: "Enter credentials…",
+          help: "Stored securely in your local environment overrides.",
+        })
+  const openAiChat = isOccProviderId(provider.id) && !isCustomTemplate
 
   return (
     <div className="flex flex-col gap-3">
@@ -681,25 +609,32 @@ function AddProviderEditorPanel({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Configure {provider.name}</p>
           <p className="text-xs text-pretty text-muted-foreground">
-            {openAiChat
-              ? "Name this OpenAI-compatible provider, then enter its API key, base URL, and model name."
-              : `Stored as ${provider.envVarName} for this account.`}
+            {isCustomTemplate
+              ? "Name this custom provider, pick its API family, then enter its API key, https base URL, and model ids."
+              : openAiChat
+                ? "Name this OpenAI-compatible provider, then enter its API key, base URL, and model name."
+                : `Stored as ${provider.envVarName} for this account.`}
           </p>
         </div>
       </div>
 
       <ProviderCredentialFields
         attemptedSave={attemptedSave}
+        api={provider.api ?? api}
         apiKey={apiKey}
         baseUrl={baseUrl}
         modelId={modelId}
+        models={models}
         displayName={displayName}
+        isCustom={isCustomTemplate}
         openAiChat={openAiChat}
         placeholder={meta.placeholder}
         showPassword={showPassword}
         onApiKeyChange={onApiKeyChange}
+        onApiChange={onApiChange}
         onBaseUrlChange={onBaseUrlChange}
         onModelIdChange={onModelIdChange}
+        onModelsChange={onModelsChange}
         onDisplayNameChange={onDisplayNameChange}
         onTogglePassword={onTogglePassword}
       />
@@ -784,6 +719,8 @@ function ProviderPickerRow({
   provider: ChatProviderInfo
 }) {
   const openAiChat = isOccProviderId(provider.id)
+  const isCustomTemplate =
+    provider.id === CUSTOM_PROVIDER_PICKER_ID || isCustomProviderId(provider.id)
 
   return (
     <button
@@ -796,14 +733,19 @@ function ProviderPickerRow({
     >
       <div className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-border/40 bg-background/60">
         <ProviderBrandIcon
-          provider={provider.id}
+          provider={isCustomTemplate ? "custom" : provider.id}
+          api={provider.api}
           className="text-foreground/70"
         />
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{provider.name}</div>
         <div className="truncate text-xs text-muted-foreground">
-          {openAiChat ? "API key + base URL + model name" : provider.envVarName}
+          {isCustomTemplate
+            ? "API family + key + https base URL + models"
+            : openAiChat
+              ? "API key + base URL + model name"
+              : provider.envVarName}
           {configured ? " · Update" : ""}
         </div>
       </div>

@@ -2,9 +2,11 @@ import { Cpu } from "lucide-react"
 import {
   KNOWN_PROVIDERS,
   PROVIDER_METADATA,
+  isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
 import { cn } from "../../../../../lib/utils"
+import type { PiCustomProviderApi } from "../shared/provider-metadata"
 
 const BRAND_CLASS = "size-4"
 
@@ -67,17 +69,29 @@ function GitHubMark({ className }: { className?: string }) {
  * Renders the brand icon associated with a provider.
  *
  * @param provider - The provider identifier used to select the icon
+ * @param api - Optional native API family hint for general custom providers
  * @param className - Optional additional CSS class names
  * @returns The provider brand icon, catalog icon, or a generic CPU icon
  */
 export function ProviderBrandIcon({
   provider,
+  api,
   className,
 }: {
   provider: string
+  api?: PiCustomProviderApi
   className?: string
 }) {
   const id = provider.toLowerCase()
+  if (isCustomProviderId(id) || id === "custom") {
+    if (api === "anthropic-messages") {
+      return <AnthropicMark className={className} />
+    }
+    if (api === "google-genai") {
+      return <GoogleMark className={className} />
+    }
+    return <OpenAiMark className={className} />
+  }
   if (id === "openai" || id === "openai-codex" || isOccProviderId(id)) {
     return <OpenAiMark className={className} />
   }

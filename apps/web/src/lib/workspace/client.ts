@@ -6,12 +6,11 @@ export async function loadWorkspaceFile(
   const response = await fetch(
     `/api/workspace/file?path=${encodeURIComponent(path)}`
   )
-  const text = await response.text()
 
   if (!response.ok) {
     let message = "Unable to load workspace file."
     try {
-      const body: unknown = JSON.parse(text)
+      const body: unknown = await response.json()
       if (
         body &&
         typeof body === "object" &&
@@ -26,5 +25,5 @@ export async function loadWorkspaceFile(
     throw new Error(message)
   }
 
-  return JSON.parse(text) as WorkspaceFileResponse
+  return (await response.json()) as WorkspaceFileResponse
 }
