@@ -8,7 +8,10 @@ import {
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
-import { assertSafeOpenAiCompatibleBaseUrl } from "./openai-chat-completions-url"
+import {
+  assertSafeOpenAiCompatibleBaseUrl,
+  isGatewayHost,
+} from "./openai-chat-completions-url"
 import { resolveUserProviderSecret } from "./user-provider-secrets"
 import type { NeonAiGatewayConfig } from "./neon-ai-gateway"
 import type {
@@ -168,11 +171,10 @@ export async function registerOpenAiChatCompletionsProvider(
     return
   }
 
-  const gateway = resolveNeonAiGatewayConfig(userId)
-  const usesGateway =
-    gateway !== undefined &&
-    config.baseUrl === gateway.baseUrl &&
-    config.apiKey === gateway.apiKey
+  // Gateway detection is hostname-based (same as isGatewayHost) so a rotated
+  // or derived gateway key still triggers the 25k cap + compat flags instead of
+  // silently missing them and hitting 400s from the gateway.
+  const usesGateway = isGatewayHost(config.baseUrl)
 
   const models: RegisteredModels = config.modelIds.map((modelId) =>
     buildModelEntry(modelId, usesGateway)

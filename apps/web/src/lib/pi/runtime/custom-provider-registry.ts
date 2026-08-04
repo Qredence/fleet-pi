@@ -20,6 +20,23 @@ import { listOccInstances, loadOccInstanceApiKey } from "@/lib/db/occ-instances"
 
 type RegisteredModels = NonNullable<ProviderConfig["models"]>
 
+/**
+ * Tracks which custom provider skip diagnostics have already been emitted on a
+ * given modelRuntime within this process. `registerCustomProviders` is called
+ * from both `createSessionServices` and `applyRuntimeAuth`, and the "create +
+ * auth" flow (e.g. model catalog) invokes both in sequence. Without this guard
+ * the second call re-appends the same skipped-provider warnings, producing
+ * duplicates in Settings/model catalog responses.
+ *
+ * Provider *registration* is intentionally not deduped: Pi's `registerProvider`
+ * is an idempotent overwrite, and the hot-reload path must re-register when
+ * credentials change. Only the emitted diagnostics are deduped.
+ */
+const emittedSkipDiagnostics = new WeakMap<
+  AgentSessionServices["modelRuntime"],
+  Set<string>
+>()
+
 type RegisteredCustomProvider = {
   id: string
   displayName: string
@@ -80,8 +97,9 @@ export function buildCustomModelEntry(
 ): RegisteredModels[number] {
   // Neon AI Gateway rejects max_tokens above each model's max_output_tokens
   // (25_000) with a 400. The cap + compat quirks only apply to the OCC family
-  // on gateway hosts; Anthropic/Google-family endpoints keep the 32k default.
-  const onGatewayOcc = usesGateway && api === "openai-completions"
+  // (openai-completions and openai-responses) on gateway hosts; Anthropic/
+  // Google-family endpoints keep the 32k default.
+  const onGatewayOcc = usesGateway && isOccFamilyApi(api)
   return {
     id: modelId,
     name: modelId,
@@ -199,9 +217,18 @@ export async function registerCustomProviders(
 
   const { registrations, skipped } =
     await listCustomProviderRegistrations(userId)
-  const registeredIds = registrations.map((r) => r.id)
 
+  // Dedupe skip diagnostics across the "create + auth" call pair. Registration
+  // itself is always re-applied (idempotent overwrite) so hot-reload picks up
+  // credential changes.
+  let emitted = emittedSkipDiagnostics.get(modelRuntime)
+  if (!emitted) {
+    emitted = new Set()
+    emittedSkipDiagnostics.set(modelRuntime, emitted)
+  }
   for (const skip of skipped) {
+    if (emitted.has(skip.id)) continue
+    emitted.add(skip.id)
     services.diagnostics.push({
       type: "warning",
       message: `[Custom provider] "${skip.displayName}" (${skip.id}) skipped: ${
@@ -223,7 +250,10 @@ export async function registerCustomProviders(
     })
   }
 
-  unregisterStaleCustomProviders(modelRuntime, registeredIds)
+  unregisterStaleCustomProviders(
+    modelRuntime,
+    registrations.map((r) => r.id)
+  )
 }
 
 /**
