@@ -111,6 +111,54 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     expect(model?.compat).toMatchObject(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
   })
 
+  it("applies the gateway 25k cap to an openai-responses custom provider on a gateway host", async () => {
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: `${CUSTOM_PROVIDER_ID_PREFIX}responses-gw`,
+        displayName: "Responses Gateway",
+        baseUrl: "https://br-foo-api.ai.c-3.us-east-2.aws.neon.tech/v1",
+        modelId: "gpt-5",
+        api: "openai-responses",
+        modelIds: ["gpt-5"],
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockResolvedValue("gw-key")
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    await registerCustomProviders(services, "user-1")
+
+    const model = services.modelRuntime.getModel(
+      `${CUSTOM_PROVIDER_ID_PREFIX}responses-gw`,
+      "gpt-5"
+    )
+    expect(model).toBeDefined()
+    expect(model?.maxTokens).toBe(25_000)
+    expect(model?.compat).toMatchObject(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
+  })
+
+  it("deduplicates skip diagnostics across repeated registerCustomProviders calls", async () => {
+    listOccInstancesMock.mockResolvedValue([
+      {
+        id: `${OCC_INSTANCE_ID_PREFIX}broken-key`,
+        displayName: "Broken Key",
+        baseUrl: "https://opencode.ai/zen/v1",
+        modelId: "kimi-k2.6",
+      },
+    ])
+    loadOccInstanceApiKeyMock.mockResolvedValue(undefined)
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const diagnosticsBefore = services.diagnostics.length
+    await registerCustomProviders(services, "user-1")
+    await registerCustomProviders(services, "user-1")
+
+    const newDiagnostics = services.diagnostics.slice(diagnosticsBefore)
+    const brokenKeyWarnings = newDiagnostics.filter(
+      (d) => d.message.includes("broken-key") && d.message.includes("skipped")
+    )
+    expect(brokenKeyWarnings).toHaveLength(1)
+  })
+
   it("registers a general custom provider with an Anthropic-compatible API family", async () => {
     listOccInstancesMock.mockResolvedValue([
       {
