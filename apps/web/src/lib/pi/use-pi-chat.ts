@@ -76,11 +76,10 @@ export function usePiChat(
         | Array<ChatMessage>
         | ((current: Array<ChatMessage>) => Array<ChatMessage>)
     ) => {
-      setMessages((current) => {
-        const next = typeof updater === "function" ? updater(current) : updater
-        messagesRef.current = next
-        return next
-      })
+      const next =
+        typeof updater === "function" ? updater(messagesRef.current) : updater
+      messagesRef.current = next
+      setMessages(next)
     },
     []
   )
@@ -148,8 +147,6 @@ export function usePiChat(
     ]
   )
 
-  initialSessionMetadataRef.current = initialSessionMetadata
-
   const submitQuestionAnswer = useCallback(
     async ({
       toolCallId,
@@ -195,6 +192,10 @@ export function usePiChat(
   useEffect(() => {
     sessionMetadataRef.current = sessionMetadata
   }, [sessionMetadata])
+
+  useEffect(() => {
+    initialSessionMetadataRef.current = initialSessionMetadata
+  }, [initialSessionMetadata])
 
   useEffect(() => {
     return () => abortRef.current?.abort()

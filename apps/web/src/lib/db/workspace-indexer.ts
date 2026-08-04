@@ -263,6 +263,54 @@ async function walkWorkspaceFiles(directory: string): Promise<Array<string>> {
   return files
 }
 
+type BuildItemRowInput = {
+  id: string
+  workspaceRootId: string
+  snapshot: WorkspaceIndexedSnapshot
+  currentVersionId: string | null
+  currentVersionNumber: number
+  currentParserVersion: number
+  currentContentHash: string
+  firstIndexedAt: string
+  lastIndexedAt: string
+  title: string | null
+  summary: string | null
+}
+
+function buildItemRow({
+  id,
+  workspaceRootId,
+  snapshot,
+  currentVersionId,
+  currentVersionNumber,
+  currentParserVersion,
+  currentContentHash,
+  firstIndexedAt,
+  lastIndexedAt,
+  title,
+  summary,
+}: BuildItemRowInput) {
+  return {
+    id,
+    workspaceRootId,
+    canonicalPath: snapshot.classification.canonicalPath,
+    category: snapshot.classification.category,
+    sourceOfTruth: snapshot.classification.sourceOfTruth,
+    parserKind: snapshot.classification.parserKind,
+    currentContentHash,
+    currentVersionId,
+    currentVersionNumber,
+    currentParserVersion,
+    byteSize: snapshot.byteSize,
+    lastModifiedMs: snapshot.lastModifiedMs,
+    title,
+    summary,
+    firstIndexedAt,
+    lastIndexedAt,
+    deletedAt: null,
+  }
+}
+
 function applyWorkspaceIndexPlan(
   db: Database.Database,
   workspaceRootId: string,
@@ -398,25 +446,21 @@ function applyWorkspaceIndexPlan(
       )
       const versionNumber = 1
       const versionId = createVersionId(itemId, versionNumber)
-      upsertItem.run({
-        id: itemId,
-        workspaceRootId,
-        canonicalPath: snapshot.classification.canonicalPath,
-        category: snapshot.classification.category,
-        sourceOfTruth: snapshot.classification.sourceOfTruth,
-        parserKind: snapshot.classification.parserKind,
-        currentContentHash: snapshot.contentHash,
-        currentVersionId: null,
-        currentVersionNumber: 0,
-        currentParserVersion: snapshot.parsed.parserVersion,
-        byteSize: snapshot.byteSize,
-        lastModifiedMs: snapshot.lastModifiedMs,
-        title: snapshot.parsed.title,
-        summary: snapshot.parsed.summary,
-        firstIndexedAt: plan.generatedAt,
-        lastIndexedAt: plan.generatedAt,
-        deletedAt: null,
-      })
+      upsertItem.run(
+        buildItemRow({
+          id: itemId,
+          workspaceRootId,
+          snapshot,
+          currentContentHash: snapshot.contentHash,
+          currentVersionId: null,
+          currentVersionNumber: 0,
+          currentParserVersion: snapshot.parsed.parserVersion,
+          firstIndexedAt: plan.generatedAt,
+          lastIndexedAt: plan.generatedAt,
+          title: snapshot.parsed.title,
+          summary: snapshot.parsed.summary,
+        })
+      )
       writeVersion(
         insertVersion,
         insertRecord,
@@ -426,25 +470,21 @@ function applyWorkspaceIndexPlan(
         snapshot,
         plan.generatedAt
       )
-      upsertItem.run({
-        id: itemId,
-        workspaceRootId,
-        canonicalPath: snapshot.classification.canonicalPath,
-        category: snapshot.classification.category,
-        sourceOfTruth: snapshot.classification.sourceOfTruth,
-        parserKind: snapshot.classification.parserKind,
-        currentContentHash: snapshot.contentHash,
-        currentVersionId: versionId,
-        currentVersionNumber: versionNumber,
-        currentParserVersion: snapshot.parsed.parserVersion,
-        byteSize: snapshot.byteSize,
-        lastModifiedMs: snapshot.lastModifiedMs,
-        title: snapshot.parsed.title,
-        summary: snapshot.parsed.summary,
-        firstIndexedAt: plan.generatedAt,
-        lastIndexedAt: plan.generatedAt,
-        deletedAt: null,
-      })
+      upsertItem.run(
+        buildItemRow({
+          id: itemId,
+          workspaceRootId,
+          snapshot,
+          currentContentHash: snapshot.contentHash,
+          currentVersionId: versionId,
+          currentVersionNumber: versionNumber,
+          currentParserVersion: snapshot.parsed.parserVersion,
+          firstIndexedAt: plan.generatedAt,
+          lastIndexedAt: plan.generatedAt,
+          title: snapshot.parsed.title,
+          summary: snapshot.parsed.summary,
+        })
+      )
     }
 
     for (const { existing, snapshot } of plan.updates) {
@@ -459,69 +499,57 @@ function applyWorkspaceIndexPlan(
         snapshot,
         plan.generatedAt
       )
-      upsertItem.run({
-        id: existing.id,
-        workspaceRootId,
-        canonicalPath: snapshot.classification.canonicalPath,
-        category: snapshot.classification.category,
-        sourceOfTruth: snapshot.classification.sourceOfTruth,
-        parserKind: snapshot.classification.parserKind,
-        currentContentHash: snapshot.contentHash,
-        currentVersionId: versionId,
-        currentVersionNumber: versionNumber,
-        currentParserVersion: snapshot.parsed.parserVersion,
-        byteSize: snapshot.byteSize,
-        lastModifiedMs: snapshot.lastModifiedMs,
-        title: snapshot.parsed.title,
-        summary: snapshot.parsed.summary,
-        firstIndexedAt: existing.firstIndexedAt,
-        lastIndexedAt: plan.generatedAt,
-        deletedAt: null,
-      })
+      upsertItem.run(
+        buildItemRow({
+          id: existing.id,
+          workspaceRootId,
+          snapshot,
+          currentContentHash: snapshot.contentHash,
+          currentVersionId: versionId,
+          currentVersionNumber: versionNumber,
+          currentParserVersion: snapshot.parsed.parserVersion,
+          firstIndexedAt: existing.firstIndexedAt,
+          lastIndexedAt: plan.generatedAt,
+          title: snapshot.parsed.title,
+          summary: snapshot.parsed.summary,
+        })
+      )
     }
 
     for (const { existing, snapshot } of plan.reactivations) {
-      upsertItem.run({
-        id: existing.id,
-        workspaceRootId,
-        canonicalPath: snapshot.classification.canonicalPath,
-        category: snapshot.classification.category,
-        sourceOfTruth: snapshot.classification.sourceOfTruth,
-        parserKind: snapshot.classification.parserKind,
-        currentContentHash: snapshot.contentHash,
-        currentVersionId: existing.currentVersionId,
-        currentVersionNumber: existing.currentVersionNumber,
-        currentParserVersion: existing.currentParserVersion,
-        byteSize: snapshot.byteSize,
-        lastModifiedMs: snapshot.lastModifiedMs,
-        title: existing.title ?? snapshot.parsed.title,
-        summary: existing.summary ?? snapshot.parsed.summary,
-        firstIndexedAt: existing.firstIndexedAt,
-        lastIndexedAt: plan.generatedAt,
-        deletedAt: null,
-      })
+      upsertItem.run(
+        buildItemRow({
+          id: existing.id,
+          workspaceRootId,
+          snapshot,
+          currentContentHash: snapshot.contentHash,
+          currentVersionId: existing.currentVersionId,
+          currentVersionNumber: existing.currentVersionNumber,
+          currentParserVersion: existing.currentParserVersion,
+          firstIndexedAt: existing.firstIndexedAt,
+          lastIndexedAt: plan.generatedAt,
+          title: existing.title ?? snapshot.parsed.title,
+          summary: existing.summary ?? snapshot.parsed.summary,
+        })
+      )
     }
 
     for (const { existing, snapshot } of plan.unchanged) {
-      upsertItem.run({
-        id: existing.id,
-        workspaceRootId,
-        canonicalPath: snapshot.classification.canonicalPath,
-        category: snapshot.classification.category,
-        sourceOfTruth: snapshot.classification.sourceOfTruth,
-        parserKind: snapshot.classification.parserKind,
-        currentContentHash: existing.currentContentHash,
-        currentVersionId: existing.currentVersionId,
-        currentVersionNumber: existing.currentVersionNumber,
-        currentParserVersion: existing.currentParserVersion,
-        byteSize: snapshot.byteSize,
-        lastModifiedMs: snapshot.lastModifiedMs,
-        title: existing.title ?? snapshot.parsed.title,
-        summary: existing.summary ?? snapshot.parsed.summary,
-        firstIndexedAt: existing.firstIndexedAt,
-        lastIndexedAt: plan.generatedAt,
-        deletedAt: null,
-      })
+      upsertItem.run(
+        buildItemRow({
+          id: existing.id,
+          workspaceRootId,
+          snapshot,
+          currentContentHash: existing.currentContentHash,
+          currentVersionId: existing.currentVersionId,
+          currentVersionNumber: existing.currentVersionNumber,
+          currentParserVersion: existing.currentParserVersion,
+          firstIndexedAt: existing.firstIndexedAt,
+          lastIndexedAt: plan.generatedAt,
+          title: existing.title ?? snapshot.parsed.title,
+          summary: existing.summary ?? snapshot.parsed.summary,
+        })
+      )
     }
 
     for (const deleted of plan.deletions) {

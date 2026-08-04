@@ -2773,6 +2773,27 @@
                           "authType": {
                             "type": "string",
                             "enum": ["apiKey", "oauth"]
+                          },
+                          "providerFamily": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "api": {
+                            "type": "string",
+                            "enum": [
+                              "openai-completions",
+                              "openai-responses",
+                              "anthropic-messages",
+                              "google-genai"
+                            ]
+                          },
+                          "modelIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         },
                         "required": [
@@ -2832,6 +2853,30 @@
                   "modelId": {
                     "type": "string",
                     "maxLength": 4096
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "createOccInstance": {
+                    "type": "boolean"
+                  },
+                  "api": {
+                    "type": "string",
+                    "enum": [
+                      "openai-completions",
+                      "openai-responses",
+                      "anthropic-messages",
+                      "google-genai"
+                    ]
+                  },
+                  "models": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "maxItems": 64
                   }
                 },
                 "required": ["providerId", "apiKey"],
@@ -2871,6 +2916,27 @@
                           "authType": {
                             "type": "string",
                             "enum": ["apiKey", "oauth"]
+                          },
+                          "providerFamily": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "api": {
+                            "type": "string",
+                            "enum": [
+                              "openai-completions",
+                              "openai-responses",
+                              "anthropic-messages",
+                              "google-genai"
+                            ]
+                          },
+                          "modelIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         },
                         "required": [
@@ -2960,6 +3026,27 @@
                           "authType": {
                             "type": "string",
                             "enum": ["apiKey", "oauth"]
+                          },
+                          "providerFamily": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "api": {
+                            "type": "string",
+                            "enum": [
+                              "openai-completions",
+                              "openai-responses",
+                              "anthropic-messages",
+                              "google-genai"
+                            ]
+                          },
+                          "modelIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         },
                         "required": [

@@ -28,20 +28,21 @@ AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 
 ### Neon Managed Auth (recommended)
 
-| Variable                                    | Required       | Notes                                   |
-| ------------------------------------------- | -------------- | --------------------------------------- |
-| `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL`     | Yes            | Managed Auth base                       |
-| `NEON_AUTH_COOKIE_SECRET`                   | Yes            | ≥32 chars; cookie gate                  |
-| `VITE_NEON_AUTH_URL`                        | Yes            | Client proxy target                     |
-| `NEON_AUTH_JWKS_URL`                        | Yes            | JWT verification                        |
-| `NEON_AUTH_ISSUER`                          | Yes            | Fail-closed bearer JWTs                 |
-| `FLEET_PI_CHAT_DATABASE_URL`                | Yes            | `fleet_pi_app` role; mirrors + settings |
-| `BETTER_AUTH_SECRET`                        | Yes            | BYOK AES-GCM encryption                 |
-| `NEON_AI_GATEWAY_TOKEN`                     | Yes*           | *When `preview.aiGateway` enabled       |
-| `NEON_AI_GATEWAY_BASE_URL`                  | Yes*           | Bare branch gateway host                |
-| `VITE_FLEET_PI_CHAT_RUNTIME_URL`            | Optional       | Neon Function chat stream URL           |
-| `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS`        | When dual-host | Browser origin allowlist                |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional       | OAuth via Managed Auth                  |
+| Variable                                               | Required       | Notes                                                                |
+| ------------------------------------------------------ | -------------- | -------------------------------------------------------------------- |
+| `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL`                | Yes            | Managed Auth base                                                    |
+| `NEON_AUTH_COOKIE_SECRET`                              | Yes            | ≥32 chars; cookie gate                                               |
+| `VITE_NEON_AUTH_URL`                                   | Yes            | Client proxy target                                                  |
+| `NEON_AUTH_JWKS_URL`                                   | Yes            | JWT verification                                                     |
+| `NEON_AUTH_ISSUER`                                     | Yes            | Fail-closed bearer JWTs                                              |
+| `FLEET_PI_CHAT_DATABASE_URL`                           | Yes            | `fleet_pi_app` role; mirrors + settings                              |
+| `BETTER_AUTH_SECRET`                                   | Yes            | BYOK AES-GCM encryption                                              |
+| `NEON_AI_GATEWAY_TOKEN`                                | Yes*           | *When `preview.aiGateway` enabled                                    |
+| `NEON_AI_GATEWAY_BASE_URL`                             | Yes*           | Bare branch gateway host                                             |
+| `VITE_FLEET_PI_CHAT_RUNTIME_URL`                       | When streaming | Neon Function chat stream URL (set in Production)                    |
+| `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS`                   | When streaming | Browser origin allowlist; must match the Function's origin allowlist |
+| `VITE_PUBLIC_POSTHOG_KEY` / `VITE_PUBLIC_POSTHOG_HOST` | Optional       | PostHog product analytics (browser)                                  |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`            | Optional       | OAuth via Managed Auth                                               |
 
 ### Legacy Better Auth (local fallback only on Vercel if no Neon Auth URL)
 

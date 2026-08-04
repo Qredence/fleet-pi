@@ -27,14 +27,15 @@ export function useResourceInstallRefresh({
   workspaceTree,
 }: UseResourceInstallRefreshArgs) {
   const handledResourceInstallToolCalls = useRef(new Set<string>())
+  const handledToolCallIds = handledResourceInstallToolCalls.current
 
   useEffect(() => {
-    handledResourceInstallToolCalls.current.clear()
+    handledToolCallIds.clear()
   }, [sessionId])
 
   useEffect(() => {
     const plan = planResourceInstallRefresh({
-      handledToolCallIds: handledResourceInstallToolCalls.current,
+      handledToolCallIds,
       messages,
       shouldLoadWorkspaceTree,
       workspaceTree,
@@ -43,7 +44,7 @@ export function useResourceInstallRefresh({
     if (!plan) return
 
     plan.toolCallIds.forEach((toolCallId) => {
-      handledResourceInstallToolCalls.current.add(toolCallId)
+      handledToolCallIds.add(toolCallId)
     })
 
     refreshResources()

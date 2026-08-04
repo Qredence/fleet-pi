@@ -130,6 +130,26 @@ export const OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID =
 export const OCC_INSTANCE_ID_PREFIX = `${OPENAI_CHAT_COMPLETIONS_PROVIDER_ID}+`
 
 /**
+ * Prefix for **general custom provider** instance ids. Any OpenAI/Anthropic/
+ * Google-compatible endpoint a user adds gets an id of the form
+ * `custom+<slug>` so it can be registered through Pi's native
+ * `registerProvider`/`composeModelProvider` path independently of the reserved
+ * OpenAI Chat Completions default slot.
+ */
+export const CUSTOM_PROVIDER_ID_PREFIX = "custom+"
+
+/**
+ * Determines whether a provider ID belongs to the general custom provider
+ * family (a user-added `custom+<slug>` instance).
+ *
+ * @param providerId - The provider ID to classify
+ * @returns `true` if the ID starts with the custom instance prefix, `false` otherwise
+ */
+export function isCustomProviderId(providerId: string): boolean {
+  return providerId.startsWith(CUSTOM_PROVIDER_ID_PREFIX)
+}
+
+/**
  * Determines whether a provider ID belongs to the OpenAI Chat Completions family.
  *
  * @param providerId - The provider ID to classify
@@ -154,12 +174,12 @@ export function isNamedOccInstanceId(providerId: string): boolean {
 const OCC_SLUG_MAX_LENGTH = 48
 
 /**
- * Creates a normalized slug for an OpenAI Chat Completions instance from a display name.
+ * Creates a normalized slug for a named provider instance from a display name.
  *
  * @param displayName - The instance display name to normalize
- * @returns A lowercase, accent-free, hyphenated slug of up to 48 characters, or `occ` when the name produces an empty slug
+ * @returns A lowercase, accent-free, hyphenated slug of up to 48 characters, or `provider` when the name produces an empty slug
  */
-export function toOccInstanceSlug(displayName: string): string {
+export function toInstanceSlug(displayName: string): string {
   const slug = displayName
     .trim()
     .toLowerCase()
@@ -169,7 +189,18 @@ export function toOccInstanceSlug(displayName: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, OCC_SLUG_MAX_LENGTH)
     .replace(/^-+|-+$/g, "")
-  return slug || "occ"
+  return slug || "provider"
+}
+
+/**
+ * Creates a normalized slug for an OpenAI Chat Completions instance from a display name.
+ *
+ * @param displayName - The instance display name to normalize
+ * @returns A lowercase, accent-free, hyphenated slug of up to 48 characters, or `occ` when the name produces an empty slug
+ */
+export function toOccInstanceSlug(displayName: string): string {
+  const slug = toInstanceSlug(displayName)
+  return slug === "provider" ? "occ" : slug
 }
 
 /**
@@ -180,6 +211,16 @@ export function toOccInstanceSlug(displayName: string): string {
  */
 export function toOccInstanceId(slug: string): string {
   return `${OCC_INSTANCE_ID_PREFIX}${slug}`
+}
+
+/**
+ * Constructs a general custom provider ID from a validated slug.
+ *
+ * @param slug - The validated custom provider slug
+ * @returns The provider ID with the custom provider prefix
+ */
+export function toCustomProviderId(slug: string): string {
+  return `${CUSTOM_PROVIDER_ID_PREFIX}${slug}`
 }
 
 /**

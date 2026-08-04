@@ -561,7 +561,11 @@ Save encrypted BYOK provider credentials
   "providerId": <string> (required),
   "apiKey": <string> (required),
   "baseUrl": <string>,
-  "modelId": <string>
+  "modelId": <string>,
+  "displayName": <string>,
+  "createOccInstance": <boolean>,
+  "api": <string>,
+  "models": <array>
 }
 ```
 

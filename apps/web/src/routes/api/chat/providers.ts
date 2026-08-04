@@ -9,9 +9,13 @@ import {
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isCustomProviderId,
   isNamedOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
-import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
+import type {
+  ChatProviderInfo,
+  PiCustomProviderApi,
+} from "@workspace/pi-protocol/chat-protocol"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { getErrorMessage } from "@/lib/pi/server"
 import {
@@ -26,6 +30,7 @@ import {
 import { isVercelDeployment } from "@/lib/deployment/environment"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import {
+  allocateCustomProviderId,
   allocateOccInstanceId,
   getOccInstanceById,
   listOccInstancesWithApiKey,
@@ -40,16 +45,18 @@ import {
 } from "@/lib/pi/runtime"
 import { removeProviderBundle } from "@/lib/pi/runtime/remove-provider-bundle"
 import { assertSafeOpenAiCompatibleBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-provider"
+import { assertSafeCustomProviderBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-url"
 import {
   isRemovableCredentialProvider,
   resolveProviderCredentialBundle,
 } from "@/lib/pi/runtime/provider-credential-bundle"
 
 /**
- * Combines provider configuration statuses with named OpenAI-compatible instances for an account.
+ * Combines provider configuration statuses with custom provider instances
+ * (legacy named OCC + general custom) for an account.
  *
  * @param userId - The account's user identifier, if available.
- * @returns Provider rows including configured named instances.
+ * @returns Provider rows including configured custom instances.
  */
 async function getProviderRows(userId: string | undefined) {
   const base = await getProviderConfigStatus({ userId })
@@ -65,6 +72,8 @@ async function getProviderRows(userId: string | undefined) {
       envVarName: "OPENAI_CHAT_COMPLETIONS_API_KEY",
       providerFamily: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
       displayName: instance.displayName,
+      api: instance.api,
+      modelIds: instance.modelIds,
     })
   }
   return rows
@@ -74,10 +83,18 @@ async function getProviderRows(userId: string | undefined) {
 function isInstanceUsable(instance: {
   apiKey: string
   baseUrl: string
+  api?: PiCustomProviderApi
 }): boolean {
   if (!instance.apiKey) return false
   try {
-    assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
+    if (
+      instance.api === "anthropic-messages" ||
+      instance.api === "google-genai"
+    ) {
+      assertSafeCustomProviderBaseUrl(instance.baseUrl)
+    } else {
+      assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
+    }
     return true
   } catch {
     return false
@@ -87,11 +104,17 @@ function isInstanceUsable(instance: {
 const jsonError = (message: string, status = 400) =>
   Response.json({ message }, { status })
 
+const OCC_FAMILY_APIS: ReadonlySet<PiCustomProviderApi> = new Set([
+  "openai-completions",
+  "openai-responses",
+])
+
 /**
- * Create or update a named OCC instance. Values are fully validated up front
- * so the body carries no non-null assertions downstream.
+ * Create or update a custom provider instance (legacy named OCC or general
+ * custom). Values are fully validated up front so the body carries no
+ * non-null assertions downstream.
  */
-async function handleNamedOccInstanceUpsert(
+async function handleCustomProviderUpsert(
   userId: string | undefined,
   body: {
     providerId: string
@@ -99,6 +122,8 @@ async function handleNamedOccInstanceUpsert(
     baseUrl?: string
     modelId?: string
     displayName?: string
+    api?: PiCustomProviderApi
+    models?: Array<string>
   },
   provider: (typeof KNOWN_PROVIDERS)[number] | undefined
 ) {
@@ -113,26 +138,48 @@ async function handleNamedOccInstanceUpsert(
     )
   }
 
-  let baseUrl: string
-  try {
-    baseUrl = assertSafeOpenAiCompatibleBaseUrl(body.baseUrl ?? "")
-    // Named instances are https-only everywhere (the default OCC slot alone
-    // may use http://localhost in local dev).
-    if (new URL(baseUrl).protocol !== "https:") {
-      throw new Error("Named OCC instances require an https base URL.")
-    }
-  } catch (error) {
+  const api: PiCustomProviderApi = body.api ?? "openai-completions"
+
+  // Named OCC targets: an existing `openai-chat-completions+<slug>` id, or a
+  // create against the reserved OCC id. Their `openai-chat-completions+`
+  // prefix promises OpenAI-compatible semantics, so non-OCC APIs are rejected.
+  const isNamedOccTarget =
+    isNamedOccInstanceId(body.providerId) ||
+    body.providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+  if (isNamedOccTarget && !OCC_FAMILY_APIS.has(api)) {
     return jsonError(
-      error instanceof Error
-        ? error.message
-        : "Invalid OpenAI Chat Completions base URL."
+      "Named OpenAI Chat Completions instances only support OpenAI-compatible APIs."
     )
   }
 
-  const modelId = sanitizeProviderCredentialValue(body.modelId ?? "")
-  if (!modelId) {
+  let baseUrl: string
+  try {
+    // OCC-family endpoints normalize OpenAI paths; Anthropic/Google-family
+    // endpoints keep the path as-is. Both families are https-only (the
+    // default OCC slot alone may use http://localhost in local dev).
+    baseUrl = OCC_FAMILY_APIS.has(api)
+      ? assertSafeOpenAiCompatibleBaseUrl(body.baseUrl ?? "")
+      : assertSafeCustomProviderBaseUrl(body.baseUrl ?? "")
+    if (new URL(baseUrl).protocol !== "https:") {
+      throw new Error("Custom providers require an https base URL.")
+    }
+  } catch (error) {
     return jsonError(
-      "OpenAI Chat Completions requires apiKey, baseUrl, and modelId."
+      error instanceof Error ? error.message : "Invalid provider base URL."
+    )
+  }
+
+  const models = (body.models ?? [])
+    .map((model) => sanitizeProviderCredentialValue(model))
+    .filter((model): model is string => Boolean(model))
+  // Back-compat: the single-model quick-add path sends `modelId` only.
+  if (models.length === 0) {
+    const modelId = sanitizeProviderCredentialValue(body.modelId ?? "")
+    if (modelId) models.push(modelId)
+  }
+  if (models.length === 0) {
+    return jsonError(
+      "Custom providers require apiKey, baseUrl, and at least one model."
     )
   }
 
@@ -145,22 +192,34 @@ async function handleNamedOccInstanceUpsert(
     return jsonError("Unauthorized", 401)
   }
 
-  // Deployment gate first: named-instance storage is DB-backed (deployed).
+  // Deployment gate first: instance storage is DB-backed (deployed chat).
   if (!isVercelDeployment()) {
     return jsonError(
-      "Named OpenAI-compatible instances require a database-backed account (deployed chat)."
+      "Custom provider instances require a database-backed account (deployed chat)."
     )
   }
 
-  // Update an existing named instance in place (`openai-chat-completions+
-  // slug`), else allocate a fresh id from the display name.
-  const instanceId = isNamedOccInstanceId(body.providerId)
-    ? body.providerId
-    : await allocateOccInstanceId(userId, displayName)
+  // Update an existing instance in place (`openai-chat-completions+<slug>` or
+  // `custom+<slug>`). Otherwise allocate a fresh id from the display name:
+  // creates against the reserved OCC id keep the legacy
+  // `openai-chat-completions+` namespace, everything else gets `custom+`.
+  const instanceId =
+    isNamedOccInstanceId(body.providerId) || isCustomProviderId(body.providerId)
+      ? body.providerId
+      : isNamedOccTarget
+        ? await allocateOccInstanceId(userId, displayName)
+        : await allocateCustomProviderId(userId, displayName)
 
   await upsertOccInstance(
     userId!,
-    { id: instanceId, displayName, baseUrl, modelId },
+    {
+      id: instanceId,
+      displayName,
+      baseUrl,
+      modelId: models[0],
+      api,
+      modelIds: models,
+    },
     apiKey
   )
 
@@ -217,10 +276,12 @@ export const Route = createFileRoute("/api/chat/providers")({
               const rawBody = await request.json()
               const body = ChatProviderUpdateRequestSchema.parse(rawBody)
 
-              // Named-instance path is explicit only: an existing
-              // `openai-chat-completions+<slug>` row, or an opt-in create.
+              // Instance path is explicit only: an existing
+              // `openai-chat-completions+<slug>` or `custom+<slug>` row, or an
+              // opt-in create.
               const wantsNamedInstance =
                 isNamedOccInstanceId(body.providerId) ||
+                isCustomProviderId(body.providerId) ||
                 body.createOccInstance === true
 
               // A `displayName` on the reserved default OCC id without the
@@ -245,11 +306,7 @@ export const Route = createFileRoute("/api/chat/providers")({
               )
 
               if (wantsNamedInstance) {
-                return await handleNamedOccInstanceUpsert(
-                  userId,
-                  body,
-                  provider
-                )
+                return await handleCustomProviderUpsert(userId, body, provider)
               }
 
               if (!provider) {
@@ -405,12 +462,15 @@ export const Route = createFileRoute("/api/chat/providers")({
 
               const context = resolveAppRuntimeContext()
 
-              if (isNamedOccInstanceId(body.providerId)) {
+              if (
+                isNamedOccInstanceId(body.providerId) ||
+                isCustomProviderId(body.providerId)
+              ) {
                 if (!isVercelDeployment()) {
                   return Response.json(
                     {
                       message:
-                        "Named OpenAI-compatible instances require a database-backed account (deployed chat).",
+                        "Custom provider instances require a database-backed account (deployed chat).",
                     },
                     { status: 400 }
                   )

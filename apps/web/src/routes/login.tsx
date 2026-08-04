@@ -10,6 +10,13 @@ import { isLocalAnonymousAuthAllowed } from "@/lib/auth/auth-mode"
 
 export const Route = createFileRoute("/login")({ component: LoginRoute })
 
+async function handleGoogleSignIn() {
+  await signIn.social({
+    provider: "google",
+    callbackURL: "/",
+  })
+}
+
 function LoginRoute() {
   const navigate = useNavigate()
   const { data: session, isPending: sessionLoading } = useSession()
@@ -61,13 +68,6 @@ function LoginRoute() {
     } finally {
       setLoading(false)
     }
-  }
-
-  async function handleGoogleSignIn() {
-    await signIn.social({
-      provider: "google",
-      callbackURL: "/",
-    })
   }
 
   return (

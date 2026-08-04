@@ -26,12 +26,7 @@ import type {
 type WorkspaceHealthStatus = "ok" | "degraded"
 type WorkspaceHealthSeverity = "warning" | "error"
 type WorkspaceHealthScope =
-  | "filesystem"
-  | "manifest"
-  | "section"
-  | "policy"
-  | "scratch"
-  | "projection"
+  "filesystem" | "manifest" | "section" | "policy" | "scratch" | "projection"
 
 export type WorkspaceHealthDiagnostic = {
   scope: WorkspaceHealthScope
@@ -253,6 +248,57 @@ export async function bootstrapAgentWorkspace(
     .filter((file) => !file.exists)
     .map((file) => file.path)
 
+  return buildWorkspaceHealthResponse({
+    context,
+    createdPaths,
+    diagnostics,
+    directoryStates,
+    manifest,
+    missingDirectories,
+    missingPolicies,
+    missingScratchProtection,
+    missingSections,
+    policyStates,
+    scratchProtectionStates,
+    sectionStates,
+    warnings,
+    workspace,
+  })
+}
+
+type WorkspaceHealthResponseInput = {
+  context: AppRuntimeContext
+  createdPaths: Set<string>
+  diagnostics: Array<WorkspaceHealthDiagnostic>
+  directoryStates: Array<WorkspaceDirectoryState>
+  manifest: WorkspaceManifestState
+  missingDirectories: Array<string>
+  missingPolicies: Array<string>
+  missingScratchProtection: Array<string>
+  missingSections: Array<string>
+  policyStates: Array<WorkspacePolicyState>
+  scratchProtectionStates: Array<WorkspaceFileState>
+  sectionStates: Array<WorkspaceSectionState>
+  warnings: Set<string>
+  workspace: { available: boolean; created: boolean }
+}
+
+function buildWorkspaceHealthResponse({
+  context,
+  createdPaths,
+  diagnostics,
+  directoryStates,
+  manifest,
+  missingDirectories,
+  missingPolicies,
+  missingScratchProtection,
+  missingSections,
+  policyStates,
+  scratchProtectionStates,
+  sectionStates,
+  warnings,
+  workspace,
+}: WorkspaceHealthResponseInput): WorkspaceHealthResponse {
   const projectionDiagnostics = diagnostics.filter(
     (diagnostic) => diagnostic.scope === "projection"
   )
