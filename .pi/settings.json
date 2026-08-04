@@ -1,18 +1,14 @@
 {
+  "defaultProvider": "opencode",
+  "enabledModels": [],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
     "npm:pi-autocontext",
     "npm:pi-web-access"
   ],
-  "skills": [
-    "../agent-workspace/pi/skills"
-  ],
-  "extensions": [
-    "../agent-workspace/pi/extensions/enabled"
-  ],
-  "prompts": [
-    "../agent-workspace/pi/prompts"
-  ],
+  "skills": ["../agent-workspace/pi/skills"],
+  "extensions": ["../agent-workspace/pi/extensions/enabled"],
+  "prompts": ["../agent-workspace/pi/prompts"],
   "defaultThinkingLevel": "high"
 }
