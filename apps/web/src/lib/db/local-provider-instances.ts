@@ -11,8 +11,8 @@ import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { OccInstance, OccInstanceInput } from "./occ-instances"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { isVercelDeployment } from "@/lib/deployment/environment"
 import { writeFileAtomic } from "@/lib/fs-atomic"
+import { isDeployedChatRuntimeSurface } from "@/lib/pi/runtime/deployed-chat-runtime"
 
 const PROVIDER_STORE_VERSION = 1 as const
 
@@ -67,7 +67,8 @@ function resolveStorePath(userId?: string): string {
  */
 export function useLocalProviderStore(userId: string | undefined): boolean {
   return (
-    !isVercelDeployment() && !(Boolean(userId) && isChatDatabaseConfigured())
+    !isDeployedChatRuntimeSurface() &&
+    !(Boolean(userId) && isChatDatabaseConfigured())
   )
 }
 
@@ -195,11 +196,12 @@ export async function upsertLocalProviderInstance(
     const storePath = resolveStorePath(userId)
     const store = await readStore(storePath)
     const normalized = normalizeCustomProviderInstance(instance)
+    const modelId = requireFirstModelId(normalized.modelIds, instance.id)
     const row: LocalProviderInstance = {
       id: instance.id,
       displayName: instance.displayName,
       baseUrl: instance.baseUrl,
-      modelId: normalized.modelIds[0],
+      modelId,
       api: normalized.api,
       modelIds: normalized.modelIds,
       apiKey,
@@ -248,11 +250,12 @@ export async function createLocalProviderInstance(
       toId
     )
     const normalized = normalizeCustomProviderInstance(input)
+    const modelId = requireFirstModelId(normalized.modelIds, id)
     store.instances.push({
       id,
       displayName: input.displayName,
       baseUrl: input.baseUrl,
-      modelId: normalized.modelIds[0],
+      modelId,
       api: normalized.api,
       modelIds: normalized.modelIds,
       apiKey,
@@ -306,6 +309,22 @@ export async function allocateLocalInstanceId(
   })
 }
 
+/**
+ * Rejects a write that carries no model ids. `OccInstance.modelId` is a
+ * required string; persisting `modelIds[0]` of an empty list would write
+ * `modelId: undefined`, which `JSON.stringify` drops, permanently failing
+ * {@link isLocalProviderInstance} on every later read of the store.
+ */
+function requireFirstModelId(modelIds: Array<string>, id: string): string {
+  const modelId = modelIds[0]
+  if (!modelId) {
+    throw new Error(
+      `Custom provider instance "${id}" has no models configured; at least one model id is required`
+    )
+  }
+  return modelId
+}
+
 async function writeStore(storePath: string, store: ProviderStoreFile) {
   await writeFileAtomic(storePath, `${JSON.stringify(store, null, 2)}\n`)
 }
@@ -341,7 +360,10 @@ function isLocalProviderInstance(
     typeof candidate.modelId === "string" &&
     typeof candidate.apiKey === "string" &&
     (candidate.api === undefined || isPiCustomProviderApi(candidate.api)) &&
-    Array.isArray(candidate.modelIds) &&
-    candidate.modelIds.every((model) => typeof model === "string")
+    // Optional, matching `OccInstance.modelIds`: legacy or hand-edited rows
+    // may carry only `modelId`; readers fall back to `[modelId]`.
+    (candidate.modelIds === undefined ||
+      (Array.isArray(candidate.modelIds) &&
+        candidate.modelIds.every((model) => typeof model === "string")))
   )
 }

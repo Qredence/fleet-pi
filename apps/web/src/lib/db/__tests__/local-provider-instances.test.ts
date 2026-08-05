@@ -29,6 +29,7 @@ import {
   useLocalProviderStore,
 } from "../local-provider-instances"
 import type { OccInstance } from "../occ-instances"
+import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
 const originalVercel = process.env.VERCEL
@@ -88,6 +89,13 @@ describe("useLocalProviderStore", () => {
   it("returns false for a signed-in user with a chat DB", () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://example"
     expect(useLocalProviderStore("user-1")).toBe(false)
+  })
+
+  it("returns false on the Neon Function surface even without a chat DB", () => {
+    runWithChatAuthSurface("neon-function", () => {
+      expect(useLocalProviderStore(undefined)).toBe(false)
+      expect(useLocalProviderStore("user-1")).toBe(false)
+    })
   })
 })
 
@@ -151,6 +159,61 @@ describe("local provider instance store", () => {
     expect(instances[0]).toMatchObject({
       api: "openai-completions",
       modelIds: ["kimi-k2.6"],
+    })
+  })
+
+  it("rejects writes with no model ids instead of corrupting the store", async () => {
+    await upsertLocalProviderInstance(undefined, sampleInstance, "sk-test")
+
+    await expect(
+      upsertLocalProviderInstance(
+        undefined,
+        { ...sampleInstance, modelId: undefined, modelIds: [] },
+        "sk-bad"
+      )
+    ).rejects.toThrow(/no models configured/)
+    await expect(
+      createLocalProviderInstance(
+        undefined,
+        {
+          displayName: "No Models",
+          baseUrl: "https://api.example.com/v1",
+          modelIds: [],
+        },
+        toCustomProviderId,
+        "sk-bad"
+      )
+    ).rejects.toThrow(/no models configured/)
+
+    // The store stays readable and unchanged after the rejected writes.
+    expect(await listLocalProviderInstances()).toEqual([sampleInstance])
+  })
+
+  it("accepts a stored row without modelIds (legacy/hand-edited store)", async () => {
+    const storePath = localProviderStorePath(tempRoot)
+    mkdirSync(dirname(storePath), { recursive: true })
+    writeFileSync(
+      storePath,
+      JSON.stringify({
+        version: 1,
+        instances: [
+          {
+            id: `${OCC_INSTANCE_ID_PREFIX}legacy`,
+            displayName: "Legacy",
+            baseUrl: "https://legacy.example.com/v1",
+            modelId: "kimi-k2.6",
+            apiKey: "sk-legacy",
+          },
+        ],
+      }),
+      "utf8"
+    )
+
+    const instances = await listLocalProviderInstances()
+    expect(instances).toHaveLength(1)
+    expect(instances[0]).toMatchObject({
+      id: `${OCC_INSTANCE_ID_PREFIX}legacy`,
+      modelId: "kimi-k2.6",
     })
   })
 

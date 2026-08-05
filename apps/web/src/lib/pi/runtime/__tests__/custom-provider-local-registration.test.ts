@@ -47,8 +47,11 @@ describe("registerCustomProviders with the local file store", () => {
 
   afterEach(() => {
     resetCapturedNeonAiGatewayCredentialsForTests()
-    process.env.NEON_AI_GATEWAY_TOKEN = originalToken
-    process.env.NEON_AI_GATEWAY_BASE_URL = originalBaseUrl
+    if (originalToken === undefined) delete process.env.NEON_AI_GATEWAY_TOKEN
+    else process.env.NEON_AI_GATEWAY_TOKEN = originalToken
+    if (originalBaseUrl === undefined)
+      delete process.env.NEON_AI_GATEWAY_BASE_URL
+    else process.env.NEON_AI_GATEWAY_BASE_URL = originalBaseUrl
   })
 
   it("registers local custom providers using their stored apiKey, without the DB loader", async () => {
@@ -194,6 +197,38 @@ describe("registerCustomProviders with the local file store", () => {
     const messages = newDiagnostics.map((d) => d.message).join("\n")
     expect(messages).toContain("Local provider store is unreadable")
     expect(loadLocalProviderInstanceApiKeyMock).not.toHaveBeenCalled()
+  })
+
+  it("degrades to a diagnostic when the apiKey read fails after discovery succeeded", async () => {
+    const localId = `${CUSTOM_PROVIDER_ID_PREFIX}key-read-fails`
+    listLocalProviderInstancesMock.mockResolvedValue([
+      {
+        id: localId,
+        displayName: "Key Read Fails",
+        baseUrl: "https://api.example.com/v1",
+        modelId: "gpt-compatible",
+        api: "openai-completions",
+        modelIds: ["gpt-compatible"],
+      },
+    ])
+    loadLocalProviderInstanceApiKeyMock.mockRejectedValue(
+      new Error(
+        "Malformed local provider store at /repo/.fleet/providers.anonymous.json"
+      )
+    )
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const diagnosticsBefore = services.diagnostics.length
+    await expect(
+      registerCustomProviders(services, undefined)
+    ).resolves.toBeUndefined()
+
+    const newDiagnostics = services.diagnostics.slice(diagnosticsBefore)
+    const messages = newDiagnostics.map((d) => d.message).join("\n")
+    expect(messages).toContain("Local provider store is unreadable")
+    expect(
+      services.modelRuntime.getModel(localId, "gpt-compatible")
+    ).toBeUndefined()
   })
 
   it("unregisters a stale local provider that is no longer configured", async () => {

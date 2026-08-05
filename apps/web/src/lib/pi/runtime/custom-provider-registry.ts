@@ -177,9 +177,23 @@ async function listCustomProviderRegistrations(
       })
       continue
     }
-    const apiKey = useLocalStore
-      ? await loadLocalProviderInstanceApiKey(userId, instance.id)
-      : await loadOccInstanceApiKey(userId, instance.id)
+    let apiKey: string | undefined
+    if (useLocalStore) {
+      try {
+        apiKey = await loadLocalProviderInstanceApiKey(userId, instance.id)
+      } catch (error) {
+        // The store re-read for the key can fail even after discovery
+        // succeeded (e.g. the file was corrupted in between). Same degrade
+        // as an unreadable store on discovery: diagnostic, register nothing.
+        return {
+          registrations: [],
+          skipped: [],
+          storeError: error instanceof Error ? error.message : String(error),
+        }
+      }
+    } else {
+      apiKey = await loadOccInstanceApiKey(userId, instance.id)
+    }
     if (!apiKey) {
       skipped.push({
         id: instance.id,
