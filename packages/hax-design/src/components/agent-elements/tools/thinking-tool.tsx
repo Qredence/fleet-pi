@@ -4,7 +4,7 @@ import { adaptToolPart } from "../utils/tool-adapters"
 import { ToolRowBase } from "./tool-row-base"
 import type { StepState, TimelineStep } from "../types/timeline"
 
-export type ThinkingCollapsedProps = {
+type ThinkingCollapsedProps = {
   step: Extract<TimelineStep, { type: "tool-call" }>
   state: StepState
   onComplete: () => void
@@ -13,7 +13,7 @@ export type ThinkingCollapsedProps = {
   onToggleExpand?: () => void
 }
 
-export function ThinkingCollapsed({
+function ThinkingCollapsed({
   step,
   state,
   onComplete,

@@ -9,7 +9,7 @@ import type { StepState, TimelineStep } from "../types/timeline"
 
 export type SearchResult = { source: SourceType; title: string; date: string }
 
-export type SearchGroupRichProps = {
+type SearchGroupRichProps = {
   toolSteps: Array<Extract<TimelineStep, { type: "tool-call" }>>
   stepStates: Record<string, StepState>
   onStepComplete: (id: string) => void
@@ -17,7 +17,7 @@ export type SearchGroupRichProps = {
   defaultOpen?: boolean
 }
 
-export function SearchGroupRich({
+function SearchGroupRich({
   toolSteps,
   stepStates,
   onStepComplete,
