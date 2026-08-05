@@ -76,7 +76,7 @@ async function getProviderRows(userId: string | undefined) {
   // accounts read the gitignored file store. DB errors propagate (route returns
   // 500) instead of a misleading "not configured" row.
   const instances = useLocalProviderStore(userId)
-    ? await listLocalProviderInstancesWithApiKey(userId)
+    ? await listLocalProviderInstancesForRoute(userId)
     : await listOccInstancesWithApiKey(userId)
   const rows: Array<ChatProviderInfo> = [...base]
   for (const instance of instances) {
@@ -92,6 +92,23 @@ async function getProviderRows(userId: string | undefined) {
     })
   }
   return rows
+}
+
+/**
+ * A malformed/unreadable local store must not 500 the Settings providers list
+ * (the UI is how users fix or remove broken instances); degrade to "no
+ * instances" with a diagnostic, matching the registration path. DB errors on
+ * the Postgres branch still propagate.
+ */
+async function listLocalProviderInstancesForRoute(userId: string | undefined) {
+  try {
+    return await listLocalProviderInstancesWithApiKey(userId)
+  } catch (error) {
+    console.warn(
+      `Ignoring unreadable local provider store for providers list: ${getErrorMessage(error)}`
+    )
+    return []
+  }
 }
 
 /** Configured only when the api key is present and the base URL validates. */
