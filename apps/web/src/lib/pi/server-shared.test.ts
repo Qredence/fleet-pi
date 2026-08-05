@@ -13,6 +13,12 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
   getAgentDir,
 }))
 
+vi.mock("@/lib/db/local-provider-instances", () => ({
+  listLocalProviderInstances: vi.fn(() => []),
+  loadLocalProviderInstanceApiKey: vi.fn(() => ""),
+  useLocalProviderStore: vi.fn(() => true),
+}))
+
 describe("createSessionServices", () => {
   const roots = new Set<string>()
   const originalVercel = process.env.VERCEL

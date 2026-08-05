@@ -1,5 +1,6 @@
-import { readFile, rename, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { join } from "node:path"
+import { writeFileAtomic } from "./fs-atomic"
 
 /**
  * Safely updates or appends a key-value pair to .env.local
@@ -73,9 +74,7 @@ export async function updateEnvVars(
   }
 
   const newContent = lines.join("\n").replace(/\n+$/, "\n")
-  const tempPath = `${envPath}.${process.pid}.${Date.now()}.tmp`
-  await writeFile(tempPath, newContent, "utf8")
-  await rename(tempPath, envPath)
+  await writeFileAtomic(envPath, newContent)
 
   for (const [key, value] of Object.entries(entries)) {
     process.env[key] = value
@@ -110,9 +109,7 @@ export async function removeEnvVars(projectRoot: string, keys: Array<string>) {
     )
     const lines = content.split("\n").filter((line) => !keyPattern.test(line))
     const newContent = lines.join("\n").replace(/\n+$/, "\n")
-    const tempPath = `${envPath}.${process.pid}.${Date.now()}.tmp`
-    await writeFile(tempPath, newContent, "utf8")
-    await rename(tempPath, envPath)
+    await writeFileAtomic(envPath, newContent)
   }
 
   for (const key of uniqueKeys) {

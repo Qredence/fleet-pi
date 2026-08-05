@@ -1,5 +1,38 @@
+import type { PiCustomProviderApi } from "./chat-protocol"
+
 /** How a provider is authenticated: a static API key or an OAuth flow. */
 export type PiProviderAuthType = "apiKey" | "oauth"
+
+/**
+ * The Pi API families supported by native custom providers, typed off the
+ * {@link PiCustomProviderApi} union so adding a family updates every consumer
+ * (store validation, Settings catalog, base-URL policy) in one place. The
+ * keyed record forces a compile-time error when a union member is added
+ * without registering it here.
+ */
+const PI_CUSTOM_PROVIDER_API_SET: Record<PiCustomProviderApi, true> = {
+  "openai-completions": true,
+  "openai-responses": true,
+  "anthropic-messages": true,
+  "google-genai": true,
+}
+
+export const PI_CUSTOM_PROVIDER_APIS: ReadonlyArray<PiCustomProviderApi> =
+  Object.keys(PI_CUSTOM_PROVIDER_API_SET) as Array<PiCustomProviderApi>
+
+/** True for the OpenAI-compatible custom-provider families (OCC-style URLs). */
+export function isOccFamilyApi(api: PiCustomProviderApi): boolean {
+  return api === "openai-completions" || api === "openai-responses"
+}
+
+export function isPiCustomProviderApi(
+  value: unknown
+): value is PiCustomProviderApi {
+  return (
+    typeof value === "string" &&
+    (PI_CUSTOM_PROVIDER_APIS as ReadonlyArray<string>).includes(value)
+  )
+}
 
 /**
  * A provider as surfaced in Fleet's Settings UI, with the single environment
@@ -221,6 +254,53 @@ export function toOccInstanceId(slug: string): string {
  */
 export function toCustomProviderId(slug: string): string {
   return `${CUSTOM_PROVIDER_ID_PREFIX}${slug}`
+}
+
+/**
+ * Finds an available provider id for a base slug, appending `-2`, `-3`, … then
+ * a timestamp suffix when the slug is taken. Shared by the Postgres-backed and
+ * local file store instance allocators so id allocation stays consistent.
+ *
+ * @param baseSlug - The slug to start from
+ * @param existingIds - Ids that are already taken
+ * @param toId - A function that builds the provider id from a slug
+ * @returns An available provider id
+ */
+export function allocateProviderId(
+  baseSlug: string,
+  existingIds: ReadonlySet<string>,
+  toId: (slug: string) => string
+): string {
+  for (let attempt = 1; attempt <= 50; attempt++) {
+    const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
+    const id = toId(slug)
+    if (!existingIds.has(id)) return id
+  }
+  return toId(`${baseSlug}-${Date.now().toString(36)}`)
+}
+
+/**
+ * Normalizes a custom provider instance's API family and model list. New rows
+ * store a `modelIds` array; legacy rows carry only `modelId`. Shared by the
+ * Postgres-backed and local file stores so persisted shapes stay identical.
+ *
+ * @returns The canonical `api` (defaults to `openai-completions`) and `modelIds` (falls back to `[modelId]`, then `[]`)
+ */
+export function normalizeCustomProviderInstance(instance: {
+  modelId?: string
+  api?: PiCustomProviderApi
+  modelIds?: Array<string>
+}): { api: PiCustomProviderApi; modelIds: Array<string> } {
+  const modelIds =
+    instance.modelIds && instance.modelIds.length > 0
+      ? instance.modelIds
+      : instance.modelId
+        ? [instance.modelId]
+        : []
+  return {
+    api: instance.api ?? "openai-completions",
+    modelIds,
+  }
 }
 
 /**

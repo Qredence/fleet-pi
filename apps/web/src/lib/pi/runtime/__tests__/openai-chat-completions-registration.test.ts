@@ -20,6 +20,12 @@ vi.mock("@/lib/db/occ-instances", () => ({
   loadOccInstanceApiKey: loadOccInstanceApiKeyMock,
 }))
 
+// These tests simulate a DB-backed account, so keep the local file store off.
+vi.mock("@/lib/db/local-provider-instances", () => ({
+  listLocalProviderInstances: vi.fn(() => []),
+  useLocalProviderStore: vi.fn(() => false),
+}))
+
 describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
   const originalToken = process.env.NEON_AI_GATEWAY_TOKEN
   const originalBaseUrl = process.env.NEON_AI_GATEWAY_BASE_URL

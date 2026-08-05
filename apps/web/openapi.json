@@ -2792,8 +2792,10 @@
                           "modelIds": {
                             "type": "array",
                             "items": {
-                              "type": "string"
-                            }
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            "maxItems": 64
                           }
                         },
                         "required": [
@@ -2935,8 +2937,10 @@
                           "modelIds": {
                             "type": "array",
                             "items": {
-                              "type": "string"
-                            }
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            "maxItems": 64
                           }
                         },
                         "required": [
@@ -3045,8 +3049,10 @@
                           "modelIds": {
                             "type": "array",
                             "items": {
-                              "type": "string"
-                            }
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            "maxItems": 64
                           }
                         },
                         "required": [
