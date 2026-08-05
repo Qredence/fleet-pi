@@ -45,7 +45,7 @@ function createFleetAuthClient(): BetterAuthReactClient {
         // (and previously for cross-origin neonauth hosts).
         fetchOptions: { credentials: "include" },
       }),
-    }) as unknown as BetterAuthReactClient
+    })
   }
 
   return createBetterAuthClient()
