@@ -1,6 +1,4 @@
 {
-  "defaultProvider": "opencode",
-  "enabledModels": [],
   "packages": [
     "npm:pi-autoresearch",
     "npm:pi-skill-palette",
