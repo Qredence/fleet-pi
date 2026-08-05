@@ -102,8 +102,8 @@ importers:
   apps/web:
     dependencies:
       '@asteasolutions/zod-to-openapi':
-        specifier: ^8.5.0
-        version: 8.5.0(zod@4.4.3)
+        specifier: ^9.1.0
+        version: 9.1.0(zod@4.4.3)
       '@aws-sdk/client-s3':
         specifier: ^3.1047.0
         version: 3.1047.0
@@ -378,8 +378,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@asteasolutions/zod-to-openapi':
-        specifier: ^8.5.0
-        version: 8.5.0(zod@4.4.3)
+        specifier: ^9.1.0
+        version: 9.1.0(zod@4.4.3)
       '@types/node':
         specifier: ^25.8.0
         version: 25.8.0
@@ -410,8 +410,8 @@ packages:
       zod:
         optional: true
 
-  '@asteasolutions/zod-to-openapi@8.5.0':
-    resolution: {integrity: sha512-SABbKiObg5dLRiTFnqiW1WWwGcg1BJfmHtT2asIBnBHg6Smy/Ms2KHc650+JI4Hw7lSkdiNebEGXpwoxfben8Q==}
+  '@asteasolutions/zod-to-openapi@9.1.0':
+    resolution: {integrity: sha512-pLMeRgRYS7/vZIgAAkOe2P6+XGTifR1MT9pqDoxZ11EmcJJ+DPmdPqLN8ZZF4U8R9KHCCQCS9c2wtuE8wSrfkw==}
     peerDependencies:
       zod: ^4.0.0
 
@@ -5146,6 +5146,10 @@ packages:
     resolution: {integrity: sha512-70QWGkr4snxr0OXLRWsFLeRBIRPuQOvt4s8QYjmUlmlkyTZkRqS7EDVRZtzU3TiyDbXSzaOeF0XUKy8PchzukQ==}
     engines: {node: '>=18.0.0'}
 
+  eventsource-parser@3.1.0:
+    resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
+    engines: {node: '>=18.0.0'}
+
   eventsource@3.0.7:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
@@ -6534,8 +6538,8 @@ packages:
       zod:
         optional: true
 
-  openapi3-ts@4.5.0:
-    resolution: {integrity: sha512-jaL+HgTq2Gj5jRcfdutgRGLosCy/hT8sQf6VOy+P+g36cZOjI1iukdPnijC+4CmeRzg/jEllJUboEic2FhxhtQ==}
+  openapi3-ts@4.6.1:
+    resolution: {integrity: sha512-XW9MOldkhoICNeXVzzmXzmOW5G73ppOEGmh7fLCqHjgfdEYCGGN+00MlVCeUZgovjjfC56j9tvtDt1zGabNjjA==}
 
   openid-client@6.8.1:
     resolution: {integrity: sha512-VoYT6enBo6Vj2j3Q5Ec0AezS+9YGzQo1f5Xc42lreMGlfP4ljiXPKVDvCADh+XHCV/bqPu/wWSiCVXbJKvrODw==}
@@ -7339,6 +7343,11 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
+  srvx@0.11.22:
+    resolution: {integrity: sha512-LqZxxBDMKuMAZzFzJnDCkFOrs9MZQZr0LvHiO/SuSZVdQaXD7xQ5UWTUxheJrQPve1qk9MG2B/yttUvJxw8egQ==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
   stable-hash-x@0.2.0:
     resolution: {integrity: sha512-o3yWv49B/o4QZk5ZcsALc6t0+eCelPc44zZsLtCQnZPDwFpDYSWcDnrv2TtMmMbQ7uKo3J0HTURCqckw23czNQ==}
     engines: {node: '>=12.0.0'}
@@ -7841,6 +7850,10 @@ packages:
     resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
     hasBin: true
 
+  uuid@14.0.1:
+    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
+    hasBin: true
+
   validate-npm-package-name@7.0.2:
     resolution: {integrity: sha512-hVDIBwsRruT73PbK7uP5ebUt+ezEtCmzZz3F59BSr2F6OVFnJ/6h8liuvdLrQ88Xmnk6/+xGGuq+pG9WwTuy3A==}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -8149,9 +8162,9 @@ snapshots:
     optionalDependencies:
       zod: 4.4.3
 
-  '@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3)':
+  '@asteasolutions/zod-to-openapi@9.1.0(zod@4.4.3)':
     dependencies:
-      openapi3-ts: 4.5.0
+      openapi3-ts: 4.6.1
       zod: 4.4.3
 
   '@aws-crypto/crc32@5.2.0':
@@ -9339,7 +9352,7 @@ snapshots:
     dependencies:
       '@instantdb/version': 1.0.49
       mutative: 1.3.0
-      uuid: 14.0.0
+      uuid: 14.0.1
 
   '@instantdb/react-common@1.0.49(react@19.2.7)':
     dependencies:
@@ -13125,13 +13138,15 @@ snapshots:
 
   eventsource-parser@3.0.8: {}
 
+  eventsource-parser@3.1.0: {}
+
   eventsource@3.0.7:
     dependencies:
       eventsource-parser: 3.0.8
 
   eventsource@4.1.0:
     dependencies:
-      eventsource-parser: 3.0.8
+      eventsource-parser: 3.1.0
 
   execa@4.1.0:
     dependencies:
@@ -13468,7 +13483,7 @@ snapshots:
   h3@2.0.1-rc.20(crossws@0.4.5(srvx@0.11.15)):
     dependencies:
       rou3: 0.8.1
-      srvx: 0.11.18
+      srvx: 0.11.22
     optionalDependencies:
       crossws: 0.4.5(srvx@0.11.15)
 
@@ -14765,7 +14780,7 @@ snapshots:
       ws: 8.21.0
       zod: 4.4.3
 
-  openapi3-ts@4.5.0:
+  openapi3-ts@4.6.1:
     dependencies:
       yaml: 2.9.0
 
@@ -15724,6 +15739,8 @@ snapshots:
 
   srvx@0.11.18: {}
 
+  srvx@0.11.22: {}
+
   stable-hash-x@0.2.0: {}
 
   stackback@0.0.2: {}
@@ -16169,6 +16186,8 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   uuid@14.0.0: {}
+
+  uuid@14.0.1: {}
 
   validate-npm-package-name@7.0.2: {}
 
