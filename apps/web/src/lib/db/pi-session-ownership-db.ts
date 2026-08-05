@@ -24,63 +24,23 @@ export type PostgresQueryClient = {
 
 let sharedPool: InstanceType<typeof Pool> | undefined
 
-// Track deployments for graceful pool cleanup across hot reloads
-let deployedPools = 0
-const DEPLOYMENT_CLEANUP_DELAY_MS = 60_000 // 1 minute delay to catch late requests
-
 export function isPiSessionMirrorEnabled() {
   return Boolean(resolveChatDatabaseUrl())
-}
-
-/**
- * Increment deployment counter and schedule pool cleanup.
- * Call this on application startup/hot reload to track new deploy cycles.
- */
-export function markDeployment(): void {
-  deployedPools++
-  logger.debug(
-    { deployedPools },
-    "[pi-session-ownership-db] deployment marked, scheduling pool cleanup"
-  )
-
-  // Schedule cleanup after delay to allow in-flight requests to complete
-  setTimeout(() => {
-    if (--deployedPools === 0) {
-      logger.info(
-        "[pi-session-ownership-db] all deployments completed, ending pool"
-      )
-      sharedPool
-        ?.end()
-        .then(() => {
-          sharedPool = undefined
-          logger.debug("[pi-session-ownership-db] PostgreSQL pool ended")
-        })
-        .catch((err) => {
-          logger.error(
-            { error: err.message },
-            "[pi-session-ownership-db] failed to end PostgreSQL pool"
-          )
-        })
-    }
-  }, DEPLOYMENT_CLEANUP_DELAY_MS)
 }
 
 export function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
   const connectionString = resolveChatDatabaseUrl()
   if (!connectionString) return undefined
   if (!sharedPool) {
-    // Track this as a deployment event for cleanup tracking
-    markDeployment()
+    // Resident module-scope pool per Neon best practice: reuse the same pool
+    // across requests instead of tearing it down after each deploy cycle.
     sharedPool = new Pool({
       connectionString,
       max: 5,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
     })
-    logger.debug(
-      { deployedPools },
-      "[pi-session-ownership-db] PostgreSQL pool created"
-    )
+    logger.debug("[pi-session-ownership-db] PostgreSQL pool created")
   }
   return sharedPool
 }
@@ -389,7 +349,7 @@ export const PI_SESSION_USER_ID_ON_CONFLICT_SQL =
  */
 export function getPoolHealthMetrics() {
   if (!sharedPool) {
-    return { active: 0, idle: 0, total: 0, connected: false, deployedPools: 0 }
+    return { active: 0, idle: 0, total: 0, connected: false }
   }
 
   // Calculate busy connections (total capacity minus idle)
@@ -401,6 +361,5 @@ export function getPoolHealthMetrics() {
     idle: sharedPool.idleCount,
     total: socketConnectionCount,
     connected: true,
-    deployedPools,
   }
 }

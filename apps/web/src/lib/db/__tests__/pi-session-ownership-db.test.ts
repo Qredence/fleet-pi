@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  getChatPostgresPool,
+  getPoolHealthMetrics,
   isUserScopedEphemeralSessionFile,
   verifyRunOwnership,
   verifySessionOwnership,
@@ -14,6 +16,7 @@ const poolConnect = vi.hoisted(() =>
     release: clientRelease,
   }))
 )
+const poolConstructor = vi.hoisted(() => vi.fn())
 const existsSync = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock("node:fs", () => ({
@@ -23,8 +26,14 @@ vi.mock("node:fs", () => ({
 
 vi.mock("@neondatabase/serverless", () => ({
   Pool: class MockPool {
+    constructor(options?: unknown) {
+      poolConstructor(options)
+      this.options = { max: 5 }
+    }
     connect = poolConnect
     query = poolQuery
+    options: { max: number }
+    idleCount = 0
   },
 }))
 
@@ -131,5 +140,26 @@ describe("pi-session-ownership-db", () => {
         "user-1"
       )
     ).toBe(false)
+  })
+
+  it("getChatPostgresPool reuses the same resident pool instance", () => {
+    const poolA = getChatPostgresPool()
+    const poolB = getChatPostgresPool()
+
+    expect(poolA).toBeDefined()
+    // Resident module-scope pool: no teardown scheduled, same instance reused.
+    expect(poolB).toBe(poolA)
+  })
+
+  it("getPoolHealthMetrics omits the removed deployedPools field", () => {
+    const metrics = getPoolHealthMetrics()
+
+    expect(metrics).not.toHaveProperty("deployedPools")
+    expect(metrics).toMatchObject({
+      active: expect.any(Number),
+      idle: expect.any(Number),
+      total: expect.any(Number),
+      connected: expect.any(Boolean),
+    })
   })
 })
