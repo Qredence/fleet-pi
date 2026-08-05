@@ -10,7 +10,7 @@ import type { ToolApproval } from "./tool-approval-footer"
 import type { FileContents } from "@pierre/diffs/react"
 import type { StepState, TimelineStep } from "../types/timeline"
 
-export type EditToolDiffCardProps = {
+type EditToolDiffCardProps = {
   step: Extract<TimelineStep, { type: "tool-call" }>
   state: StepState
   onComplete: () => void
@@ -21,7 +21,7 @@ export type EditToolDiffCardProps = {
   onFilePathClick?: (path: string) => void
 }
 
-export function EditToolDiffCard({
+function EditToolDiffCard({
   step,
   state,
   onComplete,
@@ -270,8 +270,7 @@ export const EditTool = memo(function EditTool({
   onFilePathClick,
 }: EditToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
-    | ToolApproval
-    | undefined
+    ToolApproval | undefined
   const toolName = (part.type as string)?.replace("tool-", "") || "Edit"
   const { step, stepState } = adaptToolPart(part, toolName)
   const noop = () => {}

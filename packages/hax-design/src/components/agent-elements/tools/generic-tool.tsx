@@ -1,31 +1,5 @@
 import React, { memo } from "react"
-import { useToolComplete } from "../hooks/use-tool-complete"
 import { ToolRowBase } from "./tool-row-base"
-import type { StepState, TimelineStep } from "../types/timeline"
-
-export type GenericToolRowProps = {
-  step: Extract<TimelineStep, { type: "tool-call" }>
-  state: StepState
-  onComplete: () => void
-}
-
-export function GenericToolRow({
-  step,
-  state,
-  onComplete,
-}: GenericToolRowProps) {
-  useToolComplete(state === "animating", step.duration, onComplete)
-  const isPending = state === "animating"
-
-  return (
-    <ToolRowBase
-      shimmerLabel={step.toolName}
-      completeLabel={step.toolName}
-      isAnimating={isPending}
-      detail={step.toolDetail}
-    />
-  )
-}
 
 export type GenericToolProps = {
   icon?: React.ComponentType<{ className?: string }>

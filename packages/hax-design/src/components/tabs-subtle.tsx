@@ -18,7 +18,7 @@ import { spring } from "../lib/springs"
 import { cn } from "../lib/utils"
 import type { ItemRect } from "../hooks/use-proximity-hover"
 import type { LucideIcon } from "lucide-react"
-import type { HTMLAttributes, ReactNode, RefObject } from "react"
+import type { HTMLAttributes, ReactNode } from "react"
 
 /** Selection / hover pill surface — maps Fluid `bg-active` to Fleet chrome. */
 const ACTIVE_PILL_CLASS = "bg-background shadow-sm"
@@ -63,14 +63,12 @@ function TabsSubtleIndicators({
   focusRect,
   isHovering,
   isHoveringSelected,
-  isMouseInsideRef,
 }: {
   selectedRect: ItemRect | undefined
   hoverRect: ItemRect | null | undefined
   focusRect: ItemRect | null | undefined
   isHovering: boolean
   isHoveringSelected: boolean
-  isMouseInsideRef: RefObject<boolean>
 }) {
   const reduceMotion = useReducedMotion()
   const instant = reduceMotion ? { duration: 0 } : undefined
@@ -83,14 +81,15 @@ function TabsSubtleIndicators({
             ACTIVE_PILL_CLASS,
             PILL_RADIUS
           )}
+          layout
           initial={false}
-          animate={{
+          style={{
             left: selectedRect.left,
-            width: selectedRect.width,
             top: selectedRect.top,
+            width: selectedRect.width,
             height: selectedRect.height,
-            opacity: isHovering ? 0.8 : 1,
           }}
+          animate={{ opacity: isHovering ? 0.8 : 1 }}
           transition={
             instant ?? {
               ...spring.moderate.enter,
@@ -108,45 +107,16 @@ function TabsSubtleIndicators({
               ACTIVE_PILL_CLASS,
               PILL_RADIUS
             )}
-            initial={
-              selectedRect
-                ? {
-                    left: selectedRect.left,
-                    width: selectedRect.width,
-                    top: selectedRect.top,
-                    height: selectedRect.height,
-                    opacity: 0,
-                  }
-                : {
-                    left: hoverRect.left,
-                    width: hoverRect.width,
-                    top: hoverRect.top,
-                    height: hoverRect.height,
-                    opacity: 0,
-                  }
-            }
-            animate={{
+            layout
+            style={{
               left: hoverRect.left,
-              width: hoverRect.width,
               top: hoverRect.top,
+              width: hoverRect.width,
               height: hoverRect.height,
-              opacity: 0.4,
             }}
-            exit={
-              !isMouseInsideRef.current && selectedRect
-                ? {
-                    left: selectedRect.left,
-                    width: selectedRect.width,
-                    top: selectedRect.top,
-                    height: selectedRect.height,
-                    opacity: 0,
-                    transition: instant ?? {
-                      ...spring.moderate.enter,
-                      opacity: { duration: 0.06 },
-                    },
-                  }
-                : { opacity: 0, transition: instant ?? spring.fast.exit }
-            }
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0, transition: instant ?? spring.fast.exit }}
             transition={
               instant ?? {
                 ...spring.fast.enter,
@@ -164,8 +134,9 @@ function TabsSubtleIndicators({
               "pointer-events-none absolute z-20 border border-ring",
               PILL_RADIUS
             )}
+            layout
             initial={false}
-            animate={{
+            style={{
               left: focusRect.left - 2,
               top: focusRect.top - 2,
               width: focusRect.width + 4,
@@ -315,7 +286,6 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
                 focusRect={focusRect}
                 isHovering={isHovering}
                 isHoveringSelected={isHoveringSelected}
-                isMouseInsideRef={isMouseInside}
               />
               {children}
             </Tabs.List>

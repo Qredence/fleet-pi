@@ -1,9 +1,5 @@
 import { cva } from "class-variance-authority"
 
-/** Config panel and right-panel dense controls (12px text, 32px height). */
-export const FIELD_CONTROL_CLASS =
-  "h-8 rounded-[7px] border-border/50 bg-background/70 px-2 py-1.5 text-[12px] text-foreground/70 placeholder:text-foreground/25 focus-visible:border-foreground/25 focus-visible:ring-2 focus-visible:ring-foreground/10"
-
 /** Small commit / add actions inside config sections. */
 export const COMPACT_ACTION_BUTTON_CLASS =
   "h-8 shrink-0 cursor-pointer rounded-[7px] border-border/45 bg-background/65 text-[11px] font-semibold text-foreground/75 shadow-sm transition-[background-color,border-color,box-shadow,opacity,transform] duration-150 hover:bg-foreground/5 active:scale-[0.96] disabled:opacity-50"
@@ -49,36 +45,6 @@ export const SUGGESTION_ITEM_CLASS =
 /** Mobile right-panel overlay sheet. */
 export const PANEL_OVERLAY_CLASS =
   "h-full min-h-0 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-[8px] border border-border/70 bg-background/95 shadow-lg backdrop-blur"
-
-/** Uppercase field labels in configuration forms. */
-export const FIELD_LABEL_CLASS =
-  "text-[10px] font-bold tracking-wide text-foreground/45 uppercase"
-
-export const fleetPiSectionSurface = cva(
-  "flex flex-col gap-3.5 rounded-[12px] border bg-background/30 backdrop-blur-md transition-[border-color,box-shadow,background-color] duration-300",
-  {
-    variants: {
-      padding: {
-        default: "p-2",
-        compact: "p-3",
-      },
-      elevation: {
-        default: "border-border/30 shadow-md",
-        raised: "border-border/40 shadow-lg",
-        quiet: "border-border/30 shadow-sm",
-      },
-      dirty: {
-        true: "border-primary/30 shadow-[0_0_12px_rgba(0,0,0,0.05)]",
-        false: "",
-      },
-    },
-    defaultVariants: {
-      padding: "default",
-      elevation: "default",
-      dirty: false,
-    },
-  }
-)
 
 /** Inner rows: 4px + 8px section padding = 12px outer (concentric). */
 export const fleetPiRowSurface = cva("flex min-w-0 rounded-[4px] border", {

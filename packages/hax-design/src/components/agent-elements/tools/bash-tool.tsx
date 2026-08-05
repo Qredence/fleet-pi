@@ -15,14 +15,14 @@ function extractCommandSummary(cmd: string): string {
     .join(", ")
 }
 
-export type BashToolTerminalCardProps = {
+type BashToolTerminalCardProps = {
   step: Extract<TimelineStep, { type: "tool-call" }>
   state: StepState
   onComplete: () => void
   approval?: ToolApproval
 }
 
-export function BashToolTerminalCard({
+function BashToolTerminalCard({
   step,
   state,
   onComplete,
@@ -94,8 +94,7 @@ export type BashToolProps = {
 
 export const BashTool = memo(function BashTool({ part }: BashToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
-    | ToolApproval
-    | undefined
+    ToolApproval | undefined
   const { step, stepState } = adaptToolPart(part, "Bash")
   const noop = () => {}
 

@@ -15,12 +15,7 @@ import type {
 } from "../../../lib/pi/chat-protocol"
 
 export type ResourceGroupId =
-  | "skills"
-  | "prompts"
-  | "extensions"
-  | "packages"
-  | "themes"
-  | "agentsFiles"
+  "skills" | "prompts" | "extensions" | "packages" | "themes" | "agentsFiles"
 
 export function getResourceGroups(
   resources: ChatResourcesResponse | null,
@@ -222,7 +217,7 @@ export function ResourceChipSection({
   )
 }
 
-export function ResourceChip({
+function ResourceChip({
   icon,
   item,
   stacked = false,
@@ -263,7 +258,7 @@ export function ResourceChip({
   )
 }
 
-export function ResourceChipIcon({ icon: Icon }: { icon: LucideIcon }) {
+function ResourceChipIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/4 text-foreground/45">
       <Icon className="size-3.5" />
