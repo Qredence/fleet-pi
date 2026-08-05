@@ -34,6 +34,12 @@ vi.mock("@/lib/auth/crypto", () => ({
   decryptString: mocks.decryptString,
 }))
 
+vi.mock("@/lib/db/local-provider-instances", () => ({
+  listLocalProviderInstances: vi.fn(() => []),
+  loadLocalProviderInstanceApiKey: vi.fn(() => ""),
+  useLocalProviderStore: vi.fn(() => true),
+}))
+
 describe("session factory", () => {
   const originalVercel = process.env.VERCEL
   const originalGeminiKey = process.env.GEMINI_API_KEY

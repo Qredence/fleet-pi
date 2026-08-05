@@ -1,5 +1,6 @@
 import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
+import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
 export type ProviderAuthType = "apiKey" | "oauth"
@@ -18,10 +19,6 @@ type ProviderRow = {
   encrypted_key: string
   auth_type: ProviderAuthType
   encrypted_payload: string | null
-}
-
-function isChatDatabaseConfigured() {
-  return Boolean(process.env.FLEET_PI_CHAT_DATABASE_URL?.trim())
 }
 
 function requireChatDatabaseOnVercel() {

@@ -1,14 +1,17 @@
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
+  allocateProviderId,
   isCustomProviderId,
   isNamedOccInstanceId,
+  normalizeCustomProviderInstance,
   toCustomProviderId,
   toInstanceSlug,
   toOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
 import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
+import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
@@ -27,6 +30,16 @@ export type OccInstance = {
   api?: PiCustomProviderApi
   /** Model ids registered for the provider. Defaults to `[modelId]` for legacy rows. */
   modelIds?: Array<string>
+}
+
+/**
+ * Input shape for storing an instance. `modelId` is the legacy single-model
+ * field and is optional on input; stores normalize it from `modelIds` via
+ * `normalizeCustomProviderInstance`. `OccInstance` (as read back from a store)
+ * is assignable to this type.
+ */
+export type OccInstanceInput = Omit<OccInstance, "modelId"> & {
+  modelId?: string
 }
 
 export class ChatPostgresUnavailableError extends Error {
@@ -52,15 +65,6 @@ type OccInstanceMeta = {
 type OccInstanceMetaRow = {
   provider_id: string
   encrypted_payload: string | null
-}
-
-/**
- * Determines whether the chat database connection is configured.
- *
- * @returns `true` if `FLEET_PI_CHAT_DATABASE_URL` contains a non-whitespace value, `false` otherwise.
- */
-function isChatDatabaseConfigured() {
-  return Boolean(process.env.FLEET_PI_CHAT_DATABASE_URL?.trim())
 }
 
 /**
@@ -151,23 +155,22 @@ function rowToInstance(
 ): OccInstance | null {
   const meta = parseInstanceMeta(row.encrypted_payload, secret)
   if (!meta) return null
-  const modelIds =
-    meta.modelIds && meta.modelIds.length > 0
-      ? meta.modelIds
-      : meta.modelId
-        ? [meta.modelId]
-        : []
+  const normalized = normalizeCustomProviderInstance({
+    modelId: meta.modelId,
+    api: meta.api,
+    modelIds: meta.modelIds,
+  })
   // Rows with neither modelIds nor modelId are malformed; skip them like other
   // invalid metadata instead of surfacing a provider with an empty model id.
-  const firstModelId = modelIds[0]
+  const firstModelId = normalized.modelIds[0]
   if (!firstModelId) return null
   return {
     id: row.provider_id,
     displayName: meta.displayName,
     baseUrl: meta.baseUrl,
     modelId: firstModelId,
-    api: meta.api ?? "openai-completions",
-    modelIds,
+    api: normalized.api,
+    modelIds: normalized.modelIds,
   }
 }
 
@@ -281,7 +284,8 @@ export async function getOccInstanceById(
 }
 
 /**
- * Allocates an available instance ID for a display name.
+ * Finds an available provider id for a base slug, appending `-2`, `-3`, … then
+ * a timestamp suffix when the slug is taken.
  *
  * @param userId - The user whose existing instance IDs are checked
  * @param displayName - The display name used to derive the instance ID
@@ -295,12 +299,7 @@ async function allocateInstanceId(
 ): Promise<string> {
   const baseSlug = toInstanceSlug(displayName)
   const existing = new Set((await listOccInstances(userId)).map((i) => i.id))
-  for (let attempt = 1; attempt <= 50; attempt++) {
-    const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`
-    const id = toId(slug)
-    if (!existing.has(id)) return id
-  }
-  return toId(`${baseSlug}-${Date.now().toString(36)}`)
+  return allocateProviderId(baseSlug, existing, toId)
 }
 
 /**
@@ -340,18 +339,17 @@ export async function allocateCustomProviderId(
  */
 export async function upsertOccInstance(
   userId: string,
-  instance: OccInstance,
+  instance: OccInstanceInput,
   apiKey: string
 ) {
   const secret = requireEncryptionSecret()
   requireChatDatabaseOnVercel()
+  const normalized = normalizeCustomProviderInstance(instance)
   const meta: OccInstanceMeta = {
     displayName: instance.displayName,
     baseUrl: instance.baseUrl,
-    api: instance.api ?? "openai-completions",
-    modelIds: instance.modelIds?.length
-      ? instance.modelIds
-      : [instance.modelId],
+    api: normalized.api,
+    modelIds: normalized.modelIds,
   }
   await withChatPostgresTransaction(async (client) => {
     await client.query(

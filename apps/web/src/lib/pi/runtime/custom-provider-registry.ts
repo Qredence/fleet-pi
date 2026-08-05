@@ -3,11 +3,11 @@ import {
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   isCustomProviderId,
   isNamedOccInstanceId,
+  isOccFamilyApi,
 } from "@workspace/pi-protocol/provider-catalog"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
 import {
-  assertSafeCustomProviderBaseUrl,
-  assertSafeOpenAiCompatibleBaseUrl,
+  assertCustomProviderBaseUrl,
   isGatewayHost,
 } from "./openai-chat-completions-url"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
@@ -16,9 +16,18 @@ import type {
   ProviderConfig,
 } from "@earendil-works/pi-coding-agent"
 import type { Api } from "@earendil-works/pi-ai"
+import type { OccInstance } from "@/lib/db/occ-instances"
 import { listOccInstances, loadOccInstanceApiKey } from "@/lib/db/occ-instances"
+import {
+  listLocalProviderInstances,
+  loadLocalProviderInstanceApiKey,
+  useLocalProviderStore,
+} from "@/lib/db/local-provider-instances"
 
 type RegisteredModels = NonNullable<ProviderConfig["models"]>
+
+/** Sentinel id used to dedupe the unreadable-store diagnostic. */
+const STORE_ERROR_DIAGNOSTIC_ID = "<local-provider-store-error>"
 
 /**
  * Tracks which custom provider skip diagnostics have already been emitted on a
@@ -77,11 +86,6 @@ export function toPiApi(api: PiCustomProviderApi): Api {
   }
 }
 
-/** OCC-family APIs go through OpenAI-compatible URL/path hardening. */
-function isOccFamilyApi(api: PiCustomProviderApi): boolean {
-  return api === "openai-completions" || api === "openai-responses"
-}
-
 /**
  * Builds a model registration for a custom provider model.
  *
@@ -126,13 +130,34 @@ async function listCustomProviderRegistrations(
 ): Promise<{
   registrations: Array<RegisteredCustomProvider>
   skipped: Array<CustomProviderSkipReason>
+  /** Set when the local store exists but cannot be read; chat still works. */
+  storeError?: string
 }> {
   const registrations: Array<RegisteredCustomProvider> = []
   const skipped: Array<CustomProviderSkipReason> = []
 
-  // `listOccInstances` returns [] locally (no DB URL) and on deployed accounts
-  // with no custom providers, so local anonymous registers nothing here.
-  const instances = await listOccInstances(userId)
+  // Local anonymous/dev instances come from the gitignored file store;
+  // deployed and DB-backed accounts read the encrypted `pi_user_providers`
+  // rows. Both paths list metadata then load each key on demand, so an
+  // unreadable key surfaces as a skip diagnostic instead of being dropped.
+  const useLocalStore = useLocalProviderStore(userId)
+  let instances: Array<OccInstance>
+  if (useLocalStore) {
+    try {
+      instances = await listLocalProviderInstances(userId)
+    } catch (error) {
+      // A malformed or future-version store must not brick chat session
+      // creation; surface it as a diagnostic and register nothing.
+      return {
+        registrations: [],
+        skipped: [],
+        storeError: error instanceof Error ? error.message : String(error),
+      }
+    }
+  } else {
+    instances = await listOccInstances(userId)
+  }
+
   for (const instance of instances) {
     const api: PiCustomProviderApi = instance.api ?? "openai-completions"
     // Legacy single-model rows carry `modelId` only; normalized rows carry
@@ -152,7 +177,9 @@ async function listCustomProviderRegistrations(
       })
       continue
     }
-    const apiKey = await loadOccInstanceApiKey(userId, instance.id)
+    const apiKey = useLocalStore
+      ? await loadLocalProviderInstanceApiKey(userId, instance.id)
+      : await loadOccInstanceApiKey(userId, instance.id)
     if (!apiKey) {
       skipped.push({
         id: instance.id,
@@ -163,14 +190,7 @@ async function listCustomProviderRegistrations(
     }
     let baseUrl: string
     try {
-      // Named instances are https-only everywhere (unlike the default OCC
-      // slot, which may use http://localhost in local dev).
-      baseUrl = isOccFamilyApi(api)
-        ? assertSafeOpenAiCompatibleBaseUrl(instance.baseUrl)
-        : assertSafeCustomProviderBaseUrl(instance.baseUrl)
-      if (new URL(baseUrl).protocol !== "https:") {
-        throw new Error("Custom providers require an https base URL.")
-      }
+      baseUrl = assertCustomProviderBaseUrl(api, instance.baseUrl)
     } catch {
       skipped.push({
         id: instance.id,
@@ -215,16 +235,23 @@ export async function registerCustomProviders(
 ) {
   const { modelRuntime } = services
 
-  const { registrations, skipped } =
+  const { registrations, skipped, storeError } =
     await listCustomProviderRegistrations(userId)
 
-  // Dedupe skip diagnostics across the "create + auth" call pair. Registration
+  // Dedupe diagnostics across the "create + auth" call pair. Registration
   // itself is always re-applied (idempotent overwrite) so hot-reload picks up
   // credential changes.
   let emitted = emittedSkipDiagnostics.get(modelRuntime)
   if (!emitted) {
     emitted = new Set()
     emittedSkipDiagnostics.set(modelRuntime, emitted)
+  }
+  if (storeError && !emitted.has(STORE_ERROR_DIAGNOSTIC_ID)) {
+    emitted.add(STORE_ERROR_DIAGNOSTIC_ID)
+    services.diagnostics.push({
+      type: "warning",
+      message: `[Custom provider] Local provider store is unreadable: ${storeError}. Local custom providers are unavailable until the store is fixed.`,
+    })
   }
   for (const skip of skipped) {
     if (emitted.has(skip.id)) continue

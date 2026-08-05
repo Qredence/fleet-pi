@@ -1,3 +1,7 @@
+import { isOccFamilyApi } from "@workspace/pi-protocol/provider-catalog"
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
+
 /**
  * Normalize + harden OpenAI-compatible base URLs before persistence or fetch.
  * Shared by OCC BYOK registration and Neon AI Gateway resolution (avoids a
@@ -29,7 +33,10 @@ export function assertSafeOpenAiCompatibleBaseUrl(baseUrl: string): string {
     throw new Error("Invalid OpenAI Chat Completions base URL.")
   }
 
-  const allowLocalHttp = process.env.VERCEL !== "1"
+  // Loopback http is a local-dev convenience only: it stays blocked on Vercel
+  // and on the Neon Function surface, where "loopback" means the Function's own
+  // process, not the developer's laptop.
+  const allowLocalHttp = !isDeployedChatRuntimeSurface()
   if (parsed.protocol === "https:") {
     // allowed
   } else if (
@@ -64,7 +71,7 @@ function isBlockedHostname(hostname: string) {
   }
 
   // On Vercel (and generally for non-loopback), block private / link-local.
-  if (isLoopbackHostname(host) && process.env.VERCEL !== "1") {
+  if (isLoopbackHostname(host) && !isDeployedChatRuntimeSurface()) {
     return false
   }
 
@@ -130,7 +137,7 @@ function firstIpv6Hextet(host: string): number | null {
   return value
 }
 
-function isLoopbackHostname(hostname: string) {
+export function isLoopbackHostname(hostname: string) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
   return host === "localhost" || host === "127.0.0.1" || host === "::1"
 }
@@ -167,6 +174,21 @@ export function isGatewayHost(baseUrl: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Single base-URL policy entry point for custom provider instances: dispatches
+ * by API family to the OCC-compatible hardening (loopback http allowed in local
+ * dev) or the https-only general custom check. Persistence and Pi runtime
+ * registration must both call this so what is saved can also be registered.
+ */
+export function assertCustomProviderBaseUrl(
+  api: PiCustomProviderApi,
+  baseUrl: string
+): string {
+  return isOccFamilyApi(api)
+    ? assertSafeOpenAiCompatibleBaseUrl(baseUrl)
+    : assertSafeCustomProviderBaseUrl(baseUrl)
 }
 
 /** Platform Neon AI Gateway hosts only — blocks token exfil to arbitrary HTTPS. */
