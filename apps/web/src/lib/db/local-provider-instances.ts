@@ -288,6 +288,12 @@ export async function removeLocalProviderInstance(
  * Allocates an available custom provider id for a display name from the local
  * dev store, appending `-2`, `-3`, … or a timestamp suffix on collisions.
  *
+ * The id is only guaranteed unique at the moment of allocation: the store lock
+ * is released before the caller persists, so two concurrent creates can claim
+ * the same id (the later `upsertLocalProviderInstance` overwrites the earlier
+ * row). Use {@link createLocalProviderInstance} when allocation and persistence
+ * must be atomic.
+ *
  * @param userId - The account, or `undefined` for anonymous local chat
  * @param displayName - The display name used to derive the provider id
  * @param toId - A function that builds the provider id from a slug

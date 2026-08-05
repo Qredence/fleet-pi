@@ -76,6 +76,12 @@ vi.mock("@/lib/deployment/environment", () => ({
   isVercelDeployment: () => false,
 }))
 
+// The loopback http policy and instance-usable checks branch on the deployed
+// surface; pin it to local dev so the tests don't flip if VERCEL is set.
+vi.mock("@/lib/pi/runtime/deployed-chat-runtime", () => ({
+  isDeployedChatRuntimeSurface: () => false,
+}))
+
 vi.mock("@/lib/db/local-provider-instances", () => ({
   createLocalProviderInstance: createLocalProviderInstanceMock,
   getLocalProviderInstance: getLocalProviderInstanceMock,
@@ -272,6 +278,35 @@ describe("POST /api/chat/providers with createOccInstance", () => {
       }),
       "sk-test"
     )
+  })
+
+  it("updates an existing local instance in place (no new id allocation)", async () => {
+    const existingId = `${CUSTOM_PROVIDER_ID_PREFIX}my-endpoint`
+    const response = await handlers.POST({
+      request: postRequest({
+        providerId: existingId,
+        apiKey: "sk-updated",
+        baseUrl: "https://api.example.com/v2",
+        displayName: "My Endpoint",
+        api: "openai-completions",
+        models: ["gpt-compatible", "another-model"],
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(createLocalProviderInstanceMock).not.toHaveBeenCalled()
+    expect(upsertLocalProviderInstanceMock).toHaveBeenCalledWith(
+      undefined,
+      {
+        displayName: "My Endpoint",
+        baseUrl: "https://api.example.com/v2",
+        api: "openai-completions",
+        modelIds: ["gpt-compatible", "another-model"],
+        id: existingId,
+      },
+      "sk-updated"
+    )
+    expect(upsertOccInstanceMock).not.toHaveBeenCalled()
   })
 })
 

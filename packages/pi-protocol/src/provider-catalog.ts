@@ -6,14 +6,19 @@ export type PiProviderAuthType = "apiKey" | "oauth"
 /**
  * The Pi API families supported by native custom providers, typed off the
  * {@link PiCustomProviderApi} union so adding a family updates every consumer
- * (store validation, Settings catalog, base-URL policy) in one place.
+ * (store validation, Settings catalog, base-URL policy) in one place. The
+ * keyed record forces a compile-time error when a union member is added
+ * without registering it here.
  */
-export const PI_CUSTOM_PROVIDER_APIS: ReadonlyArray<PiCustomProviderApi> = [
-  "openai-completions",
-  "openai-responses",
-  "anthropic-messages",
-  "google-genai",
-]
+const PI_CUSTOM_PROVIDER_API_SET: Record<PiCustomProviderApi, true> = {
+  "openai-completions": true,
+  "openai-responses": true,
+  "anthropic-messages": true,
+  "google-genai": true,
+}
+
+export const PI_CUSTOM_PROVIDER_APIS: ReadonlyArray<PiCustomProviderApi> =
+  Object.keys(PI_CUSTOM_PROVIDER_API_SET) as Array<PiCustomProviderApi>
 
 /** True for the OpenAI-compatible custom-provider families (OCC-style URLs). */
 export function isOccFamilyApi(api: PiCustomProviderApi): boolean {

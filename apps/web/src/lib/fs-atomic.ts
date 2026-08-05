@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
@@ -15,7 +16,7 @@ import { dirname } from "node:path"
  */
 export async function writeFileAtomic(filePath: string, content: string) {
   await mkdir(dirname(filePath), { recursive: true })
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`
   try {
     await writeFile(tempPath, content, { encoding: "utf8", mode: 0o600 })
     await rename(tempPath, filePath)
