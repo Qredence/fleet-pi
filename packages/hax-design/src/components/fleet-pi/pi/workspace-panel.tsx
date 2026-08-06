@@ -20,6 +20,7 @@ import {
   WORKSPACE_SPLIT_HIDDEN_BLOCK,
 } from "../../../lib/layout-constants"
 import { isPathWithinScope } from "../../../lib/workspace-path-nav"
+import { isDaytonaNotConnectedError } from "../../../lib/pi/chat-helpers"
 import { useWorkspaceSplitLayout } from "./hooks/use-workspace-split-layout"
 import {
   ResourceChipSection,
@@ -187,6 +188,15 @@ export function WorkspacePanelContent({
   }, [selectedPath])
 
   if (error) {
+    if (isDaytonaNotConnectedError(error)) {
+      return (
+        <ResourceNotice
+          icon={CircleAlert}
+          title="Daytona not connected"
+          description="Connect a Daytona API key for your account to browse and preview your agent workspace."
+        />
+      )
+    }
     return (
       <ResourceNotice
         icon={CircleAlert}

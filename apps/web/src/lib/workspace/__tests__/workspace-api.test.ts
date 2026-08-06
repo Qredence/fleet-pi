@@ -4,7 +4,8 @@ import { workspaceReindexHandler } from "@/routes/api/workspace/reindex"
 import { workspaceHealthHandler } from "@/routes/api/workspace/health"
 import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
 import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
-import { getResponseStatus } from "@/lib/app-runtime"
+import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
+import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
 
 // Mock dependencies
 vi.mock("@/lib/workspace/server", () => ({
@@ -18,14 +19,6 @@ vi.mock("@/lib/workspace/bootstrap-agent-workspace", () => ({
 vi.mock("@/lib/workspace/workspace-context", () => ({
   resolveWorkspaceContext: vi.fn(),
 }))
-
-vi.mock(import("@/lib/app-runtime"), async (importOriginal) => {
-  const actual = await importOriginal()
-  return {
-    ...actual,
-    getResponseStatus: vi.fn(() => 500),
-  }
-})
 
 describe("Workspace API Routes", () => {
   let mockRequest: Request
@@ -51,31 +44,35 @@ describe("Workspace API Routes", () => {
 
       const response = await workspaceTreeHandler(mockRequest)
       expect(response.status).toBe(200)
-      
+
       const json = await response.json()
       expect(json).toEqual(mockTree)
       expect(loadAgentWorkspaceTree).toHaveBeenCalled()
     })
 
     it("should handle daytona_credential_required error (403)", async () => {
-      const error = new Error("daytona_credential_required")
-      vi.mocked(loadAgentWorkspaceTree).mockRejectedValue(error)
+      vi.mocked(resolveWorkspaceContext).mockRejectedValue(
+        new DaytonaCredentialRequiredError()
+      )
 
       const response = await workspaceTreeHandler(mockRequest)
       expect(response.status).toBe(403)
-      
+
       const json = await response.json()
-      expect(json.message).toContain("daytona_credential_required")
+      expect(json.message).toBe("daytona_credential_required")
     })
 
     it("should handle general errors with appropriate status", async () => {
       const error = new Error("Something went wrong")
+      vi.mocked(resolveWorkspaceContext).mockResolvedValue({
+        projectRoot: "/repo",
+        workspaceRoot: "/repo/agent-workspace",
+      })
       vi.mocked(loadAgentWorkspaceTree).mockRejectedValue(error)
-      vi.mocked(getResponseStatus).mockReturnValue(500)
 
       const response = await workspaceTreeHandler(mockRequest)
       expect(response.status).toBe(500)
-      
+
       const json = await response.json()
       expect(json.message).toBe("Something went wrong")
     })
@@ -133,7 +130,7 @@ describe("Workspace API Routes", () => {
 
       const response = await workspaceHealthHandler(mockRequest)
       expect(response.status).toBe(200)
-      
+
       const json = await response.json()
       expect(json.status).toBe("ok")
       expect(json.workspaceAvailable).toBe(true)
@@ -146,7 +143,7 @@ describe("Workspace API Routes", () => {
 
       const response = await workspaceHealthHandler(mockRequest)
       expect(response.status).toBe(503)
-      
+
       const json = await response.json()
       expect(json.status).toBe("degraded")
       expect(json.workspaceAvailable).toBe(false)

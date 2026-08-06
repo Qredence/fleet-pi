@@ -4,13 +4,19 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { resolveWorkspaceContext } from "./workspace-context"
+import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
 
-const { mockExecuteCommand, mockGetSession, mockResolveUserSandboxContext } =
-  vi.hoisted(() => ({
-    mockExecuteCommand: vi.fn(),
-    mockGetSession: vi.fn(),
-    mockResolveUserSandboxContext: vi.fn(),
-  }))
+const {
+  mockExecuteCommand,
+  mockGetSession,
+  mockResolveUserSandboxContext,
+  mockResolveDaytonaRuntimeApiKey,
+} = vi.hoisted(() => ({
+  mockExecuteCommand: vi.fn(),
+  mockGetSession: vi.fn(),
+  mockResolveUserSandboxContext: vi.fn(),
+  mockResolveDaytonaRuntimeApiKey: vi.fn(),
+}))
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {
@@ -22,6 +28,10 @@ vi.mock("@/lib/auth/server", () => ({
 
 vi.mock("@/lib/daytona/resolve-user-sandbox-context", () => ({
   resolveUserSandboxContext: mockResolveUserSandboxContext,
+}))
+
+vi.mock("@/lib/pi/runtime/user-provider-secrets", () => ({
+  resolveDaytonaRuntimeApiKey: mockResolveDaytonaRuntimeApiKey,
 }))
 
 vi.mock("@/lib/daytona/client", () => ({
@@ -36,21 +46,25 @@ vi.mock("@/lib/daytona/user-sandbox", () => ({
 const originalAuthDatabaseUrl = process.env.FLEET_PI_AUTH_DATABASE_URL
 const originalDaytonaApiKey = process.env.DAYTONA_API_KEY
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
+const originalVercel = process.env.VERCEL
 const roots = new Set<string>()
 
 beforeEach(() => {
   delete process.env.FLEET_PI_AUTH_DATABASE_URL
   delete process.env.DAYTONA_API_KEY
   delete process.env.FLEET_PI_REPO_ROOT
+  delete process.env.VERCEL
   mockExecuteCommand.mockReset()
   mockGetSession.mockReset()
   mockResolveUserSandboxContext.mockReset()
+  mockResolveDaytonaRuntimeApiKey.mockReset()
 })
 
 afterEach(() => {
   restoreEnv("FLEET_PI_AUTH_DATABASE_URL", originalAuthDatabaseUrl)
   restoreEnv("DAYTONA_API_KEY", originalDaytonaApiKey)
   restoreEnv("FLEET_PI_REPO_ROOT", originalRepoRoot)
+  restoreEnv("VERCEL", originalVercel)
   for (const root of roots) {
     rmSync(root, { force: true, recursive: true })
   }
@@ -68,6 +82,7 @@ describe("resolveWorkspaceContext", () => {
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },
     })
+    mockResolveDaytonaRuntimeApiKey.mockResolvedValue("daytona-test-key")
     const workspaceFS = {}
     mockResolveUserSandboxContext.mockResolvedValue({
       workspaceFS,
@@ -86,6 +101,36 @@ describe("resolveWorkspaceContext", () => {
     })
     expect(context.workspaceRoot).toBe("/home/daytona/agent-workspace")
     expect(context.workspaceFS).toBe(workspaceFS)
+  })
+
+  it("throws DaytonaCredentialRequiredError (403) on VERCEL=1 without BYOK", async () => {
+    process.env.VERCEL = "1"
+    mockGetSession.mockResolvedValue({
+      user: { email: "user@example.test", id: "user-1" },
+    })
+    mockResolveDaytonaRuntimeApiKey.mockResolvedValue(undefined)
+
+    await expect(
+      resolveWorkspaceContext(
+        new Request("http://localhost:3000/api/workspace/tree")
+      )
+    ).rejects.toBeInstanceOf(DaytonaCredentialRequiredError)
+
+    expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
+  })
+
+  it("resolves a local context when VERCEL is unset and no BYOK is present", async () => {
+    mockGetSession.mockResolvedValue({
+      user: { email: "user@example.test", id: "user-1" },
+    })
+    mockResolveDaytonaRuntimeApiKey.mockResolvedValue(undefined)
+
+    const context = await resolveWorkspaceContext(
+      new Request("http://localhost:3000/api/workspace/tree")
+    )
+
+    expect(context.workspaceRoot).toContain("agent-workspace")
+    expect(context.workspaceFS).toBeUndefined()
   })
 })
 

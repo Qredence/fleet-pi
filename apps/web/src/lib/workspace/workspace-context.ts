@@ -1,5 +1,8 @@
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
+import {
+  DaytonaCredentialRequiredError,
+  resolveAppRuntimeContext,
+} from "@/lib/app-runtime"
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
@@ -27,7 +30,7 @@ export async function resolveWorkspaceContext(
   const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(userId)
 
   if (process.env.VERCEL === "1" && !resolvedDaytonaApiKey) {
-    throw new Error("daytona_credential_required")
+    throw new DaytonaCredentialRequiredError()
   }
 
   if (

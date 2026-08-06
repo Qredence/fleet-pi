@@ -36,6 +36,12 @@ export class RequestContextError extends Error {
   }
 }
 
+export class DaytonaCredentialRequiredError extends RequestContextError {
+  constructor() {
+    super("daytona_credential_required", 403)
+  }
+}
+
 export function getResponseStatus(error: unknown) {
   return error instanceof RequestContextError ? error.status : 500
 }
