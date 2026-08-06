@@ -1,9 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import {
+  RequestContextError,
+  getResponseStatus,
+  resolveAppRuntimeContext,
+} from "@/lib/app-runtime"
 import {
   isChatAuthRequired,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
+import { getErrorMessage } from "@/lib/pi/server"
 import {
   createUnexpectedWorkspaceQueryErrorResponse,
   createWorkspaceReindexResponse,
@@ -82,14 +89,24 @@ export async function workspaceReindexHandler(
         )
       }
 
-      const context = await resolveWorkspaceContext(request, authSession?.user)
+      let context: AppRuntimeContext | undefined
 
       try {
+        context = await resolveWorkspaceContext(request, authSession?.user)
         const response = await createWorkspaceReindexResponse(context)
         return Response.json(response.body, { status: response.status })
       } catch (error) {
+        if (error instanceof RequestContextError) {
+          return Response.json(
+            { message: getErrorMessage(error) },
+            { status: getResponseStatus(error) }
+          )
+        }
         return Response.json(
-          createUnexpectedWorkspaceQueryErrorResponse(context, error),
+          createUnexpectedWorkspaceQueryErrorResponse(
+            context ?? resolveAppRuntimeContext(),
+            error
+          ),
           { status: 500 }
         )
       }

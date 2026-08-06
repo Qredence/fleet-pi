@@ -13,11 +13,7 @@ export async function workspaceTreeHandler(request: Request) {
     } catch (error) {
       return Response.json(
         { message: getErrorMessage(error) },
-        {
-          status: getErrorMessage(error).includes("daytona_credential_required")
-            ? 403
-            : getResponseStatus(error),
-        }
+        { status: getResponseStatus(error) }
       )
     }
   })
