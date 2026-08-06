@@ -45,7 +45,6 @@ export type PiSessionMirrorInput = {
   createdAt: string
   updatedAt: string
   entries: Array<PiSessionEntryMirrorInput>
-  lastSyncedEntryId?: string // Watermark for incremental sync (entry ID-based)
 }
 
 export type PiSessionEntryMirrorInput = {
@@ -225,28 +224,8 @@ export function extractPiSessionMirrorInput(
     messageCount: entries.filter((entry) => entry.type === "message").length,
     createdAt,
     updatedAt,
-    lastSyncedEntryId: getLastSyncedEntryId(sessionManager),
     entries: entries.map((entry) => mapSessionEntryToMirrorRow(header, entry)),
   }
-}
-
-// Track the last synced entry ID as a watermark for incremental sync
-/**
- * Get the last synced entry ID as watermark for incremental sync.
- * Uses the second-to-last entry by index for robustness against compaction reordering.
- */
-function getLastSyncedEntryId(
-  sessionManager: SessionManager
-): string | undefined {
-  const entries = sessionManager.getEntries()
-
-  // Revert to index-based for safety - Pi library guarantees chronological order
-  if (entries.length >= 2) {
-    // Return the ID of the second-to-last entry
-    return entries[entries.length - 2].id
-  }
-
-  return entries.length === 1 ? entries[0].id : undefined
 }
 
 export function mapSessionEntryToMirrorRow(
@@ -305,6 +284,13 @@ export async function upsertPiSessionMirror(
   client: PostgresQueryClient,
   input: PiSessionMirrorInput
 ) {
+  // Read the persisted sync watermark + prior entry count BEFORE the session
+  // upsert below, which overwrites `entry_count` with the incoming value.
+  const priorState =
+    input.entries.length > 0
+      ? await readPiSessionSyncState(client, input.id)
+      : null
+
   await client.query(
     `
       INSERT INTO pi_sessions (
@@ -356,9 +342,9 @@ export async function upsertPiSessionMirror(
     ]
   )
 
-  if (input.entries.length > 0) {
-    // Incremental sync: only upsert entries newer than the watermark
-    await upsertPiSessionEntriesIncremental(client, input)
+  if (input.entries.length > 0 && priorState) {
+    // Incremental sync: only upsert entries newer than the persisted watermark
+    await upsertPiSessionEntriesIncremental(client, input, priorState)
   }
 }
 
@@ -718,29 +704,124 @@ async function upsertPiSessionEntriesBatch(
   })
 }
 
-// Incremental sync: only insert/update entries newer than lastSyncedEntryId
-// For a session with N entries, reduces writes from O(N) to O(newEntriesPerTurn)
+// Incremental sync: only upsert entries newer than the persisted watermark.
+// For a session with N entries, reduces writes from O(N) to O(newEntriesPerTurn).
+type PiSessionSyncState = {
+  watermark: { entryId: string; entryTimestamp: string | Date } | null
+  entryCount: number
+}
+
+async function readPiSessionSyncState(
+  client: PostgresQueryClient,
+  sessionId: string
+): Promise<PiSessionSyncState> {
+  const result = await client.query<{
+    last_synced_entry_id: string | null
+    last_synced_entry_timestamp: string | Date | null
+    entry_count: number | null
+  }>(
+    `SELECT last_synced_entry_id, last_synced_entry_timestamp, entry_count
+     FROM pi_sessions
+     WHERE id = $1`,
+    [sessionId]
+  )
+  const rows = result.rows
+  if (rows.length === 0) {
+    return { watermark: null, entryCount: 0 }
+  }
+  const row = rows[0]
+  if (!row.last_synced_entry_id || !row.last_synced_entry_timestamp) {
+    return { watermark: null, entryCount: row.entry_count ?? 0 }
+  }
+  return {
+    watermark: {
+      entryId: row.last_synced_entry_id,
+      entryTimestamp: row.last_synced_entry_timestamp,
+    },
+    entryCount: row.entry_count ?? 0,
+  }
+}
+
+function toIsoTimestamp(value: string | Date): string {
+  return typeof value === "string" ? value : value.toISOString()
+}
+
+// A new entry is any entry that comes after the watermark in the recovery
+// ordering (entry_timestamp ASC, entry_id ASC). This tie-break guarantees an
+// unmirrored entry sharing the watermark's timestamp but with a later id is
+// never skipped.
+function isEntryAfterWatermark(
+  entry: PiSessionEntryMirrorInput,
+  watermark: { entryId: string; entryTimestamp: string | Date }
+): boolean {
+  const watermarkTimestamp = toIsoTimestamp(watermark.entryTimestamp)
+  if (entry.entryTimestamp > watermarkTimestamp) return true
+  if (entry.entryTimestamp < watermarkTimestamp) return false
+  return entry.entryId > watermark.entryId
+}
+
+// The watermark must be the maximum entry in the synced batch by the recovery
+// ordering, not merely the last array element, so it stays correct even when
+// entries with equal timestamps arrive out of id order.
+function pickWatermarkEntry(
+  entries: Array<PiSessionEntryMirrorInput>
+): PiSessionEntryMirrorInput | undefined {
+  return entries.reduce<PiSessionEntryMirrorInput | undefined>((max, entry) => {
+    if (!max) return entry
+    return isEntryAfterWatermark(entry, {
+      entryId: max.entryId,
+      entryTimestamp: max.entryTimestamp,
+    })
+      ? entry
+      : max
+  }, undefined)
+}
+
 async function upsertPiSessionEntriesIncremental(
   client: PostgresQueryClient,
-  input: PiSessionMirrorInput
+  input: PiSessionMirrorInput,
+  priorState: PiSessionSyncState
 ) {
-  // Find the first entry that's newer than the last synced watermark (ID-based)
-  const newEntries = input.entries.filter(
-    (entry) => entry.entryId !== input.lastSyncedEntryId
-  )
+  // Correctness-first fallbacks: no persisted watermark (first sync) or the
+  // input has fewer entries than the DB already holds (compaction/rollback
+  // reordering) trigger a full upsert to self-heal — never trust the
+  // watermark when in doubt.
+  const shouldFullSync =
+    !priorState.watermark || input.entryCount < priorState.entryCount
+
+  const newEntries = shouldFullSync
+    ? input.entries
+    : input.entries.filter((entry) =>
+        isEntryAfterWatermark(entry, priorState.watermark!)
+      )
 
   logger.debug(
     {
       sessionId: input.id,
       totalEntries: input.entries.length,
       newEntries: newEntries.length,
-      lastSyncedEntryId: input.lastSyncedEntryId,
+      fullSync: shouldFullSync,
+      watermarkEntryId: priorState.watermark?.entryId ?? null,
     },
     "[pi-session-mirror] incremental sync delta"
   )
 
   if (newEntries.length > 0) {
     await upsertPiSessionEntriesBatch(client, newEntries)
+
+    // Advance the watermark to the last synced entry in the SAME transaction
+    // as the entries upsert; if the upsert throws, this update is skipped and
+    // the transaction rolls back so the watermark never advances past data
+    // that was not actually mirrored.
+    const watermarkEntry = pickWatermarkEntry(newEntries)
+    if (watermarkEntry) {
+      await client.query(
+        `UPDATE pi_sessions
+         SET last_synced_entry_id = $2, last_synced_entry_timestamp = $3
+         WHERE id = $1`,
+        [input.id, watermarkEntry.entryId, watermarkEntry.entryTimestamp]
+      )
+    }
   }
 }
 

@@ -50,6 +50,10 @@ import {
   CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
 } from "../src/lib/db/chat-postgres-drop-unused-indexes"
 import {
+  MIRROR_WATERMARK_MIGRATION_ID,
+  MIRROR_WATERMARK_MIGRATION_SQL,
+} from "../src/lib/db/chat-postgres-mirror-watermark"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -181,6 +185,11 @@ async function main() {
       client,
       CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
       CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      MIRROR_WATERMARK_MIGRATION_ID,
+      MIRROR_WATERMARK_MIGRATION_SQL
     )
 
     await client.query("COMMIT")
