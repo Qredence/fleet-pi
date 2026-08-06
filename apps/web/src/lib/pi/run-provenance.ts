@@ -6,6 +6,7 @@ import {
   openSync,
   readSync,
   readdirSync,
+  statSync,
 } from "node:fs"
 import { join, relative } from "node:path"
 import {
@@ -50,6 +51,7 @@ type ActiveRunState = {
   sequence: number
   toolCalls: Array<TrackedToolCall>
   beforeSnapshot?: Map<string, SnapshotEntry>
+  scopedRoots: Set<string>
 }
 
 type TrackedToolCall = {
@@ -92,6 +94,10 @@ const POTENTIALLY_MUTATING_TOOLS = new Set([
   "workspace_write",
 ])
 
+// Local provenance snapshots walk only these roots (plus per-tool claimed
+// paths) instead of the whole repository. Daytona sessions never snapshot.
+const BASE_SNAPSHOT_ROOTS: ReadonlyArray<string> = ["agent-workspace", ".pi"]
+
 export type RunProvenanceRecorder = {
   record: (event: ChatStreamEvent) => void
   close: () => void | Promise<void>
@@ -102,6 +108,10 @@ export function createRunProvenanceRecorder(
   options: RecorderOptions = {}
 ): RunProvenanceRecorder {
   let activeRun: ActiveRunState | undefined
+  // On Daytona sessions the agent writes to the remote sandbox volume, which is
+  // invisible to this process's local filesystem. Snapshotting would walk the
+  // whole project and detect nothing, blocking the stream — so skip it entirely.
+  const isDaytona = Boolean(context.workspaceFS)
   const sinks: Array<ProvenanceSink> = []
 
   try {
@@ -140,6 +150,7 @@ export function createRunProvenanceRecorder(
           sessionFile: normalizeSessionFilePath(context, event.sessionFile),
           sequence: 0,
           toolCalls: [],
+          scopedRoots: new Set(BASE_SNAPSHOT_ROOTS),
         }
         sink.insertRunStart({
           runId: activeRun.runId,
@@ -204,8 +215,14 @@ export function createRunProvenanceRecorder(
     const claimedPaths = extractClaimedPaths(context, part)
     const isPotentialMutation = isPotentiallyMutatingTool(lowerToolName)
 
-    if (isPotentialMutation && !activeRun.beforeSnapshot) {
-      activeRun.beforeSnapshot = captureProjectSnapshot(context.projectRoot)
+    for (const claimedPath of claimedPaths) {
+      activeRun.scopedRoots.add(claimedPath)
+    }
+
+    if (!isDaytona && isPotentialMutation && !activeRun.beforeSnapshot) {
+      activeRun.beforeSnapshot = captureProjectSnapshot(context.projectRoot, [
+        ...activeRun.scopedRoots,
+      ])
     }
 
     const existing = activeRun.toolCalls.find(
@@ -270,13 +287,16 @@ export function createRunProvenanceRecorder(
     const runToFinalize = activeRun
     activeRun = undefined
 
-    const mutations = runToFinalize.beforeSnapshot
-      ? diffProjectSnapshots(
-          runToFinalize.beforeSnapshot,
-          captureProjectSnapshot(context.projectRoot),
-          runToFinalize.toolCalls
-        )
-      : []
+    const mutations =
+      !isDaytona && runToFinalize.beforeSnapshot
+        ? diffProjectSnapshots(
+            runToFinalize.beforeSnapshot,
+            captureProjectSnapshot(context.projectRoot, [
+              ...runToFinalize.scopedRoots,
+            ]),
+            runToFinalize.toolCalls
+          )
+        : []
 
     sink.replaceFileMutations({
       runId: runToFinalize.runId,
@@ -481,25 +501,51 @@ function isPotentiallyMutatingTool(toolName: string) {
 
 const MAX_FILE_SIZE_FOR_HASH = 4 * 1024 * 1024 // 4 MiB
 
-function captureProjectSnapshot(projectRoot: string) {
+function captureProjectSnapshot(
+  projectRoot: string,
+  scopedRoots: ReadonlyArray<string>
+) {
   const snapshot = new Map<string, SnapshotEntry>()
-  walkProjectFiles(projectRoot, projectRoot, snapshot)
+  for (const scopedRoot of scopedRoots) {
+    walkProjectFiles(projectRoot, join(projectRoot, scopedRoot), snapshot)
+  }
   return snapshot
 }
 
 function walkProjectFiles(
   projectRoot: string,
-  directory: string,
+  targetPath: string,
   snapshot: Map<string, SnapshotEntry>
 ) {
-  for (const entry of readdirSync(directory, { withFileTypes: true }).sort(
+  let stat
+  try {
+    stat = statSync(targetPath)
+  } catch {
+    // The scoped root may not exist (e.g. no .pi/ dir yet); skip it.
+    return
+  }
+
+  if (stat.isFile()) {
+    const repoRelativePath = relative(projectRoot, targetPath).replace(
+      /\\/g,
+      "/"
+    )
+    hashFileIntoSnapshot(repoRelativePath, targetPath, snapshot)
+    return
+  }
+
+  if (!stat.isDirectory()) {
+    return
+  }
+
+  for (const entry of readdirSync(targetPath, { withFileTypes: true }).sort(
     (a, b) => a.name.localeCompare(b.name)
   )) {
     if (IGNORED_DIRECTORIES.has(entry.name)) {
       continue
     }
 
-    const absolutePath = join(directory, entry.name)
+    const absolutePath = join(targetPath, entry.name)
     const repoRelativePath = relative(projectRoot, absolutePath).replace(
       /\\/g,
       "/"
@@ -527,24 +573,32 @@ function walkProjectFiles(
       continue
     }
 
-    let fd: number | undefined
-    try {
-      fd = openSync(absolutePath, constants.O_RDONLY)
-      const fileStat = fstatSync(fd)
-      if (fileStat.size > MAX_FILE_SIZE_FOR_HASH) {
-        continue
-      }
-      const content = Buffer.allocUnsafe(fileStat.size)
-      readSync(fd, content, 0, fileStat.size, 0)
-      snapshot.set(repoRelativePath, {
-        digest: createHash("sha256").update(content).digest("hex"),
-        size: fileStat.size,
-      })
-    } catch {
-      // File may have been removed or changed between listing and reading; skip it
-    } finally {
-      if (fd !== undefined) closeSync(fd)
+    hashFileIntoSnapshot(repoRelativePath, absolutePath, snapshot)
+  }
+}
+
+function hashFileIntoSnapshot(
+  repoRelativePath: string,
+  absolutePath: string,
+  snapshot: Map<string, SnapshotEntry>
+) {
+  let fd: number | undefined
+  try {
+    fd = openSync(absolutePath, constants.O_RDONLY)
+    const fileStat = fstatSync(fd)
+    if (fileStat.size > MAX_FILE_SIZE_FOR_HASH) {
+      return
     }
+    const content = Buffer.allocUnsafe(fileStat.size)
+    readSync(fd, content, 0, fileStat.size, 0)
+    snapshot.set(repoRelativePath, {
+      digest: createHash("sha256").update(content).digest("hex"),
+      size: fileStat.size,
+    })
+  } catch {
+    // File may have been removed or changed between listing and reading; skip it
+  } finally {
+    if (fd !== undefined) closeSync(fd)
   }
 }
 
