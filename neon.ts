@@ -20,6 +20,9 @@ export default defineConfig({
           FLEET_PI_CHAT_DATABASE_URL:
             chatFunctionEnv("FLEET_PI_CHAT_DATABASE_URL") ||
             chatFunctionEnv("DATABASE_URL"),
+          // Neon Functions have no persistent repo; default the Pi project root
+          // to an ephemeral writable location so sessions/workspace can mkdir.
+          FLEET_PI_REPO_ROOT: chatFunctionEnv("FLEET_PI_REPO_ROOT") || "/tmp",
           NEON_AUTH_BASE_URL:
             chatFunctionEnv("NEON_AUTH_BASE_URL") ||
             chatFunctionEnv("NEON_AUTH_URL"),
@@ -30,6 +33,8 @@ export default defineConfig({
           ),
           NEON_AI_GATEWAY_TOKEN: chatFunctionEnv("NEON_AI_GATEWAY_TOKEN"),
           NEON_AI_GATEWAY_BASE_URL: chatFunctionEnv("NEON_AI_GATEWAY_BASE_URL"),
+          // BYOK provider credential encryption (AES-GCM) on the runtime.
+          BETTER_AUTH_SECRET: chatFunctionEnv("BETTER_AUTH_SECRET"),
         },
       },
     },
