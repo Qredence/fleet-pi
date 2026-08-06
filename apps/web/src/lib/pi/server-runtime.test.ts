@@ -376,6 +376,73 @@ describe("answerChatQuestion", () => {
       vi.useRealTimers()
     }
   })
+
+  it("disposes the replaced runtime when two runtimes are tracked for the same session", async () => {
+    const sessionFile = createSessionFile(root, "session-sequential.jsonl")
+    const { retainPiRuntime } = await import("./server-runtime")
+    const first = createMockRuntime("session-sequential", sessionFile)
+    const second = createMockRuntime("session-sequential", sessionFile)
+
+    retainPiRuntime(first)
+    retainPiRuntime(second)
+
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(second.dispose).not.toHaveBeenCalled()
+  })
+
+  it("a stale scheduled disposal never disposes a newer runtime", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const sessionFile = createSessionFile(root, "session-stale.jsonl")
+    try {
+      const { retainPiRuntime } = await import("./server-runtime")
+      const first = createMockRuntime("session-stale", sessionFile)
+      const releaseFirst = retainPiRuntime(first)
+      // Schedule disposal targeting the first runtime.
+      releaseFirst()
+
+      // Tracking a newer runtime for the same session replaces the first.
+      const second = createMockRuntime("session-stale", sessionFile)
+      retainPiRuntime(second)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      // The replaced runtime is disposed once; the stale timer (if it survived)
+      // must never dispose the newer runtime.
+      expect(first.dispose).toHaveBeenCalledTimes(1)
+      expect(second.dispose).not.toHaveBeenCalled()
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not evict the same-session record at the concurrency cap", async () => {
+    const { retainPiRuntime } = await import("./server-runtime")
+    const sessionFile = createSessionFile(root, "session-cap.jsonl")
+    const first = createMockRuntime("cap-session", sessionFile)
+    retainPiRuntime(first)
+
+    // Fill up to MAX_CONCURRENT_RUNTIMES (50) with distinct sessions so that
+    // `first` is the oldest idle record.
+    for (let i = 1; i < 50; i++) {
+      retainPiRuntime(
+        createMockRuntime(
+          `cap-other-${i}`,
+          createSessionFile(root, `cap-other-${i}.jsonl`)
+        )
+      )
+    }
+
+    // Tracking a replacement for the oldest session must not evict its record;
+    // the old runtime is disposed by the replacement, the new one stays alive.
+    const replacement = createMockRuntime("cap-session", sessionFile)
+    retainPiRuntime(replacement)
+
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(replacement.dispose).not.toHaveBeenCalled()
+  })
 })
 
 function createSessionFile(root: string, name: string) {
