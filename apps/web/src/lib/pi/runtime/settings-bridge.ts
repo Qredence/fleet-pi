@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import {
@@ -19,6 +19,7 @@ import {
   PROJECT_SETTINGS_PATH,
   projectSettingsPath,
 } from "./project-settings-file"
+import { serializeProjectSettingsPreservingFormat } from "./project-settings-format"
 import { createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import { RESOURCE_SETTING_KEYS } from "./types"
@@ -154,11 +155,30 @@ async function persistCompactProjectSettings(
   }
 
   await mkdir(dirname(settingsPath), { recursive: true })
-  await writeFile(
-    settingsPath,
-    `${JSON.stringify(toPersist, null, 2)}\n`,
-    "utf8"
+  const existing = await readRawIfExists(settingsPath)
+  const content = serializeProjectSettingsPreservingFormat(
+    existing ?? undefined,
+    toPersist
   )
+  // Identical semantic content must leave the tracked file byte-identical:
+  // avoid dirtying git status with spurious formatting-only churn.
+  if (existing !== null && content === existing) return
+  await writeFile(settingsPath, content, "utf8")
+}
+
+async function readRawIfExists(settingsPath: string) {
+  try {
+    return await readFile(settingsPath, "utf8")
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      return null
+    }
+    throw error
+  }
 }
 
 export function patchProjectSettingsOverrides(
