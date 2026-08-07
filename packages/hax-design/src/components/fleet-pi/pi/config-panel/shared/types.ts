@@ -1,4 +1,4 @@
-import type { ChatThinkingLevel } from "../../../../../lib/pi/chat-protocol"
+import type { ChatThinkingLevel } from "@workspace/pi-protocol/chat-protocol"
 
 export type ConfigModelInfo = {
   id: string

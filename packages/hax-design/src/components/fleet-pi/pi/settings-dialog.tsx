@@ -66,7 +66,7 @@ import type { ReactNode } from "react"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 type LucideIcon = typeof Cpu
 

@@ -19,7 +19,7 @@ import type {
   ChatPiSettingsUpdate,
   ChatProviderInfo,
   ChatSettingsResponse,
-} from "../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * Owns the LLM-models slice of the settings form: filter, discovery, enabled

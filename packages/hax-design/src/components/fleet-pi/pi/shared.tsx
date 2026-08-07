@@ -12,7 +12,7 @@ import type {
   ChatResourcesResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ResourceGroupId =
   "skills" | "prompts" | "extensions" | "packages" | "themes" | "agentsFiles"

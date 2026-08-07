@@ -27,7 +27,7 @@ import {
   ProviderBrandIcon,
   formatProviderLabel,
 } from "../shared/provider-brand-icon"
-import type { ChatPiSettings } from "../../../../../lib/pi/chat-protocol"
+import type { ChatPiSettings } from "@workspace/pi-protocol/chat-protocol"
 import type { ConfigModelInfo } from "../shared/types"
 
 export function ModelDefaultsSection({

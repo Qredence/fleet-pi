@@ -14,7 +14,7 @@ import type {
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   PiCustomProviderApi,
-} from "../../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type UseProviderCredentialsControllerArgs = {
   onRemoveProvider?: (

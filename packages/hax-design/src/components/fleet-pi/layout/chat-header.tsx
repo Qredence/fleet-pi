@@ -12,7 +12,7 @@ import { ChromePillButton } from "../primitives/chrome-pill"
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 const DOCUMENTATION_URL = "https://docs.qredence.ai"
 

@@ -18,7 +18,7 @@ import type {
   ChatProviderInfo,
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
-} from "../../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export function SandboxProviderSection({
   isLoading,

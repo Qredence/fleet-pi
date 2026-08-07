@@ -9,7 +9,7 @@ import {
 import type {
   ChatPiSettings,
   ChatSettingsResponse,
-} from "../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * Owns the resource-editing slice of the settings form: package source rows,

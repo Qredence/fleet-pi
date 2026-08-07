@@ -24,7 +24,10 @@ import {
   CommandList,
   CommandSeparator,
 } from "../command"
-import type { ChatMode, ChatSessionInfo } from "../../lib/pi/chat-protocol"
+import type {
+  ChatMode,
+  ChatSessionInfo,
+} from "@workspace/pi-protocol/chat-protocol"
 import type { RightPanel, ThemePreference } from "../../lib/canvas-utils"
 
 export type CommandPaletteProps = {
