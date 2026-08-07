@@ -94,6 +94,24 @@ export const ToolRenderer = memo(function ToolRenderer({
     return <McpTool part={part} mcpInfo={mcpInfo} chatStatus={chatStatus} />
   }
 
+  // Custom renderers for plain tool-* parts (e.g. fleet-pi's
+  // tool-project_inventory / tool-workspace_index / tool-resource_install)
+  // that are not MCP parts and need no mcp__ prefix.
+  if (toolRenderers && partType.startsWith("tool-")) {
+    const toolName = partType.slice("tool-".length)
+    const CustomRenderer = toolRenderers[toolName]
+    if (CustomRenderer) {
+      return (
+        <CustomRenderer
+          name={toolName}
+          input={(part.input ?? {}) as Record<string, unknown>}
+          output={part.output ?? part.result}
+          status={deriveToolStatus(part, chatStatus)}
+        />
+      )
+    }
+  }
+
   // Registry-based generic tools (Read, Grep, Glob, WebFetch, etc.)
   const meta = toolRegistry[partType]
   if (meta) {
