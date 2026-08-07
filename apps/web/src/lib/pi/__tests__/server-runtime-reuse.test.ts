@@ -391,7 +391,7 @@ describe("createPiRuntime active reuse", () => {
       })
       let resolveSecond!: (runtime: AgentSessionRuntime) => void
       mocks.createAgentSessionRuntime
-        .mockImplementationOnce(async () => first)
+        .mockImplementationOnce(() => Promise.resolve(first))
         .mockImplementationOnce(
           () =>
             new Promise<AgentSessionRuntime>((resolve) => {
