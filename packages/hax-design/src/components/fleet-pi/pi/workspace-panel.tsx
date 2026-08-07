@@ -33,7 +33,7 @@ import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type WorkspacePanelContentProps = {
   error?: Error | null

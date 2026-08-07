@@ -39,7 +39,7 @@ import type {
   ChatProviderUpdateRequest,
   ChatProviderUpdateResponse,
   PiCustomProviderApi,
-} from "../../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * Manages provider credential configuration, including adding, updating, searching, and removing providers.

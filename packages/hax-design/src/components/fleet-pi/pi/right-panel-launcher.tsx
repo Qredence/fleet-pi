@@ -18,7 +18,7 @@ import type { RightPanel } from "../../../lib/canvas-utils"
 import type {
   ChatResourcesResponse,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 /** Reads panel state from RightPanelProvider — no prop threading from route. */
 export function RightPanelLauncherFromContext() {
   const { rightPanel, setRightPanel, resources } = useChatPanelDataContext()

@@ -8,7 +8,7 @@ import { ResourcesSkeleton } from "./skeleton-loaders"
 import type {
   ChatResourcesResponse,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export function ResourcesPanelContent({
   error,
