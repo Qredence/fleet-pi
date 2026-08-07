@@ -15,6 +15,21 @@ const mocks = vi.hoisted(() => ({
     "resource expectation diagnostic",
   ]),
   createSessionServices: vi.fn(),
+  listLocalProviderInstances: vi.fn(
+    async (): Promise<Array<{ id: string; modelIds?: Array<string> }>> => []
+  ),
+  listOccInstances: vi.fn(
+    async (): Promise<
+      Array<{
+        id: string
+        displayName: string
+        baseUrl: string
+        api?: string
+        modelIds?: Array<string>
+        modelId?: string
+      }>
+    > => []
+  ),
   loadWorkspaceResourceOverlay: vi.fn(() => ({
     packages: [{ name: "pi-web-access", path: "agent-workspace/pi/packages" }],
     skills: [],
@@ -33,6 +48,7 @@ const mocks = vi.hoisted(() => ({
     defaultProvider: "google",
     defaultModel: "gemini-3.5-flash",
   })),
+  useLocalProviderStore: vi.fn(() => false),
 }))
 
 vi.mock("../resource-expectations", () => ({
@@ -48,6 +64,15 @@ vi.mock("../runtime/session-factory", () => ({
 vi.mock("../runtime/diagnostics", () => ({
   collectDiagnostics: mocks.collectDiagnostics,
   resolveDefaultModelSelection: mocks.resolveDefaultModelSelection,
+}))
+
+vi.mock("@/lib/db/occ-instances", () => ({
+  listOccInstances: mocks.listOccInstances,
+}))
+
+vi.mock("@/lib/db/local-provider-instances", () => ({
+  listLocalProviderInstances: mocks.listLocalProviderInstances,
+  useLocalProviderStore: mocks.useLocalProviderStore,
 }))
 
 vi.mock("../workspace-resource-catalog", () => ({
@@ -92,7 +117,11 @@ function createServices({
       getModel: vi.fn((provider: string, id: string) =>
         models.find((model) => model.provider === provider && model.id === id)
       ),
-      getModels: vi.fn(() => models),
+      getModels: vi.fn((provider?: string) =>
+        provider
+          ? models.filter((model) => model.provider === provider)
+          : models
+      ),
       getAvailable: vi.fn(async () => availableModels),
       getAvailableSnapshot: vi.fn(() => availableModels),
     },
@@ -161,32 +190,41 @@ describe("server catalog", () => {
       defaultProvider: "google",
       defaultModel: "gemini-3.5-flash",
     })
+    mocks.listOccInstances.mockResolvedValue([])
+    mocks.listLocalProviderInstances.mockResolvedValue([])
+    mocks.useLocalProviderStore.mockReturnValue(false)
   })
 
-  it("lists only available models and applies default thinking metadata", async () => {
+  it("lists only app-added models and applies default thinking metadata", async () => {
     const services = createServices({
       all: [
-        createModel("google", "gemini-3.5-flash", {
+        createModel("openai-chat-completions", "deepseek-v4-flash-free", {
           contextWindow: 1000,
           maxTokens: 200,
         }),
         createModel("openai", "gpt-5"),
       ],
       available: [
-        createModel("google", "gemini-3.5-flash", {
+        createModel("openai-chat-completions", "deepseek-v4-flash-free", {
           contextWindow: 1000,
           maxTokens: 200,
         }),
       ],
     })
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "deepseek-v4-flash-free",
+    })
     mocks.createSessionServices.mockResolvedValue(services)
 
     const response = await loadChatModels({ projectRoot: "/repo" } as never)
 
-    expect(response.selectedModelKey).toBe("google/gemini-3.5-flash")
+    expect(response.selectedModelKey).toBe(
+      "openai-chat-completions/deepseek-v4-flash-free"
+    )
     expect(response.models).toEqual([
       expect.objectContaining({
-        key: "google/gemini-3.5-flash",
+        key: "openai-chat-completions/deepseek-v4-flash-free",
         available: true,
         contextWindow: 1000,
         maxTokens: 200,
@@ -260,7 +298,7 @@ describe("server catalog", () => {
     ).toBe(googleModel)
   })
 
-  it("falls back to all models and prepends an unavailable configured default", async () => {
+  it("prepends the configured default when the enabled scope has no added models", async () => {
     mocks.resolveDefaultModelSelection.mockReturnValue({
       defaultProvider: "google",
       defaultModel: "gemini-missing",
@@ -276,17 +314,15 @@ describe("server catalog", () => {
     const response = await loadChatModels({ projectRoot: "/repo" } as never)
 
     expect(response.selectedModelKey).toBe("google/gemini-missing")
-    expect(response.models[0]).toMatchObject({
-      key: "google/gemini-missing",
-      provider: "google",
-      id: "gemini-missing",
-      available: false,
-      defaultThinkingLevel: undefined,
-    })
-    expect(response.models[1]).toMatchObject({
-      key: "openai/gpt-5",
-      available: true,
-    })
+    expect(response.models).toEqual([
+      expect.objectContaining({
+        key: "google/gemini-missing",
+        provider: "google",
+        id: "gemini-missing",
+        available: false,
+        defaultThinkingLevel: undefined,
+      }),
+    ])
   })
 
   it("resolves legacy and structured Bedrock selections through regional aliases", () => {
@@ -340,17 +376,23 @@ describe("server catalog", () => {
     expect(runtime.session.setThinkingLevel).toHaveBeenCalledWith("low")
   })
 
-  it("filters models using enabledModels glob patterns", async () => {
+  it("filters added models using enabledModels glob patterns", async () => {
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "deepseek-v4-flash-free",
+    })
     const services = createServices({
       all: [
+        createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        createModel("openai-chat-completions", "gpt-oss-120b"),
         createModel("google", "gemini-3.5-flash"),
-        createModel("openai", "gpt-5"),
       ],
       available: [
+        createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        createModel("openai-chat-completions", "gpt-oss-120b"),
         createModel("google", "gemini-3.5-flash"),
-        createModel("openai", "gpt-5"),
       ],
-      enabledModels: ["google/*"],
+      enabledModels: ["openai-chat-completions/deepseek-v4-flash-free"],
     })
     mocks.createSessionServices.mockResolvedValue(services)
 
@@ -358,8 +400,62 @@ describe("server catalog", () => {
 
     expect(response.models).toHaveLength(1)
     expect(response.models[0]).toMatchObject({
-      key: "google/gemini-3.5-flash",
+      key: "openai-chat-completions/deepseek-v4-flash-free",
     })
+  })
+
+  it("lists only OCC and custom instance models in the enabled scope", async () => {
+    mocks.listOccInstances.mockResolvedValue([
+      {
+        id: "custom+go",
+        displayName: "Go",
+        baseUrl: "https://opencode.ai/zen/v1",
+        api: "openai-completions",
+        modelIds: ["deepseek-v4-flash"],
+      },
+    ])
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "deepseek-v4-flash-free",
+    })
+    const services = createServices({
+      all: [
+        createModel("openai-chat-completions", "deepseek-v4-flash-free"),
+        createModel("custom+go", "deepseek-v4-flash"),
+        createModel("google", "gemini-3.5-flash"),
+        createModel("openai", "gpt-5"),
+      ],
+    })
+    mocks.createSessionServices.mockResolvedValue(services)
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.models.map((model) => model.key)).toEqual([
+      "openai-chat-completions/deepseek-v4-flash-free",
+      "custom+go/deepseek-v4-flash",
+    ])
+  })
+
+  it("lists gateway model ids when the OCC slot is gateway-backed", async () => {
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "openai-chat-completions",
+      defaultModel: "qwen35-122b-a10b",
+    })
+    const services = createServices({
+      all: [
+        createModel("openai-chat-completions", "qwen35-122b-a10b"),
+        createModel("openai-chat-completions", "gpt-oss-120b"),
+        createModel("google", "gemini-3.5-flash"),
+      ],
+    })
+    mocks.createSessionServices.mockResolvedValue(services)
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.models.map((model) => model.key)).toEqual([
+      "openai-chat-completions/qwen35-122b-a10b",
+      "openai-chat-completions/gpt-oss-120b",
+    ])
   })
 
   it("does not route google defaults to openai-chat-completions with the same model id", async () => {
