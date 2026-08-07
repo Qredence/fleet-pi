@@ -11,10 +11,21 @@ import {
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
+
+/**
+ * The reserved OpenAI Chat Completions slot and its companion base-url/model
+ * rows. Together they form the OCC BYOK triple saved through Settings.
+ */
+const OCC_TRIPLE_PROVIDER_IDS = new Set<string>([
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+])
 
 function readEnvLlmProviderSecrets(): Map<string, string> {
   const secrets = new Map<string, string>()
@@ -32,6 +43,48 @@ function shouldLoadUserByokFromDatabase() {
   return isDeployedChatRuntimeSurface()
 }
 
+/**
+ * Local dev accounts backed by the chat database: a signed-in user on a
+ * machine with `FLEET_PI_CHAT_DATABASE_URL`. Mirrors `useLocalProviderStore`
+ * (custom provider instances) so BYOK rows the user saved through Settings
+ * drive the runtime locally instead of being ignored in favor of env vars.
+ */
+export function isLocalDbBackedUser(userId: string | undefined): boolean {
+  return (
+    !isDeployedChatRuntimeSurface() &&
+    Boolean(userId) &&
+    isChatDatabaseConfigured()
+  )
+}
+
+/**
+ * True when the user saved a complete OpenAI Chat Completions BYOK triple
+ * (apiKey + baseUrl + model) in `pi_user_providers`. Explicit user
+ * configuration wins over the platform Neon AI Gateway default: it keeps the
+ * legacy OCC settings migration from silently dropping the user's own model.
+ */
+export async function hasExplicitOccByok(
+  userId: string | undefined
+): Promise<boolean> {
+  if (!userId) return false
+  const [apiKey, baseUrl, model] = await Promise.all([
+    loadDecryptedUserProviderSecrets(userId, {
+      providerId: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+    }),
+    loadDecryptedUserProviderSecrets(userId, {
+      providerId: OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+    }),
+    loadDecryptedUserProviderSecrets(userId, {
+      providerId: OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+    }),
+  ])
+  return (
+    apiKey.has(OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) &&
+    baseUrl.has(OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID) &&
+    model.has(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)
+  )
+}
+
 function stripLegacyOccByokWhenGatewayActive(
   userId: string | undefined,
   secrets: Map<string, string>,
@@ -45,6 +98,17 @@ function stripLegacyOccByokWhenGatewayActive(
     !secrets.has(OPENAI_CHAT_COMPLETIONS_PROVIDER_ID) ||
     !modelId ||
     !isLegacyFleetOccModelId(modelId)
+  ) {
+    return secrets
+  }
+
+  // A complete explicit BYOK triple is deliberate user configuration (added
+  // through Settings against a live OpenAI-compatible endpoint) and must
+  // survive; only partial/legacy leftovers are stripped so the platform
+  // Gateway default applies.
+  if (
+    secrets.has(OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID) &&
+    secrets.has(OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID)
   ) {
     return secrets
   }
@@ -97,6 +161,17 @@ export async function resolveUserProviderSecret(
       ).get(providerId)
     }
     return undefined
+  }
+
+  // DB-backed local accounts: prefer the BYOK rows the user saved through
+  // Settings over env fallbacks for the reserved OCC slot, so a provider added
+  // in the UI drives the runtime in local dev (same source of truth as the
+  // deployed surfaces). Scoped to the OCC triple only; other LLM providers
+  // keep the env-first behavior locally.
+  if (OCC_TRIPLE_PROVIDER_IDS.has(providerId) && isLocalDbBackedUser(userId)) {
+    return (await loadDecryptedUserProviderSecrets(userId, { providerId })).get(
+      providerId
+    )
   }
 
   if (LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId)) {

@@ -5,6 +5,7 @@ import {
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
 import { resolveNeonAiGatewayConfig } from "./neon-ai-gateway"
+import { isLocalDbBackedUser } from "./user-provider-secrets"
 import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { listConfiguredProviderIds } from "@/lib/db/user-providers"
@@ -18,7 +19,7 @@ export async function getProviderConfigStatus(options?: {
     return getVercelProviderConfigStatus(options?.userId)
   }
 
-  return getLocalProviderConfigStatus(options?.services)
+  return getLocalProviderConfigStatus(options?.userId, options?.services)
 }
 
 async function getVercelProviderConfigStatus(userId?: string) {
@@ -46,12 +47,27 @@ async function getVercelProviderConfigStatus(userId?: string) {
   }))
 }
 
-function getLocalProviderConfigStatus(services?: AgentSessionServices) {
+async function getLocalProviderConfigStatus(
+  userId: string | undefined,
+  services?: AgentSessionServices
+) {
+  // Signed-in local accounts backed by the chat database see their stored
+  // BYOK rows as configured, mirroring the Vercel path. Anonymous/dev
+  // accounts stay env-driven.
+  const configuredProviderIds =
+    userId && isLocalDbBackedUser(userId)
+      ? await listConfiguredProviderIds(userId)
+      : undefined
+
   return KNOWN_PROVIDERS.map((provider) => ({
     id: provider.id,
     name: provider.name,
     envVarName: provider.envVarName,
-    isConfigured: isProviderConfigured(provider.id, { services }),
+    isConfigured: isProviderConfigured(provider.id, {
+      configuredProviderIds,
+      services,
+      userId,
+    }),
   }))
 }
 

@@ -45,7 +45,6 @@ describe("session factory", () => {
   const originalGeminiKey = process.env.GEMINI_API_KEY
   const originalAuthSecret = process.env.BETTER_AUTH_SECRET
   const originalChatDb = process.env.FLEET_PI_CHAT_DATABASE_URL
-
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createAgentSessionServices.mockResolvedValue({
@@ -55,6 +54,7 @@ describe("session factory", () => {
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
         getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
       settingsManager: createMockSettingsManager(),
       resourceLoader: {
@@ -104,17 +104,18 @@ describe("session factory", () => {
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
         getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
     }
-
     await applyRuntimeAuth(services as never, { userId: "user-1" })
-
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
     expect(services.modelRuntime.setRuntimeApiKey).toHaveBeenCalledWith(
       "google",
-      "decrypted-key"
+      "decrypted-key",
+      { allowNetwork: false }
     )
-    expect(removeRuntimeApiKey).toHaveBeenCalled()
+    // Fresh runtimes hold no Fleet-set runtime keys, so nothing is cleared.
+    expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
   it("syncs local env vars into runtime auth storage", async () => {
@@ -130,14 +131,71 @@ describe("session factory", () => {
         unregisterProvider: vi.fn(),
         registerProvider: vi.fn(),
         getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
     }
-
     await applyRuntimeAuth(services as never, {})
-
     expect(mocks.withChatPostgresTransaction).not.toHaveBeenCalled()
-    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
-    expect(removeRuntimeApiKey).toHaveBeenCalled()
+    expect(setRuntimeApiKey).toHaveBeenCalledWith(
+      "google",
+      "local-gemini-key",
+      {
+        allowNetwork: false,
+      }
+    )
+    expect(removeRuntimeApiKey).not.toHaveBeenCalled()
+  })
+
+  it("only touches configured providers and clears stale runtime keys", async () => {
+    delete process.env.VERCEL
+    process.env.GEMINI_API_KEY = "local-gemini-key"
+    const { applyRuntimeAuth } = await import("../session-factory")
+    const setRuntimeApiKey = vi.fn()
+    const removeRuntimeApiKey = vi.fn()
+    const services = {
+      modelRuntime: {
+        setRuntimeApiKey,
+        removeRuntimeApiKey,
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => [
+          "amazon-bedrock",
+          "huggingface",
+          "google",
+        ]),
+        getProviderAuthStatus: vi.fn((providerId: string) =>
+          providerId === "amazon-bedrock"
+            ? { configured: true, source: "runtime" as const }
+            : { configured: false }
+        ),
+      },
+    }
+    await applyRuntimeAuth(services as never, {})
+    // Only env-configured providers get runtime keys — never a sweep of the
+    // full Pi provider catalog.
+    expect(setRuntimeApiKey).toHaveBeenCalledWith(
+      "google",
+      "local-gemini-key",
+      {
+        allowNetwork: false,
+      }
+    )
+    expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
+      "huggingface",
+      expect.anything()
+    )
+    expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
+      "amazon-bedrock",
+      expect.anything()
+    )
+    expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
+      "deepseek",
+      expect.anything()
+    )
+    // The stale runtime key Fleet set earlier is cleared; providers that were
+    // never set (huggingface) are left untouched.
+    expect(removeRuntimeApiKey).toHaveBeenCalledTimes(1)
+    expect(removeRuntimeApiKey).toHaveBeenCalledWith("amazon-bedrock")
   })
 
   it("scrubs Pi LLM provider env vars including Hugging Face on Vercel", async () => {
@@ -168,7 +226,6 @@ describe("session factory", () => {
     resetCapturedNeonAiGatewayCredentialsForTests()
     const { createSessionServices } = await import("../session-factory")
     const { resolveNeonAiGatewayConfig } = await import("../neon-ai-gateway")
-
     await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
 
     expect(process.env.NEON_AI_GATEWAY_TOKEN).toBeUndefined()
@@ -205,18 +262,20 @@ describe("session factory", () => {
           unregisterProvider: vi.fn(),
           registerProvider: vi.fn(),
           getRegisteredProviderIds: vi.fn(() => []),
+          getProviderAuthStatus: vi.fn(() => ({ configured: false })),
         },
       } as never,
       { userId: "user-1" }
     )
-
     expect(process.env.GEMINI_API_KEY).toBeUndefined()
     expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
       "google",
       "org-gemini-key"
     )
-    expect(removeRuntimeApiKey).toHaveBeenCalledWith("huggingface")
-    expect(removeRuntimeApiKey).toHaveBeenCalledWith("google")
+    // No configured providers and no Fleet-set runtime keys: nothing is set or
+    // cleared — the catalog is never swept.
+    expect(setRuntimeApiKey).not.toHaveBeenCalled()
+    expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
   it("runs bootstrap once for fresh contexts sharing a projectRoot", async () => {

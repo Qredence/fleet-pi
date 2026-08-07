@@ -102,6 +102,51 @@ describe("openai-chat-completions-compat", () => {
     expect(reconciled?.compat).toEqual(OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT)
   })
 
+  it("keeps a registered explicit BYOK model with a legacy id", () => {
+    const byokModel = {
+      provider: "openai-chat-completions",
+      id: "deepseek-v4-flash-free",
+      name: "deepseek-v4-flash-free",
+      api: "openai-completions" as const,
+      baseUrl: "https://opencode.ai/zen/v1",
+      reasoning: false,
+      input: ["text" as const],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 128_000,
+      maxTokens: 32_000,
+    }
+
+    const reconciled = reconcileOpenAiChatCompletionsModel(
+      {
+        modelRuntime: {
+          getModel: (provider: string, id: string) =>
+            provider === "openai-chat-completions" &&
+            id === "deepseek-v4-flash-free"
+              ? byokModel
+              : undefined,
+        },
+      } as never,
+      {
+        provider: "openai-chat-completions",
+        id: "deepseek-v4-flash-free",
+        name: "deepseek-v4-flash-free",
+        api: "openai-completions",
+        baseUrl: "https://opencode.ai/zen/v1",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128_000,
+        maxTokens: 32_000,
+      },
+      "user-1"
+    )
+
+    // The model is registered in the runtime (explicit user BYOK): the legacy
+    // id is NOT remapped to the Gateway default.
+    expect(reconciled?.id).toBe("deepseek-v4-flash-free")
+    expect(reconciled?.baseUrl).toBe("https://opencode.ai/zen/v1")
+  })
+
   it("patches runtime model when legacy id already has gateway compat", () => {
     const gatewayModel = {
       provider: "openai-chat-completions",
