@@ -172,9 +172,9 @@ function RuntimeToolCard({
 }) {
   const tone =
     status === "error"
-      ? "border-rose-500/30 bg-rose-500/8 text-rose-100"
+      ? "border-destructive/30 bg-destructive/8 text-destructive-foreground dark:border-destructive/40 dark:bg-destructive/12 dark:text-destructive"
       : status === "pending" || status === "streaming"
-        ? "border-sky-500/25 bg-sky-500/8 text-sky-100"
+        ? "border-info/30 bg-info/8 text-info-foreground dark:border-info/40 dark:bg-info/12 dark:text-info"
         : "border-border/70 bg-background text-foreground/80"
   const statusLabel =
     status === "error"
