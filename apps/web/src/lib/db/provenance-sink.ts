@@ -1,5 +1,5 @@
 import {
-  appendPiRunEvent,
+  appendPiRunEvents,
   finalizePiRun,
   insertPiRunStart,
   replacePiFileMutations,
@@ -153,6 +153,23 @@ export class SqliteProvenanceSink implements ProvenanceSink {
  * inside the mirror functions it calls.
  */
 export class PostgresMirrorSink implements ProvenanceSink {
+  /**
+   * Stream events buffered per run until the run finalizes. The chat turn can
+   * emit dozens of events (start/state/thinking/delta/done); writing each one
+   * immediately cost one INSERT round trip per event. Buffering lets a whole
+   * turn flush as ~N/50 chunked multi-row INSERTs while preserving FIFO order
+   * (the flush operation is enqueued before finalization, so finalize's
+   * event-count subquery sees every event).
+   *
+   * Durability tradeoff: a hard process death mid-turn drops that turn's
+   * buffered remote events (the local SQLite projection still records every
+   * event synchronously, and the mirror is best-effort/fail-open by design).
+   */
+  private readonly pendingEvents = new Map<
+    string,
+    Array<ProvenanceRunEventInput>
+  >()
+
   constructor(
     private readonly queue: ChatPostgresOperationQueue,
     private readonly options: { cwd: string; userId?: string }
@@ -172,10 +189,12 @@ export class PostgresMirrorSink implements ProvenanceSink {
   }
 
   appendRunEvent(input: ProvenanceRunEventInput) {
-    this.queue.enqueue(
-      (client) => appendPiRunEvent(client, input),
-      this.options.userId
-    )
+    const events = this.pendingEvents.get(input.runId)
+    if (events) {
+      events.push(input)
+    } else {
+      this.pendingEvents.set(input.runId, [input])
+    }
   }
 
   upsertToolExecution(input: ProvenanceToolExecutionInput) {
@@ -193,14 +212,36 @@ export class PostgresMirrorSink implements ProvenanceSink {
   }
 
   finalizeRun(input: ProvenanceFinalizeRunInput) {
+    const pending = this.drainRunEvents(input.runId)
+    const run = { ...input }
     this.queue.enqueue(
-      (client) => finalizePiRun(client, input),
+      (client) =>
+        appendPiRunEvents(client, pending).then(() =>
+          finalizePiRun(client, run)
+        ),
       this.options.userId
     )
   }
 
   close() {
+    // Flush runs that buffered events but never finalized (for example a
+    // recorder torn down mid-turn without its own finalize). The chat recorder
+    // finalizes its active run as "aborted" before calling sink.close(), so
+    // this is normally a no-op. Enqueued flushes complete before queue.close()
+    // resolves because they are chained onto the queue's pending promise.
+    for (const runId of Array.from(this.pendingEvents.keys())) {
+      this.queue.enqueue(
+        (client) => appendPiRunEvents(client, this.drainRunEvents(runId)),
+        this.options.userId
+      )
+    }
     return this.queue.close()
+  }
+
+  private drainRunEvents(runId: string): Array<ProvenanceRunEventInput> {
+    const events = this.pendingEvents.get(runId) ?? []
+    this.pendingEvents.delete(runId)
+    return events
   }
 }
 

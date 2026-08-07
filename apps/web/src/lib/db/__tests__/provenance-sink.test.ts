@@ -230,9 +230,11 @@ describe("PostgresMirrorSink", () => {
     sink.replaceFileMutations(mutationsInput)
     sink.finalizeRun(finalizeInput)
 
-    expect(queue.operations).toHaveLength(5)
+    // appendRunEvent buffers instead of enqueueing; the buffered event is
+    // flushed inside the finalize operation (before the pi_runs UPDATE so the
+    // event-count subquery sees it).
+    expect(queue.operations).toHaveLength(4)
     expect(queue.operations.map((operation) => operation.userId)).toEqual([
-      "user-1",
       "user-1",
       "user-1",
       "user-1",
@@ -280,7 +282,89 @@ describe("PostgresMirrorSink", () => {
       "2026-05-22T10:00:03.000Z",
     ])
 
+    // The run-event flush must land BEFORE the finalize UPDATE in the queue
+    // so finalize's event-count subquery counts the flushed events.
+    const eventIndex = client.queries.findIndex((query) =>
+      query.sql.includes("INSERT INTO pi_run_events")
+    )
+    const finalizeIndex = client.queries.findIndex((query) =>
+      query.sql.includes("UPDATE pi_runs")
+    )
+    expect(eventIndex).toBeGreaterThanOrEqual(0)
+    expect(finalizeIndex).toBeGreaterThan(eventIndex)
+
     await sink.close()
+    expect(queue.close).toHaveBeenCalledTimes(1)
+  })
+
+  it("buffers multiple run events into one chunked INSERT flushed on finalize", async () => {
+    const queue = createRecordingQueue()
+    const sink = new PostgresMirrorSink(queue, {
+      cwd: "/repo",
+      userId: "user-1",
+    })
+
+    sink.appendRunEvent({ ...eventInput, sequence: 1 })
+    sink.appendRunEvent({ ...eventInput, sequence: 2, summary: "delta" })
+    sink.appendRunEvent({ ...eventInput, sequence: 3 })
+
+    // No INSERT should be enqueued while the run is still streaming.
+    expect(queue.operations).toHaveLength(0)
+
+    sink.finalizeRun(finalizeInput)
+    expect(queue.operations).toHaveLength(1)
+
+    const client = createMockClient()
+    await queue.operations[0]?.operation(client)
+
+    const eventQueries = client.queries.filter((query) =>
+      query.sql.includes("INSERT INTO pi_run_events")
+    )
+    expect(eventQueries).toHaveLength(1)
+    const params = eventQueries[0]?.params ?? []
+    // 3 rows x 6 bound columns, payload cast inline as ::jsonb.
+    expect(params).toHaveLength(18)
+    expect(params.slice(0, 6)).toEqual([
+      "run-1",
+      1,
+      "tool",
+      "tool-Write (output-available)",
+      expect.any(String),
+      "2026-05-22T10:00:01.000Z",
+    ])
+    expect(params[7]).toBe(2)
+    expect(params[13]).toBe(3)
+    expect(eventQueries[0]?.sql).toContain("$5::jsonb")
+
+    const finalizeQuery = client.queries.find((query) =>
+      query.sql.includes("UPDATE pi_runs")
+    )
+    expect(finalizeQuery).toBeDefined()
+  })
+
+  it("flushes buffered run events on close for runs that never finalized", async () => {
+    const queue = createRecordingQueue()
+    const sink = new PostgresMirrorSink(queue, {
+      cwd: "/repo",
+      userId: "user-1",
+    })
+
+    sink.appendRunEvent({ ...eventInput, sequence: 1 })
+    sink.appendRunEvent({ ...eventInput, sequence: 2 })
+    expect(queue.operations).toHaveLength(0)
+
+    await sink.close()
+
+    expect(queue.operations).toHaveLength(1)
+    const client = createMockClient()
+    await queue.operations[0]?.operation(client)
+
+    const eventQuery = client.queries.find((query) =>
+      query.sql.includes("INSERT INTO pi_run_events")
+    )
+    expect(eventQuery?.params).toHaveLength(12)
+    expect(eventQuery?.params[1]).toBe(1)
+    expect(eventQuery?.params[7]).toBe(2)
     expect(queue.close).toHaveBeenCalledTimes(1)
   })
 
