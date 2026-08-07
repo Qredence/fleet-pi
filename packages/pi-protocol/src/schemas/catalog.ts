@@ -171,15 +171,19 @@ export const ChatProviderRemoveResponseSchema =
     description: "Chat provider remove response",
   })
 
-export const ChatSlashCommandInfoSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  argumentHint: z.string().optional(),
-  source: z.enum(["builtin", "extension", "prompt", "skill"]),
-  passThrough: z.boolean().optional(),
-})
+export const ChatSlashCommandInfoSchema = z
+  .object({
+    name: z.string(),
+    description: z.string().optional(),
+    argumentHint: z.string().optional(),
+    source: z.enum(["builtin", "extension", "prompt", "skill"]),
+    passThrough: z.boolean().optional(),
+  })
+  .openapi({ description: "Chat slash command info" })
 
-export const ChatCommandsResponseSchema = z.object({
-  commands: z.array(ChatSlashCommandInfoSchema),
-  diagnostics: z.array(z.string()),
-})
+export const ChatCommandsResponseSchema = z
+  .object({
+    commands: z.array(ChatSlashCommandInfoSchema),
+    diagnostics: z.array(z.string()),
+  })
+  .openapi({ description: "Chat slash commands response" })
