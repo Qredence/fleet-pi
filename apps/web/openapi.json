@@ -3127,7 +3127,8 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["name", "source"]
+                        "required": ["name", "source"],
+                        "description": "Chat slash command info"
                       }
                     },
                     "diagnostics": {
@@ -3137,7 +3138,8 @@
                       }
                     }
                   },
-                  "required": ["commands", "diagnostics"]
+                  "required": ["commands", "diagnostics"],
+                  "description": "Chat slash commands response"
                 }
               }
             }
