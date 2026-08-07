@@ -61,6 +61,7 @@ export {
   ChatResourcesResponseSchema,
   WorkspaceTreeNodeSchema,
   WorkspaceTreeResponseSchema,
+  WorkspaceFileResponseSchema,
   ChatProviderInfoSchema,
   ChatProvidersResponseSchema,
   ChatProviderUpdateRequestSchema,

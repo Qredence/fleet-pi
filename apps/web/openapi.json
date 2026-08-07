@@ -3487,14 +3487,30 @@
                     "path": {
                       "type": "string"
                     },
+                    "name": {
+                      "type": "string"
+                    },
                     "content": {
                       "type": "string"
                     },
-                    "mimeType": {
-                      "type": "string"
+                    "mediaType": {
+                      "type": "string",
+                      "enum": [
+                        "text/markdown",
+                        "text/plain",
+                        "application/octet-stream"
+                      ]
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok", "too-large", "unsupported"]
                     }
                   },
-                  "required": ["path", "content"]
+                  "required": ["path", "name", "content", "mediaType"],
+                  "description": "Workspace file preview response"
                 }
               }
             }

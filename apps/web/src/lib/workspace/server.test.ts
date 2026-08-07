@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
+import { WorkspaceFileResponseSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import { loadAgentWorkspaceFile, loadAgentWorkspaceTree } from "./server"
 import type { AppRuntimeContext } from "../app-runtime"
 
@@ -214,5 +215,36 @@ describe("workspace server", () => {
     expect(file.status).toBe("unsupported")
     expect(file.mediaType).toBe("application/octet-stream")
     expect(file.content).toBe("")
+  })
+
+  it("returns responses that conform to WorkspaceFileResponseSchema", async () => {
+    const context = createWorkspaceContext()
+    await loadAgentWorkspaceTree(context)
+
+    const markdown = await loadAgentWorkspaceFile(
+      context,
+      "agent-workspace/system/tool-policy.md"
+    )
+    expect(WorkspaceFileResponseSchema.safeParse(markdown).success).toBe(true)
+
+    const largePath = join(context.workspaceRoot, "scratch", "tmp", "large.txt")
+    writeFileSync(largePath, "a".repeat(256 * 1024 + 1))
+    const tooLarge = await loadAgentWorkspaceFile(
+      context,
+      "agent-workspace/scratch/tmp/large.txt"
+    )
+    expect(WorkspaceFileResponseSchema.safeParse(tooLarge).success).toBe(true)
+
+    writeFileSync(
+      join(context.workspaceRoot, "scratch", "tmp", "binary.bin"),
+      Buffer.from([0, 1, 2])
+    )
+    const unsupported = await loadAgentWorkspaceFile(
+      context,
+      "agent-workspace/scratch/tmp/binary.bin"
+    )
+    expect(WorkspaceFileResponseSchema.safeParse(unsupported).success).toBe(
+      true
+    )
   })
 })

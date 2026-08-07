@@ -1,29 +1,12 @@
+import { WorkspaceFileResponseSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import type { WorkspaceFileResponse } from "@workspace/pi-protocol/chat-protocol"
+import { fetchValidatedJson } from "@/lib/pi/chat-fetch"
 
 export async function loadWorkspaceFile(
   path: string
 ): Promise<WorkspaceFileResponse> {
-  const response = await fetch(
-    `/api/workspace/file?path=${encodeURIComponent(path)}`
+  return fetchValidatedJson(
+    `/api/workspace/file?path=${encodeURIComponent(path)}`,
+    WorkspaceFileResponseSchema
   )
-
-  if (!response.ok) {
-    let message = "Unable to load workspace file."
-    try {
-      const body: unknown = await response.json()
-      if (
-        body &&
-        typeof body === "object" &&
-        "message" in body &&
-        typeof body.message === "string"
-      ) {
-        message = body.message
-      }
-    } catch {
-      // Non-JSON error bodies fall back to the default message.
-    }
-    throw new Error(message)
-  }
-
-  return (await response.json()) as WorkspaceFileResponse
 }
