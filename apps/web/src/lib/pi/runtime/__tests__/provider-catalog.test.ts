@@ -90,6 +90,35 @@ describe("runtime provider catalog", () => {
     ).toBe(false)
   })
 
+  it("marks local DB-backed OCC provider configured from stored BYOK rows", async () => {
+    delete process.env.VERCEL
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
+    mocks.isEnvVarConfigured.mockReturnValue(false)
+    mocks.withChatPostgresTransaction.mockImplementation(
+      async (callback: (client: unknown) => Promise<void>) => {
+        await callback({
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              { provider_id: "openai-chat-completions" },
+              { provider_id: "openai-chat-completions-base-url" },
+              { provider_id: "openai-chat-completions-model" },
+            ],
+          }),
+        })
+      }
+    )
+
+    const providers = await getProviderConfigStatus({ userId: "user-1" })
+
+    expect(
+      providers.find((provider) => provider.id === "openai-chat-completions")
+        ?.isConfigured
+    ).toBe(true)
+    expect(
+      providers.find((provider) => provider.id === "google")?.isConfigured
+    ).toBe(false)
+  })
+
   it("requires key, base URL, and model ID for OpenAI Chat Completions", async () => {
     delete process.env.VERCEL
     mocks.isEnvVarConfigured.mockImplementation((key?: string) =>

@@ -4,7 +4,10 @@ import {
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
-import type { AgentSession, AgentSessionServices  } from "@earendil-works/pi-coding-agent"
+import type {
+  AgentSession,
+  AgentSessionServices,
+} from "@earendil-works/pi-coding-agent"
 import type { Model } from "@earendil-works/pi-ai"
 
 type OpenAiCompletionsCompatFlags = {
@@ -66,11 +69,17 @@ export function reconcileOpenAiChatCompletionsModel(
   }
 
   const gateway = resolveNeonAiGatewayConfig(userId)
+  const registered = services.modelRuntime.getModel(model.provider, model.id)
+
   if (!gateway) {
-    return services.modelRuntime.getModel(model.provider, model.id) ?? model
+    return registered ?? model
   }
 
-  if (isLegacyFleetOccModelId(model.id)) {
+  // Legacy platform ids only fall back to the Gateway default when the slot is
+  // Gateway-only (the model is not registered). An explicit user BYOK model
+  // (e.g. deepseek-v4-flash-free on OpenCode Zen) is registered in the runtime
+  // and must be kept as-is.
+  if (!registered && isLegacyFleetOccModelId(model.id)) {
     const fallback = services.modelRuntime.getModel(
       model.provider,
       NEON_AI_GATEWAY_DEFAULT_MODEL
@@ -80,7 +89,6 @@ export function reconcileOpenAiChatCompletionsModel(
     }
   }
 
-  const registered = services.modelRuntime.getModel(model.provider, model.id)
   return mergeOpenAiChatCompletionsGatewayCompat(registered ?? model)
 }
 

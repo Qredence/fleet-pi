@@ -65,7 +65,7 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
     })
   })
 
-  it("ignores legacy OCC BYOK when Neon AI Gateway is active", async () => {
+  it("keeps explicit OCC BYOK with a legacy model id when the Gateway is active", async () => {
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
     process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
 
@@ -80,6 +80,33 @@ describe("resolveOpenAiChatCompletionsConfig", () => {
         }
         return undefined
       }
+    )
+
+    const { resolveOpenAiChatCompletionsConfig } =
+      await import("../openai-chat-completions-provider")
+    const config = await resolveOpenAiChatCompletionsConfig("user-1")
+
+    // A complete triple saved through Settings is deliberate user config: it
+    // drives the slot even though the model id matches a legacy platform id.
+    expect(config).toEqual({
+      apiKey: "byok-key",
+      baseUrl: "https://custom.example/v1",
+      modelIds: ["deepseek-v4-flash-free"],
+    })
+  })
+
+  it("drops env-derived legacy OCC defaults when the Gateway is active", async () => {
+    process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
+    process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
+    process.env.OPENAI_CHAT_COMPLETIONS_API_KEY = "legacy-env-key"
+    process.env.OPENAI_CHAT_COMPLETIONS_BASE_URL = "https://platform.example/v1"
+    process.env.OPENAI_CHAT_COMPLETIONS_MODEL = "deepseek-v4-flash-free"
+
+    // Only the api key resolves (env-backed through the LLM secrets path); the
+    // base URL and model come from env, so this is not explicit user BYOK.
+    mocks.resolveUserProviderSecret.mockImplementation(
+      async (_userId: string | undefined, providerId: string) =>
+        providerId === "openai-chat-completions" ? "legacy-env-key" : undefined
     )
 
     const { resolveOpenAiChatCompletionsConfig } =

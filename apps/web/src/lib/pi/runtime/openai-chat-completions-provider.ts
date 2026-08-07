@@ -112,7 +112,13 @@ async function resolveOccByokConfig(
 
   const trimmedModelId = modelId.trim()
   const gateway = resolveNeonAiGatewayConfig(userId)
-  if (gateway && isLegacyFleetOccModelId(trimmedModelId)) {
+  // A complete explicit BYOK triple (all three parts stored through Settings)
+  // is deliberate user configuration against a live OpenAI-compatible
+  // endpoint: it wins over the platform Gateway default, even for model ids
+  // that happen to match the legacy platform ids. Only env-derived legacy
+  // defaults (the old platform OCC slot) fall back to the Gateway.
+  const explicitUserByok = Boolean(apiKey && fromUserStore && modelFromStore)
+  if (gateway && !explicitUserByok && isLegacyFleetOccModelId(trimmedModelId)) {
     return undefined
   }
 

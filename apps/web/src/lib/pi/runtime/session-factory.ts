@@ -2,10 +2,7 @@ import {
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
-import {
-  PI_LLM_RUNTIME_PROVIDER_IDS,
-  PROVIDER_ENV_SCRUB_VAR_NAMES,
-} from "@workspace/pi-protocol/provider-catalog"
+import { PROVIDER_ENV_SCRUB_VAR_NAMES } from "@workspace/pi-protocol/provider-catalog"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
@@ -132,16 +129,27 @@ export async function applyRuntimeAuth(
 
   const { modelRuntime } = services
 
-  // Clear every Pi LLM provider that can bind org env, then re-apply BYOK only.
-  const providerIds = new Set<string>([
-    ...PI_LLM_RUNTIME_PROVIDER_IDS,
-    ...configured.keys(),
-  ])
-  for (const providerId of providerIds) {
-    const apiKey = configured.get(providerId)
-    if (apiKey) {
-      await modelRuntime.setRuntimeApiKey(providerId, apiKey)
-    } else {
+  // Reconcile ONLY the providers the user actually configured (BYOK rows on
+  // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
+  // every key mutation triggers a Pi availability refresh, and with network
+  // model refresh enabled that scan walks every provider and can hang (e.g.
+  // amazon-bedrock without AWS credentials). `allowNetwork: false` keeps each
+  // per-key refresh offline and bounded.
+  for (const [providerId, apiKey] of configured) {
+    await modelRuntime.setRuntimeApiKey(providerId, apiKey, {
+      allowNetwork: false,
+    })
+  }
+
+  // Clear only runtime keys Fleet set on this session that the user no longer
+  // configures (provider removed while a live runtime stays resident). Fresh
+  // runtimes hold no runtime keys, so this is a no-op except after provider
+  // hot-reloads.
+  for (const providerId of modelRuntime.getRegisteredProviderIds()) {
+    if (
+      modelRuntime.getProviderAuthStatus(providerId).source === "runtime" &&
+      !configured.has(providerId)
+    ) {
       await modelRuntime.removeRuntimeApiKey(providerId)
     }
   }
