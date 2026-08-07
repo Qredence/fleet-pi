@@ -329,6 +329,100 @@ describe("session factory", () => {
     dateSpy.mockRestore()
   })
 
+  it("evicts the least-recently-used projectRoot when the cache cap is exceeded", async () => {
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+
+    const { createSessionServices } = await import("../session-factory")
+
+    // Fill the cache to its capacity of 32 project roots.
+    for (let index = 0; index < 32; index++) {
+      await createSessionServices({
+        projectRoot: `/lru-root-${index}`,
+      } as AppRuntimeContext)
+    }
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(32)
+
+    // Touch lru-root-0 so it becomes the most-recently-used entry.
+    await createSessionServices({
+      projectRoot: "/lru-root-0",
+    } as AppRuntimeContext)
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(32)
+
+    // Inserting a 33rd root evicts the least-recently-used entry (lru-root-1).
+    await createSessionServices({
+      projectRoot: "/lru-root-32",
+    } as AppRuntimeContext)
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(33)
+
+    // The evicted root is re-bootstrapped on its next request.
+    await createSessionServices({
+      projectRoot: "/lru-root-1",
+    } as AppRuntimeContext)
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(34)
+
+    // The refreshed lru-root-0 entry was not evicted: still served from cache.
+    await createSessionServices({
+      projectRoot: "/lru-root-0",
+    } as AppRuntimeContext)
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(34)
+  })
+
+  it("re-bootstraps an evicted root instead of serving a stale cached result", async () => {
+    mocks.bootstrapAgentWorkspace
+      .mockResolvedValueOnce({
+        status: "degraded",
+        workspace: { available: false },
+        warnings: [],
+        diagnostics: [],
+      })
+      .mockResolvedValue({
+        status: "ok",
+        workspace: { available: true },
+        warnings: [],
+        diagnostics: [],
+      })
+
+    const { createSessionServices } = await import("../session-factory")
+    const nowTime = 1000000000000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => nowTime)
+
+    const first = await createSessionServices({
+      projectRoot: "/evicted-root",
+    } as AppRuntimeContext)
+    expect(first.workspaceBootstrap?.status).toBe("degraded")
+
+    // Insert 32 other roots so /evicted-root falls out of the cache.
+    for (let index = 0; index < 32; index++) {
+      await createSessionServices({
+        projectRoot: `/evict-filler-${index}`,
+      } as AppRuntimeContext)
+    }
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(33)
+
+    // Still inside the 1s backoff window: a cached root would serve its stale
+    // failure. The evicted root must re-run bootstrap and pick up the fresh
+    // success instead.
+    const second = await createSessionServices({
+      projectRoot: "/evicted-root",
+    } as AppRuntimeContext)
+    expect(second.workspaceBootstrap?.status).toBe("ok")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(34)
+
+    // Other roots' entries are unaffected by the eviction and re-bootstrap.
+    const filler = await createSessionServices({
+      projectRoot: "/evict-filler-31",
+    } as AppRuntimeContext)
+    expect(filler.workspaceBootstrap?.status).toBe("ok")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(34)
+
+    dateSpy.mockRestore()
+  })
+
   it("keeps independent caches for distinct projectRoots", async () => {
     mocks.bootstrapAgentWorkspace.mockResolvedValue({
       status: "ok",

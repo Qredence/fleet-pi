@@ -354,7 +354,6 @@ async function resolveDaytonaWorkspaceForUser(
         executeCommand(cachedSandbox.sandbox, cmd, cwd),
     })
     context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
-    context.workspaceBootstrap = undefined
     return { enabled, warmUp: undefined }
   }
 

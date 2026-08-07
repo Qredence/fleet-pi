@@ -37,6 +37,36 @@ interface BootstrapRetryState {
 // the result is served through `lastResult` + exponential backoff.
 const bootstrapCache = new Map<string, BootstrapRetryState>()
 
+// Bound the cache so long-running servers serving many project roots do not
+// accumulate bootstrap state indefinitely. Map iteration order is insertion
+// order; entries are re-inserted on access, so the first key is always the
+// least-recently-used project root and is evicted when a new root is inserted
+// beyond the cap. An evicted root simply re-bootstraps on its next request.
+const BOOTSTRAP_CACHE_CAPACITY = 32
+
+function getBootstrapCacheState(projectRoot: string): BootstrapRetryState {
+  const existing = bootstrapCache.get(projectRoot)
+  if (existing) {
+    // Refresh recency: re-insert so this root becomes most-recently-used.
+    bootstrapCache.delete(projectRoot)
+    bootstrapCache.set(projectRoot, existing)
+    return existing
+  }
+  if (bootstrapCache.size >= BOOTSTRAP_CACHE_CAPACITY) {
+    const leastRecentRoot = bootstrapCache.keys().next().value
+    if (leastRecentRoot !== undefined) {
+      bootstrapCache.delete(leastRecentRoot)
+    }
+  }
+  const state: BootstrapRetryState = {
+    attempts: 0,
+    lastAttemptTime: 0,
+    nextRetryDelay: 1000,
+  }
+  bootstrapCache.set(projectRoot, state)
+  return state
+}
+
 export async function createSessionServices(
   context: AppRuntimeContext,
   overrides?: Parameters<typeof createAgentSessionServices>[0],
@@ -129,21 +159,12 @@ async function loadBestEffortWorkspaceHealth(
 ): Promise<WorkspaceHealthResponse> {
   const now = Date.now()
   const projectRoot = context.projectRoot
-  let state = bootstrapCache.get(projectRoot)
+  const state = getBootstrapCacheState(projectRoot)
 
   // An in-flight bootstrap is shared across all requests for this project root:
   // await the single promise instead of starting another bootstrap.
-  if (state?.promise) {
+  if (state.promise) {
     return state.promise
-  }
-
-  if (!state) {
-    state = {
-      attempts: 0,
-      lastAttemptTime: 0,
-      nextRetryDelay: 1000,
-    }
-    bootstrapCache.set(projectRoot, state)
   }
 
   if (state.lastResult) {
