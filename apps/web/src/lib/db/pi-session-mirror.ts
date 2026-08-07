@@ -409,31 +409,49 @@ export async function appendPiRunEvent(
   client: PostgresQueryClient,
   input: AppendPiRunEventInput
 ) {
-  await client.query(
-    `
-      INSERT INTO pi_run_events (
-        run_id,
-        sequence,
-        event_type,
-        summary,
-        payload,
-        recorded_at
-      ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
-      ON CONFLICT (run_id, sequence) DO UPDATE SET
-        event_type = EXCLUDED.event_type,
-        summary = EXCLUDED.summary,
-        payload = EXCLUDED.payload,
-        recorded_at = EXCLUDED.recorded_at
-    `,
-    [
+  await appendPiRunEvents(client, [input])
+}
+
+const PI_RUN_EVENTS_COLUMNS = [
+  "run_id",
+  "sequence",
+  "event_type",
+  "summary",
+  { name: "payload", cast: "jsonb" },
+  "recorded_at",
+] as const
+
+const PI_RUN_EVENTS_ON_CONFLICT_SQL = `ON CONFLICT (run_id, sequence) DO UPDATE SET
+          event_type = EXCLUDED.event_type,
+          summary = EXCLUDED.summary,
+          payload = EXCLUDED.payload,
+          recorded_at = EXCLUDED.recorded_at`
+
+/**
+ * Batch-inserts run stream events in a single chunked multi-row INSERT. The
+ * mirror sink buffers events per run and flushes them here at finalize/close,
+ * so a turn with N events costs ~N/50 round trips instead of one INSERT per
+ * event (run events were the only mirror table still writing row-by-row while
+ * session entries and file mutations already batch through insertRowsChunked).
+ */
+export async function appendPiRunEvents(
+  client: PostgresQueryClient,
+  events: Array<AppendPiRunEventInput>
+) {
+  await insertRowsChunked(client, {
+    table: "pi_run_events",
+    columns: [...PI_RUN_EVENTS_COLUMNS],
+    rows: events,
+    serializeRow: (input) => [
       input.runId,
       input.sequence,
       input.eventType,
       input.summary ?? null,
       JSON.stringify(sanitizeForMirror(input.payload)),
       input.recordedAt,
-    ]
-  )
+    ],
+    onConflictSql: PI_RUN_EVENTS_ON_CONFLICT_SQL,
+  })
 }
 
 export async function upsertPiToolExecution(

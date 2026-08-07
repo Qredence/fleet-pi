@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { logger } from "../logger"
 import {
   appendPiRunEvent,
+  appendPiRunEvents,
   extractPiSessionMirrorInput,
   finalizePiRun,
   insertPiRunStart,
@@ -398,6 +399,54 @@ describe("Pi session mirror repository", () => {
       },
       "[pi-session-mirror] sync failed (non-fatal)"
     )
+  })
+
+  it("batches multiple run events into one chunked INSERT", async () => {
+    const client = createMockClient()
+
+    await appendPiRunEvents(client, [
+      {
+        runId: "run-1",
+        sequence: 1,
+        eventType: "tool",
+        summary: "Read",
+        payload: { type: "tool", value: 1 },
+        recordedAt: "2026-05-22T10:00:01.000Z",
+      },
+      {
+        runId: "run-1",
+        sequence: 2,
+        eventType: "delta",
+        summary: null,
+        payload: { type: "delta", text: "hi" },
+        recordedAt: "2026-05-22T10:00:02.000Z",
+      },
+      {
+        runId: "run-1",
+        sequence: 3,
+        eventType: "done",
+        summary: "ok",
+        payload: { type: "done" },
+        recordedAt: "2026-05-22T10:00:03.000Z",
+      },
+    ])
+
+    const eventQueries = client.queries.filter((query) =>
+      query.sql.includes("INSERT INTO pi_run_events")
+    )
+    expect(eventQueries).toHaveLength(1)
+    const sql = eventQueries[0]?.sql ?? ""
+    const params = eventQueries[0]?.params ?? []
+    expect(sql).toContain(
+      "($1,$2,$3,$4,$5::jsonb,$6),($7,$8,$9,$10,$11::jsonb,$12),($13,$14,$15,$16,$17::jsonb,$18)"
+    )
+    expect(sql).toContain("ON CONFLICT (run_id, sequence) DO UPDATE SET")
+    expect(params).toHaveLength(18)
+    expect(params[0]).toBe("run-1")
+    expect(params[1]).toBe(1)
+    expect(params[7]).toBe(2)
+    expect(params[13]).toBe(3)
+    expect(params[4]).toBe('{"type":"tool","value":1}')
   })
 
   it("requires userId when inserting runs on Vercel", async () => {
