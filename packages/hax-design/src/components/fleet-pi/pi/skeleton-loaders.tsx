@@ -35,7 +35,7 @@ export function ResourcesSkeleton() {
 export function WorkspaceSkeleton() {
   return (
     <div className="flex flex-col gap-2 p-1">
-      <Skeleton className="h-7 w-full rounded-[6px]" />
+      <Skeleton className="h-7 w-full rounded-sm" />
       <Skeleton className="h-6 w-[90%]" />
       <Skeleton className="h-6 w-[85%]" />
       <Skeleton className="h-6 w-[70%]" />

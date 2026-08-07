@@ -198,7 +198,7 @@ function RuntimeToolCard({
               {statusLabel}
             </span>
           </div>
-          <p className="text-[12px] leading-4 text-foreground/60">{summary}</p>
+          <p className="text-label leading-4 text-foreground/60">{summary}</p>
           <div className="flex flex-col gap-1">
             {details.filter(Boolean).map((detail, index) =>
               typeof detail === "string" ? (

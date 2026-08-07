@@ -241,9 +241,9 @@ export function WorkspacePanelContent({
           data-testid={treeTestId}
           className="min-h-0 min-w-0 flex-1 overflow-y-auto"
         >
-          <div className="mb-2 flex min-w-0 items-center gap-2 rounded-[6px] bg-foreground/5 px-2 py-1.5">
+          <div className="mb-2 flex min-w-0 items-center gap-2 rounded-sm bg-foreground/5 px-2 py-1.5">
             <HardDrive className="size-3.5 shrink-0 text-foreground/45" />
-            <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
+            <span className="min-w-0 flex-1 truncate text-label font-medium text-foreground/70">
               {scopedView.headerLabel}
             </span>
           </div>
@@ -309,7 +309,7 @@ function WorkspaceNode({
             <Button
               variant="ghost"
               size="sm"
-              className="group w-full justify-start gap-1.5 text-left text-[12px] font-normal text-foreground/65 transition-none hover:bg-foreground/5 hover:text-foreground/80"
+              className="group w-full justify-start gap-1.5 text-left text-label font-normal text-foreground/65 transition-none hover:bg-foreground/5 hover:text-foreground/80"
             />
           }
         >
@@ -342,7 +342,7 @@ function WorkspaceNode({
       variant="ghost"
       size="sm"
       aria-pressed={selected}
-      className={`w-full justify-start gap-1.5 text-[12px] font-normal transition-none ${
+      className={`w-full justify-start gap-1.5 text-label font-normal transition-none ${
         selected
           ? "bg-foreground/8 text-foreground/80"
           : "text-foreground/65 hover:bg-foreground/5 hover:text-foreground/80"
@@ -375,13 +375,13 @@ function WorkspacePreview({
 }) {
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[8px] border border-border/60 bg-background"
+      className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border/60 bg-background"
       data-testid="workspace-preview"
       ref={previewRef}
     >
       <div className="flex min-h-9 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 px-2.5">
         <FileText className="size-3.5 shrink-0 text-foreground/35" />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/70">
+        <span className="min-w-0 flex-1 truncate text-label font-medium text-foreground/70">
           {preview?.name ?? selectedPath ?? "Preview"}
         </span>
       </div>
@@ -427,7 +427,7 @@ function WorkspacePreview({
           preview &&
           (preview.status === undefined || preview.status === "ok") && (
             <Markdown
-              className="text-[12px] leading-relaxed"
+              className="text-label leading-relaxed"
               content={preview.content}
             />
           )}

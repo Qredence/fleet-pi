@@ -156,8 +156,8 @@ export function ResourceNotice({
   title: string
 }) {
   return (
-    <div className="my-1.5 rounded-[6px] bg-foreground/5 px-2.5 py-2">
-      <div className="flex items-center gap-2 text-[12px] font-medium text-foreground/65">
+    <div className="my-1.5 rounded-sm bg-foreground/5 px-2.5 py-2">
+      <div className="flex items-center gap-2 text-label font-medium text-foreground/65">
         <Icon className="size-3.5" />
         <span>{title}</span>
       </div>
@@ -185,7 +185,7 @@ export function ResourceChipSection({
       className="flex min-w-0 flex-col gap-2 py-2.5"
       aria-label={`${label} resources`}
     >
-      <div className="flex min-w-0 items-center text-[14px] leading-5 text-foreground/45">
+      <div className="flex min-w-0 items-center text-body leading-5 text-foreground/45">
         <span className="truncate underline decoration-foreground/25 underline-offset-2">
           {label}
         </span>
@@ -199,7 +199,7 @@ export function ResourceChipSection({
         data-testid={`resource-chip-section-${label.toLowerCase()}`}
       >
         {items.length === 0 ? (
-          <span className="inline-flex h-7.5 items-center rounded-[10px] border border-border/60 bg-background px-3 text-[14px] leading-5 text-foreground/35 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
+          <span className="inline-flex h-7.5 items-center rounded-lg border border-border/60 bg-background px-3 text-body leading-5 text-foreground/35 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
             Empty
           </span>
         ) : (
@@ -231,7 +231,7 @@ function ResourceChip({
   return (
     <div
       role="listitem"
-      className={`max-w-full rounded-[10px] border border-border/70 bg-background px-2.5 text-[14px] leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)] ${
+      className={`max-w-full rounded-lg border border-border/70 bg-background px-2.5 text-body leading-5 text-foreground/80 shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)] ${
         stacked
           ? "flex min-h-9 w-full min-w-0 items-center gap-2 py-1.5"
           : "inline-flex h-7.5 items-center gap-1"
