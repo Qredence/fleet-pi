@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react"
 import { MessageList } from "./message-list"
+import { createAssistantMessage } from "./message-factories"
 import { InputBar } from "./input-bar"
 import { Suggestions } from "./input/suggestions"
 import { cn } from "./utils/cn"
@@ -137,17 +138,13 @@ export function AgentChat({
             error
               ? [
                   ...messagesWithQuestionTool,
-                  {
-                    id: "agent-chat-error",
-                    role: "assistant",
-                    parts: [
-                      {
-                        type: "error",
-                        title: "Request failed",
-                        message: error.message,
-                      },
-                    ],
-                  } as unknown as (typeof messages)[number],
+                  createAssistantMessage("agent-chat-error", [
+                    {
+                      type: "error",
+                      title: "Request failed",
+                      message: error.message,
+                    },
+                  ]),
                 ]
               : messagesWithQuestionTool
           }
