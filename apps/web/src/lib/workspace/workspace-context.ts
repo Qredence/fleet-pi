@@ -49,6 +49,5 @@ export async function resolveWorkspaceContext(
 
   context.workspaceFS = sandboxContext.workspaceFS
   context.workspaceRoot = sandboxContext.workspaceRoot
-  context.workspaceBootstrap = undefined
   return context
 }
