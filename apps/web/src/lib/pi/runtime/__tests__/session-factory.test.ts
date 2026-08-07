@@ -16,7 +16,7 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
   getAgentDir: mocks.getAgentDir,
 }))
 
-vi.mock("../../workspace/bootstrap-agent-workspace", () => ({
+vi.mock("../../../workspace/bootstrap-agent-workspace", () => ({
   bootstrapAgentWorkspace: mocks.bootstrapAgentWorkspace,
   createWorkspaceHealthFailure: vi.fn((_context, error) => ({
     status: "degraded",
@@ -217,5 +217,132 @@ describe("session factory", () => {
     )
     expect(removeRuntimeApiKey).toHaveBeenCalledWith("huggingface")
     expect(removeRuntimeApiKey).toHaveBeenCalledWith("google")
+  })
+
+  it("runs bootstrap once for fresh contexts sharing a projectRoot", async () => {
+    let resolveBootstrap!: (result: {
+      status: string
+      workspace: { available: boolean }
+      warnings: Array<string>
+      diagnostics: Array<unknown>
+    }) => void
+    const pending = new Promise<{
+      status: string
+      workspace: { available: boolean }
+      warnings: Array<string>
+      diagnostics: Array<unknown>
+    }>((resolve) => {
+      resolveBootstrap = resolve
+    })
+    mocks.bootstrapAgentWorkspace.mockReturnValue(pending)
+
+    const { createSessionServices } = await import("../session-factory")
+    const contextA = { projectRoot: "/shared-root" } as AppRuntimeContext
+    const contextB = { projectRoot: "/shared-root" } as AppRuntimeContext
+
+    const promiseA = createSessionServices(contextA)
+    const promiseB = createSessionServices(contextB)
+
+    resolveBootstrap({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+
+    const [servicesA, servicesB] = await Promise.all([promiseA, promiseB])
+
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(1)
+    expect(servicesA.workspaceBootstrap?.status).toBe("ok")
+    expect(servicesB.workspaceBootstrap?.status).toBe("ok")
+  })
+
+  it("honors exponential backoff within the retry window on failure", async () => {
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "degraded",
+      workspace: { available: false },
+      warnings: [],
+      diagnostics: [],
+    })
+
+    const { createSessionServices } = await import("../session-factory")
+    const nowTime = 1000000000000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => nowTime)
+
+    const services1 = await createSessionServices({
+      projectRoot: "/backoff-root",
+    } as AppRuntimeContext)
+    expect(services1.workspaceBootstrap?.status).toBe("degraded")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(1)
+
+    // A fresh context for the same root, still inside the 1s window, must reuse
+    // the cached failure instead of re-running bootstrap.
+    const services2 = await createSessionServices({
+      projectRoot: "/backoff-root",
+    } as AppRuntimeContext)
+    expect(services2.workspaceBootstrap?.status).toBe("degraded")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(1)
+
+    dateSpy.mockRestore()
+  })
+
+  it("resets backoff after a successful bootstrap", async () => {
+    mocks.bootstrapAgentWorkspace
+      .mockResolvedValueOnce({
+        status: "degraded",
+        workspace: { available: false },
+        warnings: [],
+        diagnostics: [],
+      })
+      .mockResolvedValue({
+        status: "ok",
+        workspace: { available: true },
+        warnings: [],
+        diagnostics: [],
+      })
+
+    const { createSessionServices } = await import("../session-factory")
+    let nowTime = 1000000000000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => nowTime)
+
+    const services1 = await createSessionServices({
+      projectRoot: "/reset-root",
+    } as AppRuntimeContext)
+    expect(services1.workspaceBootstrap?.status).toBe("degraded")
+
+    // Move past the 1s window so the next call retries and succeeds.
+    nowTime += 1500
+    const services2 = await createSessionServices({
+      projectRoot: "/reset-root",
+    } as AppRuntimeContext)
+    expect(services2.workspaceBootstrap?.status).toBe("ok")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
+
+    // Success resets attempts/backoff: an immediate follow-up roots in the
+    // fresh window and returns the cached success without another bootstrap.
+    const services3 = await createSessionServices({
+      projectRoot: "/reset-root",
+    } as AppRuntimeContext)
+    expect(services3.workspaceBootstrap?.status).toBe("ok")
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
+
+    dateSpy.mockRestore()
+  })
+
+  it("keeps independent caches for distinct projectRoots", async () => {
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({ projectRoot: "/root-a" } as AppRuntimeContext)
+    await createSessionServices({ projectRoot: "/root-b" } as AppRuntimeContext)
+    // A repeat call for root-a reuses its cache (no third bootstrap).
+    await createSessionServices({ projectRoot: "/root-a" } as AppRuntimeContext)
+
+    expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
   })
 })

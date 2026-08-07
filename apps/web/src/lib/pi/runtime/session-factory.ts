@@ -23,16 +23,19 @@ type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
 }
 
 interface BootstrapRetryState {
+  promise?: Promise<WorkspaceHealthResponse>
   attempts: number
   lastAttemptTime: number
   nextRetryDelay: number
   lastResult?: WorkspaceHealthResponse
 }
 
-const bootstrapRetryStates = new WeakMap<
-  AppRuntimeContext,
-  BootstrapRetryState
->()
+// Module-level bootstrap cache keyed by project root, shared across requests so
+// the workspace bootstrap runs once per project root (and per retry window)
+// instead of re-running on every chat turn. The in-flight `promise` is created
+// once and awaited by all concurrent callers; once settled it is cleared and
+// the result is served through `lastResult` + exponential backoff.
+const bootstrapCache = new Map<string, BootstrapRetryState>()
 
 export async function createSessionServices(
   context: AppRuntimeContext,
@@ -125,7 +128,14 @@ async function loadBestEffortWorkspaceHealth(
   context: AppRuntimeContext
 ): Promise<WorkspaceHealthResponse> {
   const now = Date.now()
-  let state = bootstrapRetryStates.get(context)
+  const projectRoot = context.projectRoot
+  let state = bootstrapCache.get(projectRoot)
+
+  // An in-flight bootstrap is shared across all requests for this project root:
+  // await the single promise instead of starting another bootstrap.
+  if (state?.promise) {
+    return state.promise
+  }
 
   if (!state) {
     state = {
@@ -133,23 +143,7 @@ async function loadBestEffortWorkspaceHealth(
       lastAttemptTime: 0,
       nextRetryDelay: 1000,
     }
-    bootstrapRetryStates.set(context, state)
-  }
-
-  if (context.workspaceBootstrap) {
-    try {
-      const result = await context.workspaceBootstrap
-      if (result.status === "ok" && result.workspace.available) {
-        state.attempts = 0
-        state.nextRetryDelay = 1000
-        state.lastResult = result
-        return result
-      }
-      state.lastResult = result
-    } catch (error) {
-      const failure = createWorkspaceHealthFailure(context, error)
-      state.lastResult = failure
-    }
+    bootstrapCache.set(projectRoot, state)
   }
 
   if (state.lastResult) {
@@ -174,16 +168,18 @@ async function loadBestEffortWorkspaceHealth(
         state.lastAttemptTime = Date.now()
       }
       state.lastResult = result
+      state.promise = undefined
       return result
     })
     .catch((error) => {
       const failure = createWorkspaceHealthFailure(context, error)
       state.lastResult = failure
       state.lastAttemptTime = Date.now()
+      state.promise = undefined
       return failure
     })
 
-  context.workspaceBootstrap = promise
+  state.promise = promise
   return promise
 }
 
