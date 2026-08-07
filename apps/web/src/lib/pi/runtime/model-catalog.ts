@@ -1,4 +1,7 @@
-import { isOccProviderId } from "@workspace/pi-protocol/provider-catalog"
+import {
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isOccProviderId,
+} from "@workspace/pi-protocol/provider-catalog"
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
@@ -17,6 +20,11 @@ import type {
   ChatModelSelection,
   ChatModelsResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import { listOccInstances } from "@/lib/db/occ-instances"
+import {
+  listLocalProviderInstances,
+  useLocalProviderStore,
+} from "@/lib/db/local-provider-instances"
 
 export type LoadChatModelsOptions = {
   /**
@@ -57,10 +65,20 @@ export async function loadChatModels(
       services.settingsManager.getDefaultThinkingLevel()
     )
   )
-  const models =
-    scope === "all"
-      ? catalog
-      : catalog.filter((model) => isChatModelEnabled(model, enabledPatterns))
+  let models: Array<ChatModelInfo>
+  if (scope === "all") {
+    models = catalog
+  } else {
+    const addedModelKeys = await resolveAppAddedModelKeys(
+      services,
+      options?.userId
+    )
+    models = catalog.filter(
+      (model) =>
+        addedModelKeys.has(model.key) &&
+        isChatModelEnabled(model, enabledPatterns)
+    )
+  }
   const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
     services.settingsManager
   )
@@ -310,6 +328,39 @@ function modelKey(model: Pick<Model<any>, "provider" | "id">) {
 
 function modelKeyFromParts(provider: string, id: string) {
   return `${provider}/${id}`
+}
+
+/**
+ * The exact model keys the app registered for this user: the reserved OpenAI
+ * Chat Completions slot (its BYOK model id, or the Neon AI Gateway defaults
+ * when the gateway backs the slot) plus each custom provider instance's model
+ * ids. The composer picker ("enabled" scope) is scoped to these keys instead
+ * of the whole Pi registry catalog, which also includes models from providers
+ * whose credentials live only in Pi's own auth store and were never added in
+ * Fleet Pi Settings.
+ */
+async function resolveAppAddedModelKeys(
+  services: AgentSessionServices,
+  userId: string | undefined
+) {
+  const addedKeys = new Set<string>()
+  for (const model of services.modelRuntime.getModels(
+    OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
+  )) {
+    addedKeys.add(modelKey(model))
+  }
+  // Mirror the custom-provider-registry store selection: DB-backed accounts
+  // (and deployed surfaces) read `pi_user_providers`; anonymous/local dev
+  // accounts read the gitignored file store.
+  const instances = useLocalProviderStore(userId)
+    ? await listLocalProviderInstances(userId)
+    : await listOccInstances(userId)
+  for (const instance of instances) {
+    for (const model of services.modelRuntime.getModels(instance.id)) {
+      addedKeys.add(modelKey(model))
+    }
+  }
+  return addedKeys
 }
 
 function toChatModelInfo(
