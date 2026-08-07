@@ -1,5 +1,9 @@
 import { ChatThinkingLevelSchema, z } from "./shared"
-import type { WorkspaceTreeNode, WorkspaceTreeResponse } from "../chat-protocol"
+import type {
+  WorkspaceFileResponse,
+  WorkspaceTreeNode,
+  WorkspaceTreeResponse,
+} from "../chat-protocol"
 
 export const ChatModelInfoSchema = z
   .object({
@@ -85,6 +89,21 @@ export const WorkspaceTreeResponseSchema: z.ZodType<WorkspaceTreeResponse> = z
     diagnostics: z.array(z.string()),
   })
   .openapi({ description: "Workspace tree response" })
+
+export const WorkspaceFileResponseSchema: z.ZodType<WorkspaceFileResponse> = z
+  .object({
+    path: z.string(),
+    name: z.string(),
+    content: z.string(),
+    mediaType: z.enum([
+      "text/markdown",
+      "text/plain",
+      "application/octet-stream",
+    ]),
+    size: z.number().optional(),
+    status: z.enum(["ok", "too-large", "unsupported"]).optional(),
+  })
+  .openapi({ description: "Workspace file preview response" })
 
 export const ChatProviderInfoSchema = z
   .object({
