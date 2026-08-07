@@ -163,6 +163,35 @@ describe("settings bridge", () => {
     expect(mocks.hotReloadActiveRuntimes).toHaveBeenCalled()
   })
 
+  it("leaves the settings file byte-identical when the update is a no-op", async () => {
+    const projectRoot = createProjectRoot()
+    mkdirSync(join(projectRoot, ".pi"), { recursive: true })
+    const source = '{\n  "packages": ["npm:pi-autocontext"]\n}\n'
+    const settingsPath = join(projectRoot, ".pi/settings.json")
+    writeFileSync(settingsPath, source, "utf8")
+
+    await updateChatSettings({ projectRoot } as never, {})
+
+    expect(readFileSync(settingsPath, "utf8")).toBe(source)
+  })
+
+  it("preserves the file's formatting style when persisting a semantic change", async () => {
+    const projectRoot = createProjectRoot()
+    mkdirSync(join(projectRoot, ".pi"), { recursive: true })
+    const source =
+      '{\n  "packages": ["npm:pi-autocontext"],\n  "defaultThinkingLevel": "high"\n}\n'
+    const settingsPath = join(projectRoot, ".pi/settings.json")
+    writeFileSync(settingsPath, source, "utf8")
+
+    await updateChatSettings({ projectRoot } as never, {
+      defaultThinkingLevel: "low",
+    })
+
+    expect(readFileSync(settingsPath, "utf8")).toBe(
+      '{\n  "packages": ["npm:pi-autocontext"],\n  "defaultThinkingLevel": "low"\n}\n'
+    )
+  })
+
   it("returns update impact from the settings delta on save", async () => {
     const projectRoot = createProjectRoot()
     mkdirSync(join(projectRoot, ".pi"), { recursive: true })

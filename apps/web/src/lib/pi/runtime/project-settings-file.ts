@@ -18,6 +18,16 @@ export async function readProjectSettingsFile(projectRoot: string) {
   }
 }
 
+/** Raw file bytes as text, or undefined when the file does not exist. */
+export async function readRawProjectSettingsFile(projectRoot: string) {
+  try {
+    return await readFile(projectSettingsPath(projectRoot), "utf8")
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return undefined
+    throw error
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }

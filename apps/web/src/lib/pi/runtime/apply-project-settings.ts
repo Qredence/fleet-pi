@@ -1,4 +1,5 @@
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { settingsValuesEqual } from "./project-settings-format"
 import type {
   AgentSessionServices,
   CompactionSettings,
@@ -13,6 +14,44 @@ type ProjectSettingsWriter = {
     field: string,
     update: (settings: Record<string, unknown>) => void
   ) => void
+}
+
+/**
+ * Read the project layer as Pi loaded it from `.pi/settings.json`, when the
+ * manager exposes it. Returns undefined for stubs that lack the getter; in
+ * that case callers keep the historical always-write behavior.
+ */
+function getProjectLayer(
+  manager: SettingsManager
+): Record<string, unknown> | undefined {
+  const reader = manager as unknown as {
+    getProjectSettings?: () => Record<string, unknown>
+  }
+  if (typeof reader.getProjectSettings !== "function") return undefined
+  try {
+    const project = reader.getProjectSettings()
+    return isRecord(project) ? project : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * True when a project-layer write for `field` would reproduce the on-disk
+ * value. Pi's `updateProjectSettings` re-serializes the whole file, so a
+ * no-op write still churns tracked formatting; skip those entirely.
+ */
+function projectWriteWouldBeNoOp(
+  manager: SettingsManager,
+  field: string,
+  value: unknown
+): boolean {
+  const project = getProjectLayer(manager)
+  if (project === undefined) return false
+  if (value === undefined) {
+    return !Object.prototype.hasOwnProperty.call(project, field)
+  }
+  return settingsValuesEqual(project[field], value)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,6 +81,8 @@ function assignProjectSetting(
   value: unknown,
   fallback: () => void
 ) {
+  if (projectWriteWouldBeNoOp(manager, field, value)) return
+
   const writer = manager as unknown as Partial<ProjectSettingsWriter>
   if (typeof writer.updateProjectSettings !== "function") {
     fallback()
@@ -77,19 +118,32 @@ export function applyProjectSettingsToServices(
   const manager = services.settingsManager
 
   const packages = asPackageSources(settings.packages)
-  if (packages) manager.setProjectPackages(packages)
+  if (packages && !projectWriteWouldBeNoOp(manager, "packages", packages)) {
+    manager.setProjectPackages(packages)
+  }
 
   const skills = asStringArray(settings.skills)
-  if (skills) manager.setProjectSkillPaths(skills)
+  if (skills && !projectWriteWouldBeNoOp(manager, "skills", skills)) {
+    manager.setProjectSkillPaths(skills)
+  }
 
   const extensions = asStringArray(settings.extensions)
-  if (extensions) manager.setProjectExtensionPaths(extensions)
+  if (
+    extensions &&
+    !projectWriteWouldBeNoOp(manager, "extensions", extensions)
+  ) {
+    manager.setProjectExtensionPaths(extensions)
+  }
 
   const prompts = asStringArray(settings.prompts)
-  if (prompts) manager.setProjectPromptTemplatePaths(prompts)
+  if (prompts && !projectWriteWouldBeNoOp(manager, "prompts", prompts)) {
+    manager.setProjectPromptTemplatePaths(prompts)
+  }
 
   const themes = asStringArray(settings.themes)
-  if (themes) manager.setProjectThemePaths(themes)
+  if (themes && !projectWriteWouldBeNoOp(manager, "themes", themes)) {
+    manager.setProjectThemePaths(themes)
+  }
 
   if (typeof settings.enableSkillCommands === "boolean") {
     manager.setEnableSkillCommands(settings.enableSkillCommands)
