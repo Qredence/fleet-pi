@@ -159,3 +159,39 @@ The repository uses **Husky** + **lint-staged** to enforce code quality before e
 - Run `autoctx run` from this directory to use the defaults stored in `.autoctx.json`.
 
 <!-- AUTOCTX_GUIDE_END -->
+
+## Cursor Cloud specific instructions
+
+These notes cover non-obvious gotchas when running Fleet Pi inside a Cursor Cloud
+agent VM. Standard commands are documented in **Validation** above; this section
+only adds cloud-specific caveats. Dependencies are refreshed automatically by the
+environment update script (`pnpm install`). Start the dev server with the root
+`dev` script (`turbo dev --filter=web`), which serves the app on port 3000.
+
+- **Node version gotcha (affects `pnpm lint`).** The exec shell's default `node`
+  is `/exec-daemon/node` (currently v22.14.0), which lacks default TypeScript
+  type-stripping. The repo's root `eslint.config.js` statically imports
+  `packages/hax-design/eslint.config.ts`, so lint fails on v22.14.0 with
+  `ERR_UNKNOWN_FILE_EXTENSION` for `.ts`. Use Node ≥ 22.18; the VM's nvm default
+  (v22.22.2) works and is auto-selected via a `~/.bashrc` PATH prepend. If
+  `node -v` shows 22.14.0 in a shell, run `nvm use default` (or prepend
+  `"$HOME/.nvm/versions/node/$(nvm version default)/bin"` to `PATH`) before
+  `pnpm lint`/`build`/`typecheck`. `typecheck`, `test`, `build`, and `dev` use
+  esbuild/tsc and also work on the newer Node.
+- **App is a single Vite dev server.** The root `dev` script serves the whole
+  product (UI + API routes + in-process Pi agent) at http://localhost:3000;
+  health check is `GET /api/health` → `{ "status": "ok" }`. Local chat runs in anonymous mode
+  (no login, no Neon/Daytona) — auth/mirror fall back to `.fleet/` SQLite/JSONL.
+- **Chat requires an LLM provider, which is the only true blocker.** No usable
+  hosted LLM secret is injected by default here (the Azure OpenAI resource DNS
+  does not resolve and `GOOGLE_API_KEY` is rejected by the Gemini API). For real
+  model output, add a valid key to a gitignored root `.env.local` — either
+  `GEMINI_API_KEY=…` (Google provider) or the trio
+  `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}` (OpenAI-compatible / OCC;
+  loopback `http://localhost` base URLs are allowed in dev). Then pick the model
+  in the InputBar/Settings. The chat pipeline itself (route → Pi runtime →
+  streaming → tool cards) can be exercised end-to-end against any local
+  OpenAI-compatible endpoint via the OCC trip.
+- **`.env`/`.env.local` are not hot-reloaded.** Vite ignores them in
+  `server.watch`, so after changing provider env vars you must restart the dev
+  server for the new provider to register.
