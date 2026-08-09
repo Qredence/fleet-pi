@@ -182,16 +182,23 @@ environment update script (`pnpm install`). Start the dev server with the root
   product (UI + API routes + in-process Pi agent) at http://localhost:3000;
   health check is `GET /api/health` → `{ "status": "ok" }`. Local chat runs in anonymous mode
   (no login, no Neon/Daytona) — auth/mirror fall back to `.fleet/` SQLite/JSONL.
-- **Chat requires an LLM provider, which is the only true blocker.** No usable
-  hosted LLM secret is injected by default here (the Azure OpenAI resource DNS
-  does not resolve and `GOOGLE_API_KEY` is rejected by the Gemini API). For real
-  model output, add a valid key to a gitignored root `.env.local` — either
-  `GEMINI_API_KEY=…` (Google provider) or the trio
+- **Chat requires an LLM provider.** Put a valid key in a gitignored root
+  `.env.local` — either `GEMINI_API_KEY=…` (Google / Gemini) or the trio
   `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}` (OpenAI-compatible / OCC;
   loopback `http://localhost` base URLs are allowed in dev). Then pick the model
-  in the InputBar/Settings. The chat pipeline itself (route → Pi runtime →
-  streaming → tool cards) can be exercised end-to-end against any local
-  OpenAI-compatible endpoint via the OCC trip.
+  in the InputBar/Settings. Do not rely on `GOOGLE_API_KEY` (Fleet maps Google
+  chat to `GEMINI_API_KEY` only). Injected Azure OpenAI secrets may not resolve
+  from this VM (resource DNS can be missing).
+- **Set `PI_OFFLINE=1` in `.env.local` on Cloud agent VMs.** When any LLM
+  provider becomes configured, Pi refreshes remote model catalogs from
+  `https://pi.dev/api/models/providers/<id>`. Those catalog endpoints often hang
+  from this environment (homepage `pi.dev` is reachable; the `/api/models/…`
+  routes are not), which makes `/api/chat/models` and chat runtime creation
+  stall with no response. `PI_OFFLINE=1` disables that network refresh so the
+  built-in model lists are used; `/api/chat/models` then returns in ~200ms and
+  Gemini chat works. Do not put this in the update script — keep it in the
+  gitignored `.env.local` (or export it in the shell that starts the `dev`
+  script).
 - **`.env`/`.env.local` are not hot-reloaded.** Vite ignores them in
   `server.watch`, so after changing provider env vars you must restart the dev
   server for the new provider to register.
