@@ -19,12 +19,13 @@ export const WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES = [
 export const WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES = [
   "document",
   "section",
+  "bullet",
   "manifest-section",
   "manifest-policy",
   "json-entry",
 ] as const
 
-export const WORKSPACE_SEMANTIC_PARSER_VERSION = 1
+export const WORKSPACE_SEMANTIC_PARSER_VERSION = 2
 
 export type WorkspaceIndexCategory =
   (typeof WORKSPACE_INDEX_CATEGORY_VALUES)[number]

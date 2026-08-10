@@ -80,3 +80,16 @@ for a separate file, for temporary harness tests, or for large raw material that
 will later be synthesized into canonical memory. New sessions should search
 canonical project memory first, then fall back to `find`/`grep` across
 `agent-workspace/memory/project` before reporting that a memory is missing.
+
+### Memory bullet provenance (v3)
+
+A memory bullet may carry an optional provenance marker at the end of the line:
+
+```text
+- User's name is Zachary <!-- pi-memory v=3 id=mem_zac source=user ts=2026-08-10T12:00:00Z -->
+```
+
+The marker is an HTML comment, so it stays invisible in rendered Markdown. The
+read path parses `id`, `source`, and `ts` from it and shows them in recall. A
+bullet without a marker is read as a legacy record with source `unknown`.
+Reading never rewrites a file, so legacy bullets keep their exact text.

@@ -11,7 +11,7 @@ import type { AppRuntimeContext } from "../app-runtime"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
   "workspace-projection.sqlite"
-export const WORKSPACE_PROJECTION_SCHEMA_VERSION = 2
+export const WORKSPACE_PROJECTION_SCHEMA_VERSION = 3
 
 type ProjectionMigration = {
   version: number
@@ -266,6 +266,42 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
         sort_order INTEGER NOT NULL,
         UNIQUE(item_version_id, stable_key)
       );
+
+      CREATE INDEX IF NOT EXISTS workspace_semantic_records_version_idx
+      ON workspace_semantic_records(item_version_id, sort_order);
+    `,
+  },
+  {
+    version: 3,
+    name: "allow_bullet_semantic_records",
+    // SQLite cannot alter a CHECK constraint in place, so rebuild the table to
+    // admit the "bullet" record type. Fresh databases already get the current
+    // CHECK from migration 2; this only widens an existing table.
+    sql: `
+      CREATE TABLE workspace_semantic_records_v3 (
+        id TEXT PRIMARY KEY,
+        item_version_id TEXT NOT NULL
+          REFERENCES workspace_item_versions(id) ON DELETE CASCADE,
+        stable_key TEXT NOT NULL,
+        record_type TEXT NOT NULL
+          CHECK (record_type IN (${WORKSPACE_SEMANTIC_RECORD_TYPE_SQL})),
+        title TEXT,
+        content TEXT NOT NULL,
+        search_text TEXT NOT NULL,
+        metadata_json TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        UNIQUE(item_version_id, stable_key)
+      );
+
+      INSERT INTO workspace_semantic_records_v3
+      SELECT id, item_version_id, stable_key, record_type, title, content,
+        search_text, metadata_json, sort_order
+      FROM workspace_semantic_records;
+
+      DROP TABLE workspace_semantic_records;
+
+      ALTER TABLE workspace_semantic_records_v3
+      RENAME TO workspace_semantic_records;
 
       CREATE INDEX IF NOT EXISTS workspace_semantic_records_version_idx
       ON workspace_semantic_records(item_version_id, sort_order);

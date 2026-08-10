@@ -68,7 +68,12 @@ describe("workspace memory index", () => {
       exists: true,
       hasContent: true,
       headings: ["User Identity"],
-      snippets: expect.arrayContaining(["Preference: User's name is Zachary"]),
+      snippets: expect.arrayContaining([
+        expect.objectContaining({
+          text: "Preference: User's name is Zachary",
+          provenance: expect.objectContaining({ isLegacy: true }),
+        }),
+      ]),
     })
     expect(index.orphaned).toHaveLength(1)
     expect(index.orphaned[0]).toMatchObject({
@@ -132,13 +137,89 @@ describe("workspace memory index", () => {
       (file) => file.key === "architecture"
     )
 
-    expect(architecture?.snippets).toEqual([
+    expect(architecture?.snippets.map((snippet) => snippet.text)).toEqual([
       "Value: one",
       "Value: two",
       "Value: three",
       "Value: four",
       "Value: five",
     ])
+    expect(
+      architecture?.snippets.every((snippet) => snippet.provenance.isLegacy)
+    ).toBe(true)
+  })
+
+  it("reads v3 provenance markers and keeps legacy bullets tagged unknown", async () => {
+    const root = await createTempWorkspace()
+    await writeMemoryFile(
+      root,
+      "preferences.md",
+      [
+        "# Preferences",
+        "",
+        "## User Identity",
+        "",
+        "- Preference: User's name is Zachary <!-- pi-memory v=3 id=mem_zac source=user ts=2026-08-10T12:00:00Z -->",
+        "- Preference: Keep pill-shaped header chrome",
+      ].join("\n")
+    )
+
+    const index = await readProjectMemoryIndex(root)
+    const preferences = index.canonical.find(
+      (file) => file.key === "preferences"
+    )
+
+    expect(preferences?.snippets[0]).toEqual({
+      text: "Preference: User's name is Zachary",
+      provenance: {
+        version: 3,
+        id: "mem_zac",
+        source: "user",
+        timestamp: "2026-08-10T12:00:00Z",
+        isLegacy: false,
+      },
+    })
+    expect(preferences?.snippets[1].provenance).toMatchObject({
+      isLegacy: true,
+      source: "unknown",
+      id: null,
+    })
+
+    const startup = formatProjectMemoryForStartupContext(index)
+    expect(startup).toContain(
+      "- preferences: Preference: User's name is Zachary [source: user; 2026-08-10T12:00:00Z; mem_zac]"
+    )
+    expect(startup).toContain(
+      "- preferences: Preference: Keep pill-shaped header chrome"
+    )
+  })
+
+  it("truncates only the readable text and never cuts a v3 marker", async () => {
+    const root = await createTempWorkspace()
+    const longText = `Value: ${"x".repeat(400)}`
+    await writeMemoryFile(
+      root,
+      "architecture.md",
+      [
+        "# Architecture",
+        "",
+        "## Facts",
+        "",
+        `- ${longText} <!-- pi-memory v=3 id=mem_long source=agent ts=2026-08-10 -->`,
+      ].join("\n")
+    )
+
+    const index = await readProjectMemoryIndex(root)
+    const snippet = index.canonical.find((file) => file.key === "architecture")
+      ?.snippets[0]
+
+    expect(snippet?.text.endsWith("…")).toBe(true)
+    expect(snippet?.text).not.toContain("pi-memory")
+    expect(snippet?.provenance).toMatchObject({
+      id: "mem_long",
+      source: "agent",
+      timestamp: "2026-08-10",
+    })
   })
 
   it("scores snippets by prompt relevance and keeps deterministic fallbacks", async () => {

@@ -1,4 +1,7 @@
 import { basename, extname } from "node:path"
+// Shared with the Pi runtime memory read path so both surfaces agree on the
+// v3 provenance marker syntax.
+import { parseMemoryBullet } from "../../../../../.pi/extensions/lib/memory-record"
 import { workspaceManifestSchema } from "./workspace-contract"
 import { WORKSPACE_SEMANTIC_PARSER_VERSION } from "./workspace-index-types"
 import type {
@@ -538,6 +541,11 @@ function parseMarkdownWorkspaceFile(
     content,
     headings
   )
+  const bulletRecords =
+    classification.category === "memory" &&
+    !content.includes(MEMORY_STUB_MARKER)
+      ? buildMemoryBulletRecords(classification, content, sectionRecords.length)
+      : []
   const metadata = {
     category: classification.category,
     canonicalPath: classification.canonicalPath,
@@ -564,8 +572,66 @@ function parseMarkdownWorkspaceFile(
     records: [
       createRecord("document", "document", title, content, metadata, 0),
       ...sectionRecords,
+      ...bulletRecords,
     ],
   }
+}
+
+// Give every memory bullet a provenance-aware record with a stable id, so a
+// bullet-level identity has a carrier in the index. Reading never rewrites the
+// file, so legacy bullets are recorded as source "unknown".
+function buildMemoryBulletRecords(
+  classification: WorkspacePathClassification,
+  content: string,
+  orderOffset: number
+): Array<WorkspaceSemanticRecord> {
+  const lines = content.split("\n")
+  const records: Array<WorkspaceSemanticRecord> = []
+  const sectionCounts = new Map<string, number>()
+  let sectionSlug = "root"
+  let order = orderOffset + 1
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const heading = trimmed.match(/^#{1,6}\s+(.+)$/)
+    if (heading) {
+      sectionSlug = slugify(heading[1].trim())
+      continue
+    }
+    if (!trimmed.startsWith("- ")) {
+      continue
+    }
+
+    const bullet = parseMemoryBullet(trimmed.slice(2).trim())
+    if (!bullet.text) {
+      continue
+    }
+
+    const nth = (sectionCounts.get(sectionSlug) ?? 0) + 1
+    sectionCounts.set(sectionSlug, nth)
+    const stableKey = bullet.provenance.id
+      ? `bullet:${bullet.provenance.id}`
+      : `bullet:${sectionSlug}:${nth}`
+
+    records.push(
+      createRecord(
+        stableKey,
+        "bullet",
+        null,
+        bullet.text,
+        {
+          category: classification.category,
+          canonicalPath: classification.canonicalPath,
+          section: sectionSlug,
+          provenance: bullet.provenance,
+        },
+        order
+      )
+    )
+    order += 1
+  }
+
+  return records
 }
 
 function parseTextWorkspaceFile(

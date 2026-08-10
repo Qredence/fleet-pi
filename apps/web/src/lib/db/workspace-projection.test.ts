@@ -44,7 +44,7 @@ describe("workspace projection", () => {
       )
     )
     expect(existsSync(seeded.databasePath)).toBe(true)
-    expect(seeded.schemaVersion).toBe(2)
+    expect(seeded.schemaVersion).toBe(3)
 
     const projection = openWorkspaceProjection(context)
 

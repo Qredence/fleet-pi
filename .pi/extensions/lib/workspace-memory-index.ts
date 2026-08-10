@@ -1,5 +1,10 @@
 import { readdir, readFile, stat } from "node:fs/promises"
 import { basename, resolve } from "node:path"
+import {
+  formatProvenanceSuffix,
+  type MemoryBullet,
+  parseMemoryBullet,
+} from "./memory-record"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const PROJECT_MEMORY_DIR = `${WORKSPACE_ROOT}/memory/project`
@@ -11,7 +16,7 @@ export type ProjectMemoryFile = {
   headings: Array<string>
   key: string
   path: string
-  snippets: Array<string>
+  snippets: Array<MemoryBullet>
   title: string
 }
 
@@ -230,11 +235,17 @@ function formatMemoryFileStatus(file: ProjectMemoryFile) {
 
 function formatMemorySnippets(files: Array<ProjectMemoryFile>) {
   return files.flatMap((file) =>
-    file.snippets.slice(0, 3).map((snippet) => `- ${file.key}: ${snippet}`)
+    file.snippets
+      .slice(0, 3)
+      .map((snippet) => formatSnippetLine(file.key, snippet))
   )
 }
 
-function extractMemorySnippets(content: string) {
+function formatSnippetLine(fileKey: string, snippet: MemoryBullet) {
+  return `- ${fileKey}: ${snippet.text}${formatProvenanceSuffix(snippet.provenance)}`
+}
+
+function extractMemorySnippets(content: string): Array<MemoryBullet> {
   if (content.includes(STUB_MARKER)) return []
 
   return content
@@ -249,7 +260,15 @@ function extractMemorySnippets(content: string) {
       if (/To be filled/i.test(value)) return false
       return true
     })
-    .map((line) => truncateSnippet(line.slice(2).trim()))
+    .map((line) => {
+      const bullet = parseMemoryBullet(line.slice(2).trim())
+      // Truncate only the readable text so a provenance marker at the end of a
+      // long bullet is never cut off.
+      return {
+        text: truncateSnippet(bullet.text),
+        provenance: bullet.provenance,
+      }
+    })
 }
 
 function truncateSnippet(value: string) {
@@ -467,13 +486,15 @@ export function selectScoredSnippets(
   const terms = extractPromptTerms(promptText)
   if (terms.size === 0) {
     return files.flatMap((file) =>
-      file.snippets.slice(0, 2).map((snippet) => `- ${file.key}: ${snippet}`)
+      file.snippets
+        .slice(0, 2)
+        .map((snippet) => formatSnippetLine(file.key, snippet))
     )
   }
 
   type ScoredSnippet = {
     fileKey: string
-    snippet: string
+    snippet: MemoryBullet
     score: number
     index: number
   }
@@ -483,7 +504,7 @@ export function selectScoredSnippets(
 
   for (const file of files) {
     for (const snippet of file.snippets) {
-      const snippetLower = snippet.toLowerCase()
+      const snippetLower = snippet.text.toLowerCase()
       let score = 0
       for (const term of terms) {
         if (snippetLower.includes(term)) {
@@ -529,10 +550,10 @@ export function selectScoredSnippets(
   const seen = new Set<string>()
 
   for (const item of sorted) {
-    const key = `${item.fileKey}:${item.snippet}`
+    const key = `${item.fileKey}:${item.snippet.text}`
     if (!seen.has(key)) {
       seen.add(key)
-      formatted.push(`- ${item.fileKey}: ${item.snippet}`)
+      formatted.push(formatSnippetLine(item.fileKey, item.snippet))
       if (formatted.length >= limit) break
     }
   }
