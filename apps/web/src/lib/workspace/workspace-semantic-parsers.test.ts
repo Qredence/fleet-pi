@@ -190,6 +190,45 @@ describe("workspace semantic parsers", () => {
     )
   })
 
+  it("emits provenance-aware bullet records for memory files", () => {
+    const classification = classifyWorkspacePath(
+      "agent-workspace/memory/project/preferences.md"
+    )
+    if (!classification) {
+      throw new Error("Expected memory classification to exist.")
+    }
+
+    const parsed = parseWorkspaceFile(
+      classification,
+      [
+        "# Preferences",
+        "",
+        "## User Identity",
+        "",
+        "- Preference: User's name is Zachary <!-- pi-memory v=3 id=mem_zac source=user ts=2026-08-10T12:00:00Z -->",
+        "- Preference: Keep pill-shaped header chrome",
+      ].join("\n")
+    )
+
+    const bulletRecords = parsed.records.filter(
+      (record) => record.recordType === "bullet"
+    )
+    expect(bulletRecords).toHaveLength(2)
+    expect(bulletRecords[0]).toMatchObject({
+      stableKey: "bullet:mem_zac",
+      recordType: "bullet",
+      content: "Preference: User's name is Zachary",
+      metadata: {
+        section: "user-identity",
+        provenance: { source: "user", id: "mem_zac", isLegacy: false },
+      },
+    })
+    expect(bulletRecords[1]).toMatchObject({
+      stableKey: "bullet:user-identity:2",
+      metadata: { provenance: { isLegacy: true, source: "unknown" } },
+    })
+  })
+
   it("records manifest parser failures without dropping the file", () => {
     const classification = classifyWorkspacePath(
       "agent-workspace/manifest.json"
