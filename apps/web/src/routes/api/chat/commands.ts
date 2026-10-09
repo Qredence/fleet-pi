@@ -8,7 +8,9 @@ import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 export async function chatCommandsHandler(request: Request) {
   return withAuthenticatedChatRequest(request, async ({ userId }) => {
     try {
-      const context = await resolveWorkspaceContext(request)
+      const context = await resolveWorkspaceContext(request, undefined, {
+        requireDaytona: false,
+      })
       return Response.json(
         await loadChatCommands(context, {
           userId,

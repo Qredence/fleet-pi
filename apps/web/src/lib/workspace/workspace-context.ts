@@ -10,7 +10,8 @@ import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export async function resolveWorkspaceContext(
   request: Request,
-  authenticatedUser?: { id: string; email?: string | null }
+  authenticatedUser?: { id: string; email?: string | null },
+  options: { requireDaytona?: boolean } = {}
 ): Promise<AppRuntimeContext> {
   const context = resolveAppRuntimeContext()
 
@@ -29,6 +30,12 @@ export async function resolveWorkspaceContext(
   }
 
   const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(userId)
+
+  if (!resolvedDaytonaApiKey && options.requireDaytona === false) {
+    // Chat-only surfaces (e.g. the slash-command catalog) degrade to the
+    // bundled runtime context instead of gating users without Daytona.
+    return context
+  }
 
   if (isVercelDeployment() && !resolvedDaytonaApiKey) {
     throw new DaytonaCredentialRequiredError()
