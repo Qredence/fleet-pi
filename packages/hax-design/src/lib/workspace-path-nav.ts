@@ -40,10 +40,43 @@ function stripSandboxPrefixes(filePath: string): string {
     if (filePath.startsWith(prefix)) return filePath.slice(prefix.length)
   }
 
-  const worktreeMatch = filePath.match(/\.21st\/worktrees\/[^/]+\/[^/]+\/(.+)$/)
-  if (worktreeMatch?.[1]) return worktreeMatch[1]
+  return stripWorktreePrefix(filePath) ?? filePath
+}
 
-  return filePath
+const WORKTREE_MARKER = ".21st/worktrees/"
+
+/**
+ * Returns the path after `.21st/worktrees/<a>/<b>/`, or null when absent.
+ * Linear-time replacement for `/\.21st\/worktrees\/[^/]+\/[^/]+\/(.+)$/`,
+ * which CodeQL flagged as polynomial ReDoS (js/polynomial-redos).
+ */
+export function stripWorktreePrefix(filePath: string): string | null {
+  // `.` in the old pattern does not match line terminators, so the captured
+  // tail must start after the last one.
+  const lastLineBreak = Math.max(
+    filePath.lastIndexOf("\n"),
+    filePath.lastIndexOf("\r"),
+    filePath.lastIndexOf("\u2028"),
+    filePath.lastIndexOf("\u2029")
+  )
+  let from = 0
+  for (;;) {
+    const markerIndex = filePath.indexOf(WORKTREE_MARKER, from)
+    if (markerIndex === -1) return null
+    const start = markerIndex + WORKTREE_MARKER.length
+    const firstSlash = filePath.indexOf("/", start)
+    if (firstSlash > start) {
+      const secondSlash = filePath.indexOf("/", firstSlash + 1)
+      if (
+        secondSlash > firstSlash + 1 &&
+        secondSlash < filePath.length - 1 &&
+        lastLineBreak <= secondSlash
+      ) {
+        return filePath.slice(secondSlash + 1)
+      }
+    }
+    from = markerIndex + 1
+  }
 }
 
 function findWorkspaceRootIndex(segments: Array<string>): number {
