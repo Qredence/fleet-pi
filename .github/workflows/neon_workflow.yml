@@ -31,8 +31,12 @@ jobs:
       db_url: ${{ steps.create_neon_branch.outputs.db_url }}
       db_url_with_pooler: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
     needs: setup
+    # Dependabot and fork PRs run without NEON_API_KEY, so the action can only fail.
     if: |
-      github.event_name == 'pull_request' && (
+      github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && (
       github.event.action == 'synchronize'
       || github.event.action == 'opened'
       || github.event.action == 'reopened')
@@ -89,7 +93,11 @@ jobs:
   delete_neon_branch:
     name: Delete Neon Branch
     needs: setup
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: |
+      github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Delete Neon Branch
