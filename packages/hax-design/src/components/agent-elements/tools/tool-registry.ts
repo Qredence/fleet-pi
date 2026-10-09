@@ -15,7 +15,6 @@ import {
 import { stripWorktreePrefix } from "../../../lib/workspace-path-nav"
 import type React from "react"
 
-
 export type ToolVariant = "simple" | "collapsible"
 
 export type ToolMeta = {
