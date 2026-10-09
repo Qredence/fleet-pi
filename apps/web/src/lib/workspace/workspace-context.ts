@@ -6,6 +6,7 @@ import {
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export async function resolveWorkspaceContext(
   request: Request,
@@ -29,7 +30,7 @@ export async function resolveWorkspaceContext(
 
   const resolvedDaytonaApiKey = await resolveDaytonaRuntimeApiKey(userId)
 
-  if (process.env.VERCEL === "1" && !resolvedDaytonaApiKey) {
+  if (isVercelDeployment() && !resolvedDaytonaApiKey) {
     throw new DaytonaCredentialRequiredError()
   }
 

@@ -2,12 +2,14 @@ import { resolve } from "node:path"
 
 import { defineConfig } from "vite"
 import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import { cloudflare } from "@cloudflare/vite-plugin"
 import { tempoVitePlugin } from "tempo-sdk"
 import viteReact from "@vitejs/plugin-react"
 import viteTsConfigPaths from "vite-tsconfig-paths"
 import tailwindcss from "@tailwindcss/vite"
 import { config as dotenvConfig } from "dotenv"
 import { visualizer } from "rollup-plugin-visualizer"
+import { workerGlobalScopeShims } from "./scripts/cloudflare/worker-global-scope-shims"
 
 const repoRoot = resolve(import.meta.dirname, "../..")
 
@@ -47,6 +49,12 @@ const config = defineConfig({
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
+    ...(process.env.FLEET_PI_TARGET === "cloudflare"
+      ? [
+          cloudflare({ viteEnvironment: { name: "ssr" } }),
+          workerGlobalScopeShims(),
+        ]
+      : []),
     tempoVitePlugin(),
     tailwindcss(),
     tanstackStart(),
@@ -58,13 +66,30 @@ const config = defineConfig({
       brotliSize: true,
     }),
   ],
-  ssr: {
-    external: [
-      "@daytona/sdk",
-      "@daytona/api-client",
-      "@daytona/toolbox-api-client",
-    ],
-  },
+  ...(process.env.FLEET_PI_TARGET === "cloudflare"
+    ? {
+        environments: {
+          ssr: {
+            // workerd leaves import.meta.url undefined in bundled modules;
+            // Node-oriented deps (pi-coding-agent config) derive paths from it
+            // at module load.
+            define: {
+              "import.meta.url": JSON.stringify("file:///bundle/worker.js"),
+            },
+          },
+        },
+      }
+    : {}),
+  ssr:
+    process.env.FLEET_PI_TARGET === "cloudflare"
+      ? undefined
+      : {
+          external: [
+            "@daytona/sdk",
+            "@daytona/api-client",
+            "@daytona/toolbox-api-client",
+          ],
+        },
 })
 
 export default config

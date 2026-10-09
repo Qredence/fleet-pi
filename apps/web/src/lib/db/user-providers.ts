@@ -2,6 +2,7 @@ import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PostgresQueryClient } from "./pi-session-mirror"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export type ProviderAuthType = "apiKey" | "oauth"
 
@@ -22,7 +23,7 @@ type ProviderRow = {
 }
 
 function requireChatDatabaseOnVercel() {
-  if (process.env.VERCEL === "1" && !isChatDatabaseConfigured()) {
+  if (isVercelDeployment() && !isChatDatabaseConfigured()) {
     throw new ChatPostgresUnavailableError()
   }
 }

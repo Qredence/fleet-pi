@@ -14,6 +14,7 @@ import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 /**
  * A named OpenAI Chat Completions-compatible provider instance. The API key is
@@ -73,7 +74,7 @@ type OccInstanceMetaRow = {
  * @throws `ChatPostgresUnavailableError` if running on Vercel without chat database configuration
  */
 function requireChatDatabaseOnVercel() {
-  if (process.env.VERCEL === "1" && !isChatDatabaseConfigured()) {
+  if (isVercelDeployment() && !isChatDatabaseConfigured()) {
     throw new ChatPostgresUnavailableError()
   }
 }

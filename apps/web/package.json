@@ -7,6 +7,9 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "build:vercel": "vite build && node scripts/build-vercel-output.mjs",
+    "build:cloudflare": "FLEET_PI_TARGET=cloudflare vite build",
+    "preview:cloudflare": "FLEET_PI_TARGET=cloudflare vite preview",
+    "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy",
     "preview": "vite preview",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
@@ -26,8 +29,8 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "@daytona/sdk": "^0.197.0",
     "@aws-sdk/client-s3": "^3.1047.0",
+    "@daytona/sdk": "^0.197.0",
     "@earendil-works/pi-agent-core": "^0.82.1",
     "@earendil-works/pi-ai": "^0.82.1",
     "@earendil-works/pi-coding-agent": "^0.82.1",
@@ -60,6 +63,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.63.1",
     "@playwright/test": "^1.61.1",
     "@tanstack/eslint-config": "^0.4.0",
     "@testing-library/react": "^16.3.2",
@@ -78,6 +82,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.149.0"
   }
 }

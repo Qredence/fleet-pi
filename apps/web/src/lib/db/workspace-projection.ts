@@ -8,6 +8,7 @@ import {
   WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES,
 } from "../workspace/workspace-index-types"
 import type { AppRuntimeContext } from "../app-runtime"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
   "workspace-projection.sqlite"
@@ -274,7 +275,7 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
 ] as const
 
 export function getWorkspaceProjectionDatabasePath(context: AppRuntimeContext) {
-  if (process.env.VERCEL === "1") {
+  if (isVercelDeployment()) {
     if (context.workspaceRoot.startsWith("/var/task")) {
       return join(
         "/tmp",

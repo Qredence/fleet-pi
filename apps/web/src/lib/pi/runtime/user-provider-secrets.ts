@@ -14,6 +14,7 @@ import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
 
@@ -214,6 +215,6 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  if (process.env.VERCEL === "1") return undefined
+  if (isVercelDeployment()) return undefined
   return process.env.DAYTONA_API_KEY
 }

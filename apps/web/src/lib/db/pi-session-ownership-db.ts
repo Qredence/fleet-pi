@@ -8,6 +8,7 @@ import {
 } from "../deployment/trust-zone"
 import { logger } from "../logger"
 import { resolveVercelUserSessionDir } from "../pi/session-paths"
+import { requestScoped } from "../runtime/request-scope"
 import {
   isSessionAccessAllowed,
   isSessionOwnershipStatus,
@@ -28,18 +29,30 @@ export function isPiSessionMirrorEnabled() {
   return Boolean(resolveChatDatabaseUrl())
 }
 
+const REQUEST_POOL_KEY = Symbol("fleet-pi.chat-postgres-pool")
+
+function createChatPostgresPool(connectionString: string) {
+  return new Pool({
+    connectionString,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  })
+}
+
 export function getChatPostgresPool(): InstanceType<typeof Pool> | undefined {
   const connectionString = resolveChatDatabaseUrl()
   if (!connectionString) return undefined
+  // Cloudflare Workers: I/O objects cannot cross requests, so use one pool
+  // per request (request-scope.ts). Undefined outside a Worker request.
+  const requestPool = requestScoped(REQUEST_POOL_KEY, () =>
+    createChatPostgresPool(connectionString)
+  )
+  if (requestPool) return requestPool
   if (!sharedPool) {
     // Resident module-scope pool per Neon best practice: reuse the same pool
     // across requests instead of tearing it down after each deploy cycle.
-    sharedPool = new Pool({
-      connectionString,
-      max: 5,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 5_000,
-    })
+    sharedPool = createChatPostgresPool(connectionString)
     logger.debug("[pi-session-ownership-db] PostgreSQL pool created")
   }
   return sharedPool

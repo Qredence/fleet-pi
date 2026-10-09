@@ -78,3 +78,7 @@ codex-security/
 .env
 .env.*
 !.env.example
+
+# Cloudflare Workers local secrets
+.dev.vars*
+.wrangler/
