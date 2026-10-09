@@ -28,6 +28,26 @@ describe("normalizeWorkspaceFilePath", () => {
     ).toBe("agent-workspace/memory/project/decisions.md")
   })
 
+  it("strips .21st worktree prefixes", () => {
+    expect(
+      normalizeWorkspaceFilePath(
+        "/Users/me/.21st/worktrees/fleet-pi/feat-x/agent-workspace/plans/next.md"
+      )
+    ).toBe("agent-workspace/plans/next.md")
+  })
+
+  it("handles adversarial worktree-like input in linear time", () => {
+    const started = performance.now()
+    for (const hostile of [
+      ".21st/worktrees/".repeat(20_000) + "\n",
+      ".21st/worktrees/a".repeat(20_000) + "\n",
+      ".21st/worktrees/a/".repeat(20_000) + "\n",
+    ]) {
+      expect(normalizeWorkspaceFilePath(hostile)).toBeNull()
+    }
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
+
   it("rejects repo-root paths outside agent-workspace", () => {
     expect(normalizeWorkspaceFilePath("apps/web/package.json")).toBeNull()
     expect(normalizeWorkspaceFilePath("/tmp/outside.md")).toBeNull()
