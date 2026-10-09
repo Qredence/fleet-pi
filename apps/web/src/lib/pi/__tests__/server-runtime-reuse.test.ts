@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => {
     releaseUserSandbox: vi.fn(() => Promise.resolve()),
     resolveDaytonaRuntimeApiKey: vi.fn(() => Promise.resolve(undefined)),
     resolveDaytonaWorkspace: vi.fn(),
+    resolveModelSelection: vi.fn((): { model?: unknown } => ({})),
+    resolveServerDefaultChatModel: vi.fn(),
     safeRealpath: vi.fn((path: string) => path),
   }
 })
@@ -99,7 +101,8 @@ vi.mock("../runtime/index", () => ({
 
 vi.mock("../runtime/model-catalog", () => ({
   applyModelSelection: mocks.applyModelSelection,
-  resolveModelSelection: vi.fn(),
+  resolveServerDefaultChatModel: mocks.resolveServerDefaultChatModel,
+  resolveModelSelection: mocks.resolveModelSelection,
 }))
 
 vi.mock("../runtime/openai-chat-completions-compat", () => ({
@@ -462,3 +465,84 @@ function createMockRuntime(sessionId: string, sessionFile: string) {
     },
   } as unknown as AgentSessionRuntime
 }
+
+describe("createPiRuntime default model for new sessions", () => {
+  const configured = { provider: "openai-chat-completions", id: "cmd-model" }
+
+  async function runFactory(
+    sessionContext: { messages: Array<unknown>; model?: unknown },
+    selectionModel?: unknown
+  ) {
+    const { createPiRuntime } = await import("../server-runtime")
+    const fresh = createMockRuntime("new-session", "new.jsonl")
+    const runtimeSessionManager = {
+      buildSessionContext: () => sessionContext,
+      getSessionFile: () => fresh.session.sessionFile,
+      getSessionId: () => fresh.session.sessionId,
+    }
+    const services = {
+      marker: "request",
+      modelRuntime: {
+        getModel: () => undefined,
+        hasConfiguredAuth: () => false,
+      },
+    }
+    mocks.createSessionServices.mockResolvedValue(services)
+    mocks.createSessionManager.mockResolvedValue({
+      sessionManager: runtimeSessionManager,
+      sessionReset: false,
+    })
+    mocks.resolveModelSelection.mockReturnValue(
+      selectionModel ? { model: selectionModel } : {}
+    )
+    mocks.createAgentSessionFromServices.mockResolvedValue({
+      session: fresh.session,
+    })
+    mocks.createAgentSessionRuntime.mockImplementation(
+      async (factory: (args: Record<string, unknown>) => Promise<unknown>) => {
+        await factory({ sessionManager: runtimeSessionManager })
+        return fresh
+      }
+    )
+    await createPiRuntime(context(), { userId: "user-a" }, undefined)
+    return mocks.createAgentSessionFromServices.mock.calls.at(-1)?.[0] as
+      { model?: unknown } | undefined
+  }
+
+  beforeEach(() => {
+    mocks.activeRecords.clear()
+    mocks.createAgentSessionFromServices.mockReset()
+    mocks.createAgentSessionRuntime.mockReset()
+    mocks.resolveServerDefaultChatModel.mockReset()
+    mocks.resolveServerDefaultChatModel.mockResolvedValue(configured)
+    mocks.getSessionDir.mockReturnValue("/repo/.fleet/sessions")
+    mocks.resolveDaytonaRuntimeApiKey.mockResolvedValue(undefined)
+    mocks.isDaytonaEnabled.mockReturnValue(false)
+  })
+
+  it("resolves the server default when a new session arrives without a model", async () => {
+    const params = await runFactory({ messages: [], model: null })
+    expect(mocks.resolveServerDefaultChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({ marker: "request" }),
+      "user-a"
+    )
+    expect(params?.model).toBe(configured)
+  })
+
+  it("keeps the client selection when one is sent", async () => {
+    const picked = { provider: "google", id: "gemini" }
+    const params = await runFactory({ messages: [], model: null }, picked)
+    expect(mocks.resolveServerDefaultChatModel).not.toHaveBeenCalled()
+    expect(params?.model).toBe(picked)
+  })
+
+  it("surfaces a clear error when no model is available", async () => {
+    mocks.resolveServerDefaultChatModel.mockRejectedValue(
+      new Error("No chat model is available")
+    )
+    await expect(runFactory({ messages: [], model: null })).rejects.toThrow(
+      "No chat model is available"
+    )
+    expect(mocks.createAgentSessionFromServices).not.toHaveBeenCalled()
+  })
+})

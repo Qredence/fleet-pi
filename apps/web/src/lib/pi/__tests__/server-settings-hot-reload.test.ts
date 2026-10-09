@@ -14,6 +14,7 @@ vi.mock("../runtime/session-factory", () => ({
 
 vi.mock("../runtime/model-catalog", () => ({
   applyModelSelection: mocks.applyModelSelection,
+  resolveServerDefaultChatModel: vi.fn(),
   resolveModelSelection: vi.fn(() => ({
     model: { provider: "google", id: "gemini-3.5-flash-new" },
     thinkingLevel: "high",
