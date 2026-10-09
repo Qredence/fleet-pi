@@ -169,9 +169,12 @@ export async function resolveUserProviderSecret(
   // deployed surfaces). Scoped to the OCC triple only; other LLM providers
   // keep the env-first behavior locally.
   if (OCC_TRIPLE_PROVIDER_IDS.has(providerId) && isLocalDbBackedUser(userId)) {
-    return (await loadDecryptedUserProviderSecrets(userId, { providerId })).get(
-      providerId
-    )
+    const saved = (
+      await loadDecryptedUserProviderSecrets(userId, { providerId })
+    ).get(providerId)
+    if (saved) return saved
+    // Nothing saved through Settings: fall back to the local env vars below
+    // (`OPENAI_CHAT_COMPLETIONS_*`), as for anonymous local chat.
   }
 
   if (LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId)) {
