@@ -37,7 +37,9 @@ async function main() {
       )
     }
     await pool.query(AUTH_POSTGRES_POST_MIGRATE_SQL)
-    console.log("Applied Better Auth post-migration step (RLS, policies, grants)")
+    console.log(
+      "Applied Better Auth post-migration step (RLS, policies, grants)"
+    )
   } finally {
     await pool.end()
   }
