@@ -33,9 +33,9 @@
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/react-query": "^5.101.1",
-    "@tanstack/react-router": "^1.170.16",
-    "@tanstack/react-start": "^1.168.26",
-    "@tanstack/router-plugin": "^1.168.18",
+    "@tanstack/react-router": "^1.170.41",
+    "@tanstack/react-start": "^1.168.60",
+    "@tanstack/router-plugin": "^1.168.42",
     "@types/better-sqlite3": "^7.6.13",
     "@workspace/hax-design": "workspace:*",
     "@workspace/pi-protocol": "workspace:*",
@@ -67,7 +67,7 @@
     "@types/react-dom": "^19.2.3",
     "@vercel/nft": "^1.10.2",
     "@vitejs/plugin-react": "^6.0.3",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.5.0",
     "happy-dom": "^20.10.6",
     "jose": "^6.1.2",
@@ -76,6 +76,6 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   }
 }
