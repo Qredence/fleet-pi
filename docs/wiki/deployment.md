@@ -70,7 +70,7 @@ See [deployment release gate](../runbooks/deployment-release-gate.md) for produc
 `.github/workflows/neon_workflow.yml` manages one Neon preview branch per same-repo PR (Dependabot and fork PRs are skipped; they have no secrets):
 
 - Project: repo variable `NEON_PROJECT_ID` (must be the non-production `soft-art-21843403` project) and secret `NEON_API_KEY`.
-- Branch: `preview/pr-<number>-<head_ref>`, child of `main`, expires after 14 days, deleted when the PR closes.
+- Branch: `preview/pr-<number>` (PR number only: stable across head-branch renames, and no branch-name injection into the delete action), child of `main`, expires after 14 days, deleted when the PR closes.
 - On open/reopen/push: `pnpm chat:migrate` (also reconciles `fleet_pi_app` grants) and `pnpm auth:migrate` on the direct owner URL, then a schema-diff comment against `main`. Connection outputs are masked.
 - Vercel previews do **not** receive the branch URL yet. Wiring it needs either the Neon–Vercel integration on the preview environment, or a `VERCEL_TOKEN` secret plus a step that sets branch-scoped `FLEET_PI_CHAT_DATABASE_URL` (pooled `fleet_pi_app` URL — the action only returns owner URLs) and `FLEET_PI_AUTH_DATABASE_URL`, together with the preview trust-zone markers checked by `verify-deployment-readiness`.
 

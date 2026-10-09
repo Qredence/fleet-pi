@@ -21,10 +21,13 @@ permissions:
   contents: read
 
 env:
-  # Same name for create, schema diff and delete. github.head_ref replaces
-  # tj-actions/branch-names (supply-chain compromise history); it is passed
-  # through env, never interpolated into a shell script.
-  NEON_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}-${{ github.head_ref }}
+  # Same name for create, schema diff and delete, derived from the PR number
+  # only (no tj-actions/branch-names, which has a supply-chain compromise
+  # history). github.head_ref is deliberately NOT used: delete-branch-action
+  # interpolates inputs.branch straight into bash with NEON_API_KEY in env, so
+  # a crafted branch name would be command injection, and a renamed head
+  # branch would orphan the original preview branch.
+  NEON_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}
 
 jobs:
   create_neon_branch:
