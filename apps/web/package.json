@@ -23,7 +23,7 @@
     "remap-auth-user-ids": "tsx scripts/remap-auth-user-ids.ts"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@daytona/sdk": "^0.197.0",
     "@aws-sdk/client-s3": "^3.1047.0",
     "@earendil-works/pi-agent-core": "^0.82.1",
