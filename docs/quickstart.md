@@ -61,6 +61,20 @@ The checked-in example only includes public-safe knobs. Typical local choices:
 - Leave `PI_AGENT_DIR` unset unless you intentionally want a non-default Pi
   agent resource directory
 
+> **`OPENAI_API_KEY` vs `OPENAI_CHAT_COMPLETIONS_*`.** `OPENAI_API_KEY` backs Pi's
+> built-in `openai` provider and is always sent to `https://api.openai.com/v1`;
+> `OPENAI_BASE_URL` and `OPENAI_MODEL` are ignored. To use a gateway or any
+> OpenAI-compatible endpoint (for example Command, OpenRouter or a self-hosted
+> server), set all three `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}`
+> instead. The base URL must be `https` (`http://localhost` is allowed in local
+> dev only) and must not point at a private host; a trailing `/chat/completions` is
+> normalized away. Only the configured model id is registered, under provider
+> `openai-chat-completions`. To make it the default, choose it in
+> **Settings > LLM Models** (this writes `defaultProvider: "openai-chat-completions"`
+> and `defaultModel` to Pi settings). If your Pi settings restrict
+> `enabledModels`, include `openai-chat-completions/<model-id>` so it shows in
+> the chat model picker.
+
 ### 3. Start the app
 
 ```zsh
