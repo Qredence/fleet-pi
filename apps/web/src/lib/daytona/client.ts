@@ -364,12 +364,54 @@ export async function deleteSnapshot(
   }
 }
 
+const VOLUME_READY_STATE = "ready"
+const VOLUME_PENDING_STATES = new Set(["pending_create", "creating"])
+const DEFAULT_VOLUME_READY_TIMEOUT_MS = 60_000
+const DEFAULT_VOLUME_READY_POLL_MS = 1_000
+
+export interface WaitForVolumeOptions {
+  timeoutMs?: number
+  pollIntervalMs?: number
+  sleep?: (ms: number) => Promise<void>
+}
+
+const defaultSleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Get (or create) a volume and wait until it is ready to mount.
+ *
+ * A freshly created volume starts in `pending_create`; mounting it straight
+ * away makes `client.create` fail with "Volume ... is not in a ready state".
+ */
 export async function getOrCreateVolume(
   client: Daytona,
-  name: string
+  name: string,
+  options: WaitForVolumeOptions = {}
 ): Promise<VolumeInfo> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_VOLUME_READY_TIMEOUT_MS
+  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_VOLUME_READY_POLL_MS
+  const sleep = options.sleep ?? defaultSleep
+
   try {
-    return toVolumeInfo(await client.volume.get(name, true))
+    let volume = toVolumeInfo(await client.volume.get(name, true))
+    let waitedMs = 0
+    while (volume.state !== undefined && volume.state !== VOLUME_READY_STATE) {
+      if (!VOLUME_PENDING_STATES.has(volume.state)) {
+        throw new Error(
+          `Daytona volume ${name} is not usable (state: ${volume.state})`
+        )
+      }
+      if (waitedMs >= timeoutMs) {
+        throw new Error(
+          `Daytona volume ${name} was not ready after ${timeoutMs}ms (state: ${volume.state})`
+        )
+      }
+      await sleep(pollIntervalMs)
+      waitedMs += pollIntervalMs
+      volume = toVolumeInfo(await client.volume.get(name))
+    }
+    return volume
   } catch (error) {
     if (error instanceof DaytonaError) {
       throw new Error(`Daytona get volume error: ${error.message}`)

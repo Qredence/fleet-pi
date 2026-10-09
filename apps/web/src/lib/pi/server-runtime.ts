@@ -259,9 +259,9 @@ export async function createPiRuntime(
     )
     if (daytona.warmUp) {
       void daytona.warmUp.catch((error) => {
-        logger.warn(
+        logger.debug(
           { error, userId: metadata.userId },
-          "[daytona] background warm-up failed; clearing fail-closed tracking"
+          "[daytona] clearing fail-closed tracking after warm-up failure"
         )
         untrackDaytonaToolSession(
           sessionManager.getSessionId(),
@@ -348,15 +348,24 @@ async function resolveDaytonaWorkspaceForUser(
     return { enabled, warmUp: undefined }
   }
 
-  return {
-    enabled,
-    warmUp: resolveUserSandboxContext({
-      userId: metadata.userId,
-      userEmail: metadata.userEmail,
-      apiKey: daytonaApiKey!,
-      surface: "chat",
-    }),
-  }
+  const warmUp = resolveUserSandboxContext({
+    userId: metadata.userId,
+    userEmail: metadata.userEmail,
+    apiKey: daytonaApiKey!,
+    surface: "chat",
+  })
+  // Mark the background warm-up handled immediately. The caller attaches its
+  // own handler only after further awaits (and not at all on the runtime-reuse
+  // path), so a fast rejection (e.g. a volume still in `pending_create`) would
+  // otherwise surface as an unhandled rejection and crash the server process.
+  warmUp.catch((error: unknown) => {
+    logger.warn(
+      { error, userId: metadata.userId },
+      "[daytona] background warm-up failed"
+    )
+  })
+
+  return { enabled, warmUp }
 }
 
 // Reuse path for a still-active runtime record: cancels the disposal timer,
