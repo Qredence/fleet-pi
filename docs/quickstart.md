@@ -74,6 +74,14 @@ The checked-in example only includes public-safe knobs. Typical local choices:
 > and `defaultModel` to Pi settings). If your Pi settings restrict
 > `enabledModels`, include `openai-chat-completions/<model-id>` so it shows in
 > the chat model picker.
+>
+> These env vars are for local (non-deployed) runs. Deployed chat surfaces
+> (Vercel, Neon Functions) never use the env API key: each signed-in user adds the
+> provider under **Settings > Providers** (API key, base URL and model are
+> stored encrypted in `pi_user_providers`); without that, the Neon AI Gateway
+> backs the `openai-chat-completions` slot. Locally, signed-in accounts backed
+> by the chat database (`FLEET_PI_CHAT_DATABASE_URL`) also prefer values saved
+> in Settings over the env vars.
 
 ### 3. Start the app
 
