@@ -28,8 +28,16 @@ async function main() {
 
   const pool = new Pool({ connectionString })
   try {
+    const role = await pool.query(
+      "SELECT 1 FROM pg_roles WHERE rolname = 'fleet_pi_app'"
+    )
+    if (role.rowCount === 0) {
+      console.warn(
+        "Warning: role fleet_pi_app does not exist on this database. Skipping its auth table policies and grants; RLS is still enabled. Create the role (see docs/runbooks.md) and re-run auth:migrate before using a fleet_pi_app connection string."
+      )
+    }
     await pool.query(AUTH_POSTGRES_POST_MIGRATE_SQL)
-    console.log("Applied Better Auth post-migration grants and disabled RLS")
+    console.log("Applied Better Auth post-migration step (RLS, policies, grants)")
   } finally {
     await pool.end()
   }

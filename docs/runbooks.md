@@ -180,8 +180,13 @@ as `neondb_owner` (full DDL).
 pnpm --filter web auth:migrate
 ```
 
-Requires `FLEET_PI_AUTH_MIGRATION_DATABASE_URL` to be set (neondb_owner connection
-string).
+Requires `FLEET_PI_AUTH_MIGRATION_DATABASE_URL` (neondb_owner connection
+string), from the environment or `.env` / `.env.local`. The Better Auth schema
+is applied with Better Auth's programmatic migration API
+(`better-auth/db/migration`); the deprecated `@better-auth/cli` is no longer
+used. If the `fleet_pi_app` role does not exist yet (e.g. a fresh dev branch),
+the post-migrate step warns and skips that role's policies and grants; create
+the role and re-run before pointing `FLEET_PI_AUTH_DATABASE_URL` at it.
 
 ### Adding new Better Auth plugins that create tables
 

@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -z "${FLEET_PI_AUTH_MIGRATION_DATABASE_URL:-}" ]; then
-  echo "Error: FLEET_PI_AUTH_MIGRATION_DATABASE_URL is not set" >&2
-  echo "This variable must contain the neondb_owner connection string." >&2
-  exit 1
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-FLEET_PI_AUTH_DATABASE_URL="$FLEET_PI_AUTH_MIGRATION_DATABASE_URL" \
-  npx @better-auth/cli@latest migrate --config "$REPO_ROOT/apps/web/src/lib/auth/server.ts" --yes
-
+# Both steps load .env/.env.local (repo root and apps/web) and require
+# FLEET_PI_AUTH_MIGRATION_DATABASE_URL (neondb_owner connection string).
+# Better Auth schema: programmatic `better-auth/db/migration` (the deprecated
+# `@better-auth/cli` could not load this repo's config).
+pnpm --filter web exec tsx scripts/auth-migrate.ts
 pnpm --filter web exec tsx scripts/auth-post-migrate.ts
