@@ -193,16 +193,58 @@ describe("getOrCreateVolume", () => {
 
   it("fails with a clear error when the volume never becomes ready", async () => {
     const { client } = volumeClient(["pending_create"])
-    const sleep = vi.fn(() => Promise.resolve())
+    let clock = 0
+    const sleep = vi.fn((ms: number) => {
+      clock += ms
+      return Promise.resolve()
+    })
 
     await expect(
       getOrCreateVolume(client, "fleet-pi-ws-u1", {
         sleep,
+        now: () => clock,
         timeoutMs: 30,
         pollIntervalMs: 10,
       })
     ).rejects.toThrow(/not ready after 30ms \(state: pending_create\)/)
     expect(sleep).toHaveBeenCalledTimes(3)
+  })
+
+  it("counts slow volume lookups toward the timeout", async () => {
+    let clock = 0
+    const get = vi.fn(() => {
+      clock += 25 // each GET takes 25ms
+      return Promise.resolve({
+        id: "vol-1",
+        name: "fleet-pi-ws-u1",
+        state: "pending_create",
+      })
+    })
+    const client = { volume: { get } } as unknown as Daytona
+    const sleep = vi.fn((ms: number) => {
+      clock += ms
+      return Promise.resolve()
+    })
+
+    await expect(
+      getOrCreateVolume(client, "fleet-pi-ws-u1", {
+        sleep,
+        now: () => clock,
+        timeoutMs: 60,
+        pollIntervalMs: 10,
+      })
+    ).rejects.toThrow(/not ready after 60ms/)
+    expect(sleep).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects a volume without a state instead of assuming it is ready", async () => {
+    const { client } = volumeClient([undefined])
+    const sleep = vi.fn(() => Promise.resolve())
+
+    await expect(
+      getOrCreateVolume(client, "fleet-pi-ws-u1", { sleep })
+    ).rejects.toThrow(/not usable \(state: unknown\)/)
+    expect(sleep).not.toHaveBeenCalled()
   })
 
   it("fails fast for unusable volume states", async () => {

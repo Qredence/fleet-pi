@@ -373,6 +373,7 @@ export interface WaitForVolumeOptions {
   timeoutMs?: number
   pollIntervalMs?: number
   sleep?: (ms: number) => Promise<void>
+  now?: () => number
 }
 
 const defaultSleep = (ms: number) =>
@@ -392,23 +393,24 @@ export async function getOrCreateVolume(
   const timeoutMs = options.timeoutMs ?? DEFAULT_VOLUME_READY_TIMEOUT_MS
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_VOLUME_READY_POLL_MS
   const sleep = options.sleep ?? defaultSleep
+  const now = options.now ?? Date.now
+  const deadline = now() + timeoutMs
 
   try {
     let volume = toVolumeInfo(await client.volume.get(name, true))
-    let waitedMs = 0
-    while (volume.state !== undefined && volume.state !== VOLUME_READY_STATE) {
-      if (!VOLUME_PENDING_STATES.has(volume.state)) {
+    while (volume.state !== VOLUME_READY_STATE) {
+      if (!volume.state || !VOLUME_PENDING_STATES.has(volume.state)) {
         throw new Error(
-          `Daytona volume ${name} is not usable (state: ${volume.state})`
+          `Daytona volume ${name} is not usable (state: ${volume.state ?? "unknown"})`
         )
       }
-      if (waitedMs >= timeoutMs) {
+      // Wall-clock deadline so slow GETs count toward the timeout too.
+      if (now() + pollIntervalMs > deadline) {
         throw new Error(
           `Daytona volume ${name} was not ready after ${timeoutMs}ms (state: ${volume.state})`
         )
       }
       await sleep(pollIntervalMs)
-      waitedMs += pollIntervalMs
       volume = toVolumeInfo(await client.volume.get(name))
     }
     return volume
