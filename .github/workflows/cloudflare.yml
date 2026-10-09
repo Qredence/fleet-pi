@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   deploy:
-    name: ${{ github.event_name == 'pull_request' && 'Preview' || 'Production' }} deploy
+    name: Deploy Worker
     if: >-
       github.event_name != 'pull_request' ||
       (contains(github.event.pull_request.labels.*.name, 'cloudflare-preview') &&
