@@ -1,21 +1,9 @@
-export const CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID =
-  "20260711_pi_session_tombstones"
-
-export const CHAT_POSTGRES_SESSION_TOMBSTONES_SQL = `
-CREATE TABLE IF NOT EXISTS pi_session_tombstones (
-  session_id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  deleted_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE pi_session_tombstones ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS pi_session_tombstones_user_isolation ON pi_session_tombstones;
-CREATE POLICY pi_session_tombstones_user_isolation ON pi_session_tombstones
-  FOR ALL
-  USING (user_id = (SELECT current_setting('app.current_user_id', true)))
-  WITH CHECK (user_id = (SELECT current_setting('app.current_user_id', true)));
-
+/**
+ * Tombstone-aware ownership probe. Shared by the tombstones migration and the
+ * post-migration reconcile step in runChatMigrations, because the base schema
+ * re-creates the function without the 'deleted' branch on every chat:migrate.
+ */
+export const CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL = `
 CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner(
   p_session_id TEXT,
   p_user_id TEXT
@@ -35,6 +23,27 @@ AS $$
     ELSE 'foreign'
   END
 $$;
+`
+
+export const CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID =
+  "20260711_pi_session_tombstones"
+
+export const CHAT_POSTGRES_SESSION_TOMBSTONES_SQL = `
+CREATE TABLE IF NOT EXISTS pi_session_tombstones (
+  session_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE pi_session_tombstones ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pi_session_tombstones_user_isolation ON pi_session_tombstones;
+CREATE POLICY pi_session_tombstones_user_isolation ON pi_session_tombstones
+  FOR ALL
+  USING (user_id = (SELECT current_setting('app.current_user_id', true)))
+  WITH CHECK (user_id = (SELECT current_setting('app.current_user_id', true)));
+
+${CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL}
 
 DO $$
 BEGIN
