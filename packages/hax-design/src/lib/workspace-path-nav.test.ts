@@ -5,6 +5,7 @@ import {
   normalizeWorkspaceFilePath,
   resolveWorkspacePanelTarget,
   resolveWorkspacePathFromToolInput,
+  stripWorktreePrefix,
 } from "./workspace-path-nav"
 
 describe("normalizeWorkspaceFilePath", () => {
@@ -157,5 +158,29 @@ describe("resolveWorkspacePathFromToolInput", () => {
         file_path: "README.md",
       })
     ).toBeNull()
+  })
+})
+
+describe("stripWorktreePrefix", () => {
+  it("returns the path after .21st/worktrees/<repo>/<branch>/", () => {
+    expect(
+      stripWorktreePrefix("/Users/me/.21st/worktrees/repo/feat/apps/web/a.ts")
+    ).toBe("apps/web/a.ts")
+  })
+
+  it("uses the leftmost complete worktree match", () => {
+    expect(
+      stripWorktreePrefix(".21st/worktrees//x/.21st/worktrees/r/b/c.ts")
+    ).toBe("c.ts")
+  })
+
+  it("returns null without two non-empty segments and a tail", () => {
+    expect(stripWorktreePrefix("/repo/src/a.ts")).toBeNull()
+    expect(stripWorktreePrefix(".21st/worktrees/repo/branch/")).toBeNull()
+    expect(stripWorktreePrefix(".21st/worktrees/repo//a.ts")).toBeNull()
+  })
+
+  it("rejects tails containing line breaks", () => {
+    expect(stripWorktreePrefix(".21st/worktrees/r/b/a\nb")).toBeNull()
   })
 })

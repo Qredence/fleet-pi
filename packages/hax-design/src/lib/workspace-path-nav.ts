@@ -50,7 +50,7 @@ const WORKTREE_MARKER = ".21st/worktrees/"
  * Linear-time replacement for `/\.21st\/worktrees\/[^/]+\/[^/]+\/(.+)$/`,
  * which CodeQL flagged as polynomial ReDoS (js/polynomial-redos).
  */
-function stripWorktreePrefix(filePath: string): string | null {
+export function stripWorktreePrefix(filePath: string): string | null {
   // `.` in the old pattern does not match line terminators, so the captured
   // tail must start after the last one.
   const lastLineBreak = Math.max(
