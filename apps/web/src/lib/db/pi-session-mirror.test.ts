@@ -304,6 +304,10 @@ describe("Pi session mirror repository", () => {
     expect(entriesQuery?.params[16]).toBe(
       '{"type":"custom","id":"custom-1","parentId":null,"timestamp":"2026-05-22T10:01:00.000Z","customType":"plan-mode","data":{"ok":true}}'
     )
+    // Skip-unchanged guard: unchanged canonical entries must not be rewritten.
+    expect(entriesQuery?.sql).toContain(
+      "WHERE pi_session_entries.raw_entry IS DISTINCT FROM EXCLUDED.raw_entry"
+    )
   })
 
   it("records run, event, tool, mutation, and finalize writes", async () => {

@@ -54,6 +54,18 @@ import {
   MIRROR_WATERMARK_MIGRATION_SQL,
 } from "../src/lib/db/chat-postgres-mirror-watermark"
 import {
+  CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
+  CHAT_POSTGRES_OPTIMIZATION_2_SQL,
+} from "../src/lib/db/chat-postgres-optimization-2"
+import {
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL,
+} from "../src/lib/db/chat-postgres-drop-recreated-indexes"
+import {
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
+} from "../src/lib/db/chat-postgres-retry-event-type-fix"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -190,6 +202,21 @@ async function main() {
       client,
       MIRROR_WATERMARK_MIGRATION_ID,
       MIRROR_WATERMARK_MIGRATION_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
+      CHAT_POSTGRES_OPTIMIZATION_2_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
+      CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
+      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL
     )
 
     await client.query("COMMIT")
