@@ -20,7 +20,9 @@ import {
 import {
   applyModelSelection,
   resolveModelSelection,
+  resolveServerDefaultChatModel,
 } from "./runtime/model-catalog"
+import { sessionHasRestorableModel } from "./runtime/default-chat-model"
 import { reconcileRuntimeOccModel } from "./runtime/openai-chat-completions-compat"
 import {
   collectDiagnostics,
@@ -296,6 +298,15 @@ export async function createPiRuntime(
 
     await applyRuntimeAuth(services, { userId: metadata.userId })
 
+    // No model from the client (e.g. sent before the picker loaded): resolve
+    // the default here so Pi never falls back to its hard-coded provider
+    // defaults. Sessions with a restorable model keep Pi's restore path.
+    const initialModel =
+      model ??
+      (sessionHasRestorableModel(runtimeSessionManager, services)
+        ? undefined
+        : await resolveServerDefaultChatModel(services, metadata.userId))
+
     // Eager warm-up ran above when Daytona is enabled. Fleet adapter extension
     // owns sandbox tool registration (not customTools). Stock npm:@daytona/pi
     // is excluded from the web resource loader.
@@ -304,7 +315,7 @@ export async function createPiRuntime(
       services,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
-      model,
+      model: initialModel,
       thinkingLevel,
       tools: CHAT_TOOL_ALLOWLIST,
     })
