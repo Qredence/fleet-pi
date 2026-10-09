@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { ChatSessionInfo } from "@workspace/pi-protocol/chat-protocol"
+import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
 
 const SessionManager = {
   create: vi.fn(),
@@ -207,5 +209,91 @@ describe("createSessionManager", () => {
       sessionFile: sessionFileA,
       sessionId: "session-a",
     })
+  })
+})
+
+describe("mergeChatSessionLists", () => {
+  const local = (
+    id: string,
+    modified: string,
+    messageCount = 2
+  ): ChatSessionInfo => ({
+    path: `/sessions/${id}.jsonl`,
+    id,
+    cwd: "/repo",
+    created: "2026-05-22T09:00:00.000Z",
+    modified,
+    messageCount,
+    firstMessage: `local ${id}`,
+  })
+  const mirror = (
+    id: string,
+    updatedAt: string,
+    messageCount = 2
+  ): PiSessionSummaryRow => ({
+    id,
+    session_file_path: `/old/${id}.jsonl`,
+    cwd: "/repo",
+    name: null,
+    first_message_preview: `mirror ${id}`,
+    message_count: messageCount,
+    created_at: new Date("2026-05-22T09:00:00.000Z"),
+    updated_at: updatedAt,
+  })
+
+  it("adds mirror-only sessions so history survives a missing local JSONL", async () => {
+    const { mergeChatSessionLists } = await import("./server-sessions")
+
+    const result = mergeChatSessionLists(
+      [],
+      [mirror("from-neon", "2026-05-22T10:00:00.000Z")]
+    )
+
+    expect(result).toEqual([
+      {
+        path: "/old/from-neon.jsonl",
+        id: "from-neon",
+        cwd: "/repo",
+        created: "2026-05-22T09:00:00.000Z",
+        modified: "2026-05-22T10:00:00.000Z",
+        messageCount: 2,
+        firstMessage: "mirror from-neon",
+      },
+    ])
+  })
+
+  it("prefers the local working copy when both exist and hides unowned local files", async () => {
+    const { mergeChatSessionLists } = await import("./server-sessions")
+
+    const result = mergeChatSessionLists(
+      [
+        local("both", "2026-05-22T12:00:00.000Z", 5),
+        local("not-owned", "2026-05-22T13:00:00.000Z"),
+      ],
+      [
+        mirror("both", "2026-05-22T11:00:00.000Z", 3),
+        mirror("neon-only", "2026-05-22T11:30:00.000Z"),
+      ]
+    )
+
+    expect(result.map((s) => [s.id, s.firstMessage, s.messageCount])).toEqual([
+      ["both", "local both", 5],
+      ["neon-only", "mirror neon-only", 2],
+    ])
+  })
+
+  it("skips empty mirror-only sessions and sorts newest first", async () => {
+    const { mergeChatSessionLists } = await import("./server-sessions")
+
+    const result = mergeChatSessionLists(
+      [],
+      [
+        mirror("older", "2026-05-20T10:00:00.000Z"),
+        mirror("empty", "2026-05-23T10:00:00.000Z", 0),
+        mirror("newer", "2026-05-22T10:00:00.000Z"),
+      ]
+    )
+
+    expect(result.map((s) => s.id)).toEqual(["newer", "older"])
   })
 })

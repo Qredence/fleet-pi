@@ -23,14 +23,17 @@ CREATE TABLE IF NOT EXISTS pi_sessions (
   message_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
-  last_synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  last_synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_synced_entry_id TEXT,
+  last_synced_entry_timestamp TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS pi_sessions_user_updated_idx
 ON pi_sessions(user_id, updated_at DESC);
 
-CREATE INDEX IF NOT EXISTS pi_sessions_cwd_updated_idx
-ON pi_sessions(cwd, updated_at DESC);
+-- No cwd filter exists; pi_sessions_cwd_updated_idx was dropped by
+-- 20260803_drop_unused_indexes and must NOT be recreated here (the schema SQL
+-- runs before the recorded migrations on every chat:migrate run).
 
 -- Enable RLS on pi_sessions to enforce user ownership at the database level
 ALTER TABLE IF EXISTS pi_sessions ENABLE ROW LEVEL SECURITY;
@@ -95,8 +98,8 @@ CREATE TABLE IF NOT EXISTS pi_runs (
 CREATE INDEX IF NOT EXISTS pi_runs_session_idx
 ON pi_runs(session_id, session_turn_index);
 
-CREATE INDEX IF NOT EXISTS pi_runs_status_idx
-ON pi_runs(status, completed_at, started_at);
+-- No status filter exists; pi_runs_status_idx was dropped by
+-- 20260803_drop_unused_indexes and must NOT be recreated here.
 
 CREATE TABLE IF NOT EXISTS pi_run_events (
   run_id TEXT NOT NULL REFERENCES pi_runs(id) ON DELETE CASCADE,
@@ -146,11 +149,11 @@ CREATE TABLE IF NOT EXISTS pi_file_mutations (
   UNIQUE(run_id, canonical_path)
 );
 
-CREATE INDEX IF NOT EXISTS pi_file_mutations_run_idx
-ON pi_file_mutations(run_id, canonical_path);
-
-CREATE INDEX IF NOT EXISTS pi_file_mutations_path_idx
-ON pi_file_mutations(canonical_path, recorded_at, run_id);
+-- pi_file_mutations is a write-only audit trail (see its COMMENT). Only the
+-- UNIQUE (run_id, canonical_path) key above is kept: the duplicate
+-- pi_file_mutations_run_idx and the never-scanned path_idx were dropped
+-- (20260803_drop_unused_indexes / 20260807_db_optimization_2) and must NOT be
+-- recreated here.
 
 CREATE TABLE IF NOT EXISTS pi_user_providers (
   user_id TEXT NOT NULL,

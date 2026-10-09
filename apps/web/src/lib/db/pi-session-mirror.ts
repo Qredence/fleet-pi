@@ -45,7 +45,6 @@ export type PiSessionMirrorInput = {
   createdAt: string
   updatedAt: string
   entries: Array<PiSessionEntryMirrorInput>
-  lastSyncedEntryId?: string // Watermark for incremental sync (entry ID-based)
 }
 
 export type PiSessionEntryMirrorInput = {
@@ -225,28 +224,8 @@ export function extractPiSessionMirrorInput(
     messageCount: entries.filter((entry) => entry.type === "message").length,
     createdAt,
     updatedAt,
-    lastSyncedEntryId: getLastSyncedEntryId(sessionManager),
     entries: entries.map((entry) => mapSessionEntryToMirrorRow(header, entry)),
   }
-}
-
-// Track the last synced entry ID as a watermark for incremental sync
-/**
- * Get the last synced entry ID as watermark for incremental sync.
- * Uses the second-to-last entry by index for robustness against compaction reordering.
- */
-function getLastSyncedEntryId(
-  sessionManager: SessionManager
-): string | undefined {
-  const entries = sessionManager.getEntries()
-
-  // Revert to index-based for safety - Pi library guarantees chronological order
-  if (entries.length >= 2) {
-    // Return the ID of the second-to-last entry
-    return entries[entries.length - 2].id
-  }
-
-  return entries.length === 1 ? entries[0].id : undefined
 }
 
 export function mapSessionEntryToMirrorRow(
@@ -301,10 +280,91 @@ export async function fetchUserSessionIds(
   }
 }
 
+/** Session list row read back from the Neon mirror (`pi_sessions`). */
+export type PiSessionSummaryRow = {
+  id: string
+  session_file_path: string
+  cwd: string
+  name: string | null
+  first_message_preview: string | null
+  message_count: number
+  created_at: string | Date
+  updated_at: string | Date
+}
+
+const PI_SESSION_SUMMARY_LIMIT = 500
+
+/**
+ * Lists the caller's mirrored sessions, newest first. Must run inside
+ * `withUserContext` so FORCE RLS scopes rows to `app.current_user_id`; the
+ * explicit `user_id` predicate keeps the index path and fails closed if the
+ * RLS context is ever missing. Tombstoned sessions are excluded.
+ */
+export async function queryUserSessionSummaries(
+  client: PostgresQueryClient,
+  userId: string
+): Promise<Array<PiSessionSummaryRow>> {
+  const result = await client.query<PiSessionSummaryRow>(
+    `
+      SELECT
+        s.id,
+        s.session_file_path,
+        s.cwd,
+        s.name,
+        s.first_message_preview,
+        s.message_count,
+        s.created_at,
+        s.updated_at
+      FROM pi_sessions s
+      WHERE s.user_id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM pi_session_tombstones t WHERE t.session_id = s.id
+        )
+      ORDER BY s.updated_at DESC
+      LIMIT ${PI_SESSION_SUMMARY_LIMIT}
+    `,
+    [userId]
+  )
+  return result.rows.filter((row) => !isPiSessionDeleted(row.id))
+}
+
+/**
+ * Reads the caller's session list from Postgres (pooled `fleet_pi_app`
+ * connection, RLS via `app.current_user_id`). Returns [] when the mirror is
+ * disabled or the read fails, matching `fetchUserSessionIds` (fail closed).
+ */
+export async function fetchUserSessionSummaries(
+  userId: string
+): Promise<Array<PiSessionSummaryRow>> {
+  if (!isPiSessionMirrorEnabled()) return []
+
+  const pool = getChatPostgresPool()
+  if (!pool) return []
+
+  try {
+    return await withUserContext(pool, userId, (client) =>
+      queryUserSessionSummaries(client, userId)
+    )
+  } catch (error) {
+    logger.warn(
+      { error, userId },
+      "[pi-session-mirror] failed to fetch user session summaries"
+    )
+    return []
+  }
+}
+
 export async function upsertPiSessionMirror(
   client: PostgresQueryClient,
   input: PiSessionMirrorInput
 ) {
+  // Read the persisted sync watermark + prior entry count BEFORE the session
+  // upsert below, which overwrites `entry_count` with the incoming value.
+  const priorState =
+    input.entries.length > 0
+      ? await readPiSessionSyncState(client, input.id)
+      : null
+
   await client.query(
     `
       INSERT INTO pi_sessions (
@@ -356,9 +416,9 @@ export async function upsertPiSessionMirror(
     ]
   )
 
-  if (input.entries.length > 0) {
-    // Incremental sync: only upsert entries newer than the watermark
-    await upsertPiSessionEntriesIncremental(client, input)
+  if (input.entries.length > 0 && priorState) {
+    // Incremental sync: only upsert entries newer than the persisted watermark
+    await upsertPiSessionEntriesIncremental(client, input, priorState)
   }
 }
 
@@ -423,31 +483,49 @@ export async function appendPiRunEvent(
   client: PostgresQueryClient,
   input: AppendPiRunEventInput
 ) {
-  await client.query(
-    `
-      INSERT INTO pi_run_events (
-        run_id,
-        sequence,
-        event_type,
-        summary,
-        payload,
-        recorded_at
-      ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
-      ON CONFLICT (run_id, sequence) DO UPDATE SET
-        event_type = EXCLUDED.event_type,
-        summary = EXCLUDED.summary,
-        payload = EXCLUDED.payload,
-        recorded_at = EXCLUDED.recorded_at
-    `,
-    [
+  await appendPiRunEvents(client, [input])
+}
+
+const PI_RUN_EVENTS_COLUMNS = [
+  "run_id",
+  "sequence",
+  "event_type",
+  "summary",
+  { name: "payload", cast: "jsonb" },
+  "recorded_at",
+] as const
+
+const PI_RUN_EVENTS_ON_CONFLICT_SQL = `ON CONFLICT (run_id, sequence) DO UPDATE SET
+          event_type = EXCLUDED.event_type,
+          summary = EXCLUDED.summary,
+          payload = EXCLUDED.payload,
+          recorded_at = EXCLUDED.recorded_at`
+
+/**
+ * Batch-inserts run stream events in a single chunked multi-row INSERT. The
+ * mirror sink buffers events per run and flushes them here at finalize/close,
+ * so a turn with N events costs ~N/50 round trips instead of one INSERT per
+ * event (run events were the only mirror table still writing row-by-row while
+ * session entries and file mutations already batch through insertRowsChunked).
+ */
+export async function appendPiRunEvents(
+  client: PostgresQueryClient,
+  events: Array<AppendPiRunEventInput>
+) {
+  await insertRowsChunked(client, {
+    table: "pi_run_events",
+    columns: [...PI_RUN_EVENTS_COLUMNS],
+    rows: events,
+    serializeRow: (input) => [
       input.runId,
       input.sequence,
       input.eventType,
       input.summary ?? null,
       JSON.stringify(sanitizeForMirror(input.payload)),
       input.recordedAt,
-    ]
-  )
+    ],
+    onConflictSql: PI_RUN_EVENTS_ON_CONFLICT_SQL,
+  })
 }
 
 export async function upsertPiToolExecution(
@@ -644,7 +722,11 @@ export async function withChatPostgresTransaction(
   await withUserContext(pool, userId, operation)
 }
 
-// On conflict, refresh every mirrored column and bump the sync timestamp.
+// On conflict, refresh every mirrored column and bump the sync timestamp —
+// unless the canonical entry JSON is unchanged, so replaying the same session
+// does not rewrite rows that already match (~10x fewer updates in practice).
+// raw_entry is the source of truth; the projected columns (content_text,
+// summary, …) only change with it.
 const PI_SESSION_ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) DO UPDATE SET
           parent_entry_id = EXCLUDED.parent_entry_id,
           entry_type = EXCLUDED.entry_type,
@@ -662,7 +744,8 @@ const PI_SESSION_ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) D
           cost_total = EXCLUDED.cost_total,
           raw_entry = EXCLUDED.raw_entry,
           entry_timestamp = EXCLUDED.entry_timestamp,
-          synced_at = now()`
+          synced_at = now()
+        WHERE pi_session_entries.raw_entry IS DISTINCT FROM EXCLUDED.raw_entry`
 
 async function upsertPiSessionEntriesBatch(
   client: PostgresQueryClient,
@@ -718,29 +801,124 @@ async function upsertPiSessionEntriesBatch(
   })
 }
 
-// Incremental sync: only insert/update entries newer than lastSyncedEntryId
-// For a session with N entries, reduces writes from O(N) to O(newEntriesPerTurn)
+// Incremental sync: only upsert entries newer than the persisted watermark.
+// For a session with N entries, reduces writes from O(N) to O(newEntriesPerTurn).
+type PiSessionSyncState = {
+  watermark: { entryId: string; entryTimestamp: string | Date } | null
+  entryCount: number
+}
+
+async function readPiSessionSyncState(
+  client: PostgresQueryClient,
+  sessionId: string
+): Promise<PiSessionSyncState> {
+  const result = await client.query<{
+    last_synced_entry_id: string | null
+    last_synced_entry_timestamp: string | Date | null
+    entry_count: number | null
+  }>(
+    `SELECT last_synced_entry_id, last_synced_entry_timestamp, entry_count
+     FROM pi_sessions
+     WHERE id = $1`,
+    [sessionId]
+  )
+  const rows = result.rows
+  if (rows.length === 0) {
+    return { watermark: null, entryCount: 0 }
+  }
+  const row = rows[0]
+  if (!row.last_synced_entry_id || !row.last_synced_entry_timestamp) {
+    return { watermark: null, entryCount: row.entry_count ?? 0 }
+  }
+  return {
+    watermark: {
+      entryId: row.last_synced_entry_id,
+      entryTimestamp: row.last_synced_entry_timestamp,
+    },
+    entryCount: row.entry_count ?? 0,
+  }
+}
+
+function toIsoTimestamp(value: string | Date): string {
+  return typeof value === "string" ? value : value.toISOString()
+}
+
+// A new entry is any entry that comes after the watermark in the recovery
+// ordering (entry_timestamp ASC, entry_id ASC). This tie-break guarantees an
+// unmirrored entry sharing the watermark's timestamp but with a later id is
+// never skipped.
+function isEntryAfterWatermark(
+  entry: PiSessionEntryMirrorInput,
+  watermark: { entryId: string; entryTimestamp: string | Date }
+): boolean {
+  const watermarkTimestamp = toIsoTimestamp(watermark.entryTimestamp)
+  if (entry.entryTimestamp > watermarkTimestamp) return true
+  if (entry.entryTimestamp < watermarkTimestamp) return false
+  return entry.entryId > watermark.entryId
+}
+
+// The watermark must be the maximum entry in the synced batch by the recovery
+// ordering, not merely the last array element, so it stays correct even when
+// entries with equal timestamps arrive out of id order.
+function pickWatermarkEntry(
+  entries: Array<PiSessionEntryMirrorInput>
+): PiSessionEntryMirrorInput | undefined {
+  return entries.reduce<PiSessionEntryMirrorInput | undefined>((max, entry) => {
+    if (!max) return entry
+    return isEntryAfterWatermark(entry, {
+      entryId: max.entryId,
+      entryTimestamp: max.entryTimestamp,
+    })
+      ? entry
+      : max
+  }, undefined)
+}
+
 async function upsertPiSessionEntriesIncremental(
   client: PostgresQueryClient,
-  input: PiSessionMirrorInput
+  input: PiSessionMirrorInput,
+  priorState: PiSessionSyncState
 ) {
-  // Find the first entry that's newer than the last synced watermark (ID-based)
-  const newEntries = input.entries.filter(
-    (entry) => entry.entryId !== input.lastSyncedEntryId
-  )
+  // Correctness-first fallbacks: no persisted watermark (first sync) or the
+  // input has fewer entries than the DB already holds (compaction/rollback
+  // reordering) trigger a full upsert to self-heal — never trust the
+  // watermark when in doubt.
+  const shouldFullSync =
+    !priorState.watermark || input.entryCount < priorState.entryCount
+
+  const newEntries = shouldFullSync
+    ? input.entries
+    : input.entries.filter((entry) =>
+        isEntryAfterWatermark(entry, priorState.watermark!)
+      )
 
   logger.debug(
     {
       sessionId: input.id,
       totalEntries: input.entries.length,
       newEntries: newEntries.length,
-      lastSyncedEntryId: input.lastSyncedEntryId,
+      fullSync: shouldFullSync,
+      watermarkEntryId: priorState.watermark?.entryId ?? null,
     },
     "[pi-session-mirror] incremental sync delta"
   )
 
   if (newEntries.length > 0) {
     await upsertPiSessionEntriesBatch(client, newEntries)
+
+    // Advance the watermark to the last synced entry in the SAME transaction
+    // as the entries upsert; if the upsert throws, this update is skipped and
+    // the transaction rolls back so the watermark never advances past data
+    // that was not actually mirrored.
+    const watermarkEntry = pickWatermarkEntry(newEntries)
+    if (watermarkEntry) {
+      await client.query(
+        `UPDATE pi_sessions
+         SET last_synced_entry_id = $2, last_synced_entry_timestamp = $3
+         WHERE id = $1`,
+        [input.id, watermarkEntry.entryId, watermarkEntry.entryTimestamp]
+      )
+    }
   }
 }
 

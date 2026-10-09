@@ -19,6 +19,7 @@ import type {
   ChatSessionResponse,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
 import {
   hydrateSessionFileFromObjectStorage,
   inferSessionIdFromFile,
@@ -27,7 +28,7 @@ import {
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import {
-  fetchUserSessionIds,
+  fetchUserSessionSummaries,
   syncPiSessionMirrorSafely,
 } from "@/lib/db/pi-session-mirror"
 
@@ -139,19 +140,11 @@ export async function listChatSessions(
   const services = await createSessionServices(context, undefined, {
     userId: options.userId,
   })
-  let sessions = await SessionManager.list(
+  const sessions = await SessionManager.list(
     context.projectRoot,
     getSessionDir(context.projectRoot, services, { userId: options.userId })
   )
-
-  if (options.userId) {
-    const allowedIds = new Set(await fetchUserSessionIds(options.userId))
-    if (isPiSessionMirrorEnabled()) {
-      sessions = sessions.filter((s) => allowedIds.has(s.id))
-    }
-  }
-
-  return sessions.map((session) => ({
+  const localSessions: Array<ChatSessionInfo> = sessions.map((session) => ({
     path: session.path,
     id: session.id,
     cwd: session.cwd,
@@ -161,6 +154,63 @@ export async function listChatSessions(
     messageCount: session.messageCount,
     firstMessage: normalizeSessionLabel(session.firstMessage),
   }))
+
+  if (!options.userId || !isPiSessionMirrorEnabled()) {
+    return localSessions
+  }
+
+  // Neon is the source of truth for which sessions a user owns: local JSONL is
+  // only a working copy (ephemeral on Vercel / Neon Functions). Opening a
+  // mirror-only entry goes through resolveSessionFileWithRecovery, which
+  // rebuilds the JSONL from pi_session_entries.
+  const mirrored = await fetchUserSessionSummaries(options.userId)
+  return mergeChatSessionLists(localSessions, mirrored)
+}
+
+/**
+ * Merges local JSONL sessions with the caller's Neon-mirrored sessions by id.
+ *
+ * - Only sessions present in the mirror are returned (ownership is decided by
+ *   Postgres/RLS; unowned or tombstoned local files are hidden).
+ * - When both exist, the local entry wins: it can hold entries newer than the
+ *   last mirror sync.
+ * - Mirror-only sessions with no messages are skipped (fresh, unused chats).
+ * - Result is sorted by `modified`, newest first.
+ */
+export function mergeChatSessionLists(
+  localSessions: Array<ChatSessionInfo>,
+  mirroredSessions: Array<PiSessionSummaryRow>
+): Array<ChatSessionInfo> {
+  const mirroredById = new Map(mirroredSessions.map((row) => [row.id, row]))
+  const merged = new Map<string, ChatSessionInfo>()
+
+  for (const session of localSessions) {
+    if (mirroredById.has(session.id)) merged.set(session.id, session)
+  }
+
+  for (const row of mirroredSessions) {
+    if (merged.has(row.id) || row.message_count <= 0) continue
+    merged.set(row.id, toChatSessionInfoFromMirror(row))
+  }
+
+  return [...merged.values()].sort((a, b) =>
+    b.modified.localeCompare(a.modified)
+  )
+}
+
+function toChatSessionInfoFromMirror(
+  row: PiSessionSummaryRow
+): ChatSessionInfo {
+  return {
+    path: row.session_file_path,
+    id: row.id,
+    cwd: row.cwd,
+    ...(row.name ? { name: row.name } : {}),
+    created: new Date(row.created_at).toISOString(),
+    modified: new Date(row.updated_at).toISOString(),
+    messageCount: row.message_count,
+    firstMessage: normalizeSessionLabel(row.first_message_preview ?? ""),
+  }
 }
 
 export async function createSessionManager(

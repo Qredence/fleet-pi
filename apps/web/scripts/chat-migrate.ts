@@ -50,6 +50,23 @@ import {
   CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
 } from "../src/lib/db/chat-postgres-drop-unused-indexes"
 import {
+  MIRROR_WATERMARK_MIGRATION_ID,
+  MIRROR_WATERMARK_MIGRATION_SQL,
+} from "../src/lib/db/chat-postgres-mirror-watermark"
+import {
+  CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
+  CHAT_POSTGRES_OPTIMIZATION_2_SQL,
+} from "../src/lib/db/chat-postgres-optimization-2"
+import {
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL,
+} from "../src/lib/db/chat-postgres-drop-recreated-indexes"
+import {
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
+} from "../src/lib/db/chat-postgres-retry-event-type-fix"
+import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "../src/lib/db/chat-postgres-app-role-grants"
+import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
 } from "../src/lib/db/chat-postgres-schema"
@@ -182,6 +199,31 @@ async function main() {
       CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
       CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL
     )
+    await applyMigrationIfNeeded(
+      client,
+      MIRROR_WATERMARK_MIGRATION_ID,
+      MIRROR_WATERMARK_MIGRATION_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
+      CHAT_POSTGRES_OPTIMIZATION_2_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
+      CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL
+    )
+    await applyMigrationIfNeeded(
+      client,
+      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
+      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL
+    )
+
+    // Not ledger-gated: re-assert fleet_pi_app grants every run so a role
+    // created after the migrations were recorded still gets its privileges.
+    await client.query(CHAT_POSTGRES_APP_ROLE_GRANTS_SQL)
+    console.log("Reconciled fleet_pi_app grants")
 
     await client.query("COMMIT")
   } catch (error) {
