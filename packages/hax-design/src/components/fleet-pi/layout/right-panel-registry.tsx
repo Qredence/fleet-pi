@@ -19,7 +19,7 @@ import type {
   QueueState,
   WorkspaceFileResponse,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 import type { ChatModelOption } from "../../../lib/pi/chat-helpers"
 
 export type ActiveRightPanel = Exclude<RightPanel, null>

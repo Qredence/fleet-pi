@@ -18,7 +18,7 @@ import type { RightPanel } from "../../../lib/canvas-utils"
 import type {
   ChatResourcesResponse,
   WorkspaceTreeResponse,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 /** Reads panel state from RightPanelProvider — no prop threading from route. */
 export function RightPanelLauncherFromContext() {
   const { rightPanel, setRightPanel, resources } = useChatPanelDataContext()
@@ -197,7 +197,7 @@ export function MobilePanel({
                     <button
                       type="button"
                       onClick={onClose}
-                      className={`${HIT_AREA_EXPAND_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
+                      className={`${HIT_AREA_EXPAND_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-sm text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
                       aria-label="Close panel"
                       title="Close panel"
                     >

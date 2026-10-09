@@ -7,7 +7,7 @@ import {
   storeWorkspaceTreeWidth,
 } from "../../../../lib/workspace-tree-width"
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react"
-import type { WorkspaceTreeResponse } from "../../../../lib/pi/chat-protocol"
+import type { WorkspaceTreeResponse } from "@workspace/pi-protocol/chat-protocol"
 
 export function useWorkspaceSplitLayout(
   workspace: WorkspaceTreeResponse | null

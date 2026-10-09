@@ -82,3 +82,18 @@ export function normalizeSessionLabel(label: string): string {
   }
   return trimmed
 }
+
+/**
+ * Detects a 403 "Daytona not connected" failure from the chat/workspace APIs.
+ * The server throws `DaytonaCredentialRequiredError` (status 403) when a
+ * deployed user has no Daytona BYOK key, and the typed client surfaces it as a
+ * `ChatRequestError` with `status === 403`. This helper lets UI surfaces render
+ * a friendly disconnected state instead of the raw `daytona_credential_required`
+ * message. It is structurally typed so hax-design need not import the app layer.
+ */
+export function isDaytonaNotConnectedError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  if (!(error instanceof Error)) return false
+  if (error.name !== "ChatRequestError") return false
+  return (error as { status?: unknown }).status === 403
+}

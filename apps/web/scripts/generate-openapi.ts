@@ -4,6 +4,7 @@ import {
   OpenAPIRegistry,
   OpenApiGeneratorV31,
 } from "@asteasolutions/zod-to-openapi"
+import { format, resolveConfig } from "prettier"
 import { z } from "zod"
 import {
   ChatCommandsResponseSchema,
@@ -27,6 +28,7 @@ import {
   ChatStreamEventSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
+  WorkspaceFileResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
 
 const registry = new OpenAPIRegistry()
@@ -734,11 +736,7 @@ registry.registerPath({
       description: "File preview",
       content: {
         "application/json": {
-          schema: z.object({
-            path: z.string(),
-            content: z.string(),
-            mimeType: z.string().optional(),
-          }),
+          schema: WorkspaceFileResponseSchema,
         },
       },
     },
@@ -839,5 +837,13 @@ const doc = generator.generateDocument({
 })
 
 const outPath = join(process.cwd(), "openapi.json")
-writeFileSync(outPath, JSON.stringify(doc, null, 2))
+// Format with the repo's Prettier config so regeneration is diff-stable
+// against the (lint-staged formatted) committed document.
+const prettierConfig = await resolveConfig(outPath)
+const formatted = await format(JSON.stringify(doc, null, 2), {
+  ...prettierConfig,
+  parser: "json",
+  filepath: outPath,
+})
+writeFileSync(outPath, formatted)
 console.log(`openapi.json written to ${outPath}`)

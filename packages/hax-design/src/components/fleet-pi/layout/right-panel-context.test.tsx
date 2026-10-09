@@ -13,7 +13,7 @@ import type {
   SettingsActionsContextValue,
   WorkspaceTreeContextValue,
 } from "./right-panel-context"
-import type { ChatSettingsResponse } from "../../../lib/pi/chat-protocol"
+import type { ChatSettingsResponse } from "@workspace/pi-protocol/chat-protocol"
 
 const SETTINGS_RESPONSE: ChatSettingsResponse = {
   diagnostics: [],

@@ -9,7 +9,7 @@ import type { ReactNode } from "react"
 import type {
   ChatPiSettings,
   ChatResourcesResponse,
-} from "../../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ResourcesSectionScope = "skills" | "harness"
 

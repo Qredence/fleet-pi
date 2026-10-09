@@ -183,6 +183,16 @@ function disposeRuntimeRecord(record: ActiveSessionRecord) {
   void record.runtime.dispose()
 }
 
+// Disposes a runtime that is being replaced by a newer one for the same
+// session. Unlike disposeRuntimeRecord, it keeps the active-session record
+// (the record is immediately reassigned to the new runtime) and does not
+// release the user's sandbox (the replacement runtime still needs it).
+function disposeReplacedRuntime(record: ActiveSessionRecord) {
+  clearPlanModeSession(record.sessionId)
+  untrackDaytonaToolSession(record.sessionId, record.sessionFile)
+  void record.runtime.dispose()
+}
+
 export async function queuePromptOnActiveSession(
   metadata: ChatRuntimeMetadata,
   prompt: string,
@@ -344,7 +354,6 @@ async function resolveDaytonaWorkspaceForUser(
         executeCommand(cachedSandbox.sandbox, cmd, cwd),
     })
     context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
-    context.workspaceBootstrap = undefined
     return { enabled, warmUp: undefined }
   }
 
@@ -488,8 +497,21 @@ function trackRuntime(runtime: AgentSessionRuntime, userId?: string) {
   }
 
   const session = runtime.session
+  const existing = runtimeRecords.get(session.sessionId)
+  if (existing && existing.runtime !== runtime) {
+    // A different runtime is being tracked for the same session. Cancel any
+    // pending disposal for the current runtime and dispose it before replacing
+    // it, so the old runtime is never left to leak and a stale timer can never
+    // dispose the newly-assigned (in-use) runtime.
+    if (existing.disposeTimer) {
+      clearTimeout(existing.disposeTimer)
+      existing.disposeTimer = undefined
+    }
+    disposeReplacedRuntime(existing)
+  }
+
   const record =
-    runtimeRecords.get(session.sessionId) ??
+    existing ??
     ({
       runtime,
       sessionFile: session.sessionFile,
@@ -536,12 +558,17 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
     record.disposeTimer = undefined
   }
 
+  // Capture the runtime instance at scheduling time. If the record is later
+  // reassigned to a different (newer) runtime, this scheduled disposal aborts
+  // so a stale timer never disposes the in-use runtime.
+  const expectedRuntime = record.runtime
   record.disposeTimer = setTimeout(
     () => {
       const current = runtimeRecords.get(record.sessionId)
       if (
         !current ||
         current !== record ||
+        current.runtime !== expectedRuntime ||
         current.runtime.session.isStreaming
       ) {
         return
@@ -557,6 +584,7 @@ function scheduleRuntimeDisposal(record: ActiveSessionRecord) {
       if (
         !finalCheck ||
         finalCheck !== record ||
+        finalCheck.runtime !== expectedRuntime ||
         finalCheck.runtime.session.isStreaming
       ) {
         return

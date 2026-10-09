@@ -20,7 +20,7 @@ const discreteTabTriggerVariants = cva(
   {
     variants: {
       size: {
-        default: "text-[12px] [&_svg:not([class*='size-'])]:size-[14px]",
+        default: "text-label [&_svg:not([class*='size-'])]:size-[14px]",
         compact: "h-8 px-2 text-[11px] [&_svg:not([class*='size-'])]:size-3.5",
       },
       state: {

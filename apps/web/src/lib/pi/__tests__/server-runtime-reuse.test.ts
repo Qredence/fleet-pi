@@ -370,6 +370,76 @@ describe("createPiRuntime active reuse", () => {
     }
     clearTimeout(record.disposeTimer)
   })
+
+  it("concurrent first-turn creation disposes the first-resolved runtime once and keeps the survivor streaming", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    try {
+      const { createPiRuntime, retainPiRuntime } =
+        await import("../server-runtime")
+      const sessionFile = "/repo/.fleet/sessions/race.jsonl"
+      const first = createMockRuntime("race", sessionFile)
+      const second = createMockRuntime("race", sessionFile)
+
+      mocks.createSessionManager.mockResolvedValue({
+        sessionManager: {
+          getSessionFile: () => sessionFile,
+          getSessionId: () => "race",
+        },
+        sessionReset: true,
+      })
+      let resolveSecond!: (runtime: AgentSessionRuntime) => void
+      mocks.createAgentSessionRuntime
+        .mockImplementationOnce(() => Promise.resolve(first))
+        .mockImplementationOnce(
+          () =>
+            new Promise<AgentSessionRuntime>((resolve) => {
+              resolveSecond = resolve
+            })
+        )
+
+      // Both turns start before either runtime is tracked, so both pass the
+      // early reuse check and each creates its own runtime for the session.
+      const firstTurn = createPiRuntime(
+        context(),
+        { sessionId: "race", sessionFile, userId: "user-a" },
+        undefined
+      )
+      const secondTurn = createPiRuntime(
+        context(),
+        { sessionId: "race", sessionFile, userId: "user-a" },
+        undefined
+      )
+
+      // The first-resolved turn retains + releases, scheduling a disposal.
+      const firstResult = await firstTurn
+      const releaseFirst = retainPiRuntime(firstResult.runtime, "user-a")
+      releaseFirst()
+
+      // Let the second creation resolve; it replaces the first runtime.
+      resolveSecond(second)
+      const secondResult = await secondTurn
+      retainPiRuntime(secondResult.runtime, "user-a")
+
+      // The replaced (first-resolved) runtime is disposed exactly once.
+      expect(first.dispose).toHaveBeenCalledTimes(1)
+      expect(second.dispose).not.toHaveBeenCalled()
+
+      // The survivor still streams.
+      await expect(second.session.prompt("hello")).resolves.toBeUndefined()
+      expect(second.session.prompt).toHaveBeenCalledWith("hello")
+
+      // No stale scheduled disposal (for the first-resolved runtime) can
+      // ever dispose the survivor.
+      await vi.runOnlyPendingTimersAsync()
+      expect(second.dispose).not.toHaveBeenCalled()
+      expect(first.dispose).toHaveBeenCalledTimes(1)
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
 })
 
 function context() {
@@ -386,6 +456,7 @@ function createMockRuntime(sessionId: string, sessionFile: string) {
     services: { marker: "runtime" },
     session: {
       isStreaming: false,
+      prompt: vi.fn(() => Promise.resolve()),
       sessionFile,
       sessionId,
     },

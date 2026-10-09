@@ -1,7 +1,6 @@
 import { realpathSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace/workspace-contract"
-import type { WorkspaceHealthResponse } from "./workspace/bootstrap-agent-workspace"
 import type { WorkspaceFS } from "./workspace/workspace-fs"
 
 const DEFAULT_PROJECT_ROOT = process.cwd()
@@ -15,7 +14,6 @@ export function getDefaultProjectRoot() {
 export type AppRuntimeContext = {
   projectRoot: string
   workspaceRoot: string
-  workspaceBootstrap?: Promise<WorkspaceHealthResponse>
   workspaceFS?: WorkspaceFS
 }
 
@@ -33,6 +31,12 @@ export class RequestContextError extends Error {
     readonly status: number
   ) {
     super(message)
+  }
+}
+
+export class DaytonaCredentialRequiredError extends RequestContextError {
+  constructor() {
+    super("daytona_credential_required", 403)
   }
 }
 

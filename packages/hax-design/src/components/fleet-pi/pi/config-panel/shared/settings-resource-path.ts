@@ -1,4 +1,4 @@
-import type { ChatResourceInfo } from "../../../../../lib/pi/chat-protocol"
+import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
 
 /** Discovery provenance — never a `.pi/settings.json` resource path. */
 const PROVENANCE_SOURCES = new Set([

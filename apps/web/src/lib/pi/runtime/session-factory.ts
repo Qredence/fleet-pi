@@ -2,10 +2,7 @@ import {
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
-import {
-  PI_LLM_RUNTIME_PROVIDER_IDS,
-  PROVIDER_ENV_SCRUB_VAR_NAMES,
-} from "@workspace/pi-protocol/provider-catalog"
+import { PROVIDER_ENV_SCRUB_VAR_NAMES } from "@workspace/pi-protocol/provider-catalog"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
@@ -23,16 +20,49 @@ type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
 }
 
 interface BootstrapRetryState {
+  promise?: Promise<WorkspaceHealthResponse>
   attempts: number
   lastAttemptTime: number
   nextRetryDelay: number
   lastResult?: WorkspaceHealthResponse
 }
 
-const bootstrapRetryStates = new WeakMap<
-  AppRuntimeContext,
-  BootstrapRetryState
->()
+// Module-level bootstrap cache keyed by project root, shared across requests so
+// the workspace bootstrap runs once per project root (and per retry window)
+// instead of re-running on every chat turn. The in-flight `promise` is created
+// once and awaited by all concurrent callers; once settled it is cleared and
+// the result is served through `lastResult` + exponential backoff.
+const bootstrapCache = new Map<string, BootstrapRetryState>()
+
+// Bound the cache so long-running servers serving many project roots do not
+// accumulate bootstrap state indefinitely. Map iteration order is insertion
+// order; entries are re-inserted on access, so the first key is always the
+// least-recently-used project root and is evicted when a new root is inserted
+// beyond the cap. An evicted root simply re-bootstraps on its next request.
+const BOOTSTRAP_CACHE_CAPACITY = 32
+
+function getBootstrapCacheState(projectRoot: string): BootstrapRetryState {
+  const existing = bootstrapCache.get(projectRoot)
+  if (existing) {
+    // Refresh recency: re-insert so this root becomes most-recently-used.
+    bootstrapCache.delete(projectRoot)
+    bootstrapCache.set(projectRoot, existing)
+    return existing
+  }
+  if (bootstrapCache.size >= BOOTSTRAP_CACHE_CAPACITY) {
+    const leastRecentRoot = bootstrapCache.keys().next().value
+    if (leastRecentRoot !== undefined) {
+      bootstrapCache.delete(leastRecentRoot)
+    }
+  }
+  const state: BootstrapRetryState = {
+    attempts: 0,
+    lastAttemptTime: 0,
+    nextRetryDelay: 1000,
+  }
+  bootstrapCache.set(projectRoot, state)
+  return state
+}
 
 export async function createSessionServices(
   context: AppRuntimeContext,
@@ -99,16 +129,27 @@ export async function applyRuntimeAuth(
 
   const { modelRuntime } = services
 
-  // Clear every Pi LLM provider that can bind org env, then re-apply BYOK only.
-  const providerIds = new Set<string>([
-    ...PI_LLM_RUNTIME_PROVIDER_IDS,
-    ...configured.keys(),
-  ])
-  for (const providerId of providerIds) {
-    const apiKey = configured.get(providerId)
-    if (apiKey) {
-      await modelRuntime.setRuntimeApiKey(providerId, apiKey)
-    } else {
+  // Reconcile ONLY the providers the user actually configured (BYOK rows on
+  // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
+  // every key mutation triggers a Pi availability refresh, and with network
+  // model refresh enabled that scan walks every provider and can hang (e.g.
+  // amazon-bedrock without AWS credentials). `allowNetwork: false` keeps each
+  // per-key refresh offline and bounded.
+  for (const [providerId, apiKey] of configured) {
+    await modelRuntime.setRuntimeApiKey(providerId, apiKey, {
+      allowNetwork: false,
+    })
+  }
+
+  // Clear only runtime keys Fleet set on this session that the user no longer
+  // configures (provider removed while a live runtime stays resident). Fresh
+  // runtimes hold no runtime keys, so this is a no-op except after provider
+  // hot-reloads.
+  for (const providerId of modelRuntime.getRegisteredProviderIds()) {
+    if (
+      modelRuntime.getProviderAuthStatus(providerId).source === "runtime" &&
+      !configured.has(providerId)
+    ) {
       await modelRuntime.removeRuntimeApiKey(providerId)
     }
   }
@@ -125,31 +166,13 @@ async function loadBestEffortWorkspaceHealth(
   context: AppRuntimeContext
 ): Promise<WorkspaceHealthResponse> {
   const now = Date.now()
-  let state = bootstrapRetryStates.get(context)
+  const projectRoot = context.projectRoot
+  const state = getBootstrapCacheState(projectRoot)
 
-  if (!state) {
-    state = {
-      attempts: 0,
-      lastAttemptTime: 0,
-      nextRetryDelay: 1000,
-    }
-    bootstrapRetryStates.set(context, state)
-  }
-
-  if (context.workspaceBootstrap) {
-    try {
-      const result = await context.workspaceBootstrap
-      if (result.status === "ok" && result.workspace.available) {
-        state.attempts = 0
-        state.nextRetryDelay = 1000
-        state.lastResult = result
-        return result
-      }
-      state.lastResult = result
-    } catch (error) {
-      const failure = createWorkspaceHealthFailure(context, error)
-      state.lastResult = failure
-    }
+  // An in-flight bootstrap is shared across all requests for this project root:
+  // await the single promise instead of starting another bootstrap.
+  if (state.promise) {
+    return state.promise
   }
 
   if (state.lastResult) {
@@ -174,16 +197,18 @@ async function loadBestEffortWorkspaceHealth(
         state.lastAttemptTime = Date.now()
       }
       state.lastResult = result
+      state.promise = undefined
       return result
     })
     .catch((error) => {
       const failure = createWorkspaceHealthFailure(context, error)
       state.lastResult = failure
       state.lastAttemptTime = Date.now()
+      state.promise = undefined
       return failure
     })
 
-  context.workspaceBootstrap = promise
+  state.promise = promise
   return promise
 }
 

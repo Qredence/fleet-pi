@@ -3,7 +3,7 @@ import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
   ChatResourcesResponse,
-} from "../../../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 export function modelSettings(settings: ChatPiSettings): ChatPiSettingsUpdate {
   return {

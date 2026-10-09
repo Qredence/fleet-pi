@@ -29,6 +29,7 @@ function createManagerStub(initialProject: SettingsStore = {}) {
   return {
     state,
     updateProjectSettings,
+    getProjectSettings: vi.fn(() => structuredClone(state.project)),
     setDefaultProvider: vi.fn(),
     setDefaultModel: vi.fn(),
     applyOverrides: vi.fn(),
@@ -82,6 +83,58 @@ describe("applyProjectSettingsToServices", () => {
       "openai-chat-completions"
     )
     expect(manager.state.project.defaultModel).toBe("qwen35-122b-a10b")
+  })
+
+  it("skips every project write when merged values match the on-disk settings", () => {
+    const manager = createManagerStub({
+      packages: ["npm:pi-autoresearch"],
+      skills: ["../agent-workspace/pi/skills"],
+      extensions: ["../agent-workspace/pi/extensions/enabled"],
+      prompts: ["../agent-workspace/pi/prompts"],
+      defaultThinkingLevel: "high",
+    })
+
+    applyProjectSettingsToServices(servicesFor(manager), {
+      packages: ["npm:pi-autoresearch"],
+      skills: ["../agent-workspace/pi/skills"],
+      extensions: ["../agent-workspace/pi/extensions/enabled"],
+      prompts: ["../agent-workspace/pi/prompts"],
+      defaultThinkingLevel: "high",
+    })
+
+    expect(manager.setProjectPackages).not.toHaveBeenCalled()
+    expect(manager.setProjectSkillPaths).not.toHaveBeenCalled()
+    expect(manager.setProjectExtensionPaths).not.toHaveBeenCalled()
+    expect(manager.setProjectPromptTemplatePaths).not.toHaveBeenCalled()
+    expect(manager.setProjectThemePaths).not.toHaveBeenCalled()
+    expect(manager.updateProjectSettings).not.toHaveBeenCalled()
+  })
+
+  it("writes only project fields that genuinely differ from on disk", () => {
+    const manager = createManagerStub({
+      packages: ["npm:pi-autoresearch"],
+      defaultThinkingLevel: "medium",
+    })
+
+    applyProjectSettingsToServices(servicesFor(manager), {
+      packages: ["npm:pi-autoresearch"],
+      defaultThinkingLevel: "high",
+    })
+
+    expect(manager.setProjectPackages).not.toHaveBeenCalled()
+    expect(manager.updateProjectSettings).toHaveBeenCalledTimes(1)
+    expect(manager.state.project.defaultThinkingLevel).toBe("high")
+  })
+
+  it("skips project-layer deletes for fields already absent on disk", () => {
+    process.env.VERCEL = "1"
+    const manager = createManagerStub({})
+
+    applyProjectSettingsToServices(servicesFor(manager), {})
+
+    expect(manager.updateProjectSettings).not.toHaveBeenCalled()
+    expect(manager.setDefaultProvider).not.toHaveBeenCalled()
+    expect(manager.setDefaultModel).not.toHaveBeenCalled()
   })
 
   it("leaves the project default untouched in local dev (non-deployed)", () => {

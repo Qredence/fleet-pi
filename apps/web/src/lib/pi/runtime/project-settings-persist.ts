@@ -45,7 +45,7 @@ export async function prepareProjectSettingsOverridesForPersist(
   overrides: Record<string, unknown>,
   userId: string | undefined
 ): Promise<MigratedProjectSettingsResult> {
-  const migrated = migrateLegacyGatewayProjectOverrides(overrides, userId)
+  const migrated = await migrateLegacyGatewayProjectOverrides(overrides, userId)
   if (
     !userId ||
     !usesDatabaseBackedProjectSettings() ||

@@ -172,9 +172,9 @@ function RuntimeToolCard({
 }) {
   const tone =
     status === "error"
-      ? "border-rose-500/30 bg-rose-500/8 text-rose-100"
+      ? "border-destructive/30 bg-destructive/8 text-destructive-foreground dark:border-destructive/40 dark:bg-destructive/12 dark:text-destructive"
       : status === "pending" || status === "streaming"
-        ? "border-sky-500/25 bg-sky-500/8 text-sky-100"
+        ? "border-info/30 bg-info/8 text-info-foreground dark:border-info/40 dark:bg-info/12 dark:text-info"
         : "border-border/70 bg-background text-foreground/80"
   const statusLabel =
     status === "error"
@@ -198,7 +198,7 @@ function RuntimeToolCard({
               {statusLabel}
             </span>
           </div>
-          <p className="text-[12px] leading-4 text-foreground/60">{summary}</p>
+          <p className="text-label leading-4 text-foreground/60">{summary}</p>
           <div className="flex flex-col gap-1">
             {details.filter(Boolean).map((detail, index) =>
               typeof detail === "string" ? (

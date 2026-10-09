@@ -15,7 +15,7 @@ import {
   settingsResourceListIncludes,
   toSettingsResourcePath,
 } from "./settings-resource-path"
-import type { ChatResourceInfo } from "../../../../../lib/pi/chat-protocol"
+import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
 
 export {
   addUniqueSettingsResource,

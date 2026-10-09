@@ -12,7 +12,7 @@ import { ChromePillButton } from "../primitives/chrome-pill"
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,
-} from "../../../lib/pi/chat-protocol"
+} from "@workspace/pi-protocol/chat-protocol"
 
 const DOCUMENTATION_URL = "https://docs.qredence.ai"
 
@@ -56,7 +56,7 @@ export function AccountMenu({
   onOpenSettings?: () => void
 }) {
   const menuItemClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 text-foreground transition-colors hover:bg-foreground/6"
+    "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label leading-4 text-foreground transition-colors hover:bg-foreground/6"
 
   return (
     <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export function AccountMenu({
       >
         {user ? (
           <>
-            <div className="px-2 py-1.5 text-[12px] leading-4 text-foreground/50">
+            <div className="px-2 py-1.5 text-label leading-4 text-foreground/50">
               {user.name || user.email}
             </div>
             <button type="button" className={menuItemClass}>
@@ -178,7 +178,7 @@ export function SessionControls({
         }
       >
         {sessions.length === 0 ? (
-          <div className="px-2 py-2 text-[12px] text-foreground/45">
+          <div className="px-2 py-2 text-label text-foreground/45">
             No saved conversations yet.
           </div>
         ) : (
@@ -196,7 +196,7 @@ export function SessionControls({
                     sessionId: session.id,
                   })
                 }
-                className={`flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12px] leading-4 transition-colors hover:bg-foreground/6 ${
+                className={`flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label leading-4 transition-colors hover:bg-foreground/6 ${
                   active ? "bg-foreground/6 text-foreground" : "text-foreground"
                 }`}
               >

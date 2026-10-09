@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto"
+import { createHmac, timingSafeEqual } from "node:crypto"
 import { createFileRoute } from "@tanstack/react-router"
 import {
   clearUserSandboxCache,
@@ -16,7 +16,8 @@ interface DaytonaWebhookPayload {
 export async function daytonaWebhookHandler({ request }: { request: Request }) {
   try {
     const signature = request.headers.get("x-daytona-signature")
-    const payload = (await request.json()) as DaytonaWebhookPayload
+    const rawBody = await request.text()
+    const payload = JSON.parse(rawBody) as DaytonaWebhookPayload
 
     console.log("Daytona webhook received:", {
       signature: signature ? "present" : "absent",
@@ -25,7 +26,11 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
       state: payload.state,
     })
 
-    if (payload.event && payload.sandboxName && isVerifiedWebhook(signature)) {
+    if (
+      payload.event &&
+      payload.sandboxName &&
+      isVerifiedWebhook(signature, rawBody)
+    ) {
       handleSandboxEvent(payload)
     }
 
@@ -39,7 +44,7 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
   }
 }
 
-function isVerifiedWebhook(signature: string | null): boolean {
+function isVerifiedWebhook(signature: string | null, rawBody: string): boolean {
   const secret = process.env.DAYTONA_WEBHOOK_SECRET
   if (!secret) {
     console.warn(
@@ -49,8 +54,8 @@ function isVerifiedWebhook(signature: string | null): boolean {
   }
   if (!signature) return false
 
-  const expected = Buffer.from(secret)
-  const received = Buffer.from(signature)
+  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest()
+  const received = Buffer.from(signature, "hex")
   return (
     expected.length === received.length && timingSafeEqual(expected, received)
   )

@@ -1,5 +1,9 @@
 import { ChatThinkingLevelSchema, z } from "./shared"
-import type { WorkspaceTreeNode, WorkspaceTreeResponse } from "../chat-protocol"
+import type {
+  WorkspaceFileResponse,
+  WorkspaceTreeNode,
+  WorkspaceTreeResponse,
+} from "../chat-protocol"
 
 export const ChatModelInfoSchema = z
   .object({
@@ -86,6 +90,21 @@ export const WorkspaceTreeResponseSchema: z.ZodType<WorkspaceTreeResponse> = z
   })
   .openapi({ description: "Workspace tree response" })
 
+export const WorkspaceFileResponseSchema: z.ZodType<WorkspaceFileResponse> = z
+  .object({
+    path: z.string(),
+    name: z.string(),
+    content: z.string(),
+    mediaType: z.enum([
+      "text/markdown",
+      "text/plain",
+      "application/octet-stream",
+    ]),
+    size: z.number().optional(),
+    status: z.enum(["ok", "too-large", "unsupported"]).optional(),
+  })
+  .openapi({ description: "Workspace file preview response" })
+
 export const ChatProviderInfoSchema = z
   .object({
     id: z.string(),
@@ -152,15 +171,19 @@ export const ChatProviderRemoveResponseSchema =
     description: "Chat provider remove response",
   })
 
-export const ChatSlashCommandInfoSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  argumentHint: z.string().optional(),
-  source: z.enum(["builtin", "extension", "prompt", "skill"]),
-  passThrough: z.boolean().optional(),
-})
+export const ChatSlashCommandInfoSchema = z
+  .object({
+    name: z.string(),
+    description: z.string().optional(),
+    argumentHint: z.string().optional(),
+    source: z.enum(["builtin", "extension", "prompt", "skill"]),
+    passThrough: z.boolean().optional(),
+  })
+  .openapi({ description: "Chat slash command info" })
 
-export const ChatCommandsResponseSchema = z.object({
-  commands: z.array(ChatSlashCommandInfoSchema),
-  diagnostics: z.array(z.string()),
-})
+export const ChatCommandsResponseSchema = z
+  .object({
+    commands: z.array(ChatSlashCommandInfoSchema),
+    diagnostics: z.array(z.string()),
+  })
+  .openapi({ description: "Chat slash commands response" })
