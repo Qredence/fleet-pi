@@ -39,7 +39,7 @@ export function shouldFailClosedOnMirrorError(
   if (env.NEON_AUTH_BASE_URL?.trim() || env.NEON_AUTH_URL?.trim()) {
     return true
   }
-  return env.VERCEL === "1"
+  return env.VERCEL === "1" || env.FLEET_PI_DEPLOYMENT === "cloudflare"
 }
 
 export function requiresAuthenticatedMirrorOwner(

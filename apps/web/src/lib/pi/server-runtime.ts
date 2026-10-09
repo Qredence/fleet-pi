@@ -101,20 +101,33 @@ async function invokeAgentSessionCreation(
   return createAgentSessionFromServices(params)
 }
 
-const sessionCircuitBreaker = createSessionCircuitBreaker(
-  invokeAgentSessionCreation
-)
+// Created lazily: opossum starts a stats interval in its constructor, and
+// Cloudflare Workers forbid timers in global (module-load) scope.
+let sessionCircuitBreaker:
+  | ReturnType<
+      typeof createSessionCircuitBreaker<
+        Parameters<typeof invokeAgentSessionCreation>,
+        Awaited<ReturnType<typeof invokeAgentSessionCreation>>
+      >
+    >
+  | undefined
 
-// Circuit breaker fallback with observability hooks
-sessionCircuitBreaker.fallback((error) => {
-  // Log circuit breaker trip for observability
-  const errorMessage = error instanceof Error ? error.message : String(error)
-  logger.warn(
-    { error: errorMessage },
-    "[pi-runtime] session circuit breaker triggered"
-  )
-  throw createSessionFallbackError()
-})
+function getSessionCircuitBreaker() {
+  if (sessionCircuitBreaker) return sessionCircuitBreaker
+  const breaker = createSessionCircuitBreaker(invokeAgentSessionCreation)
+  // Circuit breaker fallback with observability hooks
+  breaker.fallback((error) => {
+    // Log circuit breaker trip for observability
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.warn(
+      { error: errorMessage },
+      "[pi-runtime] session circuit breaker triggered"
+    )
+    throw createSessionFallbackError()
+  })
+  sessionCircuitBreaker = breaker
+  return breaker
+}
 
 export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
   const record = trackRuntime(runtime, userId)
@@ -311,7 +324,7 @@ export async function createPiRuntime(
     // owns sandbox tool registration (not customTools). Stock npm:@daytona/pi
     // is excluded from the web resource loader.
 
-    const result = await sessionCircuitBreaker.fire({
+    const result = await getSessionCircuitBreaker().fire({
       services,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,

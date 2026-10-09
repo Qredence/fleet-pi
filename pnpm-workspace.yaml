@@ -56,6 +56,7 @@ allowBuilds:
   msw: true
   protobufjs: true
   unrs-resolver: true
+  workerd: true
 # pnpm 11 (pinned via package.json#packageManager, used locally, in CI and on Vercel)
 # defaults minimumReleaseAge to 1440 (24h): versions published < 24h ago cannot be
 # installed, so a dependabot PR pinning a freshly-published version fails install with

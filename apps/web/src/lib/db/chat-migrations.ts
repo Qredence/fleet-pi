@@ -70,6 +70,10 @@ import {
   CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
   CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
 } from "./chat-postgres-retry-event-type-fix"
+import {
+  CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
+  CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
+} from "./chat-postgres-jwt-user-policies"
 import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
 import {
   CHAT_POSTGRES_MIGRATION_ID,
@@ -228,6 +232,13 @@ export async function runChatMigrations(
     client,
     CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
     CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
+    log
+  )
+
+  await applyMigrationIfNeeded(
+    client,
+    CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
+    CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
     log
   )
 
