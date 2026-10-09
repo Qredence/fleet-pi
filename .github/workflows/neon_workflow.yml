@@ -1,5 +1,7 @@
 name: Create/Delete Branch for Pull Request
 
+# One Neon preview branch per PR in the soft-art project (vars.NEON_PROJECT_ID).
+# Never point this at the production project.
 on:
   pull_request:
     types:
@@ -8,63 +10,70 @@ on:
       - synchronize
       - closed
 
+# Keyed on the PR number so create/sync/close for one PR serialize. Only
+# superseded pushes are cancelled; a close event is never cancelled (and never
+# cancels an in-flight create), so the delete always runs.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: neon-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action == 'synchronize' }}
 
 permissions:
   contents: read
 
-jobs:
-  setup:
-    name: Setup
-    outputs:
-      branch: ${{ steps.branch_name.outputs.current_branch }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get branch name
-        id: branch_name
-        uses: tj-actions/branch-names@dde14ac574a8b9b1cedc59a1cf312788af43d8d8 # v8
+env:
+  # Same name for create, schema diff and delete. github.head_ref replaces
+  # tj-actions/branch-names (supply-chain compromise history); it is passed
+  # through env, never interpolated into a shell script.
+  NEON_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}-${{ github.head_ref }}
 
+jobs:
   create_neon_branch:
     name: Create Neon Branch
-    outputs:
-      branch_id: ${{ steps.create_neon_branch.outputs.branch_id }}
-    needs: setup
     # Dependabot and fork PRs run without NEON_API_KEY, so the action can only fail.
     if: |
-      github.event_name == 'pull_request'
+      github.event.action != 'closed'
       && github.event.pull_request.user.login != 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
-      && (
-      github.event.action == 'synchronize'
-      || github.event.action == 'opened'
-      || github.event.action == 'reopened')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      branch_id: ${{ steps.create_neon_branch.outputs.branch_id }}
     permissions:
       contents: read
       pull-requests: write # schema-diff-action posts/updates one PR comment
     steps:
-      - name: Get branch expiration date as an env variable (2 weeks from now)
-        id: get_expiration_date
+      - name: Compute branch expiration (14 days)
         run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
       - name: Create Neon Branch
         id: create_neon_branch
-        uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6
+        uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6.3.1
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          parent_branch: main
+          branch_name: ${{ env.NEON_BRANCH_NAME }}
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
-      # Preview branches are copy-on-write children of the default branch, so
-      # they start with whatever schema the parent has (none on a fresh
-      # project). Apply the chat mirror migrations so every PR branch has the
-      # current pi_* schema. chat:migrate is idempotent (ledger-backed) and
-      # role-guarded, so re-running on `synchronize` only applies new ids.
+      - name: Mask connection details
+        env:
+          DB_URL: ${{ steps.create_neon_branch.outputs.db_url }}
+          DB_URL_POOLED: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
+          DB_HOST: ${{ steps.create_neon_branch.outputs.db_host }}
+          DB_HOST_POOLED: ${{ steps.create_neon_branch.outputs.db_host_pooled }}
+          DB_PASSWORD: ${{ steps.create_neon_branch.outputs.password }}
+        run: |
+          for v in "$DB_URL" "$DB_URL_POOLED" "$DB_HOST" "$DB_HOST_POOLED" "$DB_PASSWORD"; do
+            if [ -n "$v" ]; then echo "::add-mask::$v"; fi
+          done
+
+      # Preview branches are copy-on-write children of main, so they start with
+      # main's schema. chat:migrate is ledger-backed and idempotent: it applies
+      # only new migration ids and re-asserts the fleet_pi_app grants.
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -82,29 +91,39 @@ jobs:
         run: pnpm chat:migrate
         env:
           # Direct (unpooled) owner connection: DDL + one interactive
-          # transaction should not go through PgBouncer. Never echo this value.
+          # transaction must not go through PgBouncer. Never echo this value.
           FLEET_PI_CHAT_MIGRATION_DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url }}
 
+      - name: Run Better Auth migrations on the preview branch
+        run: pnpm auth:migrate
+        env:
+          FLEET_PI_AUTH_MIGRATION_DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url }}
+          # Schema generation only; no sessions are signed with this value.
+          BETTER_AUTH_SECRET: ci-preview-migration-placeholder-secret
+          BETTER_AUTH_URL: https://preview.invalid
+
       - name: Post schema diff comment to PR
-        uses: neondatabase/schema-diff-action@80cfa8521628e890015b60f5291a7738926617dc # v1
+        uses: neondatabase/schema-diff-action@80cfa8521628e890015b60f5291a7738926617dc # v1.0.1
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          compare_branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          compare_branch: ${{ env.NEON_BRANCH_NAME }}
+          base_branch: main
           api_key: ${{ secrets.NEON_API_KEY }}
 
   delete_neon_branch:
     name: Delete Neon Branch
-    needs: setup
     if: |
-      github.event_name == 'pull_request'
+      github.event.action == 'closed'
       && github.event.pull_request.user.login != 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.action == 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Delete Neon Branch
-        uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
+        uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3.2.1
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          branch: ${{ env.NEON_BRANCH_NAME }}
           api_key: ${{ secrets.NEON_API_KEY }}
