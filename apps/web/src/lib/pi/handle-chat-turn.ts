@@ -11,6 +11,7 @@ import type {
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
 import { scheduleSessionBlobPersist } from "@/lib/pi/server-sessions"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
+import { assertProviderCredentialsUsable } from "@/lib/pi/runtime/provider-preflight"
 import {
   createPiRuntime,
   getErrorMessage,
@@ -167,6 +168,7 @@ async function runChatTurn({
       }
     })
 
+    await assertProviderCredentialsUsable(currentSession)
     await currentSession.prompt(prompt, {
       expandPromptTemplates: true,
     })
