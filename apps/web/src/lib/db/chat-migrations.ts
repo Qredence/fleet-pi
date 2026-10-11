@@ -74,6 +74,7 @@ import {
   CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
   CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
 } from "./chat-postgres-jwt-user-policies"
+import { DEFAULT_APP_ROLE, withAppRole } from "./app-role"
 import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
 import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "./chat-postgres-user-id-uuid"
 import {
@@ -130,9 +131,15 @@ async function applyMigrationIfNeeded(
 }
 
 export async function runChatMigrations(
-  client: ChatMigrationClient,
-  log: (message: string) => void = console.log
+  rawClient: ChatMigrationClient,
+  log: (message: string) => void = console.log,
+  { appRole = DEFAULT_APP_ROLE }: { appRole?: string } = {}
 ) {
+  // Every statement's grants/policies target `appRole` (default fleet_pi_app).
+  const client: ChatMigrationClient = {
+    query: (text, params) =>
+      rawClient.query(withAppRole(text, appRole), params),
+  }
   await client.query(CHAT_POSTGRES_SCHEMA_SQL)
   await recordMigration(client, CHAT_POSTGRES_MIGRATION_ID)
   log(`Applied chat migration: ${CHAT_POSTGRES_MIGRATION_ID}`)
@@ -258,5 +265,5 @@ export async function runChatMigrations(
   // Not ledger-gated: re-assert fleet_pi_app grants every run so a role
   // created after the migrations were recorded still gets its privileges.
   await client.query(CHAT_POSTGRES_APP_ROLE_GRANTS_SQL)
-  log("Reconciled fleet_pi_app grants")
+  log(`Reconciled ${appRole} grants`)
 }
