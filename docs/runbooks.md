@@ -6,6 +6,12 @@ This page is operational reference material. New users should start with
 Operational runbooks for incident response and troubleshooting the Fleet Pi
 chat application.
 
+Standalone runbooks:
+
+- [Deployment release gate](runbooks/deployment-release-gate.md)
+- [DB role rotation](runbooks/db-role-rotation.md) — rotate `fleet_pi_app` and
+  the Worker database URLs without downtime
+
 ---
 
 ## Incident Response
