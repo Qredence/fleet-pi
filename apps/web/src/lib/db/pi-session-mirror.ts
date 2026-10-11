@@ -1004,6 +1004,18 @@ function normalizeEntry(entry: SessionEntry): NormalizedSessionEntry {
         contentText: textFromUnknown(entry.content),
         isError: false,
       }
+    case "context_edit":
+      // Pi 1.x append-only model-context edit. `replacement: null` omits the
+      // target from future provider context; otherwise it replaces only the
+      // target's content. Raw history is unchanged; recovery replays raw_entry.
+      return {
+        targetEntryId: entry.targetId,
+        contentText:
+          entry.replacement === null
+            ? "[omitted from context]"
+            : textFromUnknown(entry.replacement.content),
+        isError: false,
+      }
     case "label":
       return {
         targetEntryId: entry.targetId,

@@ -111,8 +111,7 @@ describe("session factory", () => {
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
     expect(services.modelRuntime.setRuntimeApiKey).toHaveBeenCalledWith(
       "google",
-      "decrypted-key",
-      { allowNetwork: false }
+      "decrypted-key"
     )
     // Fresh runtimes hold no Fleet-set runtime keys, so nothing is cleared.
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
@@ -136,13 +135,7 @@ describe("session factory", () => {
     }
     await applyRuntimeAuth(services as never, {})
     expect(mocks.withChatPostgresTransaction).not.toHaveBeenCalled()
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
@@ -173,13 +166,7 @@ describe("session factory", () => {
     await applyRuntimeAuth(services as never, {})
     // Only env-configured providers get runtime keys — never a sweep of the
     // full Pi provider catalog.
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
       "huggingface",
       expect.anything()

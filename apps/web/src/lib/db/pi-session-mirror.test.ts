@@ -164,6 +164,18 @@ describe("Pi session mirror mapping", () => {
         type: "session_info",
         name: "Schema design",
       },
+      {
+        ...entryBase("context_edit", "edit-omit-1"),
+        type: "context_edit",
+        targetId: "tool-1",
+        replacement: null,
+      },
+      {
+        ...entryBase("context_edit", "edit-replace-1"),
+        type: "context_edit",
+        targetId: "user-1",
+        replacement: { content: [{ type: "text", text: "hello (edited)" }] },
+      },
     ] as Array<SessionEntry>
 
     const rows = entries.map((entry) =>
@@ -227,6 +239,19 @@ describe("Pi session mirror mapping", () => {
       expect.objectContaining({
         entryId: "info-1",
         contentText: "Schema design",
+      }),
+      expect.objectContaining({
+        entryId: "edit-omit-1",
+        entryType: "context_edit",
+        targetEntryId: "tool-1",
+        contentText: "[omitted from context]",
+        isError: false,
+      }),
+      expect.objectContaining({
+        entryId: "edit-replace-1",
+        entryType: "context_edit",
+        targetEntryId: "user-1",
+        contentText: "hello (edited)",
       }),
     ])
   })

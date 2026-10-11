@@ -12,6 +12,9 @@
  * Some sequences pin today's buggy behaviour; those are marked TODO(PR 3:
  * abort semantics) and should be updated in that PR, not "fixed" here.
  */
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ModelRuntime,
@@ -100,7 +103,12 @@ async function createSession(
   faux.setResponses(steps)
 
   const modelRuntime = await ModelRuntime.create({
-    authPath: "/nonexistent/fleet-pi-contract/auth.json",
+    // Pi 1.x reads the credential store on every request, so it must live in
+    // a writable (throwaway) directory.
+    authPath: join(
+      mkdtempSync(join(tmpdir(), "fleet-pi-contract-")),
+      "auth.json"
+    ),
     modelsPath: null,
   })
   modelRuntime.registerProvider(PROVIDER, {
@@ -185,6 +193,10 @@ function normalize(lines: Array<string>) {
 
 const state = (name: string) => ({ type: "state", state: { name } })
 const userMessage = [state("message_start"), state("message_end")]
+// Pi 1.x (canonical session context, 0.87+) records the system prompt as a
+// `role: "system"` transcript message at the start of a run, which surfaces
+// as one extra message_start/message_end pair before the user message.
+const systemMessage = [state("message_start"), state("message_end")]
 const start = (id: string, session: string) => ({
   type: "start",
   id,
@@ -231,6 +243,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      ...systemMessage,
       ...userMessage,
       state("message_start"),
       { type: "thinking", text: "plan" },
@@ -272,6 +285,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      ...systemMessage,
       ...userMessage,
       state("message_start"),
       state("message_end"),
@@ -297,6 +311,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      ...systemMessage,
       ...userMessage,
       state("message_start"),
       state("message_end"),
@@ -334,6 +349,8 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
         errorMessage: "prompt is too long",
       }),
       fauxAssistantMessage("summary"),
+      // Pi 1.x also summarizes the split turn prefix: a second summary call.
+      fauxAssistantMessage("turn prefix summary"),
       fauxAssistantMessage("ok"),
     ])
     // Seed history so there is something to compact.
@@ -343,6 +360,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      // The system prompt was already recorded by the seeding prompt.
       ...userMessage,
       state("message_start"),
       state("message_end"),
@@ -383,6 +401,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      ...systemMessage,
       ...userMessage,
       { type: "queue", steering: [], followUp: ["second"] },
       state("message_start"),
@@ -438,6 +457,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       start("<id1>", "<id2>"),
       state("agent_start"),
       state("turn_start"),
+      ...systemMessage,
       ...userMessage,
       state("message_start"),
       { type: "delta", text: "one " },
