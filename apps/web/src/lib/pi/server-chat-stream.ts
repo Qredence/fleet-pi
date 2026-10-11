@@ -20,6 +20,7 @@ import type { ChatMessagePart } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatRequest,
   ChatStreamEvent,
+  ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { PlanModeState } from "./plan-state"
 
@@ -32,6 +33,7 @@ type BufferedTurnEvent = Extract<
 
 export type TurnStartContext = {
   diagnostics: Array<string>
+  workspace?: ChatWorkspaceStatus
   firstStartPending: boolean
   pendingEvents: Array<BufferedTurnEvent>
   send: (event: ChatStreamEvent) => void
@@ -232,9 +234,11 @@ export function createTurnStartContext({
   send,
   session,
   sessionReset,
+  workspace,
 }: Omit<TurnStartContext, "firstStartPending" | "pendingEvents">) {
   return {
     diagnostics,
+    workspace,
     firstStartPending: true,
     pendingEvents: [],
     send,
@@ -341,6 +345,9 @@ export function beginAssistantTurn(startContext: TurnStartContext) {
       sessionReset: startContext.firstStartPending
         ? startContext.sessionReset
         : undefined,
+      workspace: startContext.firstStartPending
+        ? startContext.workspace
+        : undefined,
     })
   )
   startContext.firstStartPending = false
@@ -412,6 +419,7 @@ function createStartEvent(
   options?: {
     diagnostics?: Array<string>
     sessionReset?: boolean
+    workspace?: ChatWorkspaceStatus
   }
 ): ChatStreamEvent {
   return {
@@ -422,6 +430,7 @@ function createStartEvent(
     sessionId: session.sessionId,
     sessionReset: options?.sessionReset,
     diagnostics: options?.diagnostics,
+    ...(options?.workspace && { workspace: options.workspace }),
   }
 }
 

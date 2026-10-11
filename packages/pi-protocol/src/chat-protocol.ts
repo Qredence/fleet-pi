@@ -148,6 +148,17 @@ export type ChatPlanState = {
   message?: string
 }
 
+/**
+ * Workspace tool availability for this chat runtime, sent on the first
+ * `start` frame of a request. `toolsAvailable: false` means the model was
+ * given no file/shell/search/workspace tools (hosted deploy, no Daytona key);
+ * the UI should show the "add a Daytona key" message for
+ * `reason: "daytona_credential_required"`.
+ */
+export type ChatWorkspaceStatus =
+  | { toolsAvailable: true }
+  | { toolsAvailable: false; reason: "daytona_credential_required" }
+
 type ChatStartEvent = {
   type: "start"
   id: string
@@ -156,6 +167,7 @@ type ChatStartEvent = {
   sessionId: string
   sessionReset?: boolean
   diagnostics?: Array<string>
+  workspace?: ChatWorkspaceStatus
 }
 
 /**

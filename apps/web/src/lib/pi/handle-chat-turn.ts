@@ -138,6 +138,7 @@ async function runChatTurn({
       send,
       session: currentSession,
       sessionReset: result.sessionReset,
+      workspace: result.workspace,
     })
 
     unsubscribe = currentSession.subscribe((event) => {

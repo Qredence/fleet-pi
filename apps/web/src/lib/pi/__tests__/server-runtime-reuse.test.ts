@@ -314,7 +314,7 @@ describe("createPiRuntime active reuse", () => {
     expect(mocks.createSessionServices).toHaveBeenCalledWith(
       context(),
       undefined,
-      { userId: "user-b" }
+      { userId: "user-b", workspace: { toolsAvailable: true } }
     )
     expect(mocks.createSessionManager).toHaveBeenCalled()
   })

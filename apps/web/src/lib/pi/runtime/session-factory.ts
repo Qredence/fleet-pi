@@ -9,11 +9,13 @@ import {
 } from "../../workspace/bootstrap-agent-workspace"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
 import type { ApplyRuntimeAuthOptions } from "./types"
+import type { ChatWorkspaceStatus } from "@workspace/pi-protocol/chat-protocol"
 
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
@@ -67,7 +69,11 @@ function getBootstrapCacheState(projectRoot: string): BootstrapRetryState {
 export async function createSessionServices(
   context: AppRuntimeContext,
   overrides?: Parameters<typeof createAgentSessionServices>[0],
-  options?: { userId?: string; projectRoot?: string }
+  options?: {
+    userId?: string
+    projectRoot?: string
+    workspace?: ChatWorkspaceStatus
+  }
 ) {
   if (isDeployedChatRuntimeSurface()) {
     // Capture platform Gateway creds in memory, then scrub org LLM + Gateway
@@ -86,6 +92,15 @@ export async function createSessionServices(
     ...overrides,
     resourceLoaderOptions: {
       ...userResourceOptions,
+      // Server-owned extensions: the Fleet Pi identity always, plus the
+      // workspace-free extensions when `.pi/extensions` is not discoverable.
+      extensionFactories: [
+        ...buildFleetPiInlineExtensions({
+          projectRoot: context.projectRoot,
+          workspace: options?.workspace ?? { toolsAvailable: true },
+        }),
+        ...(userResourceOptions?.extensionFactories ?? []),
+      ],
       extensionsOverride: (base) => {
         const withoutStock = excludeStockDaytonaPiExtension(base)
         return userResourceOptions?.extensionsOverride
