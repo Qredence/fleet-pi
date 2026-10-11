@@ -30,19 +30,19 @@ fleet-pi/
 
 ## Key Dependencies
 
-| Package                                   | Purpose                                                   |
-| ----------------------------------------- | --------------------------------------------------------- |
-| @tanstack/react-start                     | Full-stack React framework                                |
-| @earendil-works/pi-coding-agent           | Pi coding-agent runtime                                   |
-| @earendil-works/pi-ai                     | Pi AI primitives                                          |
-| @workspace/pi-protocol                    | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |
-| @workspace/hax-design                     | Fleet Pi UI shell, agent-elements, openui renderer        |
-| Neon AI Gateway (openai-chat-completions) | Authenticated default: qwen35-122b-a10b + gpt-oss-120b    |
-| pino + pino-pretty                        | Structured logging                                        |
-| opossum                                   | Circuit breaker pattern                                   |
-| zod + @asteasolutions/zod-to-openapi      | Schema validation & OpenAPI generation                    |
-| vitest + @playwright/test                 | Testing frameworks                                        |
-| husky + lint-staged                       | Pre-commit hooks                                          |
+| Package | Purpose |
+|---------|---------|
+| @tanstack/react-start | Full-stack React framework |
+| @earendil-works/pi-coding-agent | Pi coding-agent runtime |
+| @earendil-works/pi-ai | Pi AI primitives |
+| @workspace/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |
+| @workspace/hax-design | Fleet Pi UI shell, agent-elements, openui renderer |
+| Neon AI Gateway (openai-chat-completions) | Authenticated default: qwen35-122b-a10b + gpt-oss-120b |
+| pino + pino-pretty | Structured logging |
+| opossum | Circuit breaker pattern |
+| zod + @asteasolutions/zod-to-openapi | Schema validation & OpenAPI generation |
+| vitest + @playwright/test | Testing frameworks |
+| husky + lint-staged | Pre-commit hooks |
 
 ## Data Flow
 
