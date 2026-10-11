@@ -19,6 +19,7 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { applySandboxCwdToPrompt } from "./lib/sandbox-prompt-cwd"
 import { getSandboxStatus } from "../../apps/web/src/lib/daytona/client"
 import {
   createSandboxOperations,
@@ -158,12 +159,11 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
   pi.on("before_agent_start", (event) => {
     const current = ensureActive()
     if (!current) return
-    const cwdLine = `Current working directory: ${current.cwd} (Daytona sandbox ${shortId(current.sandbox.id)})`
-    const systemPrompt = event.systemPrompt.replace(
-      /Current working directory: .*/g,
-      cwdLine
+    return applySandboxCwdToPrompt(
+      event,
+      current.cwd,
+      shortId(current.sandbox.id)
     )
-    return { systemPrompt }
   })
 
   pi.on("session_shutdown", () => {
