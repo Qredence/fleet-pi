@@ -198,6 +198,13 @@ describe("server chat stream", () => {
       activeTurn,
       startContext
     )
+    // The error is held until the run settles without a retry.
+    expect(emitted.map((event) => event.type)).not.toContain("error")
+    activeTurn = handleSessionEvent(
+      { type: "agent_settled", aborted: false } as any,
+      activeTurn,
+      startContext
+    )
 
     expect(emitted.map((event) => event.type)).toEqual([
       "start",
@@ -206,6 +213,7 @@ describe("server chat stream", () => {
       "state",
       "state",
       "error",
+      "state",
     ])
     expect(emitted[0]).toMatchObject({
       type: "start",

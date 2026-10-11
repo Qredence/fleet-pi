@@ -365,3 +365,49 @@ describe("mutationsFromToolResults", () => {
     ])
   })
 })
+
+describe("run status from the terminal frame", () => {
+  it.each([
+    [undefined, "completed"],
+    ["aborted", "aborted"],
+  ] as const)("done stopReason %s -> status %s", (stopReason, status) => {
+    const projectRoot = createProjectRoot()
+    const context = createDaytonaContext(projectRoot)
+    const sessionFile = createSessionFile(projectRoot, "session-s.jsonl")
+    const recorder = createRunProvenanceRecorder(context, { mode: "agent" })
+    recorder.record({
+      type: "start",
+      id: "run-s",
+      runId: "run-s",
+      sessionFile,
+      sessionId: "session-s",
+    })
+    recorder.record({
+      ...assistantDone("run-s", sessionFile, "session-s"),
+      ...(stopReason && { stopReason }),
+    })
+    recorder.close()
+    expect(createRunDetailResponse(context, "run-s").run.status).toBe(status)
+  })
+
+  it("error then done(stopReason error) stays errored", () => {
+    const projectRoot = createProjectRoot()
+    const context = createDaytonaContext(projectRoot)
+    const sessionFile = createSessionFile(projectRoot, "session-e.jsonl")
+    const recorder = createRunProvenanceRecorder(context, { mode: "agent" })
+    recorder.record({
+      type: "start",
+      id: "run-e",
+      runId: "run-e",
+      sessionFile,
+      sessionId: "session-e",
+    })
+    recorder.record({ type: "error", message: "boom", runId: "run-e" })
+    recorder.record({
+      ...assistantDone("run-e", sessionFile, "session-e"),
+      stopReason: "error",
+    })
+    recorder.close()
+    expect(createRunDetailResponse(context, "run-e").run.status).toBe("errored")
+  })
+})

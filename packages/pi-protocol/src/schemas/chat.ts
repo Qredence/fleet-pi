@@ -284,6 +284,7 @@ export const ChatDoneEventSchema = z
     sessionFile: z.string().optional(),
     sessionId: z.string(),
     sessionReset: z.boolean().optional(),
+    stopReason: z.enum(["aborted", "error"]).optional(),
   })
   .openapi({ description: "Stream done event" })
 
