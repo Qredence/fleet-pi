@@ -21,7 +21,6 @@
  * a UUID-typed wrapper around `fleet_pi_current_user_id()` that returns NULL
  * for non-UUID subjects (fail closed instead of erroring).
  */
-export const CHAT_POSTGRES_USER_ID_UUID_STEP = "pi_user_id_uuid_neon_auth_fk"
 
 const UUID_RE =
   "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
