@@ -162,6 +162,16 @@ export const ChatStateEventSchema = z
   })
   .openapi({ description: "Chat state event" })
 
+export const ChatWorkspaceStatusSchema = z
+  .union([
+    z.object({ toolsAvailable: z.literal(true) }),
+    z.object({
+      toolsAvailable: z.literal(false),
+      reason: z.literal("daytona_credential_required"),
+    }),
+  ])
+  .openapi({ description: "Workspace tool availability for the chat runtime" })
+
 export const ChatStartEventSchema = z
   .object({
     type: z.literal("start"),
@@ -171,6 +181,7 @@ export const ChatStartEventSchema = z
     sessionId: z.string(),
     sessionReset: z.boolean().optional(),
     diagnostics: z.array(z.string()).optional(),
+    workspace: ChatWorkspaceStatusSchema.optional(),
   })
   .openapi({ description: "Stream start event" })
 
