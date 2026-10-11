@@ -133,12 +133,15 @@ export async function applyRuntimeAuth(
   // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
   // every key mutation triggers a Pi availability refresh, and with network
   // model refresh enabled that scan walks every provider and can hang (e.g.
-  // amazon-bedrock without AWS credentials). `allowNetwork: false` keeps each
-  // per-key refresh offline and bounded.
+  // amazon-bedrock without AWS credentials).
+  //
+  // Pi 1.x: setRuntimeApiKey takes AuthOperationOptions (signal only) and its
+  // credential sync always refreshes just this provider with
+  // `allowNetwork: false`, so each per-key refresh stays offline and bounded.
+  // A network refresh would need an explicit `modelRuntime.refresh({ providers })`,
+  // which we deliberately never call here.
   for (const [providerId, apiKey] of configured) {
-    await modelRuntime.setRuntimeApiKey(providerId, apiKey, {
-      allowNetwork: false,
-    })
+    await modelRuntime.setRuntimeApiKey(providerId, apiKey)
   }
 
   // Clear only runtime keys Fleet set on this session that the user no longer

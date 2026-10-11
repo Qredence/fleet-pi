@@ -339,7 +339,7 @@ export const PI_LLM_RUNTIME_PROVIDER_IDS = [
   "anthropic",
   "ant-ling",
   "openai",
-  "azure-openai-responses",
+  "azure",
   "nvidia",
   "deepseek",
   "google",
