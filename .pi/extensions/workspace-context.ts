@@ -5,12 +5,14 @@ import {
   formatProjectMemoryForStartupContext,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
+import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
 
 export default function workspaceContextExtension(pi: ExtensionAPI) {
-  pi.on("before_agent_start", async (_event, ctx) => {
+  pi.on("before_agent_start", async (event, ctx) => {
+    applyFleetPiIdentity(event)
     const cwd = ctx.sessionManager.getCwd()
     const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
 
