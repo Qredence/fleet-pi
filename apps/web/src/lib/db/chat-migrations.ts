@@ -75,6 +75,7 @@ import {
   CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
 } from "./chat-postgres-jwt-user-policies"
 import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
+import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "./chat-postgres-user-id-uuid"
 import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
@@ -241,6 +242,11 @@ export async function runChatMigrations(
     CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
     log
   )
+
+  // Not ledger-gated, self-guarding: converts pi_* user columns to UUID with
+  // an FK to neon_auth."user" (quarantining orphans) and is a no-op once done.
+  await client.query(CHAT_POSTGRES_USER_ID_UUID_SQL)
+  log("Reconciled pi_* user_id columns (uuid + neon_auth FK)")
 
   // Not ledger-gated: the base schema above re-creates
   // fleet_pi_check_session_owner WITHOUT the tombstone check on every run

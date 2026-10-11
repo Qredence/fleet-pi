@@ -19,7 +19,7 @@ AS $$
     ) THEN 'deleted'
     WHEN NOT EXISTS (SELECT 1 FROM pi_sessions WHERE id = p_session_id) THEN 'missing'
     WHEN (SELECT user_id FROM pi_sessions WHERE id = p_session_id) IS NULL THEN 'orphan'
-    WHEN (SELECT user_id FROM pi_sessions WHERE id = p_session_id) = p_user_id THEN 'owned'
+    WHEN (SELECT user_id::text FROM pi_sessions WHERE id = p_session_id) = p_user_id THEN 'owned'
     ELSE 'foreign'
   END
 $$;
