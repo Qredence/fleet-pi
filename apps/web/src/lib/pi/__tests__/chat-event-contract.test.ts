@@ -205,13 +205,21 @@ const start = (id: string, session: string) => ({
   sessionReset: false,
   diagnostics: [],
 })
-const done = (id: string, session: string, parts: Array<unknown>) => ({
+const done = (
+  id: string,
+  session: string,
+  parts: Array<unknown>,
+  stopReason?: "aborted" | "error"
+) => ({
   type: "done",
   runId: id,
   message: { id, role: "assistant", createdAt: "<ts>", parts },
   sessionId: session,
   sessionReset: false,
+  ...(stopReason && { stopReason }),
 })
+// Empty terminal turns (abort before content, error without content).
+const emptyParts = [{ type: "text", text: "" }]
 
 describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
   it("streams thinking, text, tool calls and done", async () => {
@@ -289,12 +297,13 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       ...userMessage,
       state("message_start"),
       state("message_end"),
-      { type: "error", message: "boom", runId: "<id1>" },
       state("turn_end"),
       state("agent_end"),
+      // The error is held until the run settles (no retry/compaction took
+      // it), then the turn ends with a terminal `done`.
+      { type: "error", message: "boom", runId: "<id1>" },
       state("agent_settled"),
-      // NOTE: an error turn with no content ends without `done`; the client
-      // treats `error` as terminal. Revisit with PR 3 (abort semantics).
+      done("<id1>", "<id2>", emptyParts, "error"),
     ])
   })
 
@@ -315,9 +324,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       ...userMessage,
       state("message_start"),
       state("message_end"),
-      // TODO(PR 3): the retryable error reaches the client as `error` even
-      // though the run recovers below.
-      { type: "error", message: "rate limit", runId: "<id1>" },
+      // A recovered retry never surfaces as `error`: only `retry` frames.
       state("turn_end"),
       state("agent_end"),
       {
@@ -364,7 +371,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       ...userMessage,
       state("message_start"),
       state("message_end"),
-      { type: "error", message: "prompt is too long", runId: "<id1>" },
+      // Overflow recovered by compaction: no `error` frame.
       state("turn_end"),
       state("agent_end"),
       { type: "compaction", phase: "start", reason: "overflow" },
@@ -432,9 +439,20 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       },
     ])
 
-    // TODO(PR 3): an abort before content sends nothing at all: no `start`,
-    // no aborted state and no `done`, so the client cannot close the run.
-    expect(await runTurn({ signal: controller.signal })).toEqual([])
+    // Abort before content: `start` plus a terminal `done` marked aborted.
+    expect(await runTurn({ signal: controller.signal })).toEqual([
+      start("<id1>", "<id2>"),
+      state("agent_start"),
+      state("turn_start"),
+      ...systemMessage,
+      ...userMessage,
+      state("message_start"),
+      state("message_end"),
+      state("turn_end"),
+      state("agent_end"),
+      state("agent_settled"),
+      done("<id1>", "<id2>", emptyParts, "aborted"),
+    ])
   })
 
   it("abort after content", async () => {
@@ -451,8 +469,8 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       },
     })
 
-    // TODO(PR 3): the aborted run ends with a normal `done`; nothing marks it
-    // as aborted (no aborted state, `stopReason: "aborted"` is dropped).
+    // Abort after content: `done` keeps the streamed content and is marked
+    // aborted (from agent_settled.aborted / stopReason "aborted").
     expect(events).toEqual([
       start("<id1>", "<id2>"),
       state("agent_start"),
@@ -465,7 +483,7 @@ describe("chat event contract (real Pi AgentSession -> NDJSON)", () => {
       state("turn_end"),
       state("agent_end"),
       state("agent_settled"),
-      done("<id1>", "<id2>", [{ type: "text", text: "one " }]),
+      done("<id1>", "<id2>", [{ type: "text", text: "one " }], "aborted"),
     ])
   })
 })

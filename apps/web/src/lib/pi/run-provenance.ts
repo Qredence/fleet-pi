@@ -182,7 +182,18 @@ export function createRunProvenanceRecorder(
       }
 
       if (event.type === "done") {
-        finalizeActiveRun("completed", event.message)
+        // `error` already finalized the run as errored; this is a no-op then.
+        finalizeActiveRun(
+          event.stopReason === "aborted"
+            ? "aborted"
+            : event.stopReason === "error"
+              ? "errored"
+              : "completed",
+          event.message,
+          event.stopReason === "aborted"
+            ? "Run aborted by the user."
+            : undefined
+        )
       }
 
       if (event.type === "error") {

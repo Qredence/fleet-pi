@@ -159,6 +159,9 @@ export type ChatWorkspaceStatus =
   | { toolsAvailable: true }
   | { toolsAvailable: false; reason: "daytona_credential_required" }
 
+/** Non-normal terminal reason on a `done` frame. */
+export type ChatRunStopReason = "aborted" | "error"
+
 type ChatStartEvent = {
   type: "start"
   id: string
@@ -225,6 +228,13 @@ export type ChatStreamEvent =
       sessionFile?: string
       sessionId: string
       sessionReset?: boolean
+      /**
+       * Why the run ended. Absent means it completed normally (older servers
+       * and saved streams never set it). `"aborted"`: the user stopped it;
+       * `message` holds whatever streamed before the abort. `"error"`: the
+       * run failed; an `error` frame precedes this `done`.
+       */
+      stopReason?: ChatRunStopReason
     }
   | { type: "error"; message: string; runId?: string }
 
