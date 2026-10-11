@@ -16,7 +16,7 @@ import type {
 import type { ChatWorkspaceStatus } from "@workspace/pi-protocol/chat-protocol"
 
 /** System prompt section added when the runtime has no workspace tools. */
-export const FLEET_PI_NO_TOOLS_PROMPT_SECTION = "fleet_pi_workspace"
+const FLEET_PI_NO_TOOLS_PROMPT_SECTION = "fleet_pi_workspace"
 
 export const FLEET_PI_NO_TOOLS_NOTICE = [
   "Workspace tools are unavailable in this session: no Daytona API key is configured, so you have no file, shell, search or workspace tools and cannot read or change the user's repository.",
