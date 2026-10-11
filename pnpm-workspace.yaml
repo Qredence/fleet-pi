@@ -51,6 +51,7 @@ overrides:
   source-map-js: '^1.2.2'
   fast-copy: '^4.1.0'
   katex: '^0.18.2'
+  '@modelcontextprotocol/sdk': '^1.31.0'
 allowBuilds:
   '@google/genai': true
   better-sqlite3: true
