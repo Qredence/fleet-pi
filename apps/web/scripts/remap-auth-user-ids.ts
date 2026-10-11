@@ -103,19 +103,19 @@ async function remapUserId(
   newUserId: string
 ) {
   await client.query(
-    `UPDATE pi_user_providers SET user_id = $2 WHERE user_id = $1`,
+    `UPDATE pi_user_providers SET user_id = $2 WHERE user_id::text = $1`,
     [oldUserId, newUserId]
   )
   await client.query(
-    `UPDATE pi_user_settings SET user_id = $2 WHERE user_id = $1`,
+    `UPDATE pi_user_settings SET user_id = $2 WHERE user_id::text = $1`,
     [oldUserId, newUserId]
   )
-  await client.query(`UPDATE pi_sessions SET user_id = $2 WHERE user_id = $1`, [
+  await client.query(`UPDATE pi_sessions SET user_id = $2 WHERE user_id::text = $1`, [
     oldUserId,
     newUserId,
   ])
   await client.query(
-    `UPDATE pi_session_tombstones SET user_id = $2 WHERE user_id = $1`,
+    `UPDATE pi_session_tombstones SET user_id = $2 WHERE user_id::text = $1`,
     [oldUserId, newUserId]
   )
   // pi_runs ownership is via session_id → pi_sessions; no user_id column.

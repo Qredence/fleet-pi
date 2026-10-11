@@ -32,7 +32,8 @@ BEGIN
     GRANT SELECT, INSERT ON TABLE public.pi_session_tombstones TO fleet_pi_app;
     GRANT EXECUTE ON FUNCTION
       public.fleet_pi_check_session_owner(TEXT, TEXT),
-      public.fleet_pi_lookup_session_id_by_file(TEXT)
+      public.fleet_pi_lookup_session_id_by_file(TEXT),
+      public.fleet_pi_current_user_uuid()
     TO fleet_pi_app;
   END IF;
 END $$;
