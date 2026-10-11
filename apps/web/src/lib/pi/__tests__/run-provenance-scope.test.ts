@@ -2,7 +2,10 @@ import * as NodeFS from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { createRunProvenanceRecorder } from "../run-provenance"
+import {
+  createRunProvenanceRecorder,
+  mutationsFromToolResults,
+} from "../run-provenance"
 import { createRunDetailResponse } from "../provenance-query"
 import type { AppRuntimeContext } from "../../app-runtime"
 import type { WorkspaceFS } from "../../workspace/workspace-fs"
@@ -267,3 +270,98 @@ function writeProjectBuffer(
 ) {
   writeProjectFile(projectRoot, relativePath, content)
 }
+
+describe("Daytona mutations from edit/write tool results", () => {
+  function tool(
+    name: string,
+    toolCallId: string,
+    state: "input-available" | "output-available" | "output-error",
+    path: string
+  ) {
+    return {
+      type: "tool" as const,
+      part: {
+        type: `tool-${name}` as const,
+        toolCallId,
+        state,
+        input: { path },
+        ...(state === "output-available" && {
+          output: { content: [{ type: "text", text: "ok" }] },
+        }),
+        ...(state === "output-error" && { errorText: "failed" }),
+      },
+    }
+  }
+
+  it("records path and kind for successful edit/write calls without a filesystem walk", () => {
+    const projectRoot = createProjectRoot()
+    const context = createDaytonaContext(projectRoot)
+    const sessionFile = createSessionFile(projectRoot, "session-d.jsonl")
+    const recorder = createRunProvenanceRecorder(context, { mode: "agent" })
+    recorder.record({
+      type: "start",
+      id: "run-d",
+      runId: "run-d",
+      sessionFile,
+      sessionId: "session-d",
+    })
+    recorder.record(tool("edit", "t-edit", "input-available", "src/app.ts"))
+    recorder.record(tool("edit", "t-edit", "output-available", "src/app.ts"))
+    recorder.record(tool("write", "t-write", "input-available", "src/new.ts"))
+    recorder.record(tool("write", "t-write", "output-available", "src/new.ts"))
+    recorder.record(tool("edit", "t-fail", "output-error", "src/broken.ts"))
+    recorder.record(tool("read", "t-read", "output-available", "src/read.ts"))
+    recorder.record(assistantDone("run-d", sessionFile, "session-d"))
+    recorder.close()
+
+    expect(readdirSyncSpy).not.toHaveBeenCalled()
+    const detail = createRunDetailResponse(context, "run-d")
+    expect(
+      detail.mutations.map((m) => ({
+        path: m.canonicalPath,
+        kind: m.kind,
+        toolCallId: m.toolCallId,
+      }))
+    ).toEqual([
+      { path: "src/app.ts", kind: "updated", toolCallId: "t-edit" },
+      { path: "src/new.ts", kind: "created", toolCallId: "t-write" },
+    ])
+    expect(detail.run.mutationCount).toBe(2)
+  })
+})
+
+describe("mutationsFromToolResults", () => {
+  const call = (
+    toolName: string,
+    toolCallId: string,
+    lastSequence: number,
+    overrides: Partial<{ state: string; isError: boolean }> = {}
+  ) => ({
+    toolCallId,
+    toolName,
+    state: "output-available",
+    isError: false,
+    claimedPaths: ["agent-workspace/notes.md"],
+    lastSequence,
+    ...overrides,
+  })
+
+  it("keeps the first kind, last attribution, and skips failures", () => {
+    expect(
+      mutationsFromToolResults([
+        call("edit", "a", 3),
+        call("write", "b", 7),
+        call("write", "c", 9, { isError: true }),
+        call("write", "d", 11, { state: "input-available" }),
+      ])
+    ).toEqual([
+      {
+        canonicalPath: "agent-workspace/notes.md",
+        kind: "updated",
+        toolCallId: "b",
+        eventSequence: 7,
+        summary: "Edited agent-workspace/notes.md via write (Daytona)",
+      },
+    ])
+  })
+})

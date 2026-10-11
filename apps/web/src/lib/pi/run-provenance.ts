@@ -287,8 +287,11 @@ export function createRunProvenanceRecorder(
     const runToFinalize = activeRun
     activeRun = undefined
 
-    const mutations =
-      !isDaytona && runToFinalize.beforeSnapshot
+    // Daytona writes land on the remote sandbox, so the local snapshot diff
+    // cannot see them; derive mutations from completed edit/write results.
+    const mutations = isDaytona
+      ? mutationsFromToolResults(runToFinalize.toolCalls)
+      : runToFinalize.beforeSnapshot
         ? diffProjectSnapshots(
             runToFinalize.beforeSnapshot,
             captureProjectSnapshot(context.projectRoot, [
@@ -401,6 +404,65 @@ function addPathCandidate(
   if (normalized) {
     claimedPaths.add(normalized)
   }
+}
+
+const TOOL_RESULT_MUTATION_KINDS: Readonly<
+  Partial<Record<string, ProvenanceMutationKind>>
+> = {
+  // Pi's edit tool requires an existing file; write creates or overwrites.
+  edit: "updated",
+  write: "created",
+}
+
+/**
+ * Mutations for runs whose files are not on this process's filesystem
+ * (Daytona): one row per path touched by a successful `edit` / `write` call.
+ * The first successful call decides the kind (a `write` after an `edit` is
+ * still an update); the last call wins attribution. No digests or sizes.
+ */
+export function mutationsFromToolResults(
+  toolCalls: ReadonlyArray<
+    Pick<
+      TrackedToolCall,
+      | "toolCallId"
+      | "toolName"
+      | "state"
+      | "isError"
+      | "claimedPaths"
+      | "lastSequence"
+    >
+  >
+) {
+  const byPath = new Map<
+    string,
+    {
+      canonicalPath: string
+      kind: ProvenanceMutationKind
+      toolCallId: string
+      eventSequence: number
+      summary: string
+    }
+  >()
+  for (const toolCall of toolCalls) {
+    const kind = TOOL_RESULT_MUTATION_KINDS[toolCall.toolName.toLowerCase()]
+    if (!kind || toolCall.isError || toolCall.state !== "output-available") {
+      continue
+    }
+    for (const canonicalPath of toolCall.claimedPaths) {
+      const existing = byPath.get(canonicalPath)
+      const resolvedKind = existing ? existing.kind : kind
+      byPath.set(canonicalPath, {
+        canonicalPath,
+        kind: resolvedKind,
+        toolCallId: toolCall.toolCallId,
+        eventSequence: toolCall.lastSequence,
+        summary: `${resolvedKind === "created" ? "Wrote" : "Edited"} ${canonicalPath} via ${toolCall.toolName} (Daytona)`,
+      })
+    }
+  }
+  return [...byPath.values()].sort((left, right) =>
+    left.canonicalPath.localeCompare(right.canonicalPath)
+  )
 }
 
 function diffProjectSnapshots(
