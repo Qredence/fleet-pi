@@ -18,38 +18,27 @@ Conventions in this page:
 - No command here prints a password or a connection string. Keep it that way
   when you adapt them.
 
-## Why there are two hops
+## How the grants reach the new role
 
-Every chat migration and the `fleet_pi_app` grants reconcile
-(`apps/web/src/lib/db/chat-postgres-app-role-grants.ts`,
-`auth-postgres-post-migrate.ts`) grant privileges **to the literal role name
-`fleet_pi_app`**, guarded by `IF EXISTS (… rolname = 'fleet_pi_app')`.
-`pnpm chat:migrate` therefore cannot grant anything to a differently named
-role.
+`pnpm chat:migrate` and `pnpm auth:migrate` grant the runtime privileges
+(tables, `fleet_pi_check_session_owner`, `fleet_pi_lookup_session_id_by_file`,
+`fleet_pi_current_user_id`, `fleet_pi_current_user_uuid`, schema usage, and
+the legacy auth-table policies) to the role named by **`FLEET_PI_APP_ROLE`**.
+It defaults to `fleet_pi_app`. The name must be a lower-case Postgres
+identifier (`[a-z_][a-z0-9_]*`, at most 63 characters, not `pg_*`); anything
+else is rejected before any SQL runs.
 
-A Postgres role has one password, and Neon's "reset password" invalidates the
-old one immediately, so there is no "two passwords on one role" overlap. And
-`ALTER ROLE … RENAME` changes the user name in the connection string, so
-renaming the new role to `fleet_pi_app` would break the URL the Worker is
-using.
+That makes a rotation one hop: create the new role, run `chat:migrate` with
+`FLEET_PI_APP_ROLE=<new>`, switch the Worker over, check it, then drop the old
+role. The new role keeps its name permanently. The old role keeps its grants
+until you drop it, so the Worker version still serving traffic is unaffected.
 
-So the procedure that works with today's code uses two hops:
+From then on, **always set `FLEET_PI_APP_ROLE=<new>`** for `chat:migrate` and
+`auth:migrate` (in CI, `neon db` and local `.env.local`). Otherwise later
+grants go to the default `fleet_pi_app` name, which no longer exists or is no
+longer used.
 
-1. **Hop 1:** create `fleet_pi_app_next`, copy the old role's grants onto it,
-   move the Worker to it, then drop the old `fleet_pi_app`.
-2. **Hop 2:** create a fresh plain `fleet_pi_app`, run `chat:migrate` (grants
-   now land on it), move the Worker back to it, then drop
-   `fleet_pi_app_next`.
-
-Between the hops, `chat:migrate` skips the `fleet_pi_app` grants because the
-role doesn't exist. Do not ship migrations while you are between hops.
-
-> Follow-up that would make this one hop: have the grant SQL target a
-> configurable role name (for example `FLEET_PI_APP_ROLE`, default
-> `fleet_pi_app`). Until then, use the two-hop procedure.
-
-Each hop below follows the same eight steps. They are written for hop 1, with
-`fleet_pi_app_next` as the new role. For hop 2, swap the names.
+The steps below use `fleet_pi_app_2026` as an example name for the new role.
 
 ## 1. Snapshot main
 
@@ -66,7 +55,7 @@ created through the console or API are added to `neon_superuser` and get
 
 ```bash
 umask 077
-NEW_ROLE=fleet_pi_app_next
+NEW_ROLE=fleet_pi_app_2026
 NEW_PW="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 40)"
 
 # Create the role NOLOGIN first, so it cannot be used before it has grants.
@@ -76,7 +65,7 @@ SQL
 
 # The password goes through stdin, never on the command line.
 psql "$OWNER_URL" -v ON_ERROR_STOP=1 -q -v pw="$NEW_PW" <<'SQL'
-SELECT format('ALTER ROLE fleet_pi_app_next PASSWORD %L', :'pw') \gexec
+SELECT format('ALTER ROLE fleet_pi_app_2026 PASSWORD %L', :'pw') \gexec
 SQL
 ```
 
@@ -86,58 +75,31 @@ Check the attributes. All of these must be false or empty:
 SELECT rolname, rolsuper, rolbypassrls, rolcanlogin,
        (SELECT array_agg(g.rolname) FROM pg_auth_members m
           JOIN pg_roles g ON g.oid = m.roleid WHERE m.member = r.oid) AS member_of
-FROM pg_roles r WHERE rolname = 'fleet_pi_app_next';
+FROM pg_roles r WHERE rolname = 'fleet_pi_app_2026';
 ```
 
 ## 3. Apply the grants
 
-- **Hop 2 (new role named `fleet_pi_app`):** run `pnpm chat:migrate` and, if
-  the auth tables are in use, `pnpm auth:migrate`. Both re-assert the
-  canonical grant set, including EXECUTE on `fleet_pi_check_session_owner`,
-  `fleet_pi_lookup_session_id_by_file`, `fleet_pi_current_user_id` and
-  `fleet_pi_current_user_uuid`.
-- **Hop 1 (`fleet_pi_app_next`):** the migrations can't target it, so copy
-  the old role's grants. Grant them explicitly, not through membership in
-  `fleet_pi_app`, because the old role is about to be dropped:
+Run the migrations as owner, pointed at the new role:
 
-  ```sql
-  -- Run as owner. Copies table, sequence, schema and function privileges.
-  DO $$
-  DECLARE g record;
-  BEGIN
-    FOR g IN
-      SELECT table_schema, table_name, string_agg(privilege_type, ', ') AS privs
-      FROM information_schema.role_table_grants
-      WHERE grantee = 'fleet_pi_app'
-      GROUP BY 1, 2
-    LOOP
-      EXECUTE format('GRANT %s ON TABLE %I.%I TO fleet_pi_app_next',
-                     g.privs, g.table_schema, g.table_name);
-    END LOOP;
-    FOR g IN
-      SELECT p.oid::regprocedure AS fn
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public'
-        AND has_function_privilege('fleet_pi_app', p.oid, 'EXECUTE')
-        AND NOT has_function_privilege('public', p.oid, 'EXECUTE')
-    LOOP
-      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO fleet_pi_app_next', g.fn);
-    END LOOP;
-  END $$;
-  GRANT USAGE ON SCHEMA public TO fleet_pi_app_next;
-  -- If the auth schema grants apply (Better Auth tables / neon_auth), repeat
-  -- the table loop for those schemas.
-  ```
+```bash
+FLEET_PI_APP_ROLE=fleet_pi_app_2026 \
+FLEET_PI_CHAT_MIGRATION_DATABASE_URL="$OWNER_URL" pnpm chat:migrate
+# Only if the legacy public Better Auth tables are in use (no neon_auth):
+FLEET_PI_APP_ROLE=fleet_pi_app_2026 \
+FLEET_PI_AUTH_MIGRATION_DATABASE_URL="$OWNER_URL" pnpm auth:migrate
+```
 
-Then compare the two roles' grant sets. The diff must be empty:
+`chat:migrate` prints `Granting runtime privileges to role: fleet_pi_app_2026`.
+Then compare the two roles' table grants. The diff must be empty:
 
 ```sql
 SELECT table_schema, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'fleet_pi_app'
 EXCEPT
-SELECT table_schema, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'fleet_pi_app_next';
+SELECT table_schema, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'fleet_pi_app_2026';
 ```
 
-Only now enable login: `ALTER ROLE fleet_pi_app_next LOGIN;`
+Only now enable login: `ALTER ROLE fleet_pi_app_2026 LOGIN;`
 
 ## 4. Write the new pooled URL to the SSD
 
@@ -151,8 +113,8 @@ SECRETS_DIR=/Volumes/SSD-T7/qredence-environnement/.cache/secrets
 mkdir -p "$SECRETS_DIR"
 POOLER_HOST="<endpoint>-pooler.<region>.aws.neon.tech"   # from the Neon console
 printf 'postgresql://%s:%s@%s/neondb?sslmode=require\n' \
-  "$NEW_ROLE" "$NEW_PW" "$POOLER_HOST" > "$SECRETS_DIR/fleet_pi_app_next.url"
-chmod 600 "$SECRETS_DIR/fleet_pi_app_next.url"
+  "$NEW_ROLE" "$NEW_PW" "$POOLER_HOST" > "$SECRETS_DIR/fleet_pi_app_2026.url"
+chmod 600 "$SECRETS_DIR/fleet_pi_app_2026.url"
 unset NEW_PW
 ```
 
@@ -160,9 +122,9 @@ Check that the new role can connect and is RLS-bound, without printing the
 URL:
 
 ```bash
-psql "$(cat "$SECRETS_DIR/fleet_pi_app_next.url")" -Atq \
+psql "$(cat "$SECRETS_DIR/fleet_pi_app_2026.url")" -Atq \
   -c "SELECT current_user, (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user)"
-# expected: fleet_pi_app_next|f
+# expected: fleet_pi_app_2026|f
 ```
 
 ## 5. Upload a Worker preview version and smoke-test it
@@ -180,9 +142,9 @@ and the value is read from stdin:
 
 ```bash
 pnpm exec wrangler versions secret put DATABASE_URL \
-  < "$SECRETS_DIR/fleet_pi_app_next.url"
+  < "$SECRETS_DIR/fleet_pi_app_2026.url"
 pnpm exec wrangler versions secret put FLEET_PI_CHAT_DATABASE_URL \
-  < "$SECRETS_DIR/fleet_pi_app_next.url"
+  < "$SECRETS_DIR/fleet_pi_app_2026.url"
 pnpm exec wrangler versions list              # note the new <new-version-id>
 ```
 
@@ -254,9 +216,8 @@ or API instead (Neon tracks those roles).
 - Delete the old URL file from the SSD, and update any local `.env.local`
   that pointed at the old role.
 
-After hop 1, repeat steps 1–8 for hop 2 (new role `fleet_pi_app`, grants via
-`chat:migrate`, Worker back to the `fleet_pi_app` URL, then drop
-`fleet_pi_app_next`).
+- `FLEET_PI_APP_ROLE=fleet_pi_app_2026` is set wherever `chat:migrate` or
+  `auth:migrate` runs (CI, `neon db`, `.env.local`).
 
 ## Rollback notes
 
@@ -270,8 +231,8 @@ After hop 1, repeat steps 1–8 for hop 2 (new role `fleet_pi_app`, grants via
   `wrangler versions secret put` and deploy that.
 - `wrangler rollback` restores code **and** secrets as of that version. Check
   which role a version uses before rolling back across a rotation.
-- If a migration ran between the hops, run `pnpm chat:migrate` again after
-  hop 2 so the final `fleet_pi_app` has every grant.
+- If `chat:migrate` ran with the old role name after the swap, run it again
+  with `FLEET_PI_APP_ROLE=<new>`. Grants are idempotent.
 
 ## Incident 2026-10-11
 

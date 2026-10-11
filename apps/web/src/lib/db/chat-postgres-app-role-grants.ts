@@ -35,6 +35,11 @@ BEGIN
       public.fleet_pi_lookup_session_id_by_file(TEXT),
       public.fleet_pi_current_user_uuid()
     TO fleet_pi_app;
+    -- Ledger-gated in 20261009_pi_jwt_user_policies; re-assert so a role
+    -- created later (e.g. FLEET_PI_APP_ROLE rotation) can evaluate RLS.
+    IF to_regprocedure('public.fleet_pi_current_user_id()') IS NOT NULL THEN
+      GRANT EXECUTE ON FUNCTION public.fleet_pi_current_user_id() TO fleet_pi_app;
+    END IF;
   END IF;
 END $$;
 `
