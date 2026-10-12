@@ -17,9 +17,11 @@ export default defineConfig({
         source: "./functions/chat.ts",
         dev: { port: 8787 },
         env: {
-          FLEET_PI_CHAT_DATABASE_URL:
-            chatFunctionEnv("FLEET_PI_CHAT_DATABASE_URL") ||
-            chatFunctionEnv("DATABASE_URL"),
+          // Runtime must be the non-owner fleet_pi_app role. DATABASE_URL is
+          // often the owner and bypasses RLS, so do not fall back to it.
+          FLEET_PI_CHAT_DATABASE_URL: chatFunctionEnv(
+            "FLEET_PI_CHAT_DATABASE_URL"
+          ),
           // Neon Functions have no persistent repo; default the Pi project root
           // to an ephemeral writable location so sessions/workspace can mkdir.
           FLEET_PI_REPO_ROOT: chatFunctionEnv("FLEET_PI_REPO_ROOT") || "/tmp",

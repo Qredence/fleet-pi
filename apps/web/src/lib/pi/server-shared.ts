@@ -9,8 +9,8 @@ import {
   VERCEL_EPHEMERAL_SESSION_BASE,
   resolveVercelUserSessionDir,
 } from "./session-paths"
+import { isDeployedChatRuntimeSurface } from "./runtime/deployed-chat-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
-import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export {
   collectDiagnostics,
@@ -35,7 +35,7 @@ export function getSessionDir(
   services: AgentSessionServices,
   options: { userId?: string } = {}
 ) {
-  if (isVercelDeployment()) {
+  if (isDeployedChatRuntimeSurface()) {
     const sessionDir = options.userId
       ? resolveVercelUserSessionDir(options.userId)
       : VERCEL_EPHEMERAL_SESSION_BASE

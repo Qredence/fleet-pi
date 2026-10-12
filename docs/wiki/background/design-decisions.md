@@ -34,7 +34,7 @@ The TTL prevents unbounded memory growth. When a session is accessed after the T
 
 Sandbox isolation via Daytona is opt-in, controlled by the presence of `DAYTONA_API_KEY`. When the key is absent, Pi tools (file reads, writes, and bash) run directly in the server Node.js process scoped to the project root.
 
-This trade-off prioritizes low-friction local development: a developer can run Fleet Pi with only AWS credentials, no additional infrastructure. Daytona isolation is recommended for multi-tenant or public-facing deployments where untrusted content might influence tool execution.
+This trade-off prioritizes low-friction local development: a developer can run Fleet Pi with only AWS credentials, no additional infrastructure. Daytona isolation is recommended for multi-tenant or public-facing deployments where untrusted content might influence tool execution. On those deployed surfaces, `workspace_write` and `resource_install` target the user's Daytona volume and do not write the shared checkout when no sandbox is attached.
 
 **Consequence:** The security posture of a Fleet Pi deployment depends on whether Daytona is configured. Local single-user installations without Daytona rely on workspace scoping and command policy enforcement rather than OS-level container isolation.
 

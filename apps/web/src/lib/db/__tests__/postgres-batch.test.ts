@@ -199,7 +199,8 @@ const ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) DO UPDATE SE
           cost_total = EXCLUDED.cost_total,
           raw_entry = EXCLUDED.raw_entry,
           entry_timestamp = EXCLUDED.entry_timestamp,
-          synced_at = now()`
+          synced_at = now()
+        WHERE pi_session_entries.raw_entry IS DISTINCT FROM EXCLUDED.raw_entry`
 
 function makeEntry(overrides: Partial<PiSessionEntryMirrorInput> = {}) {
   const entry: PiSessionEntryMirrorInput = {

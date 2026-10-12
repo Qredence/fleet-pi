@@ -304,6 +304,10 @@ describe("Pi session mirror repository", () => {
     expect(entriesQuery?.params[16]).toBe(
       '{"type":"custom","id":"custom-1","parentId":null,"timestamp":"2026-05-22T10:01:00.000Z","customType":"plan-mode","data":{"ok":true}}'
     )
+    // Skip-unchanged guard: unchanged canonical entries must not be rewritten.
+    expect(entriesQuery?.sql).toContain(
+      "WHERE pi_session_entries.raw_entry IS DISTINCT FROM EXCLUDED.raw_entry"
+    )
   })
 
   it("records run, event, tool, mutation, and finalize writes", async () => {
@@ -466,7 +470,7 @@ describe("Pi session mirror repository", () => {
     delete process.env.VERCEL
   })
 
-  it("logs mirror sync failures on Vercel without throwing", async () => {
+  it("fails the turn when mirror sync fails on a fail-closed surface", async () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
     process.env.VERCEL = "1"
     const errorSpy = vi
@@ -483,13 +487,13 @@ describe("Pi session mirror repository", () => {
           } as never,
           { userId: "user-vercel" }
         )
-      ).resolves.toBeUndefined()
+      ).rejects.toThrow("boom vercel")
 
       expect(errorSpy).toHaveBeenCalledWith(
         {
           error: expect.objectContaining({ message: "boom vercel" }),
         },
-        "[pi-session-mirror] sync failure on Vercel (non-fatal)"
+        "[pi-session-mirror] sync failure; failing the turn"
       )
     } finally {
       delete process.env.VERCEL

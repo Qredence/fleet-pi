@@ -1,5 +1,5 @@
 import { Plus, RefreshCw, Search, Trash2 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Button } from "../../../../button"
 import {
   Dialog,
@@ -22,7 +22,10 @@ import {
 } from "../../../primitives/settings-pane"
 import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { isModelEnabled } from "../shared/model-patterns"
-import { CREDENTIAL_UI_PROVIDERS } from "../shared/provider-metadata"
+import {
+  collectConfiguredModelProviderIds,
+  shouldRefreshProviderModels,
+} from "../shared/provider-metadata"
 import {
   ProviderBrandIcon,
   formatProviderLabel,
@@ -57,7 +60,12 @@ export function ModelDefaultsSection({
   onRemoveModel: (model: ConfigModelInfo) => void
   onRevert: () => void
   onSave: () => void
-  providers: Array<{ id: string; isConfigured: boolean }>
+  providers: Array<{
+    id: string
+    isConfigured: boolean
+    name?: string
+    displayName?: string
+  }>
   saving: boolean
   settingsLoading: boolean
 }) {
@@ -69,15 +77,7 @@ export function ModelDefaultsSection({
   const normalizedAddFilter = addFilter.trim().toLowerCase()
 
   const configuredProviderIds = useMemo(() => {
-    const credentialIds = new Set(
-      CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
-    )
-    const ids = new Set<string>()
-    for (const provider of providers) {
-      if (provider.isConfigured && credentialIds.has(provider.id)) {
-        ids.add(provider.id)
-      }
-    }
+    const ids = collectConfiguredModelProviderIds(providers)
     // Keep providers already on the curated list discoverable after refresh.
     for (const model of modelOptions) {
       if (isModelEnabled(model, draft?.enabledModels)) {
@@ -87,16 +87,31 @@ export function ModelDefaultsSection({
     return ids
   }, [draft?.enabledModels, modelOptions, providers])
 
+  const providerLabel = useCallback(
+    (providerId: string) => {
+      const row = providers.find((provider) => provider.id === providerId)
+      const label = row?.displayName?.trim() || row?.name?.trim()
+      return label || formatProviderLabel(providerId)
+    },
+    [providers]
+  )
+
   const listedModels = useMemo(() => {
     return modelOptions.filter((model) => {
       if (!isModelEnabled(model, draft?.enabledModels)) return false
       if (!normalizedFilter) return true
-      return [model.name, model.modelId, model.provider, model.id]
+      return [
+        model.name,
+        model.modelId,
+        model.provider,
+        model.id,
+        providerLabel(model.provider),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalizedFilter)
     })
-  }, [draft?.enabledModels, modelOptions, normalizedFilter])
+  }, [draft?.enabledModels, modelOptions, normalizedFilter, providerLabel])
 
   const groupedListed = useMemo(() => {
     const groups = new Map<string, Array<ConfigModelInfo>>()
@@ -113,7 +128,13 @@ export function ModelDefaultsSection({
       if (!configuredProviderIds.has(model.provider)) return false
       if (isModelEnabled(model, draft?.enabledModels)) return false
       if (!normalizedAddFilter) return true
-      return [model.name, model.modelId, model.provider, model.id]
+      return [
+        model.name,
+        model.modelId,
+        model.provider,
+        model.id,
+        providerLabel(model.provider),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalizedAddFilter)
@@ -123,6 +144,7 @@ export function ModelDefaultsSection({
     draft?.enabledModels,
     modelOptions,
     normalizedAddFilter,
+    providerLabel,
   ])
 
   const groupedCandidates = useMemo(() => {
@@ -137,9 +159,9 @@ export function ModelDefaultsSection({
 
   const discoverableProviders = useMemo(() => {
     return [...configuredProviderIds].sort((a, b) =>
-      formatProviderLabel(a).localeCompare(formatProviderLabel(b))
+      providerLabel(a).localeCompare(providerLabel(b))
     )
-  }, [configuredProviderIds])
+  }, [configuredProviderIds, providerLabel])
 
   const emptyMessage = (() => {
     if (modelOptions.length === 0) {
@@ -158,6 +180,14 @@ export function ModelDefaultsSection({
     setSelectedKeys(new Set())
     setAddFilter("")
     setAddOpen(true)
+    const targets = [...configuredProviderIds].filter(
+      shouldRefreshProviderModels
+    )
+    void (async () => {
+      for (const providerId of targets) {
+        await onDiscoverProvider(providerId)
+      }
+    })()
   }
 
   const toggleSelected = (model: ConfigModelInfo) => {
@@ -255,14 +285,14 @@ export function ModelDefaultsSection({
           groupedListed.map(([provider, models]) => (
             <div key={provider} className="flex flex-col gap-1.5">
               <div className="px-1 text-xs font-medium text-muted-foreground">
-                {formatProviderLabel(provider)}
+                {providerLabel(provider)}
               </div>
               {models.map((model) => (
                 <ItemRow
                   key={model.id}
                   icon={<ProviderBrandIcon provider={model.provider} />}
                   title={model.name}
-                  subtitle={`${formatProviderLabel(model.provider)} · ${model.modelId}`}
+                  subtitle={`${providerLabel(model.provider)} · ${model.modelId}`}
                   trailing={
                     <Button
                       type="button"
@@ -292,9 +322,10 @@ export function ModelDefaultsSection({
           <DialogHeader>
             <DialogTitle>Add models</DialogTitle>
             <DialogDescription>
-              Pick models discovered from your configured providers. For OpenAI
-              Chat Completions, refresh runs{" "}
-              <span className="font-medium">GET {"{baseUrl}/models"}</span>.
+              Pick models from your configured providers. Opening this dialog
+              loads{" "}
+              <span className="font-medium">GET {"{baseUrl}/models"}</span> and
+              lists the models that provider can call.
             </DialogDescription>
           </DialogHeader>
 
@@ -317,7 +348,7 @@ export function ModelDefaultsSection({
                   ) : (
                     <RefreshCw data-icon="inline-start" />
                   )}
-                  {formatProviderLabel(providerId)}
+                  {providerLabel(providerId)}
                 </Button>
               )
             })}
@@ -347,7 +378,7 @@ export function ModelDefaultsSection({
                 {groupedCandidates.map(([provider, models]) => (
                   <div key={provider} className="flex flex-col gap-1">
                     <div className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                      {formatProviderLabel(provider)}
+                      {providerLabel(provider)}
                     </div>
                     {models.map((model) => {
                       const checked = selectedKeys.has(model.id)

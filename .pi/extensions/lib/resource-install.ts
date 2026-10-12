@@ -63,10 +63,12 @@ export async function ensureWorkspaceResourceDirectories(cwd: string) {
 export async function installWorkspaceResource(
   cwd: string,
   params: ResourceInstallParams,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: { writeRoot?: string }
 ): Promise<ResourceInstallResult> {
   const name = normalizeResourceName(params.name)
-  await ensureWorkspaceResourceDirectories(cwd)
+  const writeRoot = options?.writeRoot ?? cwd
+  await ensureWorkspaceResourceDirectories(writeRoot)
 
   const source = await loadInstallSource(cwd, params, signal)
   let installedPath: string
@@ -74,17 +76,22 @@ export async function installWorkspaceResource(
 
   switch (params.kind) {
     case "skill":
-      installedPath = await installSkill(cwd, name, source)
+      installedPath = await installSkill(writeRoot, name, source)
       break
     case "prompt":
-      installedPath = await installPrompt(cwd, name, source)
+      installedPath = await installPrompt(writeRoot, name, source)
       break
     case "extension":
-      installedPath = await installExtension(cwd, name, source, params.activate)
+      installedPath = await installExtension(
+        writeRoot,
+        name,
+        source,
+        params.activate
+      )
       break
     case "package":
       ;({ installedPath, packageSettingsPath } = await installPackage(
-        cwd,
+        writeRoot,
         name,
         source,
         params.activate
@@ -95,7 +102,7 @@ export async function installWorkspaceResource(
   }
 
   const settingsUpdated = await ensureWorkspacePiSettings(
-    cwd,
+    writeRoot,
     params.activate ? packageSettingsPath : undefined
   )
 

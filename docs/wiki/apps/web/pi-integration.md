@@ -57,7 +57,7 @@ const services = await createAgentSessionServices({
 
 Services include:
 
-- **`modelRegistry`** — discovers available Bedrock models.
+- **`modelRuntime`** — discovers available models and holds per-session runtime API keys.
 - **`settingsManager`** — reads `.pi/settings.json`, project-scoped overrides, and environment variables.
 - **`resourceLoader`** — loads skills, prompts, extensions, themes, and AGENTS.md files from the configured resource paths.
 - **`diagnostics`** — array of startup warnings (missing credentials, misconfigured resources, etc.).
@@ -98,10 +98,12 @@ flowchart TD
 
 The factory is invoked by `pi-coding-agent` with `cwd`, `agentDir`, `sessionManager`, and `sessionStartEvent`. Inside:
 
-1. Creates a fresh `AgentSessionServices` with the plan mode extension included:
+1. `createSessionServices()` builds `AgentSessionServices` with the plan mode extension included:
    ```ts
    resourceLoaderOptions: {
-     extensionFactories: [createPlanModeExtension()],
+     extensionFactories: [
+       { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
+     ],
    }
    ```
 2. Resolves the model and thinking level via `resolveModelSelection()`.
@@ -163,7 +165,7 @@ If the requested `sessionFile`/`sessionId` does not resolve to a usable file, a 
 
 ### loadChatModels
 
-- Reads models from `services.modelRegistry.getAvailable()`.
+- Reads models from `services.modelRuntime.getAvailable()`.
 - Maps to `ChatModelInfo` (key, provider, id, name, reasoning, contextWindow, etc.).
 - Resolves the default provider/model from `settingsManager`.
 - Returns `ChatModelsResponse` including `selectedModelKey`.

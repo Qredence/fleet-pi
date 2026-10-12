@@ -5,7 +5,7 @@ import {
   customModelKey,
   nextEnabledModelPatterns,
 } from "../config-panel/shared/model-patterns"
-import { CREDENTIAL_UI_PROVIDERS } from "../config-panel/shared/provider-metadata"
+import { collectConfiguredModelProviderIds } from "../config-panel/shared/provider-metadata"
 import {
   comparableModelSettings,
   modelSettings,
@@ -59,18 +59,10 @@ export function useModelDefaultsForm({
   >(null)
   const lastCommittedModelSettings = useRef<ChatPiSettingsUpdate | null>(null)
 
-  const configuredProviderIds = useMemo(() => {
-    const credentialIds = new Set(
-      CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
-    )
-    const ids = new Set<string>()
-    for (const provider of providers) {
-      if (provider.isConfigured && credentialIds.has(provider.id)) {
-        ids.add(provider.id)
-      }
-    }
-    return ids
-  }, [providers])
+  const configuredProviderIds = useMemo(
+    () => collectConfiguredModelProviderIds(providers),
+    [providers]
+  )
 
   const catalogModels = modelCatalog ?? models
 
@@ -79,6 +71,20 @@ export function useModelDefaultsForm({
     for (const model of catalogModels) {
       if (configuredProviderIds.has(model.provider)) {
         byId.set(model.id, model)
+      }
+    }
+    for (const provider of providers) {
+      if (!configuredProviderIds.has(provider.id)) continue
+      for (const modelId of provider.modelIds ?? []) {
+        const id = customModelKey(provider.id, modelId)
+        if (byId.has(id)) continue
+        byId.set(id, {
+          id,
+          name: modelId,
+          provider: provider.id,
+          modelId,
+          available: true,
+        })
       }
     }
     for (const model of discoveredModels) {
@@ -110,7 +116,7 @@ export function useModelDefaultsForm({
       },
       ...merged,
     ]
-  }, [catalogModels, configuredProviderIds, discoveredModels, draft])
+  }, [catalogModels, configuredProviderIds, discoveredModels, draft, providers])
 
   const modelBaseline =
     lastCommittedModelSettings.current ??
@@ -216,6 +222,10 @@ export function useModelDefaultsForm({
         }
         return [...byId.values()]
       })
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not refresh models"
+      )
     } finally {
       setDiscoveringProviderId(null)
     }

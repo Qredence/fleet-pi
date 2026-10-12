@@ -22,7 +22,7 @@
 - Validate AGENTS.md commands with `pnpm validate-agents-md`.
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 - Apply Neon chat mirror migrations with `pnpm chat:migrate` after setting `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`.
-- Link the existing Neon project with `neon link`, pin a branch with `neon checkout`, then provision services from repo-root `neon.ts` via `pnpm neon:deploy` (or `neon deploy --env .env.local --update-existing --allow-protected`). `neon deploy` provisions Auth, buckets, and Functions only—run `pnpm auth:migrate` and `pnpm chat:migrate` separately for schema. Pull branch env with `pnpm neon:env-pull`, then verify with `pnpm neon:verify`.
+- Link the existing Neon project with `neon link`, pin a branch with `neon checkout`, then provision services from repo-root `neon.ts` via `pnpm neon:deploy` (or `neon deploy --env .env.local --update-existing --allow-protected`). `neon deploy` provisions Auth and Functions only—run `pnpm auth:migrate` and `pnpm chat:migrate` separately for schema. Pull branch env with `pnpm neon:env-pull`, then verify with `pnpm neon:verify`.
 - Verify Vercel deployment readiness with `pnpm verify-deployment-readiness` (set migration URLs to validate Neon grants/RLS).
 - Quarantine legacy ownerless mirror rows with `pnpm quarantine-orphan-sessions` (owner URL required; use `--purge` only after approval).
 - Remap `pi_*` ownership after Neon Managed Auth cutover with `pnpm remap-auth-user-ids -- --file=remap.csv` (`email,oldUserId,newUserId` or legacy `email,newUserId` when `public."user"` still exists; `--dry-run` first).

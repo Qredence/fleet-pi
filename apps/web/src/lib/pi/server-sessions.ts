@@ -27,7 +27,7 @@ import {
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import {
-  fetchUserSessionIds,
+  fetchUserSessionCatalog,
   syncPiSessionMirrorSafely,
 } from "@/lib/db/pi-session-mirror"
 
@@ -97,7 +97,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
-    void syncPiSessionMirrorSafely(sessionManager, options)
+    await syncPiSessionMirrorSafely(sessionManager, options)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -112,7 +112,7 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
-    void syncPiSessionMirrorSafely(fresh, options)
+    await syncPiSessionMirrorSafely(fresh, options)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -120,7 +120,7 @@ export async function hydrateChatSession(
     }
   }
 
-  void syncPiSessionMirrorSafely(sessionManager, options)
+  await syncPiSessionMirrorSafely(sessionManager, options)
   scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
 
   return {
@@ -139,17 +139,29 @@ export async function listChatSessions(
   const services = await createSessionServices(context, undefined, {
     userId: options.userId,
   })
-  let sessions = await SessionManager.list(
-    context.projectRoot,
-    getSessionDir(context.projectRoot, services, { userId: options.userId })
-  )
+  const sessionDir = getSessionDir(context.projectRoot, services, {
+    userId: options.userId,
+  })
 
-  if (options.userId) {
-    const allowedIds = new Set(await fetchUserSessionIds(options.userId))
-    if (isPiSessionMirrorEnabled()) {
-      sessions = sessions.filter((s) => allowedIds.has(s.id))
+  if (options.userId && isPiSessionMirrorEnabled()) {
+    const catalog = await fetchUserSessionCatalog(options.userId)
+    if (catalog) {
+      return catalog.map((session) => ({
+        path: session.session_file_path,
+        id: session.id,
+        cwd: session.cwd,
+        name: session.name ?? undefined,
+        created: toIsoTimestamp(session.created_at),
+        modified: toIsoTimestamp(session.updated_at),
+        messageCount: session.message_count,
+        firstMessage: normalizeSessionLabel(
+          session.first_message_preview ?? ""
+        ),
+      }))
     }
   }
+
+  const sessions = await SessionManager.list(context.projectRoot, sessionDir)
 
   return sessions.map((session) => ({
     path: session.path,
@@ -337,6 +349,12 @@ export function toSessionMetadata(
     sessionFile: sessionManager.getSessionFile(),
     sessionId: sessionManager.getSessionId(),
   }
+}
+
+function toIsoTimestamp(value: Date | string) {
+  if (value instanceof Date) return value.toISOString()
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString()
 }
 
 function isPathInside(parent: string, child: string) {

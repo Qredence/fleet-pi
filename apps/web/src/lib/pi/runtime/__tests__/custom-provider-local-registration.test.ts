@@ -87,6 +87,39 @@ describe("registerCustomProviders with the local file store", () => {
     expect(model?.maxTokens).toBe(32_000)
   })
 
+  it("registers models the user enabled later, including ids that contain slashes", async () => {
+    const localId = `${CUSTOM_PROVIDER_ID_PREFIX}command-code`
+    listLocalProviderInstancesMock.mockResolvedValue([
+      {
+        id: localId,
+        displayName: "Command Code",
+        baseUrl: "https://api.commandcode.ai/provider/v1",
+        modelId: "deepseek/deepseek-v4-flash",
+        api: "openai-completions",
+        modelIds: ["deepseek/deepseek-v4-flash"],
+      },
+    ])
+    loadLocalProviderInstanceApiKeyMock.mockResolvedValue("cmd-key")
+
+    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    services.settingsManager.setEnabledModels([
+      `${localId}/gpt-5.5`,
+      `${localId}/moonshotai/Kimi-K2.6`,
+      `${localId}/*`,
+      "google/gemini-2.5-flash",
+    ])
+    await registerCustomProviders(services, undefined)
+
+    expect(
+      services.modelRuntime.getModel(localId, "deepseek/deepseek-v4-flash")
+    ).toBeDefined()
+    expect(services.modelRuntime.getModel(localId, "gpt-5.5")).toBeDefined()
+    expect(
+      services.modelRuntime.getModel(localId, "moonshotai/Kimi-K2.6")
+    ).toBeDefined()
+    expect(services.modelRuntime.getModel(localId, "*")).toBeUndefined()
+  })
+
   it("registers a local named OCC instance in the occ namespace", async () => {
     const occId = `${OCC_INSTANCE_ID_PREFIX}local-occ`
     listLocalProviderInstancesMock.mockResolvedValue([

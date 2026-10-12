@@ -12,6 +12,7 @@ import {
   assertSafeOpenAiCompatibleBaseUrl,
   isGatewayHost,
 } from "./openai-chat-completions-url"
+import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
 import { resolveUserProviderSecret } from "./user-provider-secrets"
 import type { NeonAiGatewayConfig } from "./neon-ai-gateway"
 import type {
@@ -181,8 +182,18 @@ export async function registerOpenAiChatCompletionsProvider(
   // or derived gateway key still triggers the 25k cap + compat flags instead of
   // silently missing them and hitting 400s from the gateway.
   const usesGateway = isGatewayHost(config.baseUrl)
+  // Gateway stays on its configured ids. A user BYOK endpoint (Command Code
+  // and other OpenAI-compatible hosts) also registers models the user enabled
+  // from that host's /models list.
+  const modelIds = usesGateway
+    ? config.modelIds
+    : modelIdsForRegistration(
+        config.modelIds,
+        services.settingsManager.getEnabledModels(),
+        PROVIDER_ID
+      )
 
-  const models: RegisteredModels = config.modelIds.map((modelId) =>
+  const models: RegisteredModels = modelIds.map((modelId) =>
     buildModelEntry(modelId, usesGateway)
   )
   modelRuntime.registerProvider(PROVIDER_ID, {

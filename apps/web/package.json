@@ -18,6 +18,8 @@
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "auth:migrate": "bash ../../scripts/auth-migrate.sh",
     "chat:migrate": "tsx scripts/chat-migrate.ts",
+    "chat:maintain": "tsx scripts/maintain-chat-mirror.ts",
+    "chat:purge": "tsx scripts/purge-chat-mirror.ts",
     "verify-deployment-readiness": "tsx scripts/verify-deployment-readiness.ts",
     "quarantine-orphan-sessions": "tsx scripts/quarantine-orphan-sessions.ts",
     "remap-auth-user-ids": "tsx scripts/remap-auth-user-ids.ts"

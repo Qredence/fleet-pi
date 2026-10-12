@@ -499,3 +499,45 @@ describe("session factory", () => {
     expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
   })
 })
+
+describe("session factory plan mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.createAgentSessionServices.mockResolvedValue({
+      modelRuntime: {
+        setRuntimeApiKey: vi.fn(),
+        removeRuntimeApiKey: vi.fn(),
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
+      },
+      settingsManager: createMockSettingsManager(),
+      resourceLoader: { reload: vi.fn(() => Promise.resolve()) },
+      diagnostics: [],
+    })
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+  })
+
+  it("registers the plan-mode extension on every session", async () => {
+    delete process.env.VERCEL
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
+    const options = mocks.createAgentSessionServices.mock.calls[0]?.[0] as {
+      resourceLoaderOptions?: {
+        extensionFactories?: Array<{ name?: string; factory?: unknown }>
+      }
+    }
+    expect(options.resourceLoaderOptions?.extensionFactories?.[0]).toEqual(
+      expect.objectContaining({
+        name: "fleet-pi-plan-mode",
+        factory: expect.any(Function),
+      })
+    )
+  })
+})

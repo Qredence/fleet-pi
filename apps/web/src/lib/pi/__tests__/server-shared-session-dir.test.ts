@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { afterEach, describe, expect, it } from "vitest"
 import { getSessionDir } from "../server-shared"
+import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 const originalVercel = process.env.VERCEL
 
@@ -32,6 +33,21 @@ describe("getSessionDir", () => {
     expect(existsSync(userA)).toBe(true)
     expect(existsSync(userB)).toBe(true)
 
+    rmSync("/tmp/.fleet/sessions/user-a", { recursive: true, force: true })
+    rmSync("/tmp/.fleet/sessions/user-b", { recursive: true, force: true })
+  })
+
+  it("isolates Neon Function session directories per authenticated user", () => {
+    delete process.env.VERCEL
+    const userA = runWithChatAuthSurface("neon-function", () =>
+      getSessionDir("/repo", services, { userId: "user-a" })
+    )
+    const userB = runWithChatAuthSurface("neon-function", () =>
+      getSessionDir("/repo", services, { userId: "user-b" })
+    )
+
+    expect(userA).toBe("/tmp/.fleet/sessions/user-a")
+    expect(userB).toBe("/tmp/.fleet/sessions/user-b")
     rmSync("/tmp/.fleet/sessions/user-a", { recursive: true, force: true })
     rmSync("/tmp/.fleet/sessions/user-b", { recursive: true, force: true })
   })

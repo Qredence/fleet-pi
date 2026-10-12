@@ -1717,17 +1717,9 @@ test.describe("chat flows", () => {
     await expect(
       workspaceTree.getByRole("button", { name: "factory.md" })
     ).toHaveAttribute("aria-pressed", "true")
-    await workspaceTree.evaluate((element) => {
-      element.scrollTop = element.scrollHeight
-    })
     await expect(
       workspaceTree.getByText("Diagnostics", { exact: true })
-    ).toBeVisible()
-    await expect(
-      workspaceTree.getByRole("listitem", {
-        name: /pending reindex/i,
-      })
-    ).toBeVisible()
+    ).toHaveCount(0)
 
     await page.getByRole("tab", { name: "Pi Resources" }).click()
     await expect(
@@ -1965,10 +1957,7 @@ test.describe("chat flows", () => {
     ).toBeVisible()
     await expect(
       workspaceCanvas.getByText("Diagnostics", { exact: true })
-    ).toBeVisible()
-    await expect(
-      workspaceTree.getByRole("listitem", { name: /pending reindex/i })
-    ).toBeVisible()
+    ).toHaveCount(0)
 
     const textarea = page.locator('textarea[placeholder="Send a message..."]')
     await expect(textarea).toBeVisible()

@@ -8,6 +8,7 @@ import {
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
+import { createPlanModeExtension } from "../plan-mode"
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -86,6 +87,10 @@ export async function createSessionServices(
     ...overrides,
     resourceLoaderOptions: {
       ...userResourceOptions,
+      extensionFactories: [
+        { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
+        ...(userResourceOptions?.extensionFactories ?? []),
+      ],
       extensionsOverride: (base) => {
         const withoutStock = excludeStockDaytonaPiExtension(base)
         return userResourceOptions?.extensionsOverride

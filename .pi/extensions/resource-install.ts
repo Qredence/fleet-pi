@@ -1,8 +1,17 @@
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import {
+  resolveHarnessWriteTarget,
+  uploadAgentWorkspaceTree,
+  type HarnessWriteTarget,
+} from "../../apps/web/src/lib/daytona/harness-write-target"
+import {
   installWorkspaceResource,
   type ResourceInstallKind,
+  type ResourceInstallParams,
   type ResourceInstallSourceType,
 } from "./lib/resource-install"
 
@@ -43,17 +52,38 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       try {
-        const result = await installWorkspaceResource(
-          ctx.sessionManager.getCwd(),
-          {
-            activate: params.activate,
-            kind: params.kind as ResourceInstallKind,
-            name: params.name,
-            source: params.source,
-            sourceType: params.sourceType as ResourceInstallSourceType,
-          },
-          signal
-        )
+        const cwd = ctx.sessionManager.getCwd()
+        const target = resolveHarnessWriteTarget({
+          cwd,
+          sessionId: ctx.sessionManager.getSessionId(),
+          sessionFile: ctx.sessionManager.getSessionFile(),
+        })
+        if (target.kind === "unavailable") {
+          return {
+            content: [
+              { type: "text" as const, text: `Error: ${target.message}` },
+            ],
+            details: undefined,
+            isError: true,
+          }
+        }
+
+        const installParams = {
+          activate: params.activate,
+          kind: params.kind as ResourceInstallKind,
+          name: params.name,
+          source: params.source,
+          sourceType: params.sourceType as ResourceInstallSourceType,
+        }
+        const result =
+          target.kind === "sandbox"
+            ? await installOntoSandbox(
+                cwd,
+                target.sandbox,
+                installParams,
+                signal
+              )
+            : await installWorkspaceResource(cwd, installParams, signal)
 
         return {
           content: [
@@ -82,4 +112,22 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
       }
     },
   })
+}
+
+async function installOntoSandbox(
+  cwd: string,
+  sandbox: Extract<HarnessWriteTarget, { kind: "sandbox" }>["sandbox"],
+  params: ResourceInstallParams,
+  signal: AbortSignal | undefined
+) {
+  const writeRoot = await mkdtemp(join(tmpdir(), "fleet-pi-install-"))
+  try {
+    const result = await installWorkspaceResource(cwd, params, signal, {
+      writeRoot,
+    })
+    await uploadAgentWorkspaceTree(sandbox, writeRoot)
+    return result
+  } finally {
+    await rm(writeRoot, { force: true, recursive: true })
+  }
 }

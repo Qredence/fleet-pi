@@ -172,6 +172,10 @@ async function runChatTurn({
     })
     await currentSession.waitForIdle()
 
+    await syncPiSessionMirrorSafely(result.runtime.session.sessionManager, {
+      userId: body.userId,
+    })
+
     activeTurn = completeAssistantTurn({
       activeTurn,
       body,
@@ -181,9 +185,6 @@ async function runChatTurn({
       sessionReset: result.sessionReset,
     })
 
-    void syncPiSessionMirrorSafely(result.runtime.session.sessionManager, {
-      userId: body.userId,
-    })
     scheduleSessionBlobPersist({
       userId: body.userId,
       sessionManager: result.runtime.session.sessionManager,

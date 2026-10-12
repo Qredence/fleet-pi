@@ -184,9 +184,9 @@ export async function syncPiSessionMirrorSafely(
     if (shouldFailClosedOnMirrorError()) {
       logger.error(
         { error },
-        "[pi-session-mirror] sync failure on Vercel (non-fatal)"
+        "[pi-session-mirror] sync failure; failing the turn"
       )
-      return
+      throw error
     }
     logger.warn({ error }, "[pi-session-mirror] sync failed (non-fatal)")
   }
@@ -252,6 +252,67 @@ export function mapSessionEntryToMirrorRow(
     costTotal: normalized.costTotal,
     rawEntry: entry,
     entryTimestamp: entry.timestamp,
+  }
+}
+
+export type MirroredSessionCatalogRow = {
+  id: string
+  session_file_path: string
+  cwd: string
+  name: string | null
+  created_at: Date | string
+  updated_at: Date | string
+  message_count: number
+  first_message_preview: string | null
+}
+
+/**
+ * Durable session list for the signed-in user. Null when the mirror is off
+ * or a non-fatal read failed. Throws when mirror errors must fail closed.
+ */
+export async function fetchUserSessionCatalog(
+  userId: string
+): Promise<Array<MirroredSessionCatalogRow> | null> {
+  if (!isPiSessionMirrorEnabled()) return null
+
+  const pool = getChatPostgresPool()
+  if (!pool) {
+    if (shouldFailClosedOnMirrorError()) {
+      throw new Error("Chat session catalog is unavailable.")
+    }
+    return null
+  }
+
+  try {
+    return await withUserContext(pool, userId, async (client) => {
+      const result = await client.query<MirroredSessionCatalogRow>(
+        `
+          SELECT
+            id,
+            session_file_path,
+            cwd,
+            name,
+            created_at,
+            updated_at,
+            message_count,
+            first_message_preview
+          FROM pi_sessions
+          WHERE user_id = $1
+          ORDER BY updated_at DESC
+        `,
+        [userId]
+      )
+      return result.rows
+    })
+  } catch (error) {
+    if (shouldFailClosedOnMirrorError()) {
+      throw error
+    }
+    logger.warn(
+      { error, userId },
+      "[pi-session-mirror] failed to fetch user session catalog"
+    )
+    return null
   }
 }
 
@@ -648,7 +709,11 @@ export async function withChatPostgresTransaction(
   await withUserContext(pool, userId, operation)
 }
 
-// On conflict, refresh every mirrored column and bump the sync timestamp.
+// On conflict, refresh every mirrored column and bump the sync timestamp —
+// unless the canonical entry JSON is unchanged, so replaying the same session
+// does not rewrite rows that already match (~10x fewer updates in practice).
+// raw_entry is the source of truth; the projected columns (content_text,
+// summary, …) only change with it.
 const PI_SESSION_ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) DO UPDATE SET
           parent_entry_id = EXCLUDED.parent_entry_id,
           entry_type = EXCLUDED.entry_type,
@@ -666,7 +731,8 @@ const PI_SESSION_ENTRIES_ON_CONFLICT_SQL = `ON CONFLICT (session_id, entry_id) D
           cost_total = EXCLUDED.cost_total,
           raw_entry = EXCLUDED.raw_entry,
           entry_timestamp = EXCLUDED.entry_timestamp,
-          synced_at = now()`
+          synced_at = now()
+        WHERE pi_session_entries.raw_entry IS DISTINCT FROM EXCLUDED.raw_entry`
 
 async function upsertPiSessionEntriesBatch(
   client: PostgresQueryClient,

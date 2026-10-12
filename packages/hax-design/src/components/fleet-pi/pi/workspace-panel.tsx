@@ -22,11 +22,7 @@ import {
 import { isPathWithinScope } from "../../../lib/workspace-path-nav"
 import { isDaytonaNotConnectedError } from "../../../lib/pi/chat-helpers"
 import { useWorkspaceSplitLayout } from "./hooks/use-workspace-split-layout"
-import {
-  ResourceChipSection,
-  ResourceNotice,
-  findWorkspaceNode,
-} from "./shared"
+import { ResourceNotice, findWorkspaceNode } from "./shared"
 import { WorkspacePreviewSkeleton, WorkspaceSkeleton } from "./skeleton-loaders"
 import type { RefObject } from "react"
 import type {
@@ -257,19 +253,6 @@ export function WorkspacePanelContent({
               />
             ))}
           </div>
-          {workspace.diagnostics.length > 0 && !scopePath && (
-            <div className="mt-2 border-t border-border/60 pt-2">
-              <ResourceChipSection
-                id="workspace-diagnostics"
-                label="Diagnostics"
-                icon={CircleAlert}
-                items={workspace.diagnostics.map((diagnostic, index) => ({
-                  name: `Diagnostic ${index + 1}`,
-                  description: diagnostic,
-                }))}
-              />
-            </div>
-          )}
         </div>
       </div>
       <button
