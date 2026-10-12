@@ -22,18 +22,15 @@ describe("fleet_pi_check_session_owner", () => {
 
   it("is applied on every chat:migrate, and Data API grants stay out of the runner", () => {
     const source = readFileSync(
-      new URL("../../../../scripts/chat-migrate.ts", import.meta.url),
+      new URL("../chat-migrations.ts", import.meta.url),
       "utf8"
     )
+    expect(source).toContain("CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL")
     expect(source).toContain(
-      "await client.query(FLEET_PI_CHECK_SESSION_OWNER_SQL)"
+      "await client.query(CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL)"
     )
-    expect(source).toContain(
-      "await client.query(CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL)"
-    )
-    expect(source).not.toContain(
-      'from "../src/lib/db/chat-postgres-data-api-auth"'
-    )
+    expect(source).toContain("do not apply `chat-postgres-data-api-auth`")
+    expect(source).not.toContain('from "./chat-postgres-data-api-auth"')
   })
 
   it("treats a missing or bypass role as unsafe for the runtime connection", () => {

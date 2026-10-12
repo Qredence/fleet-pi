@@ -5,6 +5,7 @@ import {
   normalizeWorkspaceFilePath,
   resolveWorkspacePanelTarget,
   resolveWorkspacePathFromToolInput,
+  stripWorktreePrefix,
 } from "./workspace-path-nav"
 
 describe("normalizeWorkspaceFilePath", () => {
@@ -26,6 +27,26 @@ describe("normalizeWorkspaceFilePath", () => {
         "/project/sandbox/repo/agent-workspace/memory/project/decisions.md"
       )
     ).toBe("agent-workspace/memory/project/decisions.md")
+  })
+
+  it("strips .21st worktree prefixes", () => {
+    expect(
+      normalizeWorkspaceFilePath(
+        "/Users/me/.21st/worktrees/fleet-pi/feat-x/agent-workspace/plans/next.md"
+      )
+    ).toBe("agent-workspace/plans/next.md")
+  })
+
+  it("handles adversarial worktree-like input in linear time", () => {
+    const started = performance.now()
+    for (const hostile of [
+      ".21st/worktrees/".repeat(20_000) + "\n",
+      ".21st/worktrees/a".repeat(20_000) + "\n",
+      ".21st/worktrees/a/".repeat(20_000) + "\n",
+    ]) {
+      expect(normalizeWorkspaceFilePath(hostile)).toBeNull()
+    }
+    expect(performance.now() - started).toBeLessThan(1_000)
   })
 
   it("rejects repo-root paths outside agent-workspace", () => {
@@ -137,5 +158,29 @@ describe("resolveWorkspacePathFromToolInput", () => {
         file_path: "README.md",
       })
     ).toBeNull()
+  })
+})
+
+describe("stripWorktreePrefix", () => {
+  it("returns the path after .21st/worktrees/<repo>/<branch>/", () => {
+    expect(
+      stripWorktreePrefix("/Users/me/.21st/worktrees/repo/feat/apps/web/a.ts")
+    ).toBe("apps/web/a.ts")
+  })
+
+  it("uses the leftmost complete worktree match", () => {
+    expect(
+      stripWorktreePrefix(".21st/worktrees//x/.21st/worktrees/r/b/c.ts")
+    ).toBe("c.ts")
+  })
+
+  it("returns null without two non-empty segments and a tail", () => {
+    expect(stripWorktreePrefix("/repo/src/a.ts")).toBeNull()
+    expect(stripWorktreePrefix(".21st/worktrees/repo/branch/")).toBeNull()
+    expect(stripWorktreePrefix(".21st/worktrees/repo//a.ts")).toBeNull()
+  })
+
+  it("rejects tails containing line breaks", () => {
+    expect(stripWorktreePrefix(".21st/worktrees/r/b/a\nb")).toBeNull()
   })
 })

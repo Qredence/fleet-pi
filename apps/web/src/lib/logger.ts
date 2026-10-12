@@ -1,9 +1,10 @@
 import pino from "pino"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 function isDev() {
   // Neon Functions and Vercel serverless must not use pino-pretty (not bundled).
   if (process.env.NEON_BRANCH?.trim()) return false
-  if (process.env.VERCEL === "1") return false
+  if (isVercelDeployment()) return false
   return process.env.NODE_ENV !== "production"
 }
 

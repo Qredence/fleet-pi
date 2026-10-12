@@ -166,3 +166,17 @@ describe("chat-fetch", () => {
     ).toThrow("Sample payload did not match the expected contract")
   })
 })
+
+describe("daytona_credential_required errors", () => {
+  it("surfaces a readable message instead of the raw code", async () => {
+    const { ChatRequestError, DAYTONA_CREDENTIAL_REQUIRED_MESSAGE } =
+      await import("./chat-fetch")
+    const error = new ChatRequestError(
+      403,
+      JSON.stringify({ message: "daytona_credential_required" })
+    )
+    expect(error.message).toBe(DAYTONA_CREDENTIAL_REQUIRED_MESSAGE)
+    expect(error.message).toMatch(/Daytona API key/)
+    expect(error.body).toContain("daytona_credential_required")
+  })
+})

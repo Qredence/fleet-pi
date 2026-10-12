@@ -26,6 +26,24 @@ import type {
   ThemePreference,
 } from "@workspace/hax-design/lib/canvas-utils"
 
+/**
+ * Pick the model to preselect. The server reports `selectedModelKey: ""` when
+ * the user has no saved choice; treating that (or a key that is no longer
+ * listed/available) as a real selection left `modelSelection` undefined, so
+ * `useSendWhenModelReady` held the first message forever and Enter sent
+ * nothing.
+ */
+export function resolvePreferredModelKey(
+  models: ReadonlyArray<{ id: string; available?: boolean }>,
+  selectedModelKey: string | null | undefined
+) {
+  const saved = selectedModelKey
+    ? models.find((model) => model.id === selectedModelKey)
+    : undefined
+  if (saved && saved.available !== false) return saved.id
+  return (models.find((model) => model.available !== false) ?? models[0]).id
+}
+
 export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   const {
     mode: storedMode,
@@ -60,7 +78,10 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
   useEffect(() => {
     if (models.length === 0) return
 
-    const preferredKey = modelsData?.selectedModelKey ?? models[0].id
+    const preferredKey = resolvePreferredModelKey(
+      models,
+      modelsData?.selectedModelKey
+    )
 
     if (!modelKey) {
       setModelKey(preferredKey)

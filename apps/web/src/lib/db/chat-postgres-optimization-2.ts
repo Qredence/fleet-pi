@@ -36,7 +36,7 @@ CREATE INDEX IF NOT EXISTS pi_run_events_recorded_at_idx
   ON pi_run_events(recorded_at);
 
 -- 3. CHECK the stream event type domain (protocol union: start, state, delta,
---    thinking, plan, tool, error, done, queue, compaction)
+--    thinking, plan, tool, error, done, queue, compaction, retry)
 DO $$
 BEGIN
   IF NOT EXISTS (

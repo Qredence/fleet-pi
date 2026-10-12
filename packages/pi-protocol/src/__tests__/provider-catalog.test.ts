@@ -38,7 +38,7 @@ const PI_LLM_PROVIDER_ENV_VARS: Record<string, Array<string>> = {
     "OPENAI_CHAT_COMPLETIONS_BASE_URL",
     "OPENAI_CHAT_COMPLETIONS_MODEL",
   ],
-  "azure-openai-responses": ["AZURE_OPENAI_API_KEY"],
+  azure: ["AZURE_OPENAI_API_KEY"],
   nvidia: ["NVIDIA_API_KEY"],
   deepseek: ["DEEPSEEK_API_KEY"],
   google: ["GEMINI_API_KEY"],

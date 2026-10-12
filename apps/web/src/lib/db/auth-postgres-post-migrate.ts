@@ -81,12 +81,14 @@ BEGIN
           USING (true)
           WITH CHECK (true);
       END IF;
-    END IF;
 
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."user" TO fleet_pi_app;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."session" TO fleet_pi_app;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."account" TO fleet_pi_app;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."verification" TO fleet_pi_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."user" TO fleet_pi_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."session" TO fleet_pi_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."account" TO fleet_pi_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."verification" TO fleet_pi_app;
+    ELSE
+      RAISE WARNING 'fleet_pi_app role not found: skipped auth table policies and grants (RLS is still enabled; create the role and re-run auth:migrate before pointing FLEET_PI_AUTH_DATABASE_URL at it)';
+    END IF;
 
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
       REVOKE ALL ON TABLE public."user" FROM authenticated;

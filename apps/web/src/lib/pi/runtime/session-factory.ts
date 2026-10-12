@@ -10,11 +10,13 @@ import {
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { createPlanModeExtension } from "../plan-mode"
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
 import type { ApplyRuntimeAuthOptions } from "./types"
+import type { ChatWorkspaceStatus } from "@workspace/pi-protocol/chat-protocol"
 
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
@@ -68,7 +70,11 @@ function getBootstrapCacheState(projectRoot: string): BootstrapRetryState {
 export async function createSessionServices(
   context: AppRuntimeContext,
   overrides?: Parameters<typeof createAgentSessionServices>[0],
-  options?: { userId?: string; projectRoot?: string }
+  options?: {
+    userId?: string
+    projectRoot?: string
+    workspace?: ChatWorkspaceStatus
+  }
 ) {
   if (isDeployedChatRuntimeSurface()) {
     // Capture platform Gateway creds in memory, then scrub org LLM + Gateway
@@ -87,7 +93,13 @@ export async function createSessionServices(
     ...overrides,
     resourceLoaderOptions: {
       ...userResourceOptions,
+      // Server-owned extensions: the Fleet Pi identity always, plus the
+      // workspace-free extensions when `.pi/extensions` is not discoverable.
       extensionFactories: [
+        ...buildFleetPiInlineExtensions({
+          projectRoot: context.projectRoot,
+          workspace: options?.workspace ?? { toolsAvailable: true },
+        }),
         { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
         ...(userResourceOptions?.extensionFactories ?? []),
       ],
@@ -138,12 +150,15 @@ export async function applyRuntimeAuth(
   // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
   // every key mutation triggers a Pi availability refresh, and with network
   // model refresh enabled that scan walks every provider and can hang (e.g.
-  // amazon-bedrock without AWS credentials). `allowNetwork: false` keeps each
-  // per-key refresh offline and bounded.
+  // amazon-bedrock without AWS credentials).
+  //
+  // Pi 1.x: setRuntimeApiKey takes AuthOperationOptions (signal only) and its
+  // credential sync always refreshes just this provider with
+  // `allowNetwork: false`, so each per-key refresh stays offline and bounded.
+  // A network refresh would need an explicit `modelRuntime.refresh({ providers })`,
+  // which we deliberately never call here.
   for (const [providerId, apiKey] of configured) {
-    await modelRuntime.setRuntimeApiKey(providerId, apiKey, {
-      allowNetwork: false,
-    })
+    await modelRuntime.setRuntimeApiKey(providerId, apiKey)
   }
 
   // Clear only runtime keys Fleet set on this session that the user no longer

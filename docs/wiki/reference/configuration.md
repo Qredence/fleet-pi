@@ -60,10 +60,11 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ### Chat Session Mirror (Neon Postgres)
 
-| Variable                               | Default | Description                                                                                                                                                                                                                                                |
-| -------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FLEET_PI_CHAT_DATABASE_URL`           | —       | Neon Postgres connection string (DML role only). When set, Pi session entries, run events, tool executions, and file mutations are mirrored to Neon asynchronously. Pi JSONL files remain the source of truth; mirror failures do not interrupt streaming. |
-| `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` | —       | Neon Postgres connection string with full DDL privileges. Required only when running `pnpm chat:migrate`.                                                                                                                                                  |
+| Variable                               | Default        | Description                                                                                                                                                                                                                                                |
+| -------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FLEET_PI_CHAT_DATABASE_URL`           | —              | Neon Postgres connection string (DML role only). When set, Pi session entries, run events, tool executions, and file mutations are mirrored to Neon asynchronously. Pi JSONL files remain the source of truth; mirror failures do not interrupt streaming. |
+| `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` | —              | Neon Postgres connection string with full DDL privileges. Required only when running `pnpm chat:migrate`.                                                                                                                                                  |
+| `FLEET_PI_APP_ROLE`                    | `fleet_pi_app` | Runtime role that `pnpm chat:migrate` and `pnpm auth:migrate` grant to. Lower-case identifier only; see [DB role rotation](../../runbooks/db-role-rotation.md).                                                                                            |
 
 ### Daytona Sandboxes (optional)
 

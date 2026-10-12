@@ -21,6 +21,10 @@ import { ChatPanel } from "@/lib/pi/chat-panel"
 import { useLocalSlashActions } from "@/lib/pi/use-local-slash-actions"
 import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { usePiChat } from "@/lib/pi/use-pi-chat"
+import {
+  isModelPickerReady,
+  useSendWhenModelReady,
+} from "@/lib/pi/use-send-when-model-ready"
 import { useOptionalUser } from "@/lib/auth/use-auth"
 import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import {
@@ -82,7 +86,7 @@ function ChatWorkspaceShell() {
     useUpdateChatProvider()
   const { mutateAsync: onRemoveProvider, isPending: isRemovingProvider } =
     useRemoveChatProvider()
-  const { data: modelsData } = useChatModels()
+  const { data: modelsData, status: modelsStatus } = useChatModels()
   const { data: modelCatalogData } = useChatModelCatalog({
     enabled: settingsDialogOpen,
   })
@@ -173,6 +177,14 @@ function ChatWorkspaceShell() {
     onModeChange: handleModeChange,
     persistSession,
   })
+  const sendWhenModelReady = useSendWhenModelReady(
+    sendMessage,
+    isModelPickerReady({
+      status: modelsStatus,
+      modelCount: models.length,
+      hasSelection: modelSelection !== undefined,
+    })
+  )
 
   useResourceInstallRefresh({
     messages,
@@ -361,8 +373,8 @@ function ChatWorkspaceShell() {
               modelPickerOpen,
               onModelPickerOpenChange: setModelPickerOpen,
             }}
-            onSend={(text) => sendMessage({ text })}
-            onOpenUIAction={(message) => sendMessage({ text: message })}
+            onSend={(text) => sendWhenModelReady({ text })}
+            onOpenUIAction={(message) => sendWhenModelReady({ text: message })}
             onStop={stop}
             onQuestionAnswer={({ toolCallId, answer }) => {
               void answerQuestion({ toolCallId, answer }).catch(() => undefined)

@@ -1,3 +1,4 @@
+import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
 import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import type {
   AssistantTurnState,
@@ -22,6 +23,7 @@ import {
   createTurnStartContext,
   finalizeAssistantTurn,
   handleSessionEvent,
+  sendTerminalFrame,
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
@@ -112,6 +114,8 @@ async function runChatTurn({
   let removeAbortListener: (() => void) | undefined
   let activeTurn: AssistantTurnState | undefined
   let turnStartContext: TurnStartContext | undefined
+  let terminalRuntime: AgentSessionRuntime | undefined
+  let terminalSent = false
   let queuedPromptCount = 0
 
   log.info(
@@ -121,6 +125,7 @@ async function runChatTurn({
 
   try {
     const result = await createPiRuntime(runtimeContext, body, body.model)
+    terminalRuntime = result.runtime
     const currentSession = result.runtime.session
     releaseRuntime = retainPiRuntime(result.runtime, body.userId)
 
@@ -138,6 +143,7 @@ async function runChatTurn({
       send,
       session: currentSession,
       sessionReset: result.sessionReset,
+      workspace: result.workspace,
     })
 
     unsubscribe = currentSession.subscribe((event) => {
@@ -183,7 +189,9 @@ async function runChatTurn({
       send,
       session: currentSession,
       sessionReset: result.sessionReset,
+      startContext: turnStartContext,
     })
+    terminalSent = true
 
     scheduleSessionBlobPersist({
       userId: body.userId,
@@ -202,8 +210,27 @@ async function runChatTurn({
           message: getErrorMessage(error),
           runId: errorTurn.runId,
         })
+        activeTurn = errorTurn
       } else {
         send({ type: "error", message: getErrorMessage(error) })
+      }
+    }
+    // Every request ends with a terminal frame (best effort: the client may
+    // already be gone on abort).
+    if (turnStartContext && terminalRuntime && !terminalSent) {
+      try {
+        sendTerminalFrame({
+          activeTurn,
+          startContext: turnStartContext,
+          body,
+          runtime: terminalRuntime,
+          send,
+          session: terminalRuntime.session,
+          sessionReset: turnStartContext.sessionReset,
+          stopReason: signal.aborted ? "aborted" : "error",
+        })
+      } catch {
+        // Stream already closed.
       }
     }
   } finally {

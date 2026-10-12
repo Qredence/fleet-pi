@@ -9,6 +9,7 @@ import { reconcileRuntimeOccModel } from "./openai-chat-completions-compat"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type { ActiveSessionRecord } from "./active-sessions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 /**
  * Reloads a session runtime's settings, project configuration, resources, model selection, and authentication.
@@ -34,7 +35,7 @@ async function reloadRuntimeForRecord(
   })
   applyProjectSettingsToServices(runtime.services, merged)
 
-  if (resourceReloadRequired || process.env.VERCEL === "1") {
+  if (resourceReloadRequired || isVercelDeployment()) {
     await runtime.services.resourceLoader.reload()
   }
 

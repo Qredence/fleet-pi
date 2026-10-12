@@ -1,5 +1,13 @@
 import { FLEET_PI_CHECK_SESSION_OWNER_SQL } from "./chat-postgres-session-owner-fn"
 
+/**
+ * Tombstone-aware ownership probe. Shared by the tombstones migration and the
+ * post-migration reconcile step in runChatMigrations, because ledger-gated
+ * copies are skipped after the first apply.
+ */
+export const CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL =
+  FLEET_PI_CHECK_SESSION_OWNER_SQL
+
 export const CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID =
   "20260711_pi_session_tombstones"
 

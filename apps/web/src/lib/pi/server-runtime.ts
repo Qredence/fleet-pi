@@ -20,7 +20,9 @@ import {
 import {
   applyModelSelection,
   resolveModelSelection,
+  resolveServerDefaultChatModel,
 } from "./runtime/model-catalog"
+import { sessionHasRestorableModel } from "./runtime/default-chat-model"
 import { reconcileRuntimeOccModel } from "./runtime/openai-chat-completions-compat"
 import {
   collectDiagnostics,
@@ -35,6 +37,10 @@ import {
   setActiveSessionRecord,
 } from "./runtime/active-sessions"
 import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
+import {
+  resolveChatWorkspaceStatus,
+  withoutWorkspaceTools,
+} from "./runtime/fleet-pi-core-extensions"
 import { applyRuntimeAuth } from "./runtime/session-factory"
 import { createSessionManager, isUsableSessionFile } from "./server-sessions"
 import type { ActiveSessionRecord } from "./runtime/active-sessions"
@@ -49,8 +55,10 @@ import type {
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
   ChatSessionMetadata,
+  ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 import {
   getCachedUserSandbox,
   isDaytonaEnabled,
@@ -99,20 +107,33 @@ async function invokeAgentSessionCreation(
   return createAgentSessionFromServices(params)
 }
 
-const sessionCircuitBreaker = createSessionCircuitBreaker(
-  invokeAgentSessionCreation
-)
+// Created lazily: opossum starts a stats interval in its constructor, and
+// Cloudflare Workers forbid timers in global (module-load) scope.
+let sessionCircuitBreaker:
+  | ReturnType<
+      typeof createSessionCircuitBreaker<
+        Parameters<typeof invokeAgentSessionCreation>,
+        Awaited<ReturnType<typeof invokeAgentSessionCreation>>
+      >
+    >
+  | undefined
 
-// Circuit breaker fallback with observability hooks
-sessionCircuitBreaker.fallback((error) => {
-  // Log circuit breaker trip for observability
-  const errorMessage = error instanceof Error ? error.message : String(error)
-  logger.warn(
-    { error: errorMessage },
-    "[pi-runtime] session circuit breaker triggered"
-  )
-  throw createSessionFallbackError()
-})
+function getSessionCircuitBreaker() {
+  if (sessionCircuitBreaker) return sessionCircuitBreaker
+  const breaker = createSessionCircuitBreaker(invokeAgentSessionCreation)
+  // Circuit breaker fallback with observability hooks
+  breaker.fallback((error) => {
+    // Log circuit breaker trip for observability
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.warn(
+      { error: errorMessage },
+      "[pi-runtime] session circuit breaker triggered"
+    )
+    throw createSessionFallbackError()
+  })
+  sessionCircuitBreaker = breaker
+  return breaker
+}
 
 export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
   const record = trackRuntime(runtime, userId)
@@ -231,9 +252,14 @@ export async function createPiRuntime(
   }
 
   const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
+  const workspace = resolveChatWorkspaceStatus({
+    daytonaEnabled: daytona.enabled,
+    hostedDeployment: isVercelDeployment(),
+  })
 
   const services = await createSessionServices(context, undefined, {
     userId: metadata.userId,
+    workspace,
   })
   const requestDiagnostics = collectDiagnostics(services)
   const sessionDir = getSessionDir(context.projectRoot, services, {
@@ -269,9 +295,9 @@ export async function createPiRuntime(
     )
     if (daytona.warmUp) {
       void daytona.warmUp.catch((error) => {
-        logger.warn(
+        logger.debug(
           { error, userId: metadata.userId },
-          "[daytona] background warm-up failed; clearing fail-closed tracking"
+          "[daytona] clearing fail-closed tracking after warm-up failure"
         )
         untrackDaytonaToolSession(
           sessionManager.getSessionId(),
@@ -296,15 +322,24 @@ export async function createPiRuntime(
 
     await applyRuntimeAuth(services, { userId: metadata.userId })
 
+    // No model from the client (e.g. sent before the picker loaded): resolve
+    // the default here so Pi never falls back to its hard-coded provider
+    // defaults. Sessions with a restorable model keep Pi's restore path.
+    const initialModel =
+      model ??
+      (sessionHasRestorableModel(runtimeSessionManager, services)
+        ? undefined
+        : await resolveServerDefaultChatModel(services, metadata.userId))
+
     // Eager warm-up ran above when Daytona is enabled. Fleet adapter extension
     // owns sandbox tool registration (not customTools). Stock npm:@daytona/pi
     // is excluded from the web resource loader.
 
-    const result = await sessionCircuitBreaker.fire({
+    const result = await getSessionCircuitBreaker().fire({
       services,
       sessionManager: runtimeSessionManager,
       sessionStartEvent,
-      model,
+      model: initialModel,
       thinkingLevel,
       tools: CHAT_TOOL_ALLOWLIST,
     })
@@ -322,10 +357,13 @@ export async function createPiRuntime(
   })
   trackRuntime(runtime, metadata.userId)
   reconcileRuntimeOccModel(runtime, metadata.userId)
+  runtimeWorkspaceStatus.set(runtime, workspace)
   applyPlanMode(runtime, metadata.mode, metadata.planAction)
+  applyWorkspaceToolRestriction(runtime)
 
   return {
     runtime,
+    workspace,
     diagnostics: collectDiagnostics(
       runtime.services,
       runtime.modelFallbackMessage
@@ -357,15 +395,24 @@ async function resolveDaytonaWorkspaceForUser(
     return { enabled, warmUp: undefined }
   }
 
-  return {
-    enabled,
-    warmUp: resolveUserSandboxContext({
-      userId: metadata.userId,
-      userEmail: metadata.userEmail,
-      apiKey: daytonaApiKey!,
-      surface: "chat",
-    }),
-  }
+  const warmUp = resolveUserSandboxContext({
+    userId: metadata.userId,
+    userEmail: metadata.userEmail,
+    apiKey: daytonaApiKey!,
+    surface: "chat",
+  })
+  // Mark the background warm-up handled immediately. The caller attaches its
+  // own handler only after further awaits (and not at all on the runtime-reuse
+  // path), so a fast rejection (e.g. a volume still in `pending_create`) would
+  // otherwise surface as an unhandled rejection and crash the server process.
+  warmUp.catch((error: unknown) => {
+    logger.warn(
+      { error, userId: metadata.userId },
+      "[daytona] background warm-up failed"
+    )
+  })
+
+  return { enabled, warmUp }
 }
 
 // Reuse path for a still-active runtime record: cancels the disposal timer,
@@ -386,12 +433,14 @@ async function tryReuseRuntime(
   try {
     await applyModelSelection(record.runtime, modelSelection, metadata.userId)
     applyPlanMode(record.runtime, metadata.mode, metadata.planAction)
+    applyWorkspaceToolRestriction(record.runtime)
   } catch (error) {
     scheduleRuntimeDisposal(record)
     throw error
   }
   return {
     runtime: record.runtime,
+    workspace: runtimeWorkspaceStatus.get(record.runtime),
     sessionReset: false,
     diagnostics: mergeDiagnostics(
       requestDiagnostics,
@@ -401,6 +450,26 @@ async function tryReuseRuntime(
       )
     ),
   }
+}
+
+// Workspace tool availability per live runtime (set when it is created).
+const runtimeWorkspaceStatus = new WeakMap<
+  AgentSessionRuntime,
+  ChatWorkspaceStatus
+>()
+
+/**
+ * Without a workspace (hosted deploy, no Daytona key) drop file/shell/search
+ * tools from the active set; plan mode re-applies tool sets every request, so
+ * this runs after each applyPlanMode.
+ */
+export function applyWorkspaceToolRestriction(runtime: AgentSessionRuntime) {
+  const status = runtimeWorkspaceStatus.get(runtime)
+  if (!status || status.toolsAvailable) return
+  const session = runtime.session
+  session.setActiveToolsByName(
+    withoutWorkspaceTools(session.getActiveToolNames())
+  )
 }
 
 function mergeDiagnostics(...diagnosticLists: Array<Array<string>>) {

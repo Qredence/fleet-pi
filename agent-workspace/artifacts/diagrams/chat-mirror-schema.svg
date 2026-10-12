@@ -1,0 +1,289 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1400" font-family="-apple-system, 'Inter', 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arrow-down" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
+      <path d="M0,0 L8,0 L4,8 Z" fill="#a1a1aa"/>
+    </marker>
+    <marker id="arrow-right" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L0,8 L8,4 Z" fill="#a1a1aa"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1560" height="1400" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="17" font-weight="700" fill="#18181b">Fleet Pi — chat data schema (Neon · jolly-lab-20094853 · public.pi_* mirror + neon_auth identity)</text>
+
+  <!-- Lane labels -->
+  <text x="40" y="58" font-size="11.5" font-weight="600" fill="#71717a">IDENTITY — NEON MANAGED AUTH (neon_auth)</text>
+  <text x="420" y="58" font-size="11.5" font-weight="600" fill="#71717a">SESSIONS — PI JSONL MIRROR</text>
+  <text x="980" y="58" font-size="11.5" font-weight="600" fill="#71717a">RUNS &amp; PROVENANCE</text>
+
+  <!-- ============ LANE A: identity / user config ============ -->
+
+  <!-- neon_auth.user -->
+  <g transform="translate(40,70)">
+    <rect x="0" y="0" width="300" height="258" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="300" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="300" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">neon_auth.user</text>
+    <text x="288" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">identity</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="288" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">uuid</text>
+    <text x="12" y="86" font-size="12" fill="#18181b">name</text><text x="288" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">email <tspan font-weight="700" fill="#b45309">UNIQ</tspan></text><text x="288" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">emailVerified</text><text x="288" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">boolean</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">image</text><text x="288" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">createdAt</text><text x="288" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">updatedAt</text><text x="288" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">role / banned</text><text x="288" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text / bool</text>
+  </g>
+
+  <!-- pi_user_providers -->
+  <g transform="translate(40,380)">
+    <rect x="0" y="0" width="300" height="186" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="300" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="300" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_user_providers</text>
+    <text x="288" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">BYOK</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">user_id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="288" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">provider_id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="288" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">encrypted_key</text><text x="288" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text · AES-GCM</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">auth_type</text><text x="288" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">apiKey|oauth</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">encrypted_payload</text><text x="288" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">updated_at</text><text x="288" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+  </g>
+
+  <!-- pi_user_settings -->
+  <g transform="translate(40,610)">
+    <rect x="0" y="0" width="300" height="114" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="300" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="300" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_user_settings</text>
+    <text x="288" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">Vercel-only</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">user_id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="288" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b">settings</text><text x="288" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">jsonb</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">updated_at</text><text x="288" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+  </g>
+
+  <!-- fleet_pi_chat_migrations -->
+  <g transform="translate(40,760)">
+    <rect x="0" y="0" width="300" height="114" rx="8" fill="#ffffff" stroke="#d4d4d8" stroke-dasharray="4 3"/>
+    <rect x="0" y="0" width="300" height="30" rx="8" fill="#3f3f46"/>
+    <rect x="0" y="15" width="300" height="15" fill="#3f3f46"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">fleet_pi_chat_migrations</text>
+    <text x="288" y="20" font-size="10" fill="#d4d4d8" text-anchor="end">ledger</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">version <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="288" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="86" font-size="12" fill="#18181b">name</text><text x="288" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">applied_at</text><text x="288" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+  </g>
+
+  <!-- Auth plumbing note -->
+  <g transform="translate(40,900)">
+    <rect x="0" y="0" width="300" height="150" rx="8" fill="#fafafa" stroke="#e4e4e7" stroke-dasharray="4 3"/>
+    <text x="12" y="20" font-size="11" font-weight="600" fill="#52525b">Other neon_auth plumbing (not app data)</text>
+    <text x="12" y="44" font-size="11" fill="#71717a">session · account · organization</text>
+    <text x="12" y="64" font-size="11" fill="#71717a">member · invitation · jwks</text>
+    <text x="12" y="84" font-size="11" fill="#71717a">verification · project_config</text>
+    <text x="12" y="112" font-size="10.5" fill="#a1a1aa">Held private: no views expose neon_auth</text>
+    <text x="12" y="128" font-size="10.5" fill="#a1a1aa">to Data API roles; never RLS-enabled.</text>
+    <text x="12" y="144" font-size="10.5" fill="#a1a1aa">pi_* rows link to neon_auth.user.id only</text>
+  </g>
+
+  <!-- ============ LANE B: sessions ============ -->
+
+  <!-- pi_sessions -->
+  <g transform="translate(420,70)">
+    <rect x="0" y="0" width="470" height="378" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="470" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="470" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_sessions</text>
+    <text x="458" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">session metadata</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="458" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b">user_id</text><text x="458" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">session_file_path <tspan font-weight="700" fill="#b45309">UNIQ</tspan></text><text x="458" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">cwd</text><text x="458" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">version</text><text x="458" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int ≥ 3</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">parent_session_file_path</text><text x="458" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">name</text><text x="458" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">first_message_preview</text><text x="458" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="254" font-size="12" fill="#18181b">leaf_entry_id</text><text x="458" y="254" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="278" font-size="12" fill="#18181b">entry_count / message_count</text><text x="458" y="278" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int · denormalized</text>
+    <text x="12" y="302" font-size="12" fill="#18181b">created_at / updated_at</text><text x="458" y="302" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="326" font-size="12" fill="#18181b">last_synced_at</text><text x="458" y="326" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="350" font-size="12" fill="#18181b">(user_id, updated_at DESC) idx</text><text x="458" y="350" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#a1a1aa" text-anchor="end">index</text>
+  </g>
+
+  <!-- pi_session_entries -->
+  <g transform="translate(420,480)">
+    <rect x="0" y="0" width="470" height="498" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="470" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="470" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_session_entries</text>
+    <text x="458" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">full JSONL entries</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">session_id <tspan font-weight="700" fill="#0f766e">PK</tspan> <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="458" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_sessions</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">entry_id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="458" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">parent_entry_id</text><text x="458" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">entry_type</text><text x="458" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">role / custom_type</text><text x="458" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">provider / model_id</text><text x="458" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">thinking_level</text><text x="458" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">target_entry_id / from_entry_id</text><text x="458" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="254" font-size="12" fill="#18181b">content_text / summary</text><text x="458" y="254" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="278" font-size="12" fill="#18181b">is_error</text><text x="458" y="278" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">boolean</text>
+    <text x="12" y="302" font-size="12" fill="#18181b">tokens_total / cost_total</text><text x="458" y="302" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int / numeric</text>
+    <text x="12" y="326" font-size="12" fill="#18181b">raw_entry</text><text x="458" y="326" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">jsonb · original JSONL</text>
+    <text x="12" y="350" font-size="12" fill="#18181b">entry_timestamp</text><text x="458" y="350" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="374" font-size="12" fill="#18181b">synced_at</text><text x="458" y="374" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="398" font-size="12" fill="#18181b">(session_id, entry_timestamp) idx</text><text x="458" y="398" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#a1a1aa" text-anchor="end">index</text>
+    <text x="12" y="422" font-size="11" fill="#a1a1aa">ON DELETE CASCADE via session_id</text>
+    <text x="12" y="440" font-size="11" fill="#a1a1aa">(session_id, entry_id) composite PK</text>
+    <text x="12" y="458" font-size="11" fill="#a1a1aa">hydration source: browser reads these</text>
+    <text x="12" y="476" font-size="11" fill="#a1a1aa">rows after refresh (not just JSONL)</text>
+  </g>
+
+  <!-- pi_session_tombstones -->
+  <g transform="translate(420,990)">
+    <rect x="0" y="0" width="470" height="114" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="470" height="30" rx="8" fill="#3f3f46"/>
+    <rect x="0" y="15" width="470" height="15" fill="#3f3f46"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_session_tombstones</text>
+    <text x="458" y="20" font-size="10" fill="#d4d4d8" text-anchor="end">soft delete</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">session_id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="458" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b">user_id</text><text x="458" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">deleted_at</text><text x="458" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+  </g>
+
+  <!-- ============ LANE C: runs & provenance ============ -->
+
+  <!-- pi_runs -->
+  <g transform="translate(980,70)">
+    <rect x="0" y="0" width="500" height="378" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="500" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="500" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_runs</text>
+    <text x="488" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">agent turns</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="488" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">session_id <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="488" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_sessions</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">assistant_message_id</text><text x="488" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">session_turn_index</text><text x="488" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">mode / plan_action</text><text x="488" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">status</text><text x="488" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">in_progress|completed|errored|aborted</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">assistant_preview / error_message</text><text x="488" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">event_count / tool_call_count</text><text x="488" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="254" font-size="12" fill="#18181b">mutation_count</text><text x="488" y="254" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="278" font-size="12" fill="#18181b">started_at</text><text x="488" y="278" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="302" font-size="12" fill="#18181b">completed_at</text><text x="488" y="302" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="326" font-size="12" fill="#18181b">(session_id, session_turn_index) idx</text><text x="488" y="326" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#a1a1aa" text-anchor="end">index</text>
+    <text x="12" y="350" font-size="11" fill="#a1a1aa">ON DELETE CASCADE via session_id</text>
+  </g>
+
+  <!-- pi_run_events -->
+  <g transform="translate(980,470)">
+    <rect x="0" y="0" width="500" height="186" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="500" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="500" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_run_events</text>
+    <text x="488" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">stream events</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">run_id <tspan font-weight="700" fill="#0f766e">PK</tspan> <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="488" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_runs</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">sequence <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="488" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">event_type / summary</text><text x="488" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">payload</text><text x="488" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">jsonb</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">recorded_at</text><text x="488" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+  </g>
+
+  <!-- pi_tool_executions -->
+  <g transform="translate(980,664)">
+    <rect x="0" y="0" width="500" height="330" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="500" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="500" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_tool_executions</text>
+    <text x="488" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">tool calls</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="488" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">session_id <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="488" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_sessions</text>
+    <text x="12" y="110" font-size="12" fill="#18181b" font-weight="600">run_id <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="488" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_runs</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">tool_call_id</text><text x="488" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text · UNIQ(run_id)</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">tool_name / state</text><text x="488" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">is_error</text><text x="488" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">boolean</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">input / output</text><text x="488" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">jsonb</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">claimed_paths</text><text x="488" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text[]</text>
+    <text x="12" y="254" font-size="12" fill="#18181b">first_sequence / last_sequence</text><text x="488" y="254" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="278" font-size="12" fill="#18181b">(run_id, tool_call_id) UNIQ idx</text><text x="488" y="278" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#a1a1aa" text-anchor="end">index</text>
+    <text x="12" y="302" font-size="11" fill="#a1a1aa">first/last sequence anchor into pi_run_events</text>
+  </g>
+
+  <!-- pi_file_mutations -->
+  <g transform="translate(980,1002)">
+    <rect x="0" y="0" width="500" height="330" rx="8" fill="#ffffff" stroke="#d4d4d8"/>
+    <rect x="0" y="0" width="500" height="30" rx="8" fill="#18181b"/>
+    <rect x="0" y="15" width="500" height="15" fill="#18181b"/>
+    <text x="12" y="20" font-size="12.5" font-weight="700" fill="#fafafa">pi_file_mutations</text>
+    <text x="488" y="20" font-size="10" fill="#a1a1aa" text-anchor="end">workspace writes</text>
+    <text x="12" y="62" font-size="12" fill="#18181b" font-weight="600">id <tspan font-weight="700" fill="#0f766e">PK</tspan></text><text x="488" y="62" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="86" font-size="12" fill="#18181b" font-weight="600">run_id <tspan font-weight="700" fill="#52525b">FK</tspan></text><text x="488" y="86" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text → pi_runs</text>
+    <text x="12" y="110" font-size="12" fill="#18181b">canonical_path</text><text x="488" y="110" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text · UNIQ(run_id)</text>
+    <text x="12" y="134" font-size="12" fill="#18181b">kind</text><text x="488" y="134" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">created|updated|deleted</text>
+    <text x="12" y="158" font-size="12" fill="#18181b">tool_call_id / event_sequence</text><text x="488" y="158" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text / int</text>
+    <text x="12" y="182" font-size="12" fill="#18181b">before_digest / after_digest</text><text x="488" y="182" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="206" font-size="12" fill="#18181b">before_size / after_size</text><text x="488" y="206" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">int</text>
+    <text x="12" y="230" font-size="12" fill="#18181b">summary</text><text x="488" y="230" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">text</text>
+    <text x="12" y="254" font-size="12" fill="#18181b">recorded_at</text><text x="488" y="254" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#71717a" text-anchor="end">timestamptz</text>
+    <text x="12" y="278" font-size="12" fill="#18181b">(canonical_path, recorded_at) idx</text><text x="488" y="278" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#a1a1aa" text-anchor="end">index</text>
+    <text x="12" y="302" font-size="11" fill="#a1a1aa">ON DELETE CASCADE via run_id</text>
+  </g>
+
+  <!-- ============ EDGES ============ -->
+
+  <!-- user -> providers (1:N user_id, RLS) -->
+  <path d="M 340 150 L 385 150 L 385 380 L 200 380" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="278" y="360" font-size="10.5" fill="#71717a">1:N · user_id (RLS)</text>
+
+  <!-- user -> settings (1:1 user_id) -->
+  <path d="M 340 500 L 385 500 L 385 610 L 200 610" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="262" y="588" font-size="10.5" fill="#71717a">1:1 · user_id</text>
+
+  <!-- user -> sessions (1:N user_id, RLS) -->
+  <path d="M 340 280 L 390 280 L 390 180 L 410 180" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-right)"/>
+  <text x="392" y="230" font-size="10.5" fill="#71717a" text-anchor="middle">1:N · user_id (RLS)</text>
+
+  <!-- sessions -> entries (1:N FK cascade) -->
+  <path d="M 655 448 L 655 470" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="662" y="462" font-size="10.5" fill="#71717a">1:N · session_id (FK · CASCADE)</text>
+
+  <!-- sessions -> tombstones (1:1 soft delete) -->
+  <path d="M 655 448 L 655 532 L 520 532 L 520 980" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="462" y="524" font-size="10.5" fill="#71717a">1:1 · session_id (soft delete)</text>
+
+  <!-- sessions -> runs (1:N FK cascade) -->
+  <path d="M 890 200 L 970 200" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-right)"/>
+  <text x="930" y="190" font-size="10.5" fill="#71717a" text-anchor="middle">1:N · session_id (FK · CASCADE)</text>
+
+  <!-- runs -> run_events (1:N FK cascade) -->
+  <path d="M 1230 448 L 1230 460" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="1238" y="456" font-size="10.5" fill="#71717a">1:N · run_id (FK · CASCADE)</text>
+
+  <!-- runs -> tool_executions (1:N FK) -->
+  <path d="M 1230 448 L 1230 532 L 1100 532 L 1100 654" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="1236" y="524" font-size="10.5" fill="#71717a">1:N · run_id (FK)</text>
+
+  <!-- runs -> file_mutations (1:N FK cascade) -->
+  <path d="M 1230 448 L 1230 532 L 1360 532 L 1360 992" fill="none" stroke="#a1a1aa" stroke-width="1.5" marker-end="url(#arrow-down)"/>
+  <text x="1370" y="524" font-size="10.5" fill="#71717a">1:N · run_id (FK · CASCADE)</text>
+
+  <!-- ============ LEGEND + NOTES ============ -->
+  <g transform="translate(40,1100)">
+    <text x="0" y="0" font-size="11.5" font-weight="700" fill="#18181b">Legend</text>
+    <text x="0" y="22" font-size="11" fill="#52525b"><tspan font-weight="700" fill="#0f766e">PK</tspan> primary key · <tspan font-weight="700" fill="#52525b">FK</tspan> foreign key · <tspan font-weight="700" fill="#b45309">UNIQ</tspan> unique · dashed border = non-app / ledger table · → = FK / ownership edge (arrowhead = child side)</text>
+  </g>
+
+  <g transform="translate(40,1160)">
+    <rect x="0" y="0" width="1480" height="220" rx="10" fill="#fafafa" stroke="#e4e4e7"/>
+    <text x="16" y="24" font-size="12" font-weight="700" fill="#18181b">Notes</text>
+    <text x="16" y="50" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Source of truth:</tspan> Pi JSONL session files. These mirror tables are derived projections; mirror failures are non-fatal and must never block chat streaming (best-effort sync, fail-open writes).</text>
+    <text x="16" y="74" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Ownership &amp; isolation:</tspan> pi_* rows belong to neon_auth.user.id via user_id; pi_* tables use FORCE ROW LEVEL SECURITY scoped by app.current_user_id (runtime connection is non-owner fleet_pi_app). No DB FK from pi_* to neon_auth — identity stays private. Ownership probes use SECURITY DEFINER functions (fleet_pi_check_session_owner).</text>
+    <text x="16" y="98" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">BYOK:</tspan> pi_user_providers holds AES-GCM encrypted credentials (BETTER_AUTH_SECRET); encrypted_payload stores OCC/custom-instance metadata {displayName, baseUrl, api, modelIds}; auth_type CHECK apiKey|oauth.</text>
+    <text x="16" y="122" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Session hydration:</tspan> browser refresh hydrates visible messages from pi_session_entries (raw_entry jsonb), using pi_sessions.leaf_entry_id/entry_count as cursors; version CHECK ≥ 3 guards the JSONL schema contract.</text>
+    <text x="16" y="146" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Provenance:</tspan> pi_runs records one row per agent turn (status in_progress|completed|errored|aborted); pi_run_events is the ordered stream-event log (run_id, sequence); pi_tool_executions and pi_file_mutations are run-scoped with event_sequence/first_sequence anchors into that log.</text>
+    <text x="16" y="170" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Index patterns:</tspan> pi_sessions(user_id, updated_at DESC) · pi_session_entries(session_id, entry_timestamp) · pi_runs(session_id, session_turn_index) · pi_run_events(run_id, sequence) · pi_tool_executions(run_id, first_sequence, last_sequence) · pi_file_mutations(canonical_path, recorded_at).</text>
+    <text x="16" y="194" font-size="11.5" fill="#3f3f46"><tspan font-weight="600">Also on disk:</tspan> local dev mirrors the workspace tree to agent-workspace/indexes/workspace-projection.sqlite (workspace_items, provenance_runs, …) — separate from this Neon mirror; schema managed by pnpm chat:migrate. Neon Data API stays disabled; chat migrations revoke authenticated/anonymous grants on pi_* and EXECUTE on ownership probes — only fleet_pi_app may read/write.</text>
+  </g>
+</svg>

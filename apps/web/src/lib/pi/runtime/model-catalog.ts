@@ -8,6 +8,7 @@ import {
   reconcileOpenAiChatCompletionsModel,
   reconcileRuntimeOccModel,
 } from "./openai-chat-completions-compat"
+import { resolveDefaultChatModel } from "./default-chat-model"
 import { createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type {
@@ -149,6 +150,50 @@ export async function applyModelSelection(
   if (thinkingLevel) {
     runtime.session.setThinkingLevel(thinkingLevel)
   }
+}
+
+/**
+ * Server-side model for a new chat session that arrived without a model
+ * selection (e.g. a message sent before the client model picker loaded).
+ * Uses the configured settings default when its provider has auth, otherwise
+ * the first authenticated model the app registered and the user enabled, and
+ * throws `NoChatModelAvailableError` instead of falling back blindly to Pi's
+ * per-provider defaults.
+ */
+export async function resolveServerDefaultChatModel(
+  services: AgentSessionServices,
+  userId?: string
+): Promise<Model<any>> {
+  const { defaultProvider, defaultModel } = resolveDefaultModelSelection(
+    services.settingsManager
+  )
+  const configuredDefault =
+    defaultProvider && defaultModel
+      ? reconcileOpenAiChatCompletionsModel(
+          services,
+          resolveStructuredModelSelection(
+            services,
+            defaultProvider,
+            defaultModel
+          ),
+          userId
+        )
+      : undefined
+  const enabledPatterns = services.settingsManager.getEnabledModels()
+  const preferredKeys = await resolveAppAddedModelKeys(services, userId).catch(
+    () => new Set<string>()
+  )
+
+  return resolveDefaultChatModel({
+    modelRuntime: services.modelRuntime,
+    configuredDefault,
+    preferredKeys,
+    isEnabled: (model) =>
+      isChatModelEnabled(
+        toChatModelInfo(model, true, undefined),
+        enabledPatterns
+      ),
+  })
 }
 
 export function resolveModelSelection(

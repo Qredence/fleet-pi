@@ -119,6 +119,23 @@ describe("resolveWorkspaceContext", () => {
     expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
   })
 
+  it("does not gate chat-only surfaces (requireDaytona: false) on hosted deployments without BYOK", async () => {
+    process.env.VERCEL = "1"
+    mockGetSession.mockResolvedValue({
+      user: { email: "user@example.test", id: "user-1" },
+    })
+    mockResolveDaytonaRuntimeApiKey.mockResolvedValue(undefined)
+
+    const context = await resolveWorkspaceContext(
+      new Request("http://localhost:3000/api/chat/commands"),
+      undefined,
+      { requireDaytona: false }
+    )
+
+    expect(context.workspaceFS).toBeUndefined()
+    expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
+  })
+
   it("resolves a local context when VERCEL is unset and no BYOK is present", async () => {
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },

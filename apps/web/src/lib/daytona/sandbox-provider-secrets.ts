@@ -11,6 +11,7 @@ import { isEnvVarConfigured } from "../env-manager"
 import { fingerprintProviderSecrets } from "./sandbox-prepare"
 import { isDaytonaSecretsEligibleProvider } from "./secret-hosts"
 import type { PiAuthFile, SandboxProviderSecrets } from "./sandbox-prepare"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export type { PiAuthFile, SandboxProviderSecrets }
 
@@ -102,7 +103,7 @@ export function buildPlaintextSandboxCredentials(
 export async function loadConfiguredProviderSecrets(
   userId: string | undefined
 ): Promise<Map<string, string>> {
-  if (process.env.VERCEL === "1") {
+  if (isVercelDeployment()) {
     if (!userId) return new Map()
     // Named OCC instances are excluded structurally: the Daytona sandbox sync
     // covers only the reserved default OCC slot + static builtins (their auth

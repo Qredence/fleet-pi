@@ -4,7 +4,10 @@ import {
   upsertAssistantThinkingPart,
   upsertAssistantToolPart,
 } from "./chat-message-helpers"
-import { labelForState } from "./chat-fetch"
+import {
+  DAYTONA_CREDENTIAL_REQUIRED_MESSAGE,
+  labelForState,
+} from "./chat-fetch"
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 import type { QueueState } from "./chat-fetch"
 import type {
@@ -43,7 +46,9 @@ export function applyChatStreamEvent(
         ...snapshot,
         activityLabel: event.sessionReset
           ? "Started a fresh Pi session"
-          : event.diagnostics?.[0],
+          : event.workspace?.toolsAvailable === false
+            ? DAYTONA_CREDENTIAL_REQUIRED_MESSAGE
+            : event.diagnostics?.[0],
         messages: [
           ...snapshot.messages,
           createTextMessage("assistant", "", event.id),

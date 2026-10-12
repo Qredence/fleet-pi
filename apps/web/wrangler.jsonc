@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fleet-pi-web",
+  "compatibility_date": "2026-10-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./src/server.ts",
+  "observability": { "enabled": true },
+  // Non-secret config. Secrets (DB URLs, auth, provider keys) go through
+  // `wrangler secret`; see docs/wiki/deployment.md.
+  "vars": {
+    "FLEET_PI_DEPLOYMENT": "cloudflare",
+    "NODE_ENV": "production",
+  },
+}

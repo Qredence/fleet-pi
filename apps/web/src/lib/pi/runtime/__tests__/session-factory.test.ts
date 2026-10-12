@@ -106,13 +106,13 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, { userId: "user-1" })
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
     expect(services.modelRuntime.setRuntimeApiKey).toHaveBeenCalledWith(
       "google",
-      "decrypted-key",
-      { allowNetwork: false }
+      "decrypted-key"
     )
     // Fresh runtimes hold no Fleet-set runtime keys, so nothing is cleared.
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
@@ -133,16 +133,11 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     expect(mocks.withChatPostgresTransaction).not.toHaveBeenCalled()
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
@@ -169,17 +164,12 @@ describe("session factory", () => {
             : { configured: false }
         ),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     // Only env-configured providers get runtime keys — never a sweep of the
     // full Pi provider catalog.
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
       "huggingface",
       expect.anything()
@@ -264,6 +254,7 @@ describe("session factory", () => {
           getRegisteredProviderIds: vi.fn(() => []),
           getProviderAuthStatus: vi.fn(() => ({ configured: false })),
         },
+        settingsManager: createMockSettingsManager(),
       } as never,
       { userId: "user-1" }
     )
@@ -533,11 +524,13 @@ describe("session factory plan mode", () => {
         extensionFactories?: Array<{ name?: string; factory?: unknown }>
       }
     }
-    expect(options.resourceLoaderOptions?.extensionFactories?.[0]).toEqual(
-      expect.objectContaining({
-        name: "fleet-pi-plan-mode",
-        factory: expect.any(Function),
-      })
+    expect(options.resourceLoaderOptions?.extensionFactories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "fleet-pi-plan-mode",
+          factory: expect.any(Function),
+        }),
+      ])
     )
   })
 })

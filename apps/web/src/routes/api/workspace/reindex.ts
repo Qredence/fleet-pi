@@ -20,17 +20,19 @@ import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 const REINDEX_WINDOW_MS = 60_000
 const REINDEX_MAX_REQUESTS = 5
 const reindexAttempts = new Map<string, Array<number>>()
-const reindexCleanup = setInterval(() => {
-  const cutoff = Date.now() - REINDEX_WINDOW_MS
+// Pruned on use instead of a module-level setInterval (Cloudflare Workers
+// forbid timers in global scope).
+function pruneReindexAttempts(now = Date.now()) {
+  const cutoff = now - REINDEX_WINDOW_MS
   for (const [key, attempts] of reindexAttempts) {
     const recent = attempts.filter((timestamp) => timestamp > cutoff)
     if (recent.length === 0) reindexAttempts.delete(key)
     else reindexAttempts.set(key, recent)
   }
-}, REINDEX_WINDOW_MS)
-reindexCleanup.unref()
+}
 
 function takeReindexPermit(key: string, now = Date.now()) {
+  pruneReindexAttempts(now)
   const cutoff = now - REINDEX_WINDOW_MS
   const recent = (reindexAttempts.get(key) ?? []).filter(
     (timestamp) => timestamp > cutoff

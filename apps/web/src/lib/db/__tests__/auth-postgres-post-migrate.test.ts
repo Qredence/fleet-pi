@@ -38,4 +38,25 @@ describe("auth-postgres-post-migrate", () => {
       "ALTER TABLE neon_auth"
     )
   })
+
+  it("only grants to fleet_pi_app when the role exists", () => {
+    const sql = AUTH_POSTGRES_POST_MIGRATE_SQL
+    const roleGuard = sql.indexOf(
+      "IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fleet_pi_app') THEN"
+    )
+    const missingRoleBranch = sql.indexOf(
+      "RAISE WARNING 'fleet_pi_app role not found"
+    )
+    expect(roleGuard).toBeGreaterThan(-1)
+    expect(missingRoleBranch).toBeGreaterThan(roleGuard)
+
+    const grantPositions = [
+      ...sql.matchAll(/GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE/g),
+    ].map((match) => match.index)
+    expect(grantPositions).toHaveLength(4)
+    for (const position of grantPositions) {
+      expect(position).toBeGreaterThan(roleGuard)
+      expect(position).toBeLessThan(missingRoleBranch)
+    }
+  })
 })

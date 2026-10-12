@@ -29,6 +29,7 @@ import {
 import type { DaytonaSecretsSyncResult } from "./sync-daytona-secrets"
 import type { SandboxProviderSecrets } from "./sandbox-prepare"
 import type { Daytona, Sandbox } from "@daytona/sdk"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
@@ -78,7 +79,7 @@ export function isDaytonaEnabled(
 ): boolean {
   if (!userId) return false
   if (clientApiKey) return true
-  if (process.env.VERCEL === "1") return false
+  if (isVercelDeployment()) return false
   return Boolean(process.env.DAYTONA_API_KEY)
 }
 

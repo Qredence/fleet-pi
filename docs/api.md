@@ -768,8 +768,11 @@ Read a file inside agent-workspace
   ```json
   {
     "path": <string> (required),
+    "name": <string> (required),
     "content": <string> (required),
-    "mimeType": <string>
+    "mediaType": <string> (required),
+    "size": <number>,
+    "status": <string>
   }
   ```
 - **401** — Unauthorized

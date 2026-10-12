@@ -1,6 +1,7 @@
 import { sanitizePortableResourcePaths } from "./durable-project-settings"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
+import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
 import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { compactProjectSettingsForPersist } from "./project-settings-merge"
 import {
@@ -45,7 +46,10 @@ export async function prepareProjectSettingsOverridesForPersist(
   overrides: Record<string, unknown>,
   userId: string | undefined
 ): Promise<MigratedProjectSettingsResult> {
-  const migrated = await migrateLegacyGatewayProjectOverrides(overrides, userId)
+  const migrated = await migrateLegacyGatewayProjectOverrides(
+    migrateLegacyAzureProviderOverrides(overrides),
+    userId
+  )
   if (
     !userId ||
     !usesDatabaseBackedProjectSettings() ||

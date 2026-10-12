@@ -14,6 +14,7 @@ import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
 
@@ -169,9 +170,12 @@ export async function resolveUserProviderSecret(
   // deployed surfaces). Scoped to the OCC triple only; other LLM providers
   // keep the env-first behavior locally.
   if (OCC_TRIPLE_PROVIDER_IDS.has(providerId) && isLocalDbBackedUser(userId)) {
-    return (await loadDecryptedUserProviderSecrets(userId, { providerId })).get(
-      providerId
-    )
+    const saved = (
+      await loadDecryptedUserProviderSecrets(userId, { providerId })
+    ).get(providerId)
+    if (saved) return saved
+    // Nothing saved through Settings: fall back to the local env vars below
+    // (`OPENAI_CHAT_COMPLETIONS_*`), as for anonymous local chat.
   }
 
   if (LLM_PROVIDER_ENV_SCRUB_IDS.includes(providerId)) {
@@ -211,6 +215,6 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  if (process.env.VERCEL === "1") return undefined
+  if (isVercelDeployment()) return undefined
   return process.env.DAYTONA_API_KEY
 }

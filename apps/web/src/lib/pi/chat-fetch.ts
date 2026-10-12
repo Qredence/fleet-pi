@@ -22,13 +22,22 @@ export class ChatRequestError extends Error {
   }
 }
 
+export const DAYTONA_CREDENTIAL_REQUIRED_MESSAGE =
+  "Workspace features need a Daytona API key. Add one in Settings → Providers to browse files and run sandbox tools; chat works without it."
+
+export function describeChatErrorCode(message: string) {
+  return message === "daytona_credential_required"
+    ? DAYTONA_CREDENTIAL_REQUIRED_MESSAGE
+    : message
+}
+
 function formatChatRequestErrorMessage(status: number, body: string) {
   const trimmed = body.trim()
   if (!trimmed) return `Request failed (${status})`
   try {
     const parsed = JSON.parse(trimmed) as { message?: unknown }
     if (typeof parsed.message === "string" && parsed.message.length > 0) {
-      return parsed.message
+      return describeChatErrorCode(parsed.message)
     }
   } catch {
     // Keep raw body when the server did not return JSON.
@@ -98,17 +107,18 @@ export async function readChatStream(
 
   const decoder = new TextDecoder()
   let buffer = ""
-  
+
   // Sequence tracking for critical events to detect reordering/duplication
   const expectedSequenceNumbers = new Map<string, number>()
-  
+
   /** Track event sequence per session */
   function trackSequence(sessionId: string, eventType: string, seq: number) {
-    const current = expectedSequenceNumbers.get(`${sessionId}:${eventType}`) ?? 0
+    const current =
+      expectedSequenceNumbers.get(`${sessionId}:${eventType}`) ?? 0
     if (seq > current + 1) {
       console.warn(
         `[chat-sequence] Gap detected in ${eventType} sequence for session ${sessionId}: ` +
-        `expected ${current + 1}, got ${seq}`
+          `expected ${current + 1}, got ${seq}`
       )
     }
     expectedSequenceNumbers.set(`${sessionId}:${eventType}`, seq)
@@ -118,14 +128,23 @@ export async function readChatStream(
   const handleLine = (line: string) => {
     const trimmed = line.trim()
     if (!trimmed) return
-    
+
     const data = JSON.parse(trimmed) as unknown
-    const eventType = typeof data === "object" && data !== null ? "type" in data && (data as Record<string, unknown>).type : undefined
-    
+    const eventType =
+      typeof data === "object" && data !== null
+        ? "type" in data && (data as Record<string, unknown>).type
+        : undefined
+
     // Extract session ID and sequence number for tracking
-    const sessionId = typeof data === "object" && data !== null && "sessionId" in data ? String((data as any).sessionId) : undefined
-    const sequenceNumber = typeof data === "object" && data !== null && "sequenceNumber" in data ? Number((data as any).sequenceNumber) : undefined
-    
+    const sessionId =
+      typeof data === "object" && data !== null && "sessionId" in data
+        ? String((data as any).sessionId)
+        : undefined
+    const sequenceNumber =
+      typeof data === "object" && data !== null && "sequenceNumber" in data
+        ? Number((data as any).sequenceNumber)
+        : undefined
+
     // Validate only low-frequency events that carry schema-critical structure
     if (
       eventType === "start" ||
@@ -138,13 +157,17 @@ export async function readChatStream(
       eventType === "compaction" ||
       eventType === "retry"
     ) {
-      const validatedEvent = parseWithSchema(ChatStreamEventSchema, data, "Chat stream event")
-      
+      const validatedEvent = parseWithSchema(
+        ChatStreamEventSchema,
+        data,
+        "Chat stream event"
+      )
+
       // Track sequence for critical structural events
       if (sessionId && sequenceNumber !== undefined) {
         trackSequence(sessionId, String(validatedEvent.type), sequenceNumber)
       }
-      
+
       onEvent(validatedEvent)
     } else {
       // Fast path: assume delta/thinking are well-formed NDJSON from server

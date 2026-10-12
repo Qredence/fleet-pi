@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/auth-host-policy"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 import { isVercelPreviewDeployment } from "@/lib/deployment/trust-zone"
+import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
 
 function readCsvEnv(name: string) {
   return (process.env[name] ?? "")
@@ -29,9 +30,34 @@ function requiredVercelEnv(name: string) {
   return value
 }
 
+const REQUEST_AUTH_POOL_KEY = Symbol("fleet-pi.auth-postgres-pool")
+
+/**
+ * Better Auth keeps the database object for its lifetime. On Cloudflare
+ * Workers a pool cannot be shared across requests, so hand Better Auth a
+ * pool facade that resolves a per-request pool on every call.
+ */
+function openAuthPool(url: string) {
+  const pool = new Pool({ connectionString: url })
+  const current = () =>
+    isInRequestScope()
+      ? (requestScoped(
+          REQUEST_AUTH_POOL_KEY,
+          () => new Pool({ connectionString: url })
+        ) as InstanceType<typeof Pool>)
+      : pool
+  return new Proxy(pool, {
+    get(_target, property) {
+      const target = current()
+      const value = Reflect.get(target, property, target) as unknown
+      return typeof value === "function" ? value.bind(target) : value
+    },
+  })
+}
+
 function openAuthDatabase() {
   const url = process.env.FLEET_PI_AUTH_DATABASE_URL?.trim()
-  if (url) return new Pool({ connectionString: url })
+  if (url) return openAuthPool(url)
   if (isVercelDeployment()) {
     throw new Error(
       "FLEET_PI_AUTH_DATABASE_URL is required for Better Auth on Vercel."

@@ -10,12 +10,13 @@ import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { listConfiguredProviderIds } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
+import { isVercelDeployment } from "@/lib/deployment/environment"
 
 export async function getProviderConfigStatus(options?: {
   userId?: string
   services?: AgentSessionServices
 }): Promise<Array<ChatProviderInfo>> {
-  if (process.env.VERCEL === "1") {
+  if (isVercelDeployment()) {
     return getVercelProviderConfigStatus(options?.userId)
   }
 

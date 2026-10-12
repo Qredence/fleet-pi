@@ -1,76 +1,8 @@
 import path from "node:path"
 import dotenv from "dotenv"
 import { Pool } from "@neondatabase/serverless"
-import {
-  CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
-  CHAT_POSTGRES_RLS_INITPLAN_SQL,
-} from "../src/lib/db/chat-postgres-rls-initplan"
-import {
-  CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
-  CHAT_POSTGRES_RLS_STRICT_SQL,
-} from "../src/lib/db/chat-postgres-rls-strict"
-import {
-  CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
-  CHAT_POSTGRES_SESSION_OWNERSHIP_SQL,
-} from "../src/lib/db/chat-postgres-session-ownership"
-import {
-  CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
-  CHAT_POSTGRES_SESSION_TOMBSTONES_SQL,
-} from "../src/lib/db/chat-postgres-session-tombstones"
-import {
-  CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
-  CHAT_POSTGRES_PROVIDER_AUTH_SQL,
-} from "../src/lib/db/chat-postgres-provider-auth"
-import {
-  CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
-  CHAT_POSTGRES_USER_SETTINGS_SQL,
-} from "../src/lib/db/chat-postgres-user-settings"
-import {
-  CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_REVOKE_SQL,
-} from "../src/lib/db/chat-postgres-data-api-revoke"
-import {
-  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
-} from "../src/lib/db/chat-postgres-data-api-revoke-again"
-import {
-  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
-  CHAT_POSTGRES_FORCE_RLS_SQL,
-} from "../src/lib/db/chat-postgres-force-rls"
-import {
-  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
-  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
-} from "../src/lib/db/chat-postgres-ownership-execute-revoke"
-import {
-  CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
-  CHAT_POSTGRES_DB_OPTIMIZATION_SQL,
-} from "../src/lib/db/chat-postgres-db-optimization"
-import {
-  CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
-  CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
-} from "../src/lib/db/chat-postgres-drop-unused-indexes"
-import {
-  MIRROR_WATERMARK_MIGRATION_ID,
-  MIRROR_WATERMARK_MIGRATION_SQL,
-} from "../src/lib/db/chat-postgres-mirror-watermark"
-import {
-  CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
-  CHAT_POSTGRES_OPTIMIZATION_2_SQL,
-} from "../src/lib/db/chat-postgres-optimization-2"
-import {
-  CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
-  CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL,
-} from "../src/lib/db/chat-postgres-drop-recreated-indexes"
-import {
-  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
-  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
-} from "../src/lib/db/chat-postgres-retry-event-type-fix"
-import { FLEET_PI_CHECK_SESSION_OWNER_SQL } from "../src/lib/db/chat-postgres-session-owner-fn"
-import {
-  CHAT_POSTGRES_MIGRATION_ID,
-  CHAT_POSTGRES_SCHEMA_SQL,
-} from "../src/lib/db/chat-postgres-schema"
-import type { PoolClient } from "@neondatabase/serverless"
+import { runChatMigrations } from "../src/lib/db/chat-migrations"
+import { resolveAppRole } from "../src/lib/db/app-role"
 
 const cwd = process.cwd()
 const preservedMigrationDatabaseUrl =
@@ -87,40 +19,6 @@ if (preservedMigrationDatabaseUrl) {
     preservedMigrationDatabaseUrl
 }
 
-async function isMigrationApplied(client: PoolClient, migrationId: string) {
-  const result = await client.query<{ id: string }>(
-    "SELECT id FROM fleet_pi_chat_migrations WHERE id = $1",
-    [migrationId]
-  )
-  return result.rows.length > 0
-}
-
-async function recordMigration(client: PoolClient, migrationId: string) {
-  await client.query(
-    `
-      INSERT INTO fleet_pi_chat_migrations (id)
-      VALUES ($1)
-      ON CONFLICT (id) DO UPDATE SET applied_at = now()
-    `,
-    [migrationId]
-  )
-}
-
-async function applyMigrationIfNeeded(
-  client: PoolClient,
-  migrationId: string,
-  sql: string
-) {
-  if (await isMigrationApplied(client, migrationId)) {
-    console.log(`Skipping chat migration: ${migrationId}`)
-    return
-  }
-
-  await client.query(sql)
-  await recordMigration(client, migrationId)
-  console.log(`Applied chat migration: ${migrationId}`)
-}
-
 async function main() {
   const connectionString = process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL
   if (!connectionString) {
@@ -133,101 +31,9 @@ async function main() {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    await client.query(CHAT_POSTGRES_SCHEMA_SQL)
-    await recordMigration(client, CHAT_POSTGRES_MIGRATION_ID)
-    console.log(`Applied chat migration: ${CHAT_POSTGRES_MIGRATION_ID}`)
-
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID,
-      CHAT_POSTGRES_RLS_STRICT_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
-      CHAT_POSTGRES_SESSION_OWNERSHIP_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
-      CHAT_POSTGRES_SESSION_TOMBSTONES_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
-      CHAT_POSTGRES_PROVIDER_AUTH_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
-      CHAT_POSTGRES_USER_SETTINGS_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
-      CHAT_POSTGRES_DATA_API_REVOKE_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
-      CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID,
-      CHAT_POSTGRES_RLS_INITPLAN_SQL
-    )
-    // Intentionally do not apply `chat-postgres-data-api-auth` grants:
-    // closed-beta posture keeps Neon Data API disabled; use revoke_again + FORCE RLS.
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
-      CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
-      CHAT_POSTGRES_FORCE_RLS_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
-      CHAT_POSTGRES_DB_OPTIMIZATION_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
-      CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      MIRROR_WATERMARK_MIGRATION_ID,
-      MIRROR_WATERMARK_MIGRATION_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
-      CHAT_POSTGRES_OPTIMIZATION_2_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
-      CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL
-    )
-    await applyMigrationIfNeeded(
-      client,
-      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
-      CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL
-    )
-
-    // Re-assert every run. Ledger-gated copies are skipped after the first
-    // apply, and the base schema must not be the copy that wins.
-    await client.query(FLEET_PI_CHECK_SESSION_OWNER_SQL)
-    await client.query(CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL)
-    console.log(
-      "Re-applied fleet_pi_check_session_owner and Data API privilege revokes"
-    )
-
+    const appRole = resolveAppRole()
+    console.log(`Granting runtime privileges to role: ${appRole}`)
+    await runChatMigrations(client, console.log, { appRole })
     await client.query("COMMIT")
   } catch (error) {
     await client.query("ROLLBACK")

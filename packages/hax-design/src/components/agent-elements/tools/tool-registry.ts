@@ -12,6 +12,7 @@ import {
   IconTerminal2 as Terminal,
   IconCircleX as XCircle,
 } from "@tabler/icons-react"
+import { stripWorktreePrefix } from "../../../lib/workspace-path-nav"
 import type React from "react"
 
 export type ToolVariant = "simple" | "collapsible"
@@ -34,8 +35,8 @@ function getDisplayPath(filePath: string): string {
   for (const prefix of prefixes) {
     if (filePath.startsWith(prefix)) return filePath.slice(prefix.length)
   }
-  const worktreeMatch = filePath.match(/\.21st\/worktrees\/[^/]+\/[^/]+\/(.+)$/)
-  if (worktreeMatch) return worktreeMatch[1]
+  const worktreePath = stripWorktreePrefix(filePath)
+  if (worktreePath !== null) return worktreePath
   if (filePath.startsWith("/")) {
     const parts = filePath.split("/")
     const rootIndicators = ["apps", "packages", "src", "lib", "components"]
