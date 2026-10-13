@@ -43,6 +43,7 @@ export type CommandPaletteProps = {
   sessions: Array<ChatSessionInfo>
   isStreaming: boolean
   themePreference: ThemePreference
+  agentOnly?: boolean
 }
 
 export function ChatCommandPalette({
@@ -58,6 +59,7 @@ export function ChatCommandPalette({
   sessions,
   isStreaming,
   themePreference,
+  agentOnly = false,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("")
 
@@ -118,7 +120,7 @@ export function ChatCommandPalette({
               <span>Switch to Agent mode</span>
             </CommandItem>
           )}
-          {mode !== "plan" && (
+          {mode !== "plan" && !agentOnly && (
             <CommandItem
               onSelect={() => handleSelect(() => onModeChange("plan"))}
               keywords={["mode", "plan", "switch"]}
@@ -127,7 +129,7 @@ export function ChatCommandPalette({
               <span>Switch to Plan mode</span>
             </CommandItem>
           )}
-          {mode !== "harness" && (
+          {mode !== "harness" && !agentOnly && (
             <CommandItem
               onSelect={() => handleSelect(() => onModeChange("harness"))}
               keywords={["mode", "harness", "workspace", "architecture"]}

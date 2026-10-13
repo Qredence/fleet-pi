@@ -36,6 +36,7 @@ export type UsePiChatOptions = {
   initialSessionMetadata: ChatSessionMetadata
   onModeChange?: (mode: ChatMode) => void
   persistSession: (metadata: ChatSessionMetadata) => void
+  hostedAgentOnly?: boolean
 }
 
 export function usePiChat(
@@ -48,6 +49,7 @@ export function usePiChat(
     initialSessionMetadata,
     onModeChange,
     persistSession,
+    hostedAgentOnly = false,
   } = options
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
@@ -273,6 +275,7 @@ export function usePiChat(
     abortRef,
     activityLabelRef,
     client,
+    hostedAgentOnly,
     messagesRef,
     mode,
     model,
@@ -301,6 +304,15 @@ export function usePiChat(
   }, [client, setActivityLabelSynced, setQueueSynced])
 
   const startNewSession = useCallback(async () => {
+    if (hostedAgentOnly) {
+      setSessionMetadataSynced({})
+      setMessagesSynced([])
+      setQueueSynced(EMPTY_QUEUE_STATE)
+      setActivityLabelSynced(undefined)
+      setPlanLabelSynced(undefined)
+      toast.success("New session started")
+      return
+    }
     const result = await client.createSession()
     setSessionMetadataSynced(result.session)
     setMessagesSynced([])
@@ -311,6 +323,7 @@ export function usePiChat(
     await refreshSessions()
   }, [
     client,
+    hostedAgentOnly,
     refreshSessions,
     setActivityLabelSynced,
     setMessagesSynced,

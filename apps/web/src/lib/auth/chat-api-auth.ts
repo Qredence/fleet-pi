@@ -11,6 +11,7 @@ import {
   verifyRunOwnership,
   verifySessionOwnership,
 } from "@/lib/db/pi-session-ownership-db"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 
 export type ChatAuthSession = Awaited<ReturnType<typeof getChatAuthSession>>
 
@@ -111,6 +112,10 @@ export async function enforceChatSessionOwnership(input: {
 
   if (isChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
+  }
+
+  if (isDurableSessionId(input.sessionId) && !input.sessionFile) {
+    return { ok: true as const }
   }
 
   if (!input.userId) {

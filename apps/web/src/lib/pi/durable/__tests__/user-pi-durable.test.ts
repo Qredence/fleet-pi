@@ -70,10 +70,18 @@ describe("UserPiDurable binding", () => {
     expect(server).not.toContain("USER_PI_DURABLE")
   })
 
-  it("leaves production /api/chat on Pi 1.0+", () => {
+  it("keeps local coding-agent sessions and routes hosted Agent turns to the Durable Object", () => {
     const chat = readFileSync(join(webSrc, "routes/api/chat.ts"), "utf8")
     const sessionFactory = readFileSync(
       join(webSrc, "lib/pi/runtime/session-factory.ts"),
+      "utf8"
+    )
+    const postChat = readFileSync(
+      join(webSrc, "lib/pi/chat-runtime/handlers/post-chat.ts"),
+      "utf8"
+    )
+    const hosted = readFileSync(
+      join(webSrc, "lib/pi/durable/hosted-agent-turn.ts"),
       "utf8"
     )
     expect(chat).not.toContain("UserPiDurable")
@@ -81,5 +89,9 @@ describe("UserPiDurable binding", () => {
     expect(chat).toContain("postChatHandler")
     expect(sessionFactory).toContain("createAgentSessionServices")
     expect(sessionFactory).not.toContain("Harness.open")
+    expect(postChat).toContain("isLegacyChatSession")
+    expect(postChat).toContain("streamHostedAgentTurn")
+    expect(hosted).not.toContain("createAgentSessionServices")
+    expect(hosted).not.toContain("SessionManager")
   })
 })

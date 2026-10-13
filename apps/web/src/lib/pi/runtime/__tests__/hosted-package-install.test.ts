@@ -60,6 +60,7 @@ describe("hosted package install", () => {
       { projectRoot: root } as AppRuntimeContext,
       {
         agentDir: join(root, "agent"),
+        cwd: root,
         modelRuntime: {
           refresh: vi.fn(() => Promise.resolve()),
           unregisterProvider: vi.fn(),

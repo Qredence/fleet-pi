@@ -7,6 +7,7 @@ import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/la
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
 import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
 import {
+  CHAT_MODES,
   queueLabel,
   toModelOption,
 } from "@workspace/hax-design/lib/pi/chat-helpers"
@@ -26,6 +27,7 @@ import {
   useSendWhenModelReady,
 } from "@/lib/pi/use-send-when-model-ready"
 import { useOptionalUser } from "@/lib/auth/use-auth"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
 import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import {
   useChatCommands,
@@ -51,7 +53,10 @@ import {
 import { usePendingQuestionBar } from "@/lib/pi/use-pending-question-bar"
 import { loadWorkspaceFile } from "@/lib/workspace/client"
 
-export const Route = createFileRoute("/")({ component: Chat })
+export const Route = createFileRoute("/")({
+  loader: () => ({ hostedAgentOnly: isCloudflareDeployment() }),
+  component: Chat,
+})
 
 function resolveSavedModelKey(
   models: Array<ChatModelOption>,
@@ -112,6 +117,12 @@ function ChatWorkspaceShell() {
     setSelectedWorkspacePath,
     themePreference,
   } = useChatShellState(modelsData)
+  const { hostedAgentOnly } = Route.useLoaderData()
+  const chatModes = hostedAgentOnly ? CHAT_MODES.slice(0, 1) : CHAT_MODES
+
+  useEffect(() => {
+    if (hostedAgentOnly && mode !== "agent") handleModeChange("agent")
+  }, [handleModeChange, hostedAgentOnly, mode])
 
   const {
     data: resourcesData,
@@ -176,6 +187,7 @@ function ChatWorkspaceShell() {
     initialSessionMetadata,
     onModeChange: handleModeChange,
     persistSession,
+    hostedAgentOnly,
   })
   const sendWhenModelReady = useSendWhenModelReady(
     sendMessage,
@@ -332,6 +344,7 @@ function ChatWorkspaceShell() {
         sessions={sessions}
         isStreaming={status === "streaming"}
         themePreference={themePreference}
+        agentOnly={hostedAgentOnly}
       />
       <RightPanelProvider
         chatPanelData={chatPanelData}
@@ -361,6 +374,7 @@ function ChatWorkspaceShell() {
             suppressQuestionTool={!!pendingQuestionBar}
             inputBar={{
               mode,
+              modes: chatModes,
               modelKey,
               models,
               infoDescription,

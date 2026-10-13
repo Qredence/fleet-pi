@@ -167,7 +167,10 @@ export const ChatWorkspaceStatusSchema = z
     z.object({ toolsAvailable: z.literal(true) }),
     z.object({
       toolsAvailable: z.literal(false),
-      reason: z.literal("daytona_credential_required"),
+      reason: z.enum([
+        "daytona_credential_required",
+        "daytona_sandbox_not_ready",
+      ]),
     }),
   ])
   .openapi({ description: "Workspace tool availability for the chat runtime" })

@@ -44,6 +44,7 @@ type PiChatMessagingSetters = {
 export type UsePiChatMessagingOptions = PiChatMessagingRefs &
   PiChatMessagingSetters & {
     client: ChatClient
+    hostedAgentOnly?: boolean
     mode: ChatMode
     model: ChatModelSelection | undefined
     recoverFromForbiddenSession: () => Promise<void>
@@ -55,6 +56,7 @@ export function usePiChatMessaging({
   abortRef,
   activityLabelRef,
   client,
+  hostedAgentOnly = false,
   messagesRef,
   mode,
   model,
@@ -171,6 +173,10 @@ export function usePiChatMessaging({
       const requestMode = requestedMode ?? mode
 
       if (status === "streaming") {
+        if (hostedAgentOnly) {
+          toast.error("Wait for the current reply to finish.")
+          return
+        }
         try {
           await queueFollowUp(trimmed, requestMode)
         } catch (err) {
@@ -242,6 +248,7 @@ export function usePiChatMessaging({
       abortRef,
       client,
       handleStreamEvent,
+      hostedAgentOnly,
       messagesRef,
       mode,
       model,

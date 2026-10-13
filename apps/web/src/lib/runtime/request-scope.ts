@@ -11,6 +11,7 @@ import { AsyncLocalStorage } from "node:async_hooks"
  * caller keeps its module-level singleton.
  */
 const requestScope = new AsyncLocalStorage<Map<symbol, unknown>>()
+const workerEnvKey = Symbol.for("fleet-pi.worker-env")
 
 /** True inside the Cloudflare Workers runtime (workerd). */
 export function isCloudflareWorkersRuntime(): boolean {
@@ -28,6 +29,20 @@ export function runInRequestScope<T>(fn: () => T): T {
 
 export function isInRequestScope(): boolean {
   return requestScope.getStore() !== undefined
+}
+
+export function bindWorkerEnv(env: unknown): void {
+  if (!env || typeof env !== "object") return
+  requestScope.getStore()?.set(workerEnvKey, env)
+}
+
+export function readBoundWorkerEnv():
+  (object & Record<string, unknown>) | undefined {
+  const value = requestScope.getStore()?.get(workerEnvKey)
+  if (value && typeof value === "object") {
+    return value as object & Record<string, unknown>
+  }
+  return undefined
 }
 
 /** One `create()` result per request when in a request scope, else undefined. */

@@ -1,6 +1,6 @@
 import type { UserPiDurableStub } from "@/lib/pi/durable/user-pi-durable"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { userPiDurableStub } from "@/lib/pi/durable/user-pi-durable"
+import { userPiDurableStub } from "@/lib/pi/durable/durable-binding"
 
 export const DURABLE_SPIKE_PATH = "/api/chat/durable-spike"
 

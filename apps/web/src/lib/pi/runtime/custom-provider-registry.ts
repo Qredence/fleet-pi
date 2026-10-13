@@ -126,7 +126,7 @@ export function buildCustomModelEntry(
  * (`custom+<slug>`). The reserved default slot stays with
  * `registerOpenAiChatCompletionsProvider`.
  */
-async function listCustomProviderRegistrations(
+export async function listCustomProviderRegistrations(
   userId: string | undefined
 ): Promise<{
   registrations: Array<RegisteredCustomProvider>

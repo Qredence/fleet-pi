@@ -14,7 +14,9 @@ import {
 } from "../command-policy"
 import { createSpikeExecutionEnv } from "./spike-env"
 import type {
+  ConversationView,
   Storage,
+  Submission,
   ToolExecutionApi,
   ToolExecutionResult,
 } from "@earendil-works/pi-durable"
@@ -70,7 +72,7 @@ function modelReplyMessage() {
   }
 }
 
-const spikeModels = {
+export const spikeModels = {
   getModel(provider: string, modelId: string) {
     if (provider !== "spike" || modelId !== "spike") return undefined
     return spikeModel
@@ -293,6 +295,26 @@ async function readTranscript(harness: SpikeHarnessHandle): Promise<string> {
   return JSON.stringify(page.items)
 }
 
+export type SpikeHarnessModel = { provider: string; modelId: string }
+
+export type SpikeHarnessOptions = {
+  models?: unknown
+  model?: SpikeHarnessModel
+}
+
+export type DurableConversationSummary = {
+  id: string
+  firstMessage: string
+  messageCount: number
+}
+
+export class DurableConversationMissing extends Error {
+  constructor(conversationId: string) {
+    super(`Pi Durable conversation ${conversationId} was not found`)
+    this.name = "DurableConversationMissing"
+  }
+}
+
 export type OpenSpikeHarness = {
   toolNames: Array<string>
   rootId: () => Promise<string>
@@ -302,25 +324,39 @@ export type OpenSpikeHarness = {
   runBlockedBash: (command: string) => Promise<string>
   beginHanging: (tool: "read" | "bash") => Promise<void>
   modelReply: (prompt: string) => Promise<string>
+  runAgentTurn: (input: {
+    prompt: string
+    conversationId?: string
+    create: boolean
+    model: SpikeHarnessModel
+    onView: (view: ConversationView) => void
+    signal?: AbortSignal
+  }) => Promise<{ conversationId: string }>
+  listConversations: () => Promise<Array<DurableConversationSummary>>
+  readConversation: (
+    conversationId: string
+  ) => Promise<ConversationView | undefined>
 }
 
 export async function openSpikeHarness(
   storage: Storage,
   mode: SpikeToolMode,
-  port: SpikeSandboxPort
+  port: SpikeSandboxPort,
+  options?: SpikeHarnessOptions
 ): Promise<OpenSpikeHarness> {
   const { registry, toolNames } = registryFor(mode)
+  const agentModel = options?.model ?? { provider: "spike", modelId: "spike" }
   const harness = await Harness.open(
     storage,
     {
-      models: spikeModels as never,
+      models: (options?.models ?? spikeModels) as never,
       registry,
       env: () => createSpikeExecutionEnv("spike-sandbox", port),
     },
     context
   )
   const root = await harness.root(context, {
-    agent: { model: { provider: "spike", modelId: "spike" } },
+    agent: { model: agentModel },
   })
   return {
     toolNames,
@@ -369,7 +405,147 @@ export async function openSpikeHarness(
       await submission.wait(context)
       return waitForText(() => readTranscript(harness), SPIKE_MODEL_REPLY)
     },
+    async runAgentTurn(input) {
+      const conversation = input.create
+        ? await harness.createConversation(
+            {
+              ownership: { kind: "ownerless" },
+              agent: { model: input.model },
+            },
+            context
+          )
+        : await harness.conversation(
+            asConversationId(input.conversationId),
+            context
+          )
+      if (!conversation) {
+        throw new DurableConversationMissing(input.conversationId ?? "")
+      }
+      const view = await conversation.viewState(context)
+      input.onView(view.value)
+      const gate = { stopped: false }
+      const pump = (async () => {
+        while (!gate.stopped) {
+          if (input.signal?.aborted) {
+            throw new DOMException("Aborted", "AbortError")
+          }
+          await new Promise((resolve) => setTimeout(resolve, 40))
+          input.onView(view.value)
+        }
+      })()
+      try {
+        const submission = await conversation.submit(
+          { type: "input", content: input.prompt },
+          context
+        )
+        await waitForAgentTurn(
+          input.signal,
+          async () => {
+            await submission.wait(context)
+          },
+          () => abortAgentSubmission(submission)
+        )
+      } finally {
+        gate.stopped = true
+        input.onView(view.value)
+        await pump
+      }
+      return { conversationId: String(conversation.id) }
+    },
+    async listConversations() {
+      const page = await harness.commit(
+        (tx) => tx.scanConversations({ order: "descending" }, 50),
+        context
+      )
+      const summaries: Array<DurableConversationSummary> = []
+      for (const record of page.items) {
+        const conversation = await harness.conversation(record.id, context)
+        if (!conversation) continue
+        const entries = await conversation.entries(
+          { order: "ascending" },
+          20,
+          undefined,
+          context
+        )
+        const firstUser = entries.items.find((entry) =>
+          entry.model?.some((message) => message.role === "user")
+        )
+        const firstText = firstUserText(firstUser?.model)
+        summaries.push({
+          id: String(record.id),
+          firstMessage: firstText,
+          messageCount: entries.items.length,
+        })
+      }
+      return summaries
+    },
+    async readConversation(conversationId) {
+      const conversation = await harness.conversation(
+        asConversationId(conversationId),
+        context
+      )
+      if (!conversation) return undefined
+      return (await conversation.viewState(context)).value
+    },
   }
+}
+
+function abortAgentSubmission(submission: Submission): Promise<void> {
+  return submission.abort(context).then(() => undefined)
+}
+
+function waitForAgentTurn(
+  signal: AbortSignal | undefined,
+  run: () => Promise<void>,
+  abortHook?: () => Promise<void>
+): Promise<void> {
+  if (!signal) {
+    return run()
+  }
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"))
+  }
+  return new Promise((resolve, reject) => {
+    const onSignalAbort = () => {
+      void (abortHook ? abortHook() : Promise.resolve()).finally(() => {
+        reject(new DOMException("Aborted", "AbortError"))
+      })
+    }
+    signal.addEventListener("abort", onSignalAbort, { once: true })
+    run().then(
+      (value) => {
+        signal.removeEventListener("abort", onSignalAbort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onSignalAbort)
+        reject(error)
+      }
+    )
+  })
+}
+
+function asConversationId(conversationId: string | undefined) {
+  const id = Number(conversationId)
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new DurableConversationMissing(conversationId ?? "")
+  }
+  return id as never
+}
+
+function firstUserText(
+  model: ReadonlyArray<{ role?: string; content?: unknown }> | undefined
+) {
+  const user = model?.find((message) => message.role === "user")
+  if (!user) return ""
+  if (typeof user.content === "string") return user.content
+  if (!Array.isArray(user.content)) return ""
+  return user.content
+    .map((part) => {
+      if (!part || typeof part !== "object" || !("text" in part)) return ""
+      return typeof part.text === "string" ? part.text : ""
+    })
+    .join("")
 }
 
 async function waitForText(

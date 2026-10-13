@@ -1,7 +1,7 @@
 import handler from "@tanstack/react-start/server-entry"
 import { enforceNamedEdgeRateLimit } from "@/lib/deployment/edge-rate-limit"
 import { handleDurableSpikeRequest } from "@/lib/pi/durable/spike-route"
-import { runInRequestScope } from "@/lib/runtime/request-scope"
+import { bindWorkerEnv, runInRequestScope } from "@/lib/runtime/request-scope"
 
 export { UserPiDurable } from "@/lib/pi/durable/user-pi-durable"
 
@@ -24,13 +24,14 @@ export default {
     )
     if (spike) return spike
 
-    return runInRequestScope(() =>
-      (
+    return runInRequestScope(() => {
+      bindWorkerEnv(rest[0])
+      return (
         handler.fetch as (
           req: Request,
           ...args: Array<unknown>
         ) => Promise<Response>
       )(request, ...rest)
-    )
+    })
   },
 }

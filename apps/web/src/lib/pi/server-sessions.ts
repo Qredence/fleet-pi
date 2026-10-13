@@ -27,6 +27,7 @@ import {
 } from "@/lib/storage/session-blob-store"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import {
   fetchUserSessionSummaries,
   syncPiSessionMirrorSafely,
@@ -79,6 +80,9 @@ export async function hydrateChatSession(
   metadata: ChatSessionMetadata,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
+  if (isDurableSessionId(metadata.sessionId) && !metadata.sessionFile) {
+    throw new Error("Durable sessions are not JSONL transcripts")
+  }
   const services = await createSessionServices(context, undefined, {
     userId: options.userId,
   })

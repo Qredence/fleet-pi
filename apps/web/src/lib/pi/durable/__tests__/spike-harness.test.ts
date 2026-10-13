@@ -107,6 +107,25 @@ describe("Pi Durable spike harness", () => {
     expect(trace.bashes).toBe(0)
   })
 
+  it("stops runAgentTurn when the abort signal is already aborted", async () => {
+    const harness = await openSpikeHarness(
+      await sqliteFile("abort.sqlite"),
+      "model-only",
+      createScriptedPort(createSpikeTrace())
+    )
+    const controller = new AbortController()
+    controller.abort()
+    await expect(
+      harness.runAgentTurn({
+        prompt: "hello",
+        create: true,
+        model: { provider: "spike", modelId: "spike" },
+        onView: () => undefined,
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ name: "AbortError" })
+  })
+
   it("accepts a model reply when sandbox tools are absent", async () => {
     const harness = await openSpikeHarness(
       await sqliteFile("model.sqlite"),

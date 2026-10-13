@@ -1,21 +1,38 @@
 import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare"
 import { DurableObject } from "cloudflare:workers"
+import { createDurableModels } from "./durable-model"
 import {
+  createDurableViewDiff,
+  eventsFromConversationView,
+  messagesFromEntries,
+} from "./durable-events"
+import { durableSessionId } from "./durable-session"
+import { openDaytonaSandboxPort } from "./durable-sandbox-port"
+import {
+  DurableConversationMissing,
   createScriptedPort,
   createSpikeTrace,
   openSpikeHarness,
+  spikeModels,
   waitForCount,
 } from "./spike-harness"
-import type { Storage } from "@earendil-works/pi-durable"
+import type {
+  ChatStreamEvent,
+  ChatWorkspaceStatus,
+} from "@workspace/pi-protocol/chat-protocol"
+import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
 import type { DurableObjectState } from "cloudflare:workers"
+import type { DurableAgentModelConfig } from "./durable-model"
+import type { DurableSandboxConnection } from "./durable-sandbox-port"
 import type { SpikeSandboxPort } from "./spike-env"
 import type {
   OpenSpikeHarness,
+  SpikeHarnessOptions,
   SpikeToolMode,
   SpikeTrace,
 } from "./spike-harness"
 
-const maxUserIdBytes = 1024
+export { userPiDurableName, userPiDurableStub } from "./durable-binding"
 
 export type UserPiDurableStorageOwner = {
   objectId: string
@@ -46,16 +63,31 @@ type PiDurableStorage = Awaited<
   ReturnType<typeof openDurableObjectSqliteStorage>
 >
 
-/**
- * One SQLite Durable Object per user id. The object opens Pi Durable storage
- * and a harness on that storage. Production chat does not construct it.
- */
+type AgentTurnBody = {
+  prompt: string
+  create: boolean
+  conversationId?: string
+  model: DurableAgentModelConfig
+  sandbox?: DurableSandboxConnection
+  workspace?: ChatWorkspaceStatus
+}
+
+const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
+
+type ActiveAgentTurn = {
+  abortController: AbortController
+}
+
+/** One SQLite Durable Object per user id. */
 export class UserPiDurable extends DurableObject {
   #storage: PiDurableStorage | undefined
   #harness: OpenSpikeHarness | undefined
   #trace: SpikeTrace = createSpikeTrace()
   #port: SpikeSandboxPort = createScriptedPort(this.#trace)
   #mode: SpikeToolMode = "sandbox"
+  #sandboxConnectionKey: string | undefined
+  #harnessModelKey: string | undefined
+  #activeTurn: ActiveAgentTurn | undefined
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -133,11 +165,270 @@ export class UserPiDurable extends DurableObject {
     return { tools: harness.toolNames, transcript }
   }
 
-  async #open(mode: SpikeToolMode) {
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url)
+    if (request.method === "POST" && url.pathname === "/agent") {
+      return this.#agentTurn(request)
+    }
+    if (request.method === "POST" && url.pathname === "/agent/abort") {
+      return this.#abortAgentTurn()
+    }
+    if (request.method === "GET" && url.pathname === "/sessions") {
+      return this.#listSessions()
+    }
+    if (request.method === "GET" && url.pathname === "/session") {
+      return this.#readSession(url.searchParams.get("id"))
+    }
+    if (request.method === "DELETE" && url.pathname === "/session") {
+      return this.#deleteSession(url.searchParams.get("id"))
+    }
+    return new Response("Not found", { status: 404 })
+  }
+
+  #abortAgentTurn(): Response {
+    if (!this.#activeTurn) {
+      return Response.json({ aborted: false })
+    }
+    this.#activeTurn.abortController.abort()
+    return Response.json({ aborted: true })
+  }
+
+  async #agentTurn(request: Request): Promise<Response> {
+    if (this.#activeTurn) {
+      return Response.json(
+        { message: "An agent turn is already in progress." },
+        { status: 409 }
+      )
+    }
+    const abortController = new AbortController()
+    this.#activeTurn = { abortController }
+    const body = (await request.json()) as Partial<AgentTurnBody>
+    const model = body.model
+    const prompt = body.prompt
+    if (!model?.apiKey || !model.modelId || !prompt) {
+      this.#activeTurn = undefined
+      return Response.json(
+        { message: "Choose a model in Settings." },
+        { status: 400 }
+      )
+    }
+    const turnMode: SpikeToolMode = body.sandbox ? "sandbox" : "model-only"
+    let portChanged = false
+    if (body.sandbox) {
+      const connectionKey = sandboxConnectionKey(body.sandbox)
+      if (connectionKey !== this.#sandboxConnectionKey) {
+        this.#port = await openDaytonaSandboxPort(body.sandbox)
+        this.#sandboxConnectionKey = connectionKey
+        portChanged = true
+      }
+    } else {
+      this.#sandboxConnectionKey = undefined
+      if (this.#mode === "sandbox") {
+        portChanged = true
+      }
+    }
+    this.#mode = turnMode
+    const modelRef = { provider: model.provider, modelId: model.modelId }
+    const models = modelsForAgentTurn(model)
+    let harness: OpenSpikeHarness
+    try {
+      harness = await this.#ensureHarness(
+        turnMode,
+        {
+          models,
+          model: modelRef,
+        },
+        portChanged
+      )
+    } catch (error) {
+      this.#activeTurn = undefined
+      throw error
+    }
+    const onClientAbort = () => abortController.abort()
+    if (request.signal.aborted) {
+      abortController.abort()
+    } else {
+      request.signal.addEventListener("abort", onClientAbort, { once: true })
+    }
+    const encoder = new TextEncoder()
+    const readable = new ReadableStream<Uint8Array>({
+      start: async (controller) => {
+        const send = (event: ChatStreamEvent) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+        }
+        const messageId = crypto.randomUUID()
+        const runId = crypto.randomUUID()
+        const diff = createDurableViewDiff()
+        let baselined = false
+        let started = false
+        let streamedText = ""
+        const streamedTools = new Map<string, ChatToolPart>()
+        const signal = abortController.signal
+        try {
+          const result = await harness.runAgentTurn({
+            prompt,
+            conversationId: body.conversationId,
+            create: body.create === true,
+            model: {
+              provider: model.provider,
+              modelId: model.modelId,
+            },
+            signal,
+            onView: (view) => {
+              const sessionId = durableSessionId(String(view.conversation.id))
+              if (!started) {
+                started = true
+                send({
+                  type: "start",
+                  id: messageId,
+                  runId,
+                  sessionId,
+                  workspace: body.sandbox
+                    ? { toolsAvailable: true }
+                    : (body.workspace ?? {
+                        toolsAvailable: false,
+                        reason: "daytona_credential_required",
+                      }),
+                })
+              }
+              const events = eventsFromConversationView(view, diff)
+              if (!baselined) {
+                baselined = true
+                return
+              }
+              for (const event of events) {
+                if (event.type === "delta") streamedText += event.text
+                if (
+                  event.type === "tool" &&
+                  typeof event.part.toolCallId === "string"
+                ) {
+                  streamedTools.set(event.part.toolCallId, event.part)
+                }
+                send(event)
+              }
+            },
+          })
+          send({
+            type: "done",
+            runId,
+            sessionId: durableSessionId(result.conversationId),
+            message: {
+              id: messageId,
+              role: "assistant",
+              parts: [
+                ...(streamedText
+                  ? [{ type: "text" as const, text: streamedText }]
+                  : []),
+                ...streamedTools.values(),
+              ],
+            },
+          })
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return
+          }
+          send({
+            type: "error",
+            message:
+              error instanceof Error ? error.message : "Agent turn failed",
+          })
+        } finally {
+          request.signal.removeEventListener("abort", onClientAbort)
+          controller.close()
+          this.#activeTurn = undefined
+        }
+      },
+    })
+    return new Response(readable, {
+      headers: {
+        "Cache-Control": "no-cache",
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+      },
+    })
+  }
+
+  async #listSessions(): Promise<Response> {
+    const harness = await this.#requireHarness()
+    const deleted = await this.#readDeletedConversations()
+    const sessions = (await harness.listConversations()).filter(
+      (session) => !deleted.has(session.id)
+    )
+    return Response.json({ sessions })
+  }
+
+  async #deleteSession(conversationId: string | null): Promise<Response> {
+    if (!conversationId) {
+      return Response.json({ message: "Missing conversation" }, { status: 400 })
+    }
+    const harness = await this.#requireHarness()
+    const existing = await harness.readConversation(conversationId)
+    const deleted = await this.#readDeletedConversations()
+    if (!existing && deleted.has(conversationId)) {
+      return Response.json({ deleted: true })
+    }
+    if (!existing) {
+      return Response.json({ message: "Session not found" }, { status: 404 })
+    }
+    deleted.add(conversationId)
+    await durableObjectKv(this.ctx.storage).put(DELETED_CONVERSATIONS_KEY, [
+      ...deleted,
+    ])
+    return Response.json({ deleted: true })
+  }
+
+  async #readSession(conversationId: string | null): Promise<Response> {
+    if (!conversationId) {
+      return Response.json({ message: "Missing conversation" }, { status: 400 })
+    }
+    if ((await this.#readDeletedConversations()).has(conversationId)) {
+      return Response.json({ message: "Session not found" }, { status: 404 })
+    }
+    const harness = await this.#requireHarness()
+    try {
+      const view = await harness.readConversation(conversationId)
+      if (!view) {
+        return Response.json({ message: "Session not found" }, { status: 404 })
+      }
+      return Response.json({
+        id: conversationId,
+        messages: messagesFromEntries(view.entries),
+      })
+    } catch (error) {
+      if (error instanceof DurableConversationMissing) {
+        return Response.json({ message: "Session not found" }, { status: 404 })
+      }
+      throw error
+    }
+  }
+
+  async #open(
+    mode: SpikeToolMode,
+    options?: SpikeHarnessOptions
+  ): Promise<OpenSpikeHarness> {
     this.#mode = mode
+    this.#harnessModelKey = harnessModelKey(options?.model)
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
-    this.#harness = await openSpikeHarness(storage, mode, this.#port)
+    this.#harness = await openSpikeHarness(storage, mode, this.#port, options)
+    return this.#harness
+  }
+
+  async #ensureHarness(
+    mode: SpikeToolMode,
+    options: SpikeHarnessOptions,
+    portChanged: boolean
+  ): Promise<OpenSpikeHarness> {
+    const modelKey = harnessModelKey(options.model)
+    if (
+      !portChanged &&
+      this.#harness !== undefined &&
+      this.#mode === mode &&
+      this.#harnessModelKey === modelKey
+    ) {
+      return this.#harness
+    }
+    return this.#open(mode, options)
   }
 
   async #reopen() {
@@ -151,23 +442,42 @@ export class UserPiDurable extends DurableObject {
     }
     return Promise.resolve(this.#harness)
   }
-}
 
-export function userPiDurableName(userId: string): string {
-  if (userId.length === 0) {
-    throw new Error("Pi Durable object name must be a non-empty user id")
-  }
-  if (new TextEncoder().encode(userId).byteLength > maxUserIdBytes) {
-    throw new Error(
-      "Pi Durable object name must be a user id within 1024 bytes"
+  async #readDeletedConversations(): Promise<Set<string>> {
+    const stored = await durableObjectKv(this.ctx.storage).get<Array<string>>(
+      DELETED_CONVERSATIONS_KEY
     )
+    return new Set(stored ?? [])
   }
-  return userId
 }
 
-export function userPiDurableStub<Stub extends UserPiDurableStub>(
-  namespace: { getByName: (name: string) => Stub },
-  userId: string
-): Stub {
-  return namespace.getByName(userPiDurableName(userId))
+function modelsForAgentTurn(model: DurableAgentModelConfig) {
+  if (model.provider === "spike" && model.modelId === "spike") {
+    return spikeModels
+  }
+  return createDurableModels(model)
+}
+
+function harnessModelKey(model: SpikeHarnessOptions["model"]) {
+  if (!model) return ""
+  return `${model.provider}\0${model.modelId}`
+}
+
+function sandboxConnectionKey(connection: DurableSandboxConnection) {
+  return [
+    connection.sandboxId,
+    connection.apiUrl ?? "",
+    connection.target ?? "",
+  ].join("\0")
+}
+
+type DurableObjectKv = {
+  get: <T>(key: string) => Promise<T | undefined>
+  put: (key: string, value: unknown) => Promise<void>
+}
+
+function durableObjectKv(
+  storage: DurableObjectState["storage"]
+): DurableObjectKv {
+  return storage as unknown as DurableObjectKv
 }

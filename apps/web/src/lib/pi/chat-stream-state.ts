@@ -13,6 +13,7 @@ import type { QueueState } from "./chat-fetch"
 import type {
   ChatSessionMetadata,
   ChatStreamEvent,
+  ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 
 export type ChatStreamSnapshot = {
@@ -33,6 +34,23 @@ export const EMPTY_QUEUE_STATE: QueueState = {
   followUp: [],
 }
 
+export const DAYTONA_SANDBOX_NOT_READY_MESSAGE =
+  "Daytona workspace is still starting. Chat works without file and shell tools until the sandbox is ready."
+
+function workspaceUnavailableLabel(workspace: ChatWorkspaceStatus) {
+  if (workspace.toolsAvailable) return undefined
+  switch (workspace.reason) {
+    case "daytona_credential_required":
+      return DAYTONA_CREDENTIAL_REQUIRED_MESSAGE
+    case "daytona_sandbox_not_ready":
+      return DAYTONA_SANDBOX_NOT_READY_MESSAGE
+    default: {
+      const unreachable: never = workspace.reason
+      return unreachable
+    }
+  }
+}
+
 export function applyChatStreamEvent(
   transition: ChatStreamTransition,
   event: ChatStreamEvent
@@ -47,7 +65,7 @@ export function applyChatStreamEvent(
         activityLabel: event.sessionReset
           ? "Started a fresh Pi session"
           : event.workspace?.toolsAvailable === false
-            ? DAYTONA_CREDENTIAL_REQUIRED_MESSAGE
+            ? workspaceUnavailableLabel(event.workspace)
             : event.diagnostics?.[0],
         messages: [
           ...snapshot.messages,

@@ -13,6 +13,24 @@ import { workerGlobalScopeShims } from "./scripts/cloudflare/worker-global-scope
 
 const repoRoot = resolve(import.meta.dirname, "../..")
 
+function cloudflareWorkersNodeStubPlugin() {
+  return {
+    name: "cloudflare-workers-node-stub",
+    enforce: "pre" as const,
+    transform(code: string, id: string) {
+      if (!id.endsWith("/lib/pi/durable/user-pi-durable.ts")) return null
+      if (!code.includes('from "cloudflare:workers"')) return null
+      return {
+        code: code.replaceAll(
+          'from "cloudflare:workers"',
+          'from "./cloudflare-workers-node-stub"'
+        ),
+        map: null,
+      }
+    },
+  }
+}
+
 // Load repo-root env files for server-side routes (.env.local overrides .env)
 dotenvConfig({ path: resolve(repoRoot, ".env"), override: false })
 // Validation launches pin auth/mirror env vars to empty via process env; the
@@ -54,7 +72,7 @@ const config = defineConfig({
           cloudflare({ viteEnvironment: { name: "ssr" } }),
           workerGlobalScopeShims(),
         ]
-      : []),
+      : [cloudflareWorkersNodeStubPlugin()]),
     tempoVitePlugin(),
     tailwindcss(),
     tanstackStart(),

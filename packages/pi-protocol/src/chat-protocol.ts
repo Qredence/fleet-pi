@@ -153,11 +153,15 @@ export type ChatPlanState = {
  * `start` frame of a request. `toolsAvailable: false` means the model was
  * given no file/shell/search/workspace tools (hosted deploy, no Daytona key);
  * the UI should show the "add a Daytona key" message for
- * `reason: "daytona_credential_required"`.
+ * `reason: "daytona_credential_required"`, or `daytona_sandbox_not_ready` when a
+ * key is configured but the sandbox is still warming.
  */
 export type ChatWorkspaceStatus =
   | { toolsAvailable: true }
-  | { toolsAvailable: false; reason: "daytona_credential_required" }
+  | {
+      toolsAvailable: false
+      reason: "daytona_credential_required" | "daytona_sandbox_not_ready"
+    }
 
 /** Non-normal terminal reason on a `done` frame. */
 export type ChatRunStopReason = "aborted" | "error"

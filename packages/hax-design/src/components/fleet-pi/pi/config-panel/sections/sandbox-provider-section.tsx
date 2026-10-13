@@ -1,5 +1,5 @@
 import { Globe, HardDrive, Info } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
@@ -38,6 +38,36 @@ export function SandboxProviderSection({
   const [target, setTarget] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [attemptedSave, setAttemptedSave] = useState(false)
+  const [runtimeStatus, setRuntimeStatus] = useState<{
+    keyPresent: boolean
+    sandboxReady: boolean
+    volumeName: string
+  } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch("/api/sandbox/settings")
+      .then(async (response) => {
+        if (!response.ok) return undefined
+        return (await response.json()) as {
+          daytonaApiKeyConfigured?: boolean
+          sandboxReady?: boolean
+          volumeName?: string
+        }
+      })
+      .then((body) => {
+        if (cancelled || !body?.volumeName) return
+        setRuntimeStatus({
+          keyPresent: Boolean(body.daytonaApiKeyConfigured),
+          sandboxReady: Boolean(body.sandboxReady),
+          volumeName: body.volumeName,
+        })
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const daytonaProvider = useMemo(
     () => providers.find((p) => p.id === "daytona"),
@@ -133,6 +163,30 @@ export function SandboxProviderSection({
               </Button>
             }
           />
+
+          {runtimeStatus ? (
+            <div className="flex flex-col border-t border-border/30">
+              <ItemRow
+                interactive={false}
+                title="Daytona key"
+                subtitle={runtimeStatus.keyPresent ? "Present" : "Absent"}
+              />
+              <ItemRow
+                interactive={false}
+                title="Sandbox"
+                subtitle={runtimeStatus.sandboxReady ? "Ready" : "Unavailable"}
+              />
+              <ItemRow
+                interactive={false}
+                title="Volume"
+                subtitle={runtimeStatus.volumeName}
+              />
+              <p className="px-3 py-2 text-xs text-pretty text-muted-foreground">
+                Chat sends with the model while the sandbox is unavailable. File
+                and shell tools turn on when the sandbox is ready.
+              </p>
+            </div>
+          ) : null}
 
           {editing ? (
             <RowSurface

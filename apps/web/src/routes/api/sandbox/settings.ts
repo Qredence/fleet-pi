@@ -6,6 +6,7 @@ import { isEnvVarConfigured, updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
 import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
 import { isHostedDeployment } from "@/lib/deployment/environment"
+import { readHostedSandboxStatus } from "@/lib/pi/durable/durable-sandbox"
 
 const SandboxSettingsUpdateSchema = z.object({
   daytonaApiKey: z.string().optional(),
@@ -26,10 +27,14 @@ export const Route = createFileRoute("/api/sandbox/settings")({
           }
 
           if (isHostedDeployment()) {
+            const userId = session.user.id
+            const status = await readHostedSandboxStatus(userId)
             return Response.json({
-              daytonaApiKeyConfigured: false,
+              daytonaApiKeyConfigured: status.keyPresent,
               daytonaTargetConfigured: false,
               daytonaTarget: "",
+              sandboxReady: status.sandboxReady,
+              volumeName: status.volumeName,
             })
           }
 
