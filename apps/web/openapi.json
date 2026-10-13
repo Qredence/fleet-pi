@@ -133,6 +133,35 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        "workspace": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "toolsAvailable": {
+                                  "type": "boolean",
+                                  "enum": [true]
+                                }
+                              },
+                              "required": ["toolsAvailable"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "toolsAvailable": {
+                                  "type": "boolean",
+                                  "enum": [false]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "enum": ["daytona_credential_required"]
+                                }
+                              },
+                              "required": ["toolsAvailable", "reason"]
+                            }
+                          ],
+                          "description": "Workspace tool availability for the chat runtime"
                         }
                       },
                       "required": ["type", "id", "runId", "sessionId"],
@@ -579,6 +608,10 @@
                         },
                         "sessionReset": {
                           "type": "boolean"
+                        },
+                        "stopReason": {
+                          "type": "string",
+                          "enum": ["aborted", "error"]
                         }
                       },
                       "required": ["type", "runId", "message", "sessionId"],
