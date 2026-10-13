@@ -71,7 +71,13 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   `preview/pr-<number>` on `vars.NEON_PROJECT_ID` (soft-art). CI refuses
   upload when the preview `fleet_pi_app` URL is missing or matches
   `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`; only an allowlisted secret set is
-  applied (no production `DAYTONA_*`, `OPENAI_*`, or gateway keys).
+  applied (no production `DAYTONA_*` or org `OPENAI_*`; preview Neon AI Gateway
+  uses branch-scoped `PREVIEW_NEON_AI_GATEWAY_*` GitHub secrets mapped to
+  `NEON_AI_GATEWAY_*` on the Worker). Required repo secrets for labeled PR
+  previews include `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`,
+  `FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL`, `NEON_API_KEY`, `vars.NEON_PROJECT_ID`,
+  `PREVIEW_VITE_NEON_AUTH_URL`, `PREVIEW_NEON_AUTH_*`, `PREVIEW_BETTER_AUTH_SECRET`,
+  and `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
   `isVercelDeployment()` true, i.e. the same hosted, fail-closed,
   Postgres-backed paths as Vercel: sessions live in `/tmp` only for the
