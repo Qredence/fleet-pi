@@ -311,9 +311,14 @@ async function main() {
   }
 
   if (!authMigrationUrl) {
-    console.log(
-      "WARN migration-db: Set FLEET_PI_AUTH_MIGRATION_DATABASE_URL to verify auth grants in CI/deploy."
-    )
+    const message =
+      "Set FLEET_PI_AUTH_MIGRATION_DATABASE_URL to verify auth grants in CI/deploy."
+    if (process.env.FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES === "1") {
+      console.log(`FAIL migration-db: ${message}`)
+      process.exitCode = 1
+      return
+    }
+    console.log(`WARN migration-db: ${message}`)
   }
 
   if (!CHAT_POSTGRES_SCHEMA_SQL.includes("fleet_pi_chat_migrations")) {
