@@ -99,7 +99,7 @@ export function sandboxWorkspaceFilePath(workspaceRelativePath: string) {
 export async function writeSandboxWorkspaceFile(
   sandbox: Sandbox,
   workspaceRelativePath: string,
-  content: string
+  content: string | Buffer
 ) {
   const remotePath = sandboxWorkspaceFilePath(workspaceRelativePath)
   const parent = dirname(remotePath)
@@ -121,11 +121,7 @@ export async function uploadAgentWorkspaceTree(
   for (const file of files) {
     const workspaceRelativePath = relative(sourceRoot, file)
     const content = await readFile(file)
-    await writeSandboxWorkspaceFile(
-      sandbox,
-      workspaceRelativePath,
-      content.toString("utf8")
-    )
+    await writeSandboxWorkspaceFile(sandbox, workspaceRelativePath, content)
   }
 }
 

@@ -1,4 +1,5 @@
 import {
+  SettingsManager,
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
@@ -15,6 +16,7 @@ import {
   usesDatabaseBackedProjectSettings,
 } from "./deployed-chat-runtime"
 import { createIsolatedProjectSettings } from "./isolated-project-settings"
+import { createSandboxResourceSettings } from "./sandbox-resource-settings"
 import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -97,17 +99,29 @@ export async function createSessionServices(
     await import("./durable-project-settings")
   // Seed private settings before Pi's first resource reload. Deployed callers
   // cannot substitute a manager that reads or writes the shared checkout.
+  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
   const settingsManager = databaseBacked
     ? createIsolatedProjectSettings(
         await resolveProjectSettings({ userId: options?.userId })
       )
-    : overrides?.settingsManager
+    : (overrides?.settingsManager ??
+      (options?.userId
+        ? SettingsManager.create(
+            context.projectRoot,
+            overrides?.agentDir ?? agentDir
+          )
+        : undefined))
+  const sandboxResources =
+    settingsManager && options?.userId
+      ? createSandboxResourceSettings(settingsManager, options.userId)
+      : undefined
+  await sandboxResources?.prepare()
   const userResourceOptions = overrides?.resourceLoaderOptions
   const services = await createAgentSessionServices({
     cwd: context.projectRoot,
-    agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
+    agentDir,
     ...overrides,
-    settingsManager,
+    settingsManager: sandboxResources?.loaderSettings ?? settingsManager,
     resourceLoaderOptions: {
       ...userResourceOptions,
       // Server-owned extensions: the Fleet Pi identity always, plus the
@@ -128,6 +142,7 @@ export async function createSessionServices(
       },
     },
   })
+  sandboxResources?.attach(services)
 
   const servicesWithBootstrap = attachWorkspaceBootstrap(
     services,

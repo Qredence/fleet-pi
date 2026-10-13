@@ -155,7 +155,7 @@ describe("Harness writes through Pi's filesystem extension loader", () => {
     expect(installed.isError).not.toBe(true)
     expect(mocks.uploadFile).toHaveBeenCalledWith(
       sandboxA,
-      "Private prompt\n",
+      Buffer.from("Private prompt\n"),
       "/home/daytona/agent-workspace/pi/prompts/private.md"
     )
     expect(mocks.persistHarnessInstallSettings).toHaveBeenCalledWith({

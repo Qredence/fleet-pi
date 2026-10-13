@@ -1,9 +1,17 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { resolveHarnessWriteTarget } from "../harness-write-target"
+import { executeCommand, uploadFile } from "../client"
+import {
+  resolveHarnessWriteTarget,
+  uploadAgentWorkspaceTree,
+} from "../harness-write-target"
 import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "../tool-context"
+import type { Sandbox } from "@daytona/sdk"
 
 const getCachedUserSandbox = vi.hoisted(() => vi.fn())
 const getInFlightUserSandbox = vi.hoisted(() => vi.fn())
@@ -28,6 +36,25 @@ afterEach(() => {
 })
 
 describe("resolveHarnessWriteTarget", () => {
+  it("preserves binary package assets on upload", async () => {
+    const root = await mkdtemp(join(tmpdir(), "fleet-binary-upload-"))
+    try {
+      const directory = join(root, "agent-workspace/pi/packages/test")
+      await mkdir(directory, { recursive: true })
+      const bytes = Buffer.from("0061736dff", "hex")
+      await writeFile(join(directory, "module.wasm"), bytes)
+      vi.mocked(executeCommand).mockResolvedValue({ exitCode: 0, result: "" })
+      const sandbox = { id: "binary" } as Sandbox
+      await uploadAgentWorkspaceTree(sandbox, root)
+      expect(uploadFile).toHaveBeenCalledWith(
+        sandbox,
+        bytes,
+        "/home/daytona/agent-workspace/pi/packages/test/module.wasm"
+      )
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
   it("writes the host checkout for local sessions", async () => {
     delete process.env.VERCEL
     await expect(resolveHarnessWriteTarget({ cwd: "/repo" })).resolves.toEqual({

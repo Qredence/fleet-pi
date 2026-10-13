@@ -7,6 +7,7 @@ import { runWithChatAuthSurface } from "../../../auth/chat-auth-surface"
 import { createSessionServices } from "../session-factory"
 import { hydrateSessionServicesSettings } from "../durable-project-settings"
 import { hotReloadActiveRuntimesForUser } from "../hot-reload"
+import { createSandboxReadOperations } from "../../../daytona/sandbox-operations"
 import {
   deleteActiveSessionRecord,
   setActiveSessionRecord,
@@ -15,6 +16,7 @@ import {
   createIsolatedProjectSettings,
   replaceIsolatedProjectSettings,
 } from "../isolated-project-settings"
+import type { Sandbox } from "@daytona/sdk"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
@@ -23,6 +25,22 @@ import type { AppRuntimeContext } from "../../../app-runtime"
 
 const mocks = vi.hoisted(() => ({
   loadUserProjectSettings: vi.fn(),
+  getCachedUserSandbox: vi.fn(),
+  getInFlightUserSandbox: vi.fn(),
+  getUserSandbox: vi.fn(),
+  executeCommand: vi.fn(),
+  downloadFile: vi.fn(),
+}))
+
+vi.mock("../../../daytona/user-sandbox", () => ({
+  getCachedUserSandbox: mocks.getCachedUserSandbox,
+  getInFlightUserSandbox: mocks.getInFlightUserSandbox,
+  getUserSandbox: mocks.getUserSandbox,
+}))
+vi.mock("../../../daytona/client", () => ({
+  executeCommand: mocks.executeCommand,
+  downloadFile: mocks.downloadFile,
+  uploadFile: vi.fn(),
 }))
 
 vi.mock("../../../db/user-settings", () => ({
@@ -64,6 +82,8 @@ const sharedSource =
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  mocks.getCachedUserSandbox.mockReset()
+  mocks.getInFlightUserSandbox.mockReset()
   vi.stubEnv("VERCEL", "")
   vi.stubEnv("FLEET_PI_CHAT_DATABASE_URL", "")
   vi.stubEnv("DATABASE_URL", "")
@@ -88,7 +108,11 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-function createServices(userId: string, callerManager?: SettingsManager) {
+function createServices(
+  userId: string,
+  callerManager?: SettingsManager,
+  enableExtensions = false
+) {
   return createSessionServices(
     { projectRoot: root } as AppRuntimeContext,
     {
@@ -100,7 +124,7 @@ function createServices(userId: string, callerManager?: SettingsManager) {
         unregisterProvider: vi.fn(),
         getRegisteredProviderIds: vi.fn(() => []),
       } as unknown as AgentSessionServices["modelRuntime"],
-      resourceLoaderOptions: { noExtensions: true },
+      resourceLoaderOptions: { noExtensions: !enableExtensions },
     },
     { userId }
   )
@@ -121,6 +145,182 @@ function retainServices(
 }
 
 describe("deployed session settings", () => {
+  it("loads volume resources privately on startup, reload, and new sessions", async () => {
+    const remoteRoot = "/home/daytona/agent-workspace/pi"
+    const filesByUser = new Map<string, Map<string, Buffer>>()
+    const bytes = Buffer.from("0061736dff", "hex")
+    for (const user of ["a", "b"]) {
+      filesByUser.set(
+        user,
+        new Map([
+          [
+            `${remoteRoot}/skills/private/SKILL.md`,
+            Buffer.from(
+              `---\nname: private-${user}\ndescription: Private skill\n---\n# Skill\n`
+            ),
+          ],
+          [
+            `${remoteRoot}/prompts/private.md`,
+            Buffer.from(`Private prompt ${user}`),
+          ],
+          [
+            `${remoteRoot}/extensions/enabled/active.ts`,
+            Buffer.from(
+              'export default function(pi) { pi.registerCommand("private-active", { handler: async () => {} }); }'
+            ),
+          ],
+          [
+            `${remoteRoot}/extensions/staged/inactive.ts`,
+            Buffer.from(
+              'export default function(pi) { pi.registerCommand("private-staged", { handler: async () => {} }); }'
+            ),
+          ],
+          [
+            `${remoteRoot}/packages/bundle/package.json`,
+            Buffer.from(
+              JSON.stringify({ name: "bundle", pi: { prompts: ["bundle.md"] } })
+            ),
+          ],
+          [
+            `${remoteRoot}/packages/bundle/bundle.md`,
+            Buffer.from(`Bundle ${user}`),
+          ],
+          [`${remoteRoot}/packages/bundle/module.wasm`, bytes],
+        ])
+      )
+      settingsByUser.set(user, {
+        skills: ["../agent-workspace/pi/skills"],
+        prompts: ["../agent-workspace/pi/prompts"],
+        extensions: ["../agent-workspace/pi/extensions/enabled"],
+        packages: ["../agent-workspace/pi/packages/bundle"],
+      })
+    }
+    // A shared-checkout copy must not be used even when it exists.
+    await mkdir(join(root, "agent-workspace/pi/prompts"), { recursive: true })
+    await writeFile(
+      join(root, "agent-workspace/pi/prompts/poison.md"),
+      "Shared poison"
+    )
+    mocks.getCachedUserSandbox.mockImplementation((userId) => ({
+      sandbox: { id: userId },
+    }))
+    mocks.executeCommand.mockImplementation((sandbox) =>
+      Promise.resolve({
+        exitCode: 0,
+        result: [...filesByUser.get(sandbox.id)!.keys()].join("\0") + "\0",
+      })
+    )
+    mocks.downloadFile.mockImplementation((sandbox, path) =>
+      Promise.resolve(filesByUser.get(sandbox.id)!.get(path))
+    )
+
+    await runWithChatAuthSurface("neon-function", async () => {
+      const [a, b] = await Promise.all([
+        createServices("a", undefined, true),
+        createServices("b", undefined, true),
+      ])
+      const promptsA = a.resourceLoader.getPrompts().prompts
+      const promptsB = b.resourceLoader.getPrompts().prompts
+      expect(
+        promptsA.find((prompt) => prompt.name === "private")?.content
+      ).toBe("Private prompt a")
+      expect(
+        promptsB.find((prompt) => prompt.name === "private")?.content
+      ).toBe("Private prompt b")
+      expect(promptsA.map((prompt) => prompt.name)).toContain("bundle")
+      expect(promptsA.map((prompt) => prompt.name)).not.toContain("poison")
+      expect(promptsA[0].filePath).not.toBe(promptsB[0].filePath)
+      expect(
+        a.resourceLoader.getSkills().skills.map((skill) => skill.name)
+      ).toContain("private-a")
+      const skill = a.resourceLoader
+        .getSkills()
+        .skills.find((entry) => entry.name === "private-a")!
+      const read = createSandboxReadOperations(
+        { id: "a" } as Sandbox,
+        "/home/daytona/agent-workspace"
+      )
+      await expect(read.readFile(skill.filePath)).resolves.toEqual(
+        filesByUser.get("a")!.get(`${remoteRoot}/skills/private/SKILL.md`)
+      )
+      const commands = a.resourceLoader
+        .getExtensions()
+        .extensions.flatMap((extension) => [...extension.commands.keys()])
+      expect(commands).toContain("private-active")
+      expect(commands).not.toContain("private-staged")
+      const bundle = promptsA.find((prompt) => prompt.name === "bundle")!
+      expect(await readFile(join(bundle.filePath, "../module.wasm"))).toEqual(
+        bytes
+      )
+      expect(a.settingsManager.getProjectSettings()).toMatchObject(
+        settingsByUser.get("a")!
+      )
+
+      filesByUser
+        .get("a")!
+        .set(`${remoteRoot}/prompts/private.md`, Buffer.from("Updated A"))
+      await a.resourceLoader.reload()
+      expect(
+        a.resourceLoader
+          .getPrompts()
+          .prompts.find((prompt) => prompt.name === "private")?.content
+      ).toBe("Updated A")
+      expect(
+        b.resourceLoader
+          .getPrompts()
+          .prompts.find((prompt) => prompt.name === "private")?.content
+      ).toBe("Private prompt b")
+      const fresh = await createServices("a")
+      expect(
+        fresh.resourceLoader
+          .getPrompts()
+          .prompts.find((prompt) => prompt.name === "private")?.content
+      ).toBe("Updated A")
+      retainServices("sandbox-a", "a", a)
+      settingsByUser.set("a", { packages: [] })
+      await hotReloadActiveRuntimesForUser("a", {}, root)
+      expect(
+        a.resourceLoader.getPrompts().prompts.map((prompt) => prompt.name)
+      ).not.toContain("bundle")
+      filesByUser.get("a")!.delete(`${remoteRoot}/prompts/private.md`)
+      await a.resourceLoader.reload()
+      expect(
+        a.resourceLoader.getPrompts().prompts.map((prompt) => prompt.name)
+      ).not.toContain("private")
+    })
+    expect(await readFile(sharedFile, "utf8")).toBe(sharedSource)
+  })
+
+  it("keeps cold startup private and reads the volume on reload after warm-up", async () => {
+    await mkdir(join(root, "agent-workspace/pi/prompts"), { recursive: true })
+    await writeFile(
+      join(root, "agent-workspace/pi/prompts/poison.md"),
+      "Shared"
+    )
+    settingsByUser.set("a", { packages: [] })
+    mocks.getInFlightUserSandbox.mockReturnValue(new Promise(() => {}))
+    await runWithChatAuthSurface("neon-function", async () => {
+      const services = await createServices("a")
+      expect(services.resourceLoader.getPrompts().prompts).toEqual([])
+      expect(mocks.getInFlightUserSandbox).not.toHaveBeenCalled()
+      expect(mocks.getUserSandbox).not.toHaveBeenCalled()
+      mocks.getCachedUserSandbox.mockReturnValue({ sandbox: { id: "a" } })
+      mocks.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        result: "/home/daytona/agent-workspace/pi/prompts/ready.md\0",
+      })
+      mocks.downloadFile.mockResolvedValue(Buffer.from("Ready"))
+      await services.resourceLoader.reload()
+      expect(
+        services.resourceLoader
+          .getPrompts()
+          .prompts.map((prompt) => prompt.name)
+      ).toEqual(["ready"])
+      mocks.getCachedUserSandbox.mockReturnValue(undefined)
+      await services.resourceLoader.reload()
+      expect(services.resourceLoader.getPrompts().prompts).toEqual([])
+    })
+  })
   it("seeds the real resource loader privately before its first reload", async () => {
     await mkdir(join(root, "private-skills", "a"), { recursive: true })
     await writeFile(

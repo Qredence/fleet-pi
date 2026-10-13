@@ -166,6 +166,15 @@ describe("discoverConfiguredProviderModels", () => {
                 name: "models/gemini-2.5-pro",
                 displayName: "Gemini 2.5 Pro",
                 inputTokenLimit: 1_048_576,
+                supportedGenerationMethods: ["generateContent", "countTokens"],
+              },
+              {
+                name: "models/embedding-only",
+                supportedGenerationMethods: ["embedContent"],
+              },
+              {
+                name: "models/no-generation",
+                supportedGenerationMethods: [],
               },
             ],
           }),
@@ -189,6 +198,38 @@ describe("discoverConfiguredProviderModels", () => {
     expect(discovered.models[1]).toMatchObject({
       name: "Gemini 2.5 Pro",
       contextWindow: 1_048_576,
+    })
+  })
+
+  it("discovers Anthropic models using the versioned API", async () => {
+    const providerId = `${CUSTOM_PROVIDER_ID_PREFIX}anthropic`
+    getOccInstanceByIdMock.mockResolvedValue({
+      id: providerId,
+      displayName: "Anthropic",
+      baseUrl: "https://api.anthropic.com/v1",
+      api: "anthropic-messages",
+      modelIds: [],
+    })
+    loadOccInstanceApiKeyMock.mockResolvedValue("anthropic-key")
+    const fetchMock = vi.fn((_url, options) => {
+      const valid =
+        options.headers["anthropic-version"] === "2023-06-01" &&
+        options.headers["x-api-key"] === "anthropic-key"
+      return Promise.resolve(
+        new Response(JSON.stringify({ data: [{ id: "claude-sonnet" }] }), {
+          status: valid ? 200 : 400,
+        })
+      )
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const result = await discoverConfiguredProviderModels("user-1", providerId)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/models",
+      expect.anything()
+    )
+    expect(result).toMatchObject({
+      status: "models",
+      models: [{ id: "claude-sonnet" }],
     })
   })
 

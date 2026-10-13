@@ -144,7 +144,7 @@ async function loadRemoteModels(
     if (api === "google-genai") {
       return await listGoogleGenaiModels(safeBaseUrl, apiKey)
     }
-    return await listOpenAiCompatibleModels(safeBaseUrl, apiKey)
+    return await listOpenAiCompatibleModels(safeBaseUrl, apiKey, api)
   } catch (error) {
     console.warn(
       `[models.discover] ${providerId} model list failed: ${errorMessage(error)}`

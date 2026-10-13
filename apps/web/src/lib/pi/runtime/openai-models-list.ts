@@ -10,6 +10,7 @@ export type RemoteOpenAiModel = {
   contextWindow?: number
   /** Present when the catalog says which routes can serve the model. */
   endpoints?: Array<string>
+  supportedGenerationMethods?: Array<string>
 }
 
 const CHAT_COMPLETIONS_ENDPOINT = "/chat/completions"
@@ -49,7 +50,12 @@ export function modelSupportsProviderApi(
   model: RemoteOpenAiModel,
   api: PiCustomProviderApi
 ): boolean {
-  if (api === "google-genai") return true
+  if (api === "google-genai") {
+    return (
+      model.supportedGenerationMethods === undefined ||
+      model.supportedGenerationMethods.includes("generateContent")
+    )
+  }
   const endpoint = providerApiEndpoint(api)
   if (!endpoint) return false
   if (!model.endpoints || model.endpoints.length === 0) return true
@@ -82,7 +88,8 @@ export function parseOpenAiModelsList(
  */
 export async function listOpenAiCompatibleModels(
   baseUrl: string,
-  apiKey: string
+  apiKey: string,
+  api: PiCustomProviderApi = "openai-completions"
 ): Promise<Array<RemoteOpenAiModel>> {
   if (isGatewayHost(baseUrl)) return []
   const url = `${baseUrl.replace(/\/+$/, "")}/models`
@@ -91,6 +98,13 @@ export async function listOpenAiCompatibleModels(
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${apiKey}`,
+      ...(api === "anthropic-messages"
+        ? {
+            "anthropic-version": "2023-06-01",
+            "x-api-key": apiKey,
+            "content-type": "application/json",
+          }
+        : {}),
     },
     redirect: "error",
     signal: AbortSignal.timeout(10_000),
@@ -184,10 +198,20 @@ export function parseGoogleGenaiModelsList(
         ? record.displayName.trim()
         : undefined
     const contextWindow = finiteNumber(record.inputTokenLimit)
+    const supportedGenerationMethods = Array.isArray(
+      record.supportedGenerationMethods
+    )
+      ? record.supportedGenerationMethods.filter(
+          (method): method is string => typeof method === "string"
+        )
+      : undefined
     models.push({
       id,
       ...(displayName && displayName !== id ? { name: displayName } : {}),
       ...(contextWindow !== undefined ? { contextWindow } : {}),
+      ...(supportedGenerationMethods !== undefined
+        ? { supportedGenerationMethods }
+        : {}),
     })
   }
   return models
