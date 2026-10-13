@@ -41,10 +41,10 @@ describe("adaptive workspace docs contract", () => {
     expect(guide).toContain(
       "`agent-workspace/indexes/` stores non-canonical projection data"
     )
-    expect(guide).toContain("`agent-workspace/.pi/skills`")
-    expect(guide).toContain("`agent-workspace/.pi/prompts`")
-    expect(guide).toContain("`agent-workspace/.pi/extensions`")
-    expect(guide).toContain("`agent-workspace/.pi/packages`")
+    expect(guide).toContain("`agent-workspace/pi/skills`")
+    expect(guide).toContain("`agent-workspace/pi/prompts`")
+    expect(guide).toContain("`agent-workspace/pi/extensions`")
+    expect(guide).toContain("`agent-workspace/pi/packages`")
     expect(guide).toContain(
       "Durable memory, skills, plans, evals, and artifacts remain path-backed files"
     )

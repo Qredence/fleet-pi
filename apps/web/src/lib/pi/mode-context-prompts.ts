@@ -165,7 +165,7 @@ Restrictions:
   return {
     customType: AGENT_MODE_CONTEXT_CUSTOM_TYPE,
     content: `[AGENT MODE ACTIVE]
-Follow the operating constraints from agent-workspace/AGENTS.md (injected in workspace context).
+Follow the workspace boot section. Read system/constraints.md before changing the workspace.
 Use agent-workspace/ as context when it helps the coding task. Do not redesign or manage the agent-workspace/ architecture from Agent mode unless the user explicitly asks to switch to Harness mode.
 
 ${openUiPrompt}`,

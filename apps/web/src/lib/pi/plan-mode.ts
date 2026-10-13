@@ -1,5 +1,12 @@
+import {
+  classifyToolPath,
+  rawWorkspaceMutationBlock,
+} from "../../../../../.pi/extensions/lib/mutation-tier"
+import {
+  evaluatePlanCommand,
+  listMutatingCommandTargets,
+} from "./command-policy"
 import { keepLastCustomType } from "./context-filter"
-import { evaluatePlanCommand } from "./command-policy"
 import {
   AGENT_MODE_CONTEXT_CUSTOM_TYPE,
   HARNESS_MODE_CONTEXT_CUSTOM_TYPE,
@@ -93,6 +100,9 @@ export function createPlanModeExtension() {
       const activeMode = getChatModeBySessionId(
         ctx.sessionManager.getSessionId()
       )
+      if (activeMode === "agent" && !state.enabled) {
+        return enforceAgentWorkspaceMutation(event)
+      }
       if (!state.enabled && activeMode !== "harness") return
 
       if (activeMode === "harness" && isGeneralMutationTool(event.toolName)) {
@@ -338,6 +348,66 @@ function isGeneralMutationTool(toolName: string) {
   return toolName === "edit" || toolName === "write"
 }
 
+/**
+ * Agent-mode write, edit, and bash share workspace mutation tiers.
+ * Daytona wraps those same tool names, so this gate runs before either the
+ * host tools or the sandbox tools execute. `workspace_write` keeps its own
+ * rationale and override checks.
+ */
+function enforceAgentWorkspaceMutation(event: {
+  toolName: string
+  input: unknown
+}): { block: true; reason: string } | undefined {
+  if (event.toolName === "write" || event.toolName === "edit") {
+    const path = readStringField(event.input, "path")
+    if (!path) return undefined
+    const reason = rawWorkspaceMutationBlock(path)
+    if (!reason) return undefined
+    return { block: true, reason: `Agent mode: ${reason}` }
+  }
+
+  if (event.toolName !== "bash") return undefined
+  const command = readStringField(event.input, "command")
+  if (!command) return undefined
+  return blockProtectedBashMutation(command)
+}
+
+function blockProtectedBashMutation(
+  command: string
+): { block: true; reason: string } | undefined {
+  let rationaleReason: string | undefined
+  for (const target of listMutatingCommandTargets(command)) {
+    const classified = classifyToolPath(target)
+    if (!classified.scoped) continue
+    switch (classified.tier) {
+      case "free":
+        break
+      case "protected":
+        return {
+          block: true,
+          reason:
+            `Agent mode: \`${command}\` would mutate protected ${classified.relativePath}. ` +
+            "Use workspace_write with override:true.",
+        }
+      case "rationale-required":
+        rationaleReason ??=
+          `Agent mode: \`${command}\` would mutate ${classified.relativePath} without a rationale. ` +
+          "Use workspace_write."
+        break
+      default:
+        return assertNever(classified.tier)
+    }
+  }
+  if (!rationaleReason) return undefined
+  return { block: true, reason: rationaleReason }
+}
+
+function readStringField(input: unknown, key: string): string | undefined {
+  if (!input || typeof input !== "object" || !(key in input)) return undefined
+  const value = (input as Record<string, unknown>)[key]
+  return typeof value === "string" ? value : undefined
+}
+
 function getActiveModeContextType(state: PlanModeState, mode: ChatMode) {
   if (state.enabled) return PLAN_MODE_CONTEXT_CUSTOM_TYPE
   if (state.executing) return PLAN_EXECUTION_CONTEXT_CUSTOM_TYPE
@@ -361,6 +431,10 @@ function getTextContent(message: AssistantMessage) {
     .filter((block): block is TextContent => block.type === "text")
     .map((block) => block.text)
     .join("\n")
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected mutation tier: ${JSON.stringify(value)}`)
 }
 
 function filterModeContextMessages(

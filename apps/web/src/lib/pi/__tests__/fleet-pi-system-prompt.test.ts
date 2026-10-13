@@ -127,4 +127,43 @@ describe("Fleet Pi identity prompt section", () => {
     expect(systemPrompt).toMatch(/<tools>[\s\S]*- read:[\s\S]*- bash:/)
     expect(systemPrompt).toMatch(/<rules>[\s\S]*Be concise in your responses/)
   })
+
+  it("does not embed the product AGENTS.md for a hosted Daytona cwd", async () => {
+    const handlers = new Map<string, (...args: Array<unknown>) => unknown>()
+    workspaceContextExtension({
+      on: (event: string, handler: (...args: Array<unknown>) => unknown) => {
+        handlers.set(event, handler)
+      },
+    } as never)
+    const beforeAgentStart = handlers.get("before_agent_start")
+    const productAgents =
+      "The root `pnpm-lock.yaml` is the canonical lockfile; do not create nested app lockfiles."
+    const contextFiles = [
+      { path: "/repo/AGENTS.md", content: productAgents },
+      {
+        path: "/home/daytona/agent-workspace/AGENTS.md",
+        content: "You are a repo-local implementation partner.",
+      },
+    ]
+    const event = {
+      systemPromptOptions: {
+        cwd: "/home/daytona/agent-workspace",
+        contextFiles,
+        sections: {},
+      },
+    }
+    const result = (await beforeAgentStart?.(event, {
+      sessionManager: { getCwd: () => "/home/daytona/agent-workspace" },
+    })) as { message?: { content?: string } } | undefined
+
+    expect(event.systemPromptOptions.contextFiles).toEqual([])
+    expect(result?.message?.content).toContain("system/constraints.md")
+    expect(result?.message?.content).not.toContain(productAgents)
+    expect(result?.message?.content).not.toContain(
+      "repo-local implementation partner"
+    )
+    expect(result?.message?.content).not.toContain(
+      "Self-imposed operating constraints"
+    )
+  })
 })

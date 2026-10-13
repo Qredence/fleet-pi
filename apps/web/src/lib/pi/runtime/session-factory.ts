@@ -1,16 +1,20 @@
+import { join } from "node:path"
 import {
   SettingsManager,
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import { PROVIDER_ENV_SCRUB_VAR_NAMES } from "@workspace/pi-protocol/provider-catalog"
+import { isHostedDeployment } from "../../deployment/environment"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
+import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
+import { AGENT_WORKSPACE_DIRECTORY } from "../../workspace/workspace-contract"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { createPlanModeExtension } from "../plan-mode"
-import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
+import { resolveLoaderProjectTrust } from "./project-trust"
 import {
   isDeployedChatRuntimeSurface,
   usesDatabaseBackedProjectSettings,
@@ -141,6 +145,16 @@ export async function createSessionServices(
           : withoutStock
       },
     },
+    resourceLoaderReloadOptions: {
+      resolveProjectTrust: ({ extensionsResult }) =>
+        resolveLoaderProjectTrust({
+          extensionsResult,
+          cwd: context.workspaceFS
+            ? context.workspaceRoot
+            : context.projectRoot,
+          mode: "print",
+        }),
+    },
   })
   sandboxResources?.attach(services)
 
@@ -217,6 +231,10 @@ export async function applyRuntimeAuth(
 async function loadBestEffortWorkspaceHealth(
   context: AppRuntimeContext
 ): Promise<WorkspaceHealthResponse> {
+  if (isHostedGitWorkspace(context)) {
+    return hostedGitWorkspaceHealth(context)
+  }
+
   const now = Date.now()
   const projectRoot = context.projectRoot
   const state = getBootstrapCacheState(projectRoot)
@@ -262,6 +280,24 @@ async function loadBestEffortWorkspaceHealth(
 
   state.promise = promise
   return promise
+}
+
+function isHostedGitWorkspace(context: AppRuntimeContext) {
+  if (!isHostedDeployment() || context.workspaceFS) return false
+  return (
+    context.workspaceRoot ===
+    join(context.projectRoot, AGENT_WORKSPACE_DIRECTORY)
+  )
+}
+
+function hostedGitWorkspaceHealth(
+  context: AppRuntimeContext
+): WorkspaceHealthResponse {
+  const health = createWorkspaceHealthFailure(
+    context,
+    new Error("hosted-workspace-pending")
+  )
+  return { ...health, warnings: [], diagnostics: [] }
 }
 
 function attachWorkspaceBootstrap(

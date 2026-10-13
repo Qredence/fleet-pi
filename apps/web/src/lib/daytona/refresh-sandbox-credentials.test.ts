@@ -102,4 +102,65 @@ describe("refreshSandboxProviderCredentials", () => {
       "user-1"
     )
   })
+
+  it("recreates on Cloudflare when a secrets-eligible key is not mounted", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    vi.mocked(getCachedUserSandbox).mockReturnValue({
+      sandbox: {} as never,
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      sandboxId: "sb-1",
+      userId: "user-1",
+      daytonaSecretsFingerprint: "same-fp",
+      daytonaSecretEnvVars: [],
+    })
+    vi.mocked(resolveDaytonaRuntimeApiKey).mockResolvedValue("daytona-key")
+    vi.mocked(loadConfiguredProviderSecrets).mockResolvedValue(
+      new Map([["google", "raw-gemini-key"]])
+    )
+    vi.mocked(fingerprintDaytonaSecretsConfig).mockReturnValue("same-fp")
+
+    await refreshSandboxProviderCredentials("user-1")
+
+    expect(recreateUserSandboxForSecrets).toHaveBeenCalledWith({
+      userId: "user-1",
+      apiKey: "daytona-key",
+    })
+    expect(ensureUserCredentials).not.toHaveBeenCalled()
+    delete process.env.FLEET_PI_DEPLOYMENT
+  })
+
+  it("keeps the local plaintext fallback when a secrets-eligible key is not mounted", async () => {
+    delete process.env.FLEET_PI_DEPLOYMENT
+    const sandbox = { id: "sb-1" } as never
+    vi.mocked(getCachedUserSandbox).mockReturnValue({
+      sandbox,
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      sandboxId: "sb-1",
+      userId: "user-1",
+      daytonaSecretsFingerprint: "same-fp",
+      daytonaSecretEnvVars: [],
+    })
+    vi.mocked(resolveDaytonaRuntimeApiKey).mockResolvedValue("daytona-key")
+    vi.mocked(loadConfiguredProviderSecrets).mockResolvedValue(
+      new Map([["google", "raw-gemini-key"]])
+    )
+    vi.mocked(fingerprintDaytonaSecretsConfig).mockReturnValue("same-fp")
+    const plaintext = {
+      envVars: { GEMINI_API_KEY: "raw-gemini-key" },
+      authJson: {},
+      fingerprint: "auth-fp",
+    }
+    vi.mocked(buildPlaintextSandboxCredentials).mockReturnValue(plaintext)
+
+    await refreshSandboxProviderCredentials("user-1")
+
+    expect(recreateUserSandboxForSecrets).not.toHaveBeenCalled()
+    expect(ensureUserCredentials).toHaveBeenCalledWith(
+      sandbox,
+      plaintext,
+      "user-1"
+    )
+  })
 })

@@ -85,6 +85,40 @@ describe("workspace context extension", () => {
       updatedContent.indexOf(chromeSnippet)
     )
   })
+
+  it("uses a short boot section and does not inline workspace policy files", async () => {
+    const root = await createTempWorkspace()
+    await mkdir(join(root, "agent-workspace/system"), { recursive: true })
+    await writeFile(
+      join(root, "agent-workspace/AGENTS.md"),
+      "You are a repo-local implementation partner: you read before editing.\n",
+      "utf8"
+    )
+    await writeFile(
+      join(root, "agent-workspace/system/constraints.md"),
+      "Self-imposed operating constraints for the Fleet Pi coding agent.\n",
+      "utf8"
+    )
+
+    const handlers = new Map<string, (...args: Array<unknown>) => unknown>()
+    workspaceContextExtension({
+      on: (event: string, handler: (...args: Array<unknown>) => unknown) => {
+        handlers.set(event, handler)
+      },
+    } as never)
+    const beforeAgentStart = handlers.get("before_agent_start")
+    const result = (await beforeAgentStart?.(
+      {},
+      { sessionManager: { getCwd: () => root } }
+    )) as { message?: { content?: string } } | undefined
+    const content = result?.message?.content ?? ""
+
+    expect(content).toContain("system/workspace-policy.md")
+    expect(content).toContain("system/constraints.md")
+    expect(content).toContain("memory/project/")
+    expect(content).not.toContain("repo-local implementation partner")
+    expect(content).not.toContain("Self-imposed operating constraints")
+  })
 })
 
 async function createTempWorkspace() {

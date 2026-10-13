@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises"
 import { resolve } from "node:path"
+import { isInsideUserVolume } from "./lib/project-trust"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import {
   formatProjectMemoryForStartupContext,
@@ -9,36 +10,19 @@ import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
+const WORKSPACE_BOOT = [
+  "Identity: You are Fleet Pi, working in agent-workspace.",
+  "Mutation tiers: free — scratch/**, artifacts/traces/**, artifacts/reports/**, memory/daily/**. Rationale required — memory/project/**, memory/research/**, memory/summaries/**, plans/**, skills/**, pi/skills/**, pi/prompts/** via workspace_write. Protected — system/** and evals/** via workspace_write with override:true.",
+  "Read before changing the workspace: system/workspace-policy.md, system/constraints.md, and memory/project/.",
+].join("\n")
 
 export default function workspaceContextExtension(pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, ctx) => {
     applyFleetPiIdentity(event)
     const cwd = ctx.sessionManager.getCwd()
     const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
-
-    const workspaceAgents = await readWorkspaceAgents(cwd)
-    if (workspaceAgents) {
-      parts.push(workspaceAgents)
-    } else {
-      const identity = await readIdentity(cwd)
-      if (identity) parts.push(`Agent: ${identity}`)
-
-      parts.push(
-        "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
-      )
-      parts.push(
-        "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
-      )
-      parts.push(
-        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed (single quick URL reads). For research: use web_search, code_search, fetch_content (Harness+Agent), or get_search_content from pi-web-access."
-      )
-      parts.push(
-        "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
-      )
-      parts.push(
-        "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
-      )
-    }
+    omitProductRepoAgents(event, cwd)
+    parts.push(WORKSPACE_BOOT)
 
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
@@ -89,31 +73,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     if (lastWorkspaceContextIndex === -1) return undefined
 
     const cwd = ctx.sessionManager.getCwd()
-    const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
-
-    const workspaceAgents = await readWorkspaceAgents(cwd)
-    if (workspaceAgents) {
-      parts.push(workspaceAgents)
-    } else {
-      const identity = await readIdentity(cwd)
-      if (identity) parts.push(`Agent: ${identity}`)
-
-      parts.push(
-        "Agent home: Fleet Pi lives in agent-workspace. Treat it as the primary surface for repo-local skills, tools, memory, plans, evals, artifacts, and runtime resource orientation; .pi/extensions are the executable runtime bridges that expose those workspace capabilities to Pi."
-      )
-      parts.push(
-        "Mutation tiers: scratch/**/artifacts/traces|reports/**/memory/daily/** = free; memory/project|research|summaries/**/plans/**/skills/** = needs rationale; system/**/evals/** = protected."
-      )
-      parts.push(
-        "Workspace tools: use workspace_index for orientation, workspace_write for durable workspace updates, resource_install for Pi skills/prompts/extensions/packages, project_inventory for app/resource overview, and web_fetch only when external context is needed (single quick URL reads). For research: use web_search, code_search, fetch_content (Harness+Agent), or get_search_content from pi-web-access."
-      )
-      parts.push(
-        "On capability gaps: use questionnaire — state what's missing, list options (researcher subagent / web_fetch / gh skill install / user paste), wait for choice."
-      )
-      parts.push(
-        "On resource install: use resource_install for Fleet Pi runtime resources. It writes to agent-workspace/pi; extensions/packages are staged unless the user explicitly asks to activate them. Start a new session or reload before relying on newly installed resources."
-      )
-    }
+    const parts: Array<string> = ["[WORKSPACE CONTEXT]", WORKSPACE_BOOT]
 
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
@@ -139,20 +99,21 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
   })
 }
 
-async function readIdentity(cwd: string): Promise<string | undefined> {
-  try {
-    const content = await readFile(
-      resolve(cwd, WORKSPACE_ROOT, "system/identity.md"),
-      "utf8"
-    )
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim()
-      if (trimmed && !trimmed.startsWith("#")) return trimmed
+function omitProductRepoAgents(
+  event: {
+    systemPromptOptions?: {
+      contextFiles?: Array<{ path: string; content: string }>
     }
-  } catch {
-    // file missing or unreadable
-  }
-  return undefined
+  },
+  cwd: string
+) {
+  const options = event.systemPromptOptions
+  const contextFiles = options?.contextFiles
+  if (!options || !contextFiles || !isInsideUserVolume(cwd)) return
+  options.contextFiles = contextFiles.filter((file) => {
+    const path = file.path.replace(/\\/g, "/")
+    return path !== "AGENTS.md" && !path.endsWith("/AGENTS.md")
+  })
 }
 
 async function readActivePlan(cwd: string): Promise<string | undefined> {
@@ -160,28 +121,16 @@ async function readActivePlan(cwd: string): Promise<string | undefined> {
     const activeDir = resolve(cwd, WORKSPACE_ROOT, "plans/active")
     const entries = await readdir(activeDir, { withFileTypes: true })
     const plans = entries
-      .filter((e) => e.isFile() && e.name.endsWith(".md"))
-      .map((e) => e.name)
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => entry.name)
       .sort((a, b) => a.localeCompare(b))
     if (plans.length === 0) return undefined
 
     const planFile = plans[0]
+    if (!planFile) return undefined
     const content = await readFile(resolve(activeDir, planFile), "utf8")
     const title = extractTitle(content) ?? planFile.replace(/\.md$/, "")
     return `${title} (plans/active/${planFile})`
-  } catch {
-    // directory missing or unreadable
-  }
-  return undefined
-}
-
-async function readWorkspaceAgents(cwd: string): Promise<string | undefined> {
-  try {
-    const content = await readFile(
-      resolve(cwd, WORKSPACE_ROOT, "AGENTS.md"),
-      "utf8"
-    )
-    return content.trim() || undefined
   } catch {
     return undefined
   }
@@ -190,7 +139,7 @@ async function readWorkspaceAgents(cwd: string): Promise<string | undefined> {
 function extractTitle(content: string): string | undefined {
   for (const line of content.split("\n")) {
     const match = line.match(/^#\s+(.+)/)
-    if (match) return match[1].trim()
+    if (match) return match[1]?.trim()
   }
   return undefined
 }

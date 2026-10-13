@@ -9,7 +9,11 @@ import { persistHarnessInstallSettings } from "./harness-settings"
 import { executeCommand, uploadFile } from "./client"
 import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 import { resolveDaytonaToolUser } from "./tool-context"
-import { getCachedUserSandbox, getInFlightUserSandbox } from "./user-sandbox"
+import {
+  SANDBOX_WARMING_MESSAGE,
+  resolveReadySandbox,
+} from "./resolve-ready-sandbox"
+import type { ResolveReadySandboxDeps } from "./resolve-ready-sandbox"
 import type { Sandbox } from "@daytona/sdk"
 
 const HOST_WRITE_REFUSED =
@@ -25,16 +29,26 @@ export type HarnessWriteTarget =
  * The git agent-workspace tree stays the shared template. Without a sandbox,
  * deployed chat does not write that shared checkout.
  */
-export async function resolveHarnessWriteTarget(input: {
-  cwd: string
-  sessionId?: string
-  sessionFile?: string
-}): Promise<HarnessWriteTarget> {
+export async function resolveHarnessWriteTarget(
+  input: {
+    cwd: string
+    sessionId?: string
+    sessionFile?: string
+  },
+  deps?: ResolveReadySandboxDeps
+): Promise<HarnessWriteTarget> {
   const userId = resolveDaytonaToolUser(input.sessionId, input.sessionFile)
   if (userId) {
-    const handle = await resolveReadySandbox(userId)
-    if (handle) {
-      return { kind: "sandbox", sandbox: handle.sandbox }
+    const ready = await resolveReadySandbox(userId, deps)
+    switch (ready.status) {
+      case "ready":
+        return { kind: "sandbox", sandbox: ready.handle.sandbox }
+      case "warming":
+        return { kind: "unavailable", message: SANDBOX_WARMING_MESSAGE }
+      case "missing":
+        break
+      default:
+        return assertNever(ready)
     }
   }
 
@@ -43,6 +57,10 @@ export async function resolveHarnessWriteTarget(input: {
   }
 
   return { kind: "host", cwd: input.cwd }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected sandbox state: ${JSON.stringify(value)}`)
 }
 
 /**
@@ -81,18 +99,6 @@ export function installHarnessWriteResolver() {
       },
     }
   })
-}
-
-async function resolveReadySandbox(userId: string) {
-  const cached = getCachedUserSandbox(userId)
-  if (cached) return cached
-  const inFlight = getInFlightUserSandbox(userId)
-  if (!inFlight) return undefined
-  try {
-    return await inFlight
-  } catch {
-    return undefined
-  }
 }
 
 export function sandboxWorkspaceFilePath(workspaceRelativePath: string) {
