@@ -12,10 +12,7 @@ import {
   resolveVercelAllowedHosts,
 } from "@/lib/auth/auth-host-policy"
 import { isVercelDeployment } from "@/lib/deployment/environment"
-import {
-  isHostedPreviewDeployment,
-  isVercelPreviewDeployment,
-} from "@/lib/deployment/trust-zone"
+import { isHostedPreviewDeployment } from "@/lib/deployment/trust-zone"
 import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
 
 function readCsvEnv(name: string) {
