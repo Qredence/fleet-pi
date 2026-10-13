@@ -4,7 +4,12 @@ import { downloadFile, executeCommand } from "../../daytona/client"
 import { getCachedUserSandbox } from "../../daytona/user-sandbox"
 import { SANDBOX_WORKSPACE_ROOT } from "../../daytona/sandbox-prepare"
 import { RESOURCE_CACHE_PREFIX } from "../../daytona/resource-cache-path"
-import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import {
+  isDeployedChatRuntimeSurface,
+  usesDatabaseBackedProjectSettings,
+} from "./deployed-chat-runtime"
+import { resolveProjectSettings } from "./durable-project-settings"
+import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
 import type {
   AgentSessionServices,
   SettingsManager,
@@ -123,10 +128,16 @@ export function createSandboxResourceSettings(
     const loader = services.resourceLoader
     const reload = loader.reload.bind(loader)
     let pending = Promise.resolve()
-    loader.reload = (options) => {
+    loader.reload = async (options) => {
       const next = pending.then(async () => {
         await prepare()
         await reload(options)
+        if (usesDatabaseBackedProjectSettings()) {
+          await replaceIsolatedProjectSettings(
+            manager,
+            await resolveProjectSettings({ userId })
+          )
+        }
       })
       pending = next.catch(() => {})
       return next
