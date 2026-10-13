@@ -517,6 +517,8 @@ describe("session factory plan mode", () => {
 
   it("registers the plan-mode extension on every session", async () => {
     delete process.env.VERCEL
+    // This file reloads session-factory after vi.resetModules(). A top-level
+    // import would keep the first module instance and shadow those reloads.
     const { createSessionServices } = await import("../session-factory")
     await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
     const options = mocks.createAgentSessionServices.mock.calls[0]?.[0] as {

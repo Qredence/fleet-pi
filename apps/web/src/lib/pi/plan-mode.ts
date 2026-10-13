@@ -27,6 +27,7 @@ import {
   resolvePlanDecision,
   restorePlanState as restoreStoredPlanState,
 } from "./plan-state"
+import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai"
 import type {
   AgentSessionRuntime,
   ExtensionAPI,
@@ -143,6 +144,21 @@ export function createPlanModeExtension() {
           content: message.content,
           display: false,
         },
+      }
+    })
+
+    pi.on("turn_end", (event, ctx) => {
+      const state = getPlanStateBySessionId(ctx.sessionManager.getSessionId())
+      if (!state.executing || state.todos.length === 0) return
+      if (!isAssistantMessage(event.message)) return
+
+      const result = derivePlanExecutionProgress(
+        state,
+        getTextContent(event.message)
+      )
+      if (result.changed) {
+        planStates.set(ctx.sessionManager.getSessionId(), result.state)
+        pi.appendEntry(PLAN_STATE_CUSTOM_TYPE, result.state)
       }
     })
   }
@@ -327,6 +343,24 @@ function getActiveModeContextType(state: PlanModeState, mode: ChatMode) {
   if (state.executing) return PLAN_EXECUTION_CONTEXT_CUSTOM_TYPE
   if (mode === "harness") return HARNESS_MODE_CONTEXT_CUSTOM_TYPE
   return AGENT_MODE_CONTEXT_CUSTOM_TYPE
+}
+
+function isAssistantMessage(message: unknown): message is AssistantMessage {
+  return (
+    message !== null &&
+    typeof message === "object" &&
+    "role" in message &&
+    message.role === "assistant" &&
+    "content" in message &&
+    Array.isArray(message.content)
+  )
+}
+
+function getTextContent(message: AssistantMessage) {
+  return message.content
+    .filter((block): block is TextContent => block.type === "text")
+    .map((block) => block.text)
+    .join("\n")
 }
 
 function filterModeContextMessages(

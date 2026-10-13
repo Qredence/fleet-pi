@@ -1,4 +1,9 @@
 import { stripThinkingLevel } from "@workspace/pi-protocol/model-patterns"
+import {
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isNamedOccInstanceId,
+} from "@workspace/pi-protocol/provider-catalog"
+import { isAllowAllEnabledModels } from "./project-settings-merge"
 
 /** Upper bound on models registered for one provider after a user enables them. */
 export const MAX_REGISTERED_PROVIDER_MODELS = 256
@@ -29,8 +34,12 @@ export function explicitEnabledModelIds(
 }
 
 /**
- * Stored provider models plus ids the user later enabled in Settings.
- * Stored ids stay first. The result is capped.
+ * Model ids to register for one provider.
+ *
+ * `enabledModels: []` registers nothing. An allow-all list (missing or `/*`)
+ * or a `provider/*` wildcard keeps the ids stored on the provider. A curated
+ * list registers only the ids the user enabled. OpenAI Chat Completions,
+ * including named instances, never grows past its configured ids.
  */
 export function modelIdsForRegistration(
   stored: ReadonlyArray<string>,
@@ -38,17 +47,51 @@ export function modelIdsForRegistration(
   providerId: string,
   max = MAX_REGISTERED_PROVIDER_MODELS
 ): Array<string> {
+  const storedIds = uniqueIds(stored, max)
+  if (patterns !== undefined && patterns.length === 0) return []
+
+  const enabled = explicitEnabledModelIds(patterns, providerId)
+  if (
+    isAllowAllEnabledModels(patterns) ||
+    providerWildcardEnabled(patterns, providerId)
+  ) {
+    if (limitsRegistrationToStoredIds(providerId)) return storedIds
+    return uniqueIds([...storedIds, ...enabled], max)
+  }
+  if (limitsRegistrationToStoredIds(providerId)) {
+    const allowed = new Set(enabled)
+    return storedIds.filter((id) => allowed.has(id))
+  }
+  return uniqueIds(enabled, max)
+}
+
+function providerWildcardEnabled(
+  patterns: ReadonlyArray<string> | undefined,
+  providerId: string
+) {
+  if (!patterns) return false
+  const wildcard = `${providerId}/*`
+  return patterns.some(
+    (pattern) => stripThinkingLevel(pattern.trim()) === wildcard
+  )
+}
+
+function limitsRegistrationToStoredIds(providerId: string) {
+  return (
+    providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID ||
+    isNamedOccInstanceId(providerId)
+  )
+}
+
+function uniqueIds(ids: ReadonlyArray<string>, max: number) {
   const seen = new Set<string>()
-  const merged: Array<string> = []
-  for (const raw of [
-    ...stored,
-    ...explicitEnabledModelIds(patterns, providerId),
-  ]) {
+  const unique: Array<string> = []
+  for (const raw of ids) {
     const id = raw.trim()
     if (!id || seen.has(id)) continue
     seen.add(id)
-    merged.push(id)
-    if (merged.length >= max) break
+    unique.push(id)
+    if (unique.length >= max) break
   }
-  return merged
+  return unique
 }

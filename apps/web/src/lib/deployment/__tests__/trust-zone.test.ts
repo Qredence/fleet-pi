@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { runWithChatAuthSurface } from "../../auth/chat-auth-surface"
 import {
   requiresAuthenticatedMirrorOwner,
+  shouldFailClosedOnFunctionMirrorWrite,
   shouldFailClosedOnMirrorError,
 } from "../trust-zone"
 
@@ -27,6 +28,15 @@ describe("shouldFailClosedOnMirrorError", () => {
     runWithChatAuthSurface("neon-function", () => {
       expect(shouldFailClosedOnMirrorError({})).toBe(true)
       expect(requiresAuthenticatedMirrorOwner({})).toBe(true)
+    })
+  })
+})
+
+describe("shouldFailClosedOnFunctionMirrorWrite", () => {
+  it("fails the turn only on the Neon Function", () => {
+    expect(shouldFailClosedOnFunctionMirrorWrite()).toBe(false)
+    runWithChatAuthSurface("neon-function", () => {
+      expect(shouldFailClosedOnFunctionMirrorWrite()).toBe(true)
     })
   })
 })

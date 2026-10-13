@@ -49,6 +49,7 @@ export function modelSupportsProviderApi(
   model: RemoteOpenAiModel,
   api: PiCustomProviderApi
 ): boolean {
+  if (api === "google-genai") return true
   const endpoint = providerApiEndpoint(api)
   if (!endpoint) return false
   if (!model.endpoints || model.endpoints.length === 0) return true
@@ -136,6 +137,60 @@ function parseModelRow(row: unknown): RemoteOpenAiModel | undefined {
     ...(contextWindow !== undefined ? { contextWindow } : {}),
     ...(endpoints && endpoints.length > 0 ? { endpoints } : {}),
   }
+}
+
+/**
+ * GET `{baseUrl}/models` for a Google GenAI-compatible host.
+ * Ids drop the `models/` prefix Gemini returns.
+ */
+export async function listGoogleGenaiModels(
+  baseUrl: string,
+  apiKey: string
+): Promise<Array<RemoteOpenAiModel>> {
+  const url = `${baseUrl.replace(/\/+$/, "")}/models`
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!response.ok) {
+    throw new Error(`Model list request failed (${response.status}).`)
+  }
+  return parseGoogleGenaiModelsList(await response.json())
+}
+
+export function parseGoogleGenaiModelsList(
+  payload: unknown
+): Array<RemoteOpenAiModel> {
+  if (!payload || typeof payload !== "object") return []
+  const rows = (payload as { models?: unknown }).models
+  if (!Array.isArray(rows)) return []
+  const models: Array<RemoteOpenAiModel> = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (models.length >= MAX_REMOTE_MODELS) break
+    if (!row || typeof row !== "object") continue
+    const record = row as Record<string, unknown>
+    const rawName = typeof record.name === "string" ? record.name : ""
+    const id = rawName.replace(/^models\//, "").trim()
+    if (!id || id.length > 4096 || seen.has(id)) continue
+    seen.add(id)
+    const displayName =
+      typeof record.displayName === "string"
+        ? record.displayName.trim()
+        : undefined
+    const contextWindow = finiteNumber(record.inputTokenLimit)
+    models.push({
+      id,
+      ...(displayName && displayName !== id ? { name: displayName } : {}),
+      ...(contextWindow !== undefined ? { contextWindow } : {}),
+    })
+  }
+  return models
 }
 
 function finiteNumber(value: unknown): number | undefined {

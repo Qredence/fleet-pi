@@ -1,10 +1,12 @@
 import { readFile, readdir } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
+import { registerHarnessWriteResolver } from "../../../../../.pi/extensions/lib/harness-write"
 import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
+import { persistHarnessInstallSettings } from "./harness-settings"
 import { executeCommand, uploadFile } from "./client"
 import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 import { resolveDaytonaToolUser } from "./tool-context"
-import { getCachedUserSandbox } from "./user-sandbox"
+import { getCachedUserSandbox, getInFlightUserSandbox } from "./user-sandbox"
 import type { Sandbox } from "@daytona/sdk"
 
 const HOST_WRITE_REFUSED =
@@ -20,14 +22,14 @@ export type HarnessWriteTarget =
  * The git agent-workspace tree stays the shared template. Without a sandbox,
  * deployed chat does not write that shared checkout.
  */
-export function resolveHarnessWriteTarget(input: {
+export async function resolveHarnessWriteTarget(input: {
   cwd: string
   sessionId?: string
   sessionFile?: string
-}): HarnessWriteTarget {
+}): Promise<HarnessWriteTarget> {
   const userId = resolveDaytonaToolUser(input.sessionId, input.sessionFile)
   if (userId) {
-    const handle = getCachedUserSandbox(userId)
+    const handle = await resolveReadySandbox(userId)
     if (handle) {
       return { kind: "sandbox", sandbox: handle.sandbox }
     }
@@ -38,6 +40,52 @@ export function resolveHarnessWriteTarget(input: {
   }
 
   return { kind: "host", cwd: input.cwd }
+}
+
+/**
+ * Points auto-loaded `.pi` extensions at this module's Daytona writer.
+ * The extension files themselves do not import the web server.
+ */
+export function installHarnessWriteResolver() {
+  registerHarnessWriteResolver(async (input) => {
+    const target = await resolveHarnessWriteTarget(input)
+    if (target.kind !== "sandbox") return target
+    const sandbox = target.sandbox
+    const userId = resolveDaytonaToolUser(input.sessionId, input.sessionFile)
+    return {
+      kind: "sandbox" as const,
+      sandbox: {
+        writeFile: (workspaceRelativePath: string, content: string) =>
+          writeSandboxWorkspaceFile(sandbox, workspaceRelativePath, content),
+        uploadWorkspace: (hostProjectRoot: string) =>
+          uploadAgentWorkspaceTree(sandbox, hostProjectRoot),
+        persistSettings: async (settings: Record<string, unknown>) => {
+          const merged = await persistHarnessInstallSettings({
+            userId,
+            cwd: input.cwd,
+            settings,
+          })
+          await writeSandboxWorkspaceFile(
+            sandbox,
+            ".pi/settings.json",
+            `${JSON.stringify(merged, null, 2)}\n`
+          )
+        },
+      },
+    }
+  })
+}
+
+async function resolveReadySandbox(userId: string) {
+  const cached = getCachedUserSandbox(userId)
+  if (cached) return cached
+  const inFlight = getInFlightUserSandbox(userId)
+  if (!inFlight) return undefined
+  try {
+    return await inFlight
+  } catch {
+    return undefined
+  }
 }
 
 export function sandboxWorkspaceFilePath(workspaceRelativePath: string) {

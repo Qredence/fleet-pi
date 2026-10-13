@@ -9,6 +9,7 @@ import {
 } from "../../workspace/bootstrap-agent-workspace"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { createPlanModeExtension } from "../plan-mode"
+import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
@@ -76,6 +77,7 @@ export async function createSessionServices(
     workspace?: ChatWorkspaceStatus
   }
 ) {
+  installHarnessWriteResolver()
   if (isDeployedChatRuntimeSurface()) {
     // Capture platform Gateway creds in memory, then scrub org LLM + Gateway
     // env so bash/tools cannot read them. Chat uses BYOK rows + captured Gateway.

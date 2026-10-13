@@ -1,13 +1,12 @@
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import {
   resolveHarnessWriteTarget,
-  uploadAgentWorkspaceTree,
-  type HarnessWriteTarget,
-} from "../../apps/web/src/lib/daytona/harness-write-target"
+  type HarnessSandboxWriter,
+} from "./lib/harness-write"
 import {
   installWorkspaceResource,
   type ResourceInstallKind,
@@ -53,7 +52,7 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       try {
         const cwd = ctx.sessionManager.getCwd()
-        const target = resolveHarnessWriteTarget({
+        const target = await resolveHarnessWriteTarget({
           cwd,
           sessionId: ctx.sessionManager.getSessionId(),
           sessionFile: ctx.sessionManager.getSessionFile(),
@@ -116,7 +115,7 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
 
 async function installOntoSandbox(
   cwd: string,
-  sandbox: Extract<HarnessWriteTarget, { kind: "sandbox" }>["sandbox"],
+  sandbox: HarnessSandboxWriter,
   params: ResourceInstallParams,
   signal: AbortSignal | undefined
 ) {
@@ -125,9 +124,25 @@ async function installOntoSandbox(
     const result = await installWorkspaceResource(cwd, params, signal, {
       writeRoot,
     })
-    await uploadAgentWorkspaceTree(sandbox, writeRoot)
+    await sandbox.uploadWorkspace(writeRoot)
+    const settings = await readInstallSettings(writeRoot)
+    if (settings) await sandbox.persistSettings(settings)
     return result
   } finally {
     await rm(writeRoot, { force: true, recursive: true })
   }
+}
+
+async function readInstallSettings(root: string) {
+  try {
+    const parsed = JSON.parse(
+      await readFile(join(root, ".pi/settings.json"), "utf8")
+    ) as unknown
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
 }

@@ -1,10 +1,7 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import {
-  resolveHarnessWriteTarget,
-  writeSandboxWorkspaceFile,
-} from "../../apps/web/src/lib/daytona/harness-write-target"
+import { resolveHarnessWriteTarget } from "./lib/harness-write"
 import {
   assertSafePath,
   ensureSafeDirectory,
@@ -106,7 +103,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
         )
       }
 
-      const target = resolveHarnessWriteTarget({
+      const target = await resolveHarnessWriteTarget({
         cwd,
         sessionId: ctx.sessionManager.getSessionId(),
         sessionFile: ctx.sessionManager.getSessionFile(),
@@ -115,11 +112,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
         return error(target.message)
       }
       if (target.kind === "sandbox") {
-        await writeSandboxWorkspaceFile(
-          target.sandbox,
-          relToWorkspace,
-          params.content
-        )
+        await target.sandbox.writeFile(relToWorkspace, params.content)
       } else {
         await ensureSafeDirectory(workspaceRoot, dirname(absolutePath))
         await assertSafePath(workspaceRoot, absolutePath, {

@@ -11,9 +11,10 @@ import { discoverConfiguredProviderModels } from "@/lib/pi/runtime/discover-prov
 /**
  * Discovers chat models available for the requested provider.
  *
- * Custom providers and OpenAI Chat Completions load `GET {baseUrl}/models`
- * and keep the models that wire can call. Other providers expose matching
- * entries from the chat model catalog. Unknown custom providers return 400.
+ * Custom providers load `GET {baseUrl}/models` and keep the models that wire
+ * can call. OpenAI Chat Completions stays on its configured model ids.
+ * Other providers expose matching entries from the chat model catalog.
+ * Unknown custom providers return 400.
  *
  * @returns An HTTP response containing the provider's available models or an error message.
  */

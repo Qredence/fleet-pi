@@ -5,13 +5,11 @@ import {
   normalizeCustomProviderInstance,
 } from "@workspace/pi-protocol/provider-catalog"
 import {
+  listGoogleGenaiModels,
   listOpenAiCompatibleModels,
   modelSupportsProviderApi,
 } from "./openai-models-list"
-import {
-  assertCustomProviderBaseUrl,
-  isGatewayHost,
-} from "./openai-chat-completions-url"
+import { assertCustomProviderBaseUrl } from "./openai-chat-completions-url"
 import { resolveOpenAiChatCompletionsConfig } from "./openai-chat-completions-provider"
 import type {
   ChatModelInfo,
@@ -35,9 +33,9 @@ export type ProviderModelDiscovery =
 
 /**
  * Lists models a configured provider can offer in Add models.
- * Custom and named OpenAI-compatible instances, plus the reserved OCC slot,
- * load `GET {baseUrl}/models` and keep entries that wire can call. Neon AI
- * Gateway hosts stay on their configured ids.
+ * Custom providers, including Command Code and Google GenAI, load
+ * `GET {baseUrl}/models`. The reserved OpenAI Chat Completions slot and
+ * named OCC instances stay on their configured ids.
  */
 export async function discoverConfiguredProviderModels(
   userId: string | undefined,
@@ -62,6 +60,17 @@ async function discoverInstanceModels(
   if (!instance) return { status: "unknown" }
 
   const normalized = normalizeCustomProviderInstance(instance)
+  if (isNamedOccInstanceId(providerId)) {
+    return {
+      status: "models",
+      models: mergeDiscoveredModels(
+        providerId,
+        normalized.modelIds,
+        [],
+        normalized.api
+      ),
+    }
+  }
   const remote = await loadRemoteModels(
     providerId,
     normalized.api,
@@ -84,18 +93,12 @@ async function discoverReservedOccModels(
 ): Promise<ProviderModelDiscovery> {
   const config = await resolveOpenAiChatCompletionsConfig(userId)
   if (!config) return { status: "skip" }
-  const remote = await loadRemoteModels(
-    OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-    "openai-completions",
-    config.baseUrl,
-    () => config.apiKey
-  )
   return {
     status: "models",
     models: mergeDiscoveredModels(
       OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
       config.modelIds,
-      remote,
+      [],
       "openai-completions"
     ),
   }
@@ -118,7 +121,6 @@ async function loadRemoteModels(
   readApiKey: () => string | undefined | Promise<string | undefined>
 ): Promise<Array<RemoteOpenAiModel>> {
   if (!providerApiListsModels(api)) return []
-  if (isGatewayHost(baseUrl)) return []
   let safeBaseUrl: string
   try {
     safeBaseUrl = assertCustomProviderBaseUrl(api, baseUrl)
@@ -139,6 +141,9 @@ async function loadRemoteModels(
   }
   if (!apiKey) return []
   try {
+    if (api === "google-genai") {
+      return await listGoogleGenaiModels(safeBaseUrl, apiKey)
+    }
     return await listOpenAiCompatibleModels(safeBaseUrl, apiKey)
   } catch (error) {
     console.warn(
@@ -153,9 +158,8 @@ function providerApiListsModels(api: PiCustomProviderApi): boolean {
     case "openai-completions":
     case "openai-responses":
     case "anthropic-messages":
-      return true
     case "google-genai":
-      return false
+      return true
     default: {
       const exhaustive: never = api
       return exhaustive

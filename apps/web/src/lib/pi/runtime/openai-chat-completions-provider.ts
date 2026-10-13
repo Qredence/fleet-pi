@@ -182,16 +182,13 @@ export async function registerOpenAiChatCompletionsProvider(
   // or derived gateway key still triggers the 25k cap + compat flags instead of
   // silently missing them and hitting 400s from the gateway.
   const usesGateway = isGatewayHost(config.baseUrl)
-  // Gateway stays on its configured ids. A user BYOK endpoint (Command Code
-  // and other OpenAI-compatible hosts) also registers models the user enabled
-  // from that host's /models list.
-  const modelIds = usesGateway
-    ? config.modelIds
-    : modelIdsForRegistration(
-        config.modelIds,
-        services.settingsManager.getEnabledModels(),
-        PROVIDER_ID
-      )
+  // The reserved slot registers only its configured ids. Add-models discovery
+  // does not pull a remote catalog into this provider.
+  const modelIds = modelIdsForRegistration(
+    config.modelIds,
+    services.settingsManager.getEnabledModels(),
+    PROVIDER_ID
+  )
 
   const models: RegisteredModels = modelIds.map((modelId) =>
     buildModelEntry(modelId, usesGateway)
