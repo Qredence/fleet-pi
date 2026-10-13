@@ -1,5 +1,6 @@
 import { isHostedDeployment } from "../../deployment/environment"
 import { isInsideUserVolume } from "../../../../../../.pi/extensions/lib/project-trust"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import type {
   LoadExtensionsResult,
   ProjectTrustEventResult,
@@ -16,12 +17,18 @@ const headlessUi = {
  * Runs `project_trust` for the web resource loader.
  * A local checkout stays trusted so project extensions keep loading.
  * Hosted chat trusts the user volume and rejects the shared git checkout.
+ * Deployed surfaces keep project settings trusted because each session uses
+ * isolated per-user storage, not the shared checkout `.pi/settings.json`.
  */
 export async function resolveLoaderProjectTrust(input: {
   extensionsResult: LoadExtensionsResult
   cwd: string
   mode: "print" | "json" | "rpc"
 }): Promise<boolean> {
+  if (usesDatabaseBackedProjectSettings()) {
+    return true
+  }
+
   const event = { type: "project_trust" as const, cwd: input.cwd }
   const ctx = {
     cwd: input.cwd,
