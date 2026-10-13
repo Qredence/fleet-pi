@@ -345,17 +345,6 @@ function getActiveModeContextType(state: PlanModeState, mode: ChatMode) {
   return AGENT_MODE_CONTEXT_CUSTOM_TYPE
 }
 
-function filterModeContextMessages(
-  messages: Array<AgentMessage>,
-  activeContextType: string
-) {
-  return keepLastCustomType(
-    messages,
-    activeContextType,
-    MODE_CONTEXT_CUSTOM_TYPES
-  )
-}
-
 function isAssistantMessage(message: unknown): message is AssistantMessage {
   return (
     message !== null &&
@@ -372,4 +361,15 @@ function getTextContent(message: AssistantMessage) {
     .filter((block): block is TextContent => block.type === "text")
     .map((block) => block.text)
     .join("\n")
+}
+
+function filterModeContextMessages(
+  messages: Array<AgentMessage>,
+  activeContextType: string
+) {
+  return keepLastCustomType(
+    messages,
+    activeContextType,
+    MODE_CONTEXT_CUSTOM_TYPES
+  )
 }

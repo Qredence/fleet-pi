@@ -251,4 +251,28 @@ describe("validateDeploymentReadiness", () => {
       )?.ok
     ).toBe(false)
   })
+
+  it("fails when the ownership probe no longer returns deleted", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "vercel-production",
+      env: {
+        FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
+        NEON_AUTH_BASE_URL: "https://auth.example",
+        NEON_AUTH_COOKIE_SECRET: "cookie-secret",
+        NEON_AI_GATEWAY_TOKEN: "token",
+        NEON_AI_GATEWAY_BASE_URL: "https://gateway.neon.tech/v1",
+      },
+      ownershipProbeRecognizesDeleted: false,
+      chatRuntimeBypassesRls: true,
+      chatRuntimeRoleName: "neondb_owner",
+    })
+
+    expect(
+      result.checks.find((check) => check.id === "db:ownership-probe-deleted")
+        ?.ok
+    ).toBe(false)
+    expect(
+      result.checks.find((check) => check.id === "db:chat-runtime-role")?.ok
+    ).toBe(false)
+  })
 })

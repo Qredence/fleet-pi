@@ -3,13 +3,14 @@ import { getActiveSessionRecords } from "./active-sessions"
 import { applyModelSelection } from "./model-catalog"
 import { applyProjectSettingsToServices } from "./apply-project-settings"
 import { resolveProjectSettings } from "./durable-project-settings"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
 import { RESOURCE_SETTING_KEYS } from "./types"
 import { applyRuntimeAuth } from "./session-factory"
 import { reconcileRuntimeOccModel } from "./openai-chat-completions-compat"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type { ActiveSessionRecord } from "./active-sessions"
 import type { ChatPiSettingsUpdate } from "@workspace/pi-protocol/chat-protocol"
-import { isVercelDeployment } from "@/lib/deployment/environment"
 
 /**
  * Reloads a session runtime's settings, project configuration, resources, model selection, and authentication.
@@ -27,15 +28,22 @@ async function reloadRuntimeForRecord(
   const resourceReloadRequired =
     update && RESOURCE_SETTING_KEYS.some((key) => update[key] !== undefined)
 
-  await runtime.services.settingsManager.reload()
-
   const merged = await resolveProjectSettings({
     userId: record.userId,
     projectRoot,
   })
-  applyProjectSettingsToServices(runtime.services, merged)
+  const databaseBacked = usesDatabaseBackedProjectSettings()
+  if (databaseBacked) {
+    await replaceIsolatedProjectSettings(
+      runtime.services.settingsManager,
+      merged
+    )
+  } else {
+    await runtime.services.settingsManager.reload()
+    applyProjectSettingsToServices(runtime.services, merged)
+  }
 
-  if (resourceReloadRequired || isVercelDeployment()) {
+  if (resourceReloadRequired || databaseBacked) {
     await runtime.services.resourceLoader.reload()
   }
 

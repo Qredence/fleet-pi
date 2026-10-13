@@ -6,10 +6,15 @@ import {
   mergeResourceInfo,
   readWorkspacePiSettings,
 } from "../workspace-resource-catalog"
+import { resourceCachePathToSandbox } from "../../daytona/resource-cache-path"
+import { SANDBOX_WORKSPACE_ROOT } from "../../daytona/sandbox-prepare"
 import { collectDiagnostics } from "./diagnostics"
 import { createSessionServices } from "./session-factory"
 import type { PromptTemplate, Skill } from "@earendil-works/pi-coding-agent"
-import type { ChatResourcesResponse } from "@workspace/pi-protocol/chat-protocol"
+import type {
+  ChatResourceInfo,
+  ChatResourcesResponse,
+} from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function loadChatResources(
@@ -93,7 +98,27 @@ export async function loadChatResources(
 
   return {
     ...response,
+    skills: response.skills.map(portableSandboxResource),
+    prompts: response.prompts.map(portableSandboxResource),
+    extensions: response.extensions.map(portableSandboxResource),
+    themes: response.themes.map(portableSandboxResource),
     diagnostics,
+  }
+}
+
+/** Catalog picks must save durable workspace paths, never disposable caches. */
+function portableSandboxResource(resource: ChatResourceInfo): ChatResourceInfo {
+  if (!resource.path) return resource
+  const sandboxPath = resourceCachePathToSandbox(resource.path)
+  if (sandboxPath === resource.path) return resource
+  const path = `agent-workspace${sandboxPath.slice(SANDBOX_WORKSPACE_ROOT.length)}`
+  return {
+    ...resource,
+    path,
+    workspacePath: path,
+    source: "workspace",
+    installedInWorkspace: true,
+    activationStatus: "active",
   }
 }
 

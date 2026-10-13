@@ -110,10 +110,10 @@ async function remapUserId(
     `UPDATE pi_user_settings SET user_id = $2 WHERE user_id::text = $1`,
     [oldUserId, newUserId]
   )
-  await client.query(`UPDATE pi_sessions SET user_id = $2 WHERE user_id::text = $1`, [
-    oldUserId,
-    newUserId,
-  ])
+  await client.query(
+    `UPDATE pi_sessions SET user_id = $2 WHERE user_id::text = $1`,
+    [oldUserId, newUserId]
+  )
   await client.query(
     `UPDATE pi_session_tombstones SET user_id = $2 WHERE user_id::text = $1`,
     [oldUserId, newUserId]

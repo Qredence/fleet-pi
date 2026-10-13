@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createAgentSessionServices } from "@earendil-works/pi-coding-agent"
+import {
+  SettingsManager,
+  createAgentSessionServices,
+} from "@earendil-works/pi-coding-agent"
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
@@ -46,6 +49,7 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
   it("registers gateway models with Neon-safe compat flags", async () => {
     const services = await createAgentSessionServices({
       cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
     })
     await registerOpenAiChatCompletionsProvider(services, "user-1")
 
@@ -77,7 +81,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
       async (_userId: string, id: string) => `key-for-${id}`
     )
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, "user-1")
 
     for (const id of [
@@ -105,7 +112,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     ])
     loadOccInstanceApiKeyMock.mockResolvedValue("gw-key")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, "user-1")
 
     const model = services.modelRuntime.getModel(
@@ -130,7 +140,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     ])
     loadOccInstanceApiKeyMock.mockResolvedValue("gw-key")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, "user-1")
 
     const model = services.modelRuntime.getModel(
@@ -153,7 +166,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     ])
     loadOccInstanceApiKeyMock.mockResolvedValue(undefined)
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const diagnosticsBefore = services.diagnostics.length
     await registerCustomProviders(services, "user-1")
     await registerCustomProviders(services, "user-1")
@@ -178,7 +194,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     ])
     loadOccInstanceApiKeyMock.mockResolvedValue("claude-key")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, "user-1")
 
     const model = services.modelRuntime.getModel(
@@ -203,7 +222,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     ])
     loadOccInstanceApiKeyMock.mockResolvedValue("gemini-key")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, "user-1")
 
     const model = services.modelRuntime.getModel(
@@ -234,7 +256,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
         id.endsWith("broken-key") ? undefined : "valid-key"
     )
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const diagnosticsBefore = services.diagnostics.length
     await registerCustomProviders(services, "user-1")
 
@@ -257,7 +282,10 @@ describe("registerOpenAiChatCompletionsProvider gateway compat", () => {
     const staleId = `${OCC_INSTANCE_ID_PREFIX}stale`
     listOccInstancesMock.mockResolvedValue([])
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const unregisterSpy = vi.spyOn(services.modelRuntime, "unregisterProvider")
     // Register the stale instance first via a prior pass.
     listOccInstancesMock.mockResolvedValue([

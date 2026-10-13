@@ -39,6 +39,11 @@ export type DeploymentReadinessInput = {
   piSessionsRlsEnabled?: boolean
   piSessionsForceRls?: boolean
   ownershipProbePresent?: boolean
+  /** True when pg_get_functiondef still returns `deleted` via pi_session_tombstones. */
+  ownershipProbeRecognizesDeleted?: boolean
+  /** True when the runtime role is superuser or has rolbypassrls. */
+  chatRuntimeBypassesRls?: boolean
+  chatRuntimeRoleName?: string
   /** Non-empty when Data API roles still hold privileges on critical pi_* tables. */
   dataApiPiPrivileges?: Array<DataApiPrivilegeProbe>
 }
@@ -378,6 +383,27 @@ export function validateDeploymentReadiness(
       input.ownershipProbePresent
         ? "fleet_pi_check_session_owner is installed."
         : "Ownership probe migration is missing; run pnpm chat:migrate."
+    )
+  }
+
+  if (typeof input.ownershipProbeRecognizesDeleted === "boolean") {
+    push(
+      "db:ownership-probe-deleted",
+      input.ownershipProbeRecognizesDeleted,
+      input.ownershipProbeRecognizesDeleted
+        ? "fleet_pi_check_session_owner returns deleted for tombstoned sessions."
+        : "fleet_pi_check_session_owner is missing the tombstone branch; run pnpm chat:migrate."
+    )
+  }
+
+  if (typeof input.chatRuntimeBypassesRls === "boolean") {
+    const roleName = input.chatRuntimeRoleName?.trim() || "unknown"
+    push(
+      "db:chat-runtime-role",
+      !input.chatRuntimeBypassesRls,
+      input.chatRuntimeBypassesRls
+        ? `Chat runtime role "${roleName}" bypasses row-level security. Set FLEET_PI_CHAT_DATABASE_URL to the non-owner fleet_pi_app role.`
+        : `Chat runtime role "${roleName}" does not bypass row-level security.`
     )
   }
 

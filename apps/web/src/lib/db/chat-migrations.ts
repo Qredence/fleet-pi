@@ -255,10 +255,10 @@ export async function runChatMigrations(
   await client.query(CHAT_POSTGRES_USER_ID_UUID_SQL)
   log("Reconciled pi_* user_id columns (uuid + neon_auth FK)")
 
-  // Not ledger-gated: the base schema above re-creates
-  // fleet_pi_check_session_owner WITHOUT the tombstone check on every run
-  // (the tombstones migration that adds it is ledger-skipped after its first
-  // run), so re-assert the tombstone-aware definition after all migrations.
+  // Not ledger-gated: the base schema must not define this function (an
+  // older copy omitted the tombstone branch, and the tombstones migration
+  // that adds it is ledger-skipped after its first run). Re-assert the
+  // tombstone-aware definition after all migrations.
   await client.query(CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL)
   log("Reconciled fleet_pi_check_session_owner (tombstone-aware)")
 

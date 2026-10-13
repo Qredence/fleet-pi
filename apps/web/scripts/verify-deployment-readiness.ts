@@ -10,6 +10,11 @@ import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../src/lib/db/chat-postgres-provider-auth"
 import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../src/lib/db/chat-postgres-user-settings"
+import {
+  CHAT_RUNTIME_ROLE_SQL,
+  chatRuntimeRoleBypassesRls,
+  chatRuntimeRoleLabel,
+} from "../src/lib/db/chat-postgres-session-owner-fn"
 import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke"
 import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke-again"
 import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../src/lib/db/chat-postgres-force-rls"
@@ -142,16 +147,17 @@ async function queryChatDatabaseState(connectionString: string) {
       `
     )
 
-    const probe = await pool.query<{ proname: string }>(
+    const probe = await pool.query<{ def: string }>(
       `
-        SELECT proname
-        FROM pg_proc
-        JOIN pg_namespace ON pg_namespace.oid = pg_proc.pronamespace
-        WHERE pg_namespace.nspname = 'public'
-          AND proname = 'fleet_pi_check_session_owner'
+        SELECT pg_get_functiondef(p.oid) AS def
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+          AND p.proname = 'fleet_pi_check_session_owner'
         LIMIT 1
       `
     )
+    const ownerFunctionDef = probe.rows[0]?.def ?? ""
 
     const dataApiGrants = await pool.query<{
       table_name: string
@@ -178,11 +184,32 @@ async function queryChatDatabaseState(connectionString: string) {
       piSessionsRlsEnabled: rls.rows[0]?.rls_enabled === true,
       piSessionsForceRls: rls.rows[0]?.force_rls === true,
       ownershipProbePresent: probe.rows.length > 0,
+      ownershipProbeRecognizesDeleted:
+        ownerFunctionDef.includes("'deleted'") &&
+        ownerFunctionDef.includes("pi_session_tombstones"),
       dataApiPiPrivileges: dataApiGrants.rows.map((row) => ({
         tableName: row.table_name,
         grantee: row.grantee,
         privilegeType: row.privilege_type,
       })),
+    }
+  } finally {
+    await pool.end()
+  }
+}
+
+async function queryChatRuntimeRole(connectionString: string) {
+  const pool = new Pool({ connectionString })
+  try {
+    const result = await pool.query<{
+      rolname: string
+      rolbypassrls: boolean
+      rolsuper: boolean
+    }>(CHAT_RUNTIME_ROLE_SQL)
+    const row = result.rows[0]
+    return {
+      chatRuntimeBypassesRls: chatRuntimeRoleBypassesRls(row),
+      chatRuntimeRoleName: chatRuntimeRoleLabel(row),
     }
   } finally {
     await pool.end()
@@ -204,6 +231,10 @@ async function main() {
   }
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
+  if (chatRuntimeUrl && trustZone !== "local") {
+    Object.assign(input, await queryChatRuntimeRole(chatRuntimeUrl))
+  }
+
   if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
     const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
     const prefix = smoke.ok ? "OK" : "FAIL"

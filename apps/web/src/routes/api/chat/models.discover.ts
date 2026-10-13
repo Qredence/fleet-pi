@@ -3,18 +3,18 @@ import {
   ChatModelsDiscoverRequestSchema,
   ChatModelsDiscoverResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
-import { isNamedOccInstanceId } from "@workspace/pi-protocol/provider-catalog"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage, loadChatModels } from "@/lib/pi/server"
-import { getOccInstanceById } from "@/lib/db/occ-instances"
+import { discoverConfiguredProviderModels } from "@/lib/pi/runtime/discover-provider-models"
 
 /**
  * Discovers chat models available for the requested provider.
  *
- * Named OCC providers expose their configured model, while other providers
- * expose matching entries from the chat model catalog. Unrecognized providers
- * return a 400 response.
+ * Custom providers load `GET {baseUrl}/models` and keep the models that wire
+ * can call. OpenAI Chat Completions stays on its configured model ids.
+ * Other providers expose matching entries from the chat model catalog.
+ * Unknown custom providers return 400.
  *
  * @returns An HTTP response containing the provider's available models or an error message.
  */
@@ -22,34 +22,29 @@ export async function chatModelsDiscoverHandler(request: Request) {
   return withAuthenticatedChatRequest(request, async ({ userId }) => {
     try {
       const body = ChatModelsDiscoverRequestSchema.parse(await request.json())
-
-      // A named OCC instance: expose only its configured model id (do not
-      // ingest full remote /models catalogs for known gateways).
-      if (isNamedOccInstanceId(body.providerId)) {
-        const instance = await getOccInstanceById(userId, body.providerId)
-        if (!instance) {
+      const discovered = await discoverConfiguredProviderModels(
+        userId,
+        body.providerId
+      )
+      switch (discovered.status) {
+        case "unknown":
           return Response.json({ message: "Unknown provider" }, { status: 400 })
+        case "models":
+          return Response.json(
+            ChatModelsDiscoverResponseSchema.parse({
+              providerId: body.providerId,
+              models: discovered.models,
+            })
+          )
+        case "skip":
+          break
+        default: {
+          const exhaustive: never = discovered
+          return exhaustive
         }
-        const models = [
-          {
-            key: `${instance.id}/${instance.modelId}`,
-            provider: instance.id,
-            id: instance.modelId,
-            name: instance.modelId,
-            reasoning: false,
-            input: ["text" as const],
-            available: true,
-          },
-        ]
-        return Response.json(
-          ChatModelsDiscoverResponseSchema.parse({
-            providerId: body.providerId,
-            models,
-          })
-        )
       }
 
-      // Other providers: return registry catalog entries for that provider.
+      // Built-in providers: return registry catalog entries for that provider.
       const catalog = await loadChatModels(resolveAppRuntimeContext(), {
         scope: "all",
         userId,

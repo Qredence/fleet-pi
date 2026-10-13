@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 import { Pool } from "@neondatabase/serverless"
-import { isVercelDeployment } from "../deployment/environment"
+import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
 import {
   requiresAuthenticatedMirrorOwner,
   shouldFailClosedOnMirrorError,
@@ -14,6 +14,11 @@ import {
   isSessionOwnershipStatus,
 } from "./session-ownership"
 import { resolveChatDatabaseUrl } from "./chat-database-url"
+import {
+  CHAT_RUNTIME_ROLE_SQL,
+  chatRuntimeRoleBypassesRls,
+  chatRuntimeRoleLabel,
+} from "./chat-postgres-session-owner-fn"
 import { isPiSessionDeleted } from "./pi-session-tombstones"
 
 export type PostgresQueryClient = {
@@ -24,6 +29,41 @@ export type PostgresQueryClient = {
 }
 
 let sharedPool: InstanceType<typeof Pool> | undefined
+let chatRuntimeRoleCheck: Promise<void> | undefined
+
+export function resetChatRuntimeRoleCheckForTests() {
+  chatRuntimeRoleCheck = undefined
+}
+
+export async function assertChatRuntimeRole(
+  pool: Pick<InstanceType<typeof Pool>, "query">
+) {
+  if (!shouldFailClosedOnMirrorError()) return
+
+  if (!chatRuntimeRoleCheck) {
+    chatRuntimeRoleCheck = pool
+      .query<{
+        rolname: string
+        rolbypassrls: boolean
+        rolsuper: boolean
+      }>(CHAT_RUNTIME_ROLE_SQL)
+      .then((result) => {
+        const row = result.rows[0]
+        if (chatRuntimeRoleBypassesRls(row)) {
+          const roleName = chatRuntimeRoleLabel(row)
+          throw new Error(
+            `Chat runtime role "${roleName}" bypasses row-level security. Set FLEET_PI_CHAT_DATABASE_URL to the non-owner fleet_pi_app role.`
+          )
+        }
+      })
+      .catch((error: unknown) => {
+        chatRuntimeRoleCheck = undefined
+        throw error
+      })
+  }
+
+  await chatRuntimeRoleCheck
+}
 
 export function isPiSessionMirrorEnabled() {
   return Boolean(resolveChatDatabaseUrl())
@@ -84,6 +124,7 @@ export async function withUserContext<T>(
   userId: string | undefined,
   operation: (client: PostgresQueryClient) => Promise<T>
 ): Promise<T> {
+  await assertChatRuntimeRole(pool)
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -110,6 +151,7 @@ export async function lookupSessionOwnershipStatus(
   const pool = getChatPostgresPool()
   if (!pool) return undefined
 
+  await assertChatRuntimeRole(pool)
   const result = await pool.query<{ status: string }>(
     "SELECT fleet_pi_check_session_owner($1, $2) AS status",
     [sessionId, userId]
@@ -136,7 +178,7 @@ export function isUserScopedEphemeralSessionFile(
   sessionFile: string,
   userId: string
 ) {
-  if (!isVercelDeployment()) return false
+  if (!isDeployedChatRuntimeSurface()) return false
 
   const normalized = resolve(sessionFile)
   const userPrefix = resolveVercelUserSessionDir(userId)

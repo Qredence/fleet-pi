@@ -98,7 +98,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
-    void syncPiSessionMirrorSafely(sessionManager, options)
+    await syncPiSessionMirrorSafely(sessionManager, options)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -113,7 +113,7 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
-    void syncPiSessionMirrorSafely(fresh, options)
+    await syncPiSessionMirrorSafely(fresh, options)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -121,7 +121,7 @@ export async function hydrateChatSession(
     }
   }
 
-  void syncPiSessionMirrorSafely(sessionManager, options)
+  await syncPiSessionMirrorSafely(sessionManager, options)
   scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
 
   return {

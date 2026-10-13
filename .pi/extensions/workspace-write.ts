@@ -1,6 +1,7 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { resolveHarnessWriteTarget } from "./lib/harness-write"
 import {
   assertSafePath,
   ensureSafeDirectory,
@@ -102,11 +103,23 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
         )
       }
 
-      await ensureSafeDirectory(workspaceRoot, dirname(absolutePath))
-      await assertSafePath(workspaceRoot, absolutePath, {
-        allowMissingLeaf: true,
+      const target = await resolveHarnessWriteTarget({
+        cwd,
+        sessionId: ctx.sessionManager.getSessionId(),
+        sessionFile: ctx.sessionManager.getSessionFile(),
       })
-      await writeNoFollowFile(workspaceRoot, absolutePath, params.content)
+      if (target.kind === "unavailable") {
+        return error(target.message)
+      }
+      if (target.kind === "sandbox") {
+        await target.sandbox.writeFile(relToWorkspace, params.content)
+      } else {
+        await ensureSafeDirectory(workspaceRoot, dirname(absolutePath))
+        await assertSafePath(workspaceRoot, absolutePath, {
+          allowMissingLeaf: true,
+        })
+        await writeNoFollowFile(workspaceRoot, absolutePath, params.content)
+      }
 
       const warning =
         tier === "protected"

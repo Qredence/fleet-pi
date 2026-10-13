@@ -311,6 +311,13 @@ export function getCachedUserSandbox(
   return userSandboxes.get(userId)
 }
 
+/** Warm-up already started for this user, without beginning a new one. */
+export function getInFlightUserSandbox(
+  userId: string
+): Promise<UserSandboxHandle> | undefined {
+  return userSandboxRequests.get(userId)
+}
+
 export function clearSandboxCache(): void {
   userSandboxes.clear()
   userSandboxRequests.clear()

@@ -6,6 +6,7 @@ import {
   isOccFamilyApi,
 } from "@workspace/pi-protocol/provider-catalog"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
+import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
 import {
   assertCustomProviderBaseUrl,
   isGatewayHost,
@@ -278,8 +279,14 @@ export async function registerCustomProviders(
     })
   }
 
+  const enabledPatterns = services.settingsManager.getEnabledModels()
   for (const registration of registrations) {
-    const models: RegisteredModels = registration.modelIds.map((modelId) =>
+    const modelIds = modelIdsForRegistration(
+      registration.modelIds,
+      enabledPatterns,
+      registration.id
+    )
+    const models: RegisteredModels = modelIds.map((modelId) =>
       buildCustomModelEntry(modelId, registration.api, registration.usesGateway)
     )
     modelRuntime.registerProvider(registration.id, {

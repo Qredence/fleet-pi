@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import {
   loadPersistedProjectSettingsOverrides,
   sanitizePortableResourcePaths,
@@ -141,11 +142,9 @@ async function persistCompactProjectSettings(
   userId?: string,
   persisted?: Record<string, unknown>
 ) {
-  if (isVercelDeployment()) {
+  if (usesDatabaseBackedProjectSettings()) {
     if (!userId) {
-      throw new Error(
-        "Authentication is required to save Pi settings on Vercel."
-      )
+      throw new Error("Authentication is required to save Pi settings.")
     }
     // Migration flush already wrote this exact compacted record — one upsert.
     if (persisted && projectSettingsOverridesEqual(persisted, toPersist)) {

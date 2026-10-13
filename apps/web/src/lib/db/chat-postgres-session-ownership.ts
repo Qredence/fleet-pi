@@ -1,3 +1,8 @@
+/**
+ * Historical probe. It runs before `pi_session_tombstones` exists, so it cannot
+ * install the tombstone-aware function. `chat:migrate` re-applies
+ * `FLEET_PI_CHECK_SESSION_OWNER_SQL` after that table exists, on every run.
+ */
 export const CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID =
   "20260710_pi_session_ownership_probe"
 

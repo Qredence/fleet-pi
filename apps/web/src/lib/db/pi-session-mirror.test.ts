@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { runWithChatAuthSurface } from "../auth/chat-auth-surface"
 import { logger } from "../logger"
 import { markPiSessionDeleted } from "./pi-session-tombstones"
 import {
@@ -497,12 +498,10 @@ describe("Pi session mirror repository", () => {
     delete process.env.VERCEL
   })
 
-  it("logs mirror sync failures on Vercel without throwing", async () => {
+  it("keeps streaming when mirror sync fails on Vercel", async () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
     process.env.VERCEL = "1"
-    const errorSpy = vi
-      .spyOn(logger, "error")
-      .mockImplementation(() => undefined)
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined)
 
     try {
       await expect(
@@ -516,15 +515,42 @@ describe("Pi session mirror repository", () => {
         )
       ).resolves.toBeUndefined()
 
-      expect(errorSpy).toHaveBeenCalledWith(
+      expect(warn).toHaveBeenCalledWith(
         {
           error: expect.objectContaining({ message: "boom vercel" }),
         },
-        "[pi-session-mirror] sync failure on Vercel (non-fatal)"
+        "[pi-session-mirror] sync failed (non-fatal)"
       )
     } finally {
       delete process.env.VERCEL
     }
+  })
+
+  it("fails the turn when mirror sync fails on the Neon Function", async () => {
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
+    const errorSpy = vi
+      .spyOn(logger, "error")
+      .mockImplementation(() => undefined)
+
+    await expect(
+      runWithChatAuthSurface("neon-function", () =>
+        syncPiSessionMirrorSafely(
+          {
+            getHeader() {
+              throw new Error("boom function")
+            },
+          } as never,
+          { userId: "user-function" }
+        )
+      )
+    ).rejects.toThrow("boom function")
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      {
+        error: expect.objectContaining({ message: "boom function" }),
+      },
+      "[pi-session-mirror] sync failure; failing the turn"
+    )
   })
 })
 

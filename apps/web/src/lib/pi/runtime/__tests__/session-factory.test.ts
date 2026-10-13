@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 import { createMockSettingsManager } from "./mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type * as PiCodingAgent from "@earendil-works/pi-coding-agent"
 
 const mocks = vi.hoisted(() => ({
   createAgentSessionServices: vi.fn(),
@@ -11,10 +12,14 @@ const mocks = vi.hoisted(() => ({
   decryptString: vi.fn(),
 }))
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
-  createAgentSessionServices: mocks.createAgentSessionServices,
-  getAgentDir: mocks.getAgentDir,
-}))
+vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
+  const { SettingsManager } = await importOriginal<typeof PiCodingAgent>()
+  return {
+    SettingsManager,
+    createAgentSessionServices: mocks.createAgentSessionServices,
+    getAgentDir: mocks.getAgentDir,
+  }
+})
 
 vi.mock("../../../workspace/bootstrap-agent-workspace", () => ({
   bootstrapAgentWorkspace: mocks.bootstrapAgentWorkspace,
@@ -106,6 +111,7 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, { userId: "user-1" })
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
@@ -132,6 +138,7 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     expect(mocks.withChatPostgresTransaction).not.toHaveBeenCalled()
@@ -162,6 +169,7 @@ describe("session factory", () => {
             : { configured: false }
         ),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     // Only env-configured providers get runtime keys — never a sweep of the
@@ -251,6 +259,7 @@ describe("session factory", () => {
           getRegisteredProviderIds: vi.fn(() => []),
           getProviderAuthStatus: vi.fn(() => ({ configured: false })),
         },
+        settingsManager: createMockSettingsManager(),
       } as never,
       { userId: "user-1" }
     )
@@ -484,5 +493,51 @@ describe("session factory", () => {
     await createSessionServices({ projectRoot: "/root-a" } as AppRuntimeContext)
 
     expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("session factory plan mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.createAgentSessionServices.mockResolvedValue({
+      modelRuntime: {
+        setRuntimeApiKey: vi.fn(),
+        removeRuntimeApiKey: vi.fn(),
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
+      },
+      settingsManager: createMockSettingsManager(),
+      resourceLoader: { reload: vi.fn(() => Promise.resolve()) },
+      diagnostics: [],
+    })
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+  })
+
+  it("registers the plan-mode extension on every session", async () => {
+    delete process.env.VERCEL
+    // This file reloads session-factory after vi.resetModules(). A top-level
+    // import would keep the first module instance and shadow those reloads.
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
+    const options = mocks.createAgentSessionServices.mock.calls[0]?.[0] as {
+      resourceLoaderOptions?: {
+        extensionFactories?: Array<{ name?: string; factory?: unknown }>
+      }
+    }
+    expect(options.resourceLoaderOptions?.extensionFactories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "fleet-pi-plan-mode",
+          factory: expect.any(Function),
+        }),
+      ])
+    )
   })
 })

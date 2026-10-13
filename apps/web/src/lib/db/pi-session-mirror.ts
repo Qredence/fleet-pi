@@ -1,4 +1,4 @@
-import { shouldFailClosedOnMirrorError } from "../deployment/trust-zone"
+import { shouldFailClosedOnFunctionMirrorWrite } from "../deployment/trust-zone"
 import { logger } from "../logger"
 import { resolveChatDatabaseUrl } from "./chat-database-url"
 import {
@@ -181,12 +181,12 @@ export async function syncPiSessionMirrorSafely(
     mirrorMetrics.failures++
     const reason = error instanceof Error ? error.message : String(error)
     mirrorMetrics.lastFailureReason = reason
-    if (shouldFailClosedOnMirrorError()) {
+    if (shouldFailClosedOnFunctionMirrorWrite()) {
       logger.error(
         { error },
-        "[pi-session-mirror] sync failure on Vercel (non-fatal)"
+        "[pi-session-mirror] sync failure; failing the turn"
       )
-      return
+      throw error
     }
     logger.warn({ error }, "[pi-session-mirror] sync failed (non-fatal)")
   }
