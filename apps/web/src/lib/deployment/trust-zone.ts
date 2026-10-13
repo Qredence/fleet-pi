@@ -1,5 +1,5 @@
 import { getChatAuthSurface } from "../auth/chat-auth-surface"
-import { isCloudflareDeployment, isVercelDeployment } from "./environment"
+import { isCloudflareDeployment } from "./environment"
 
 export type DeploymentTrustZone =
   | "local"
@@ -33,10 +33,6 @@ export function resolveDeploymentTrustZone(): DeploymentTrustZone {
   }
 
   return "vercel-production"
-}
-
-export function isVercelPreviewDeployment() {
-  return resolveDeploymentTrustZone() === "vercel-preview"
 }
 
 export function isHostedPreviewDeployment() {

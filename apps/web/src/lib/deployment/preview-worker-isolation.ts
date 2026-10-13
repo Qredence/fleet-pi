@@ -1,5 +1,3 @@
-import { DEFAULT_APP_ROLE } from "../db/app-role"
-
 export class PreviewWorkerIsolationError extends Error {
   constructor(message: string) {
     super(message)
@@ -251,6 +249,3 @@ export function parsePreviewDeployJson(payload: unknown): string | undefined {
   }
   return undefined
 }
-
-export const NEON_PREVIEW_APP_ROLE = DEFAULT_APP_ROLE
-export const NEON_PREVIEW_DATABASE_NAME = "neondb"
