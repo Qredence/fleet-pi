@@ -40,7 +40,8 @@ Send a chat message and receive a streaming response
     "sessionFile": <string>,
     "sessionId": <string> (required),
     "sessionReset": <boolean>,
-    "diagnostics": <array>
+    "diagnostics": <array>,
+    "workspace": — Workspace tool availability for the chat runtime
   }
   ```
   ```json
@@ -131,7 +132,8 @@ Send a chat message and receive a streaming response
     "message": <object> (required) — Chat message,
     "sessionFile": <string>,
     "sessionId": <string> (required),
-    "sessionReset": <boolean>
+    "sessionReset": <boolean>,
+    "stopReason": <string>
   }
   ```
   ```json

@@ -16,7 +16,11 @@ import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
 } from "../pi/runtime/openai-chat-completions-url"
-import { resolveDeploymentTrustZone } from "./trust-zone"
+import {
+  isHostedPreviewTrustZone,
+  isHostedProductionTrustZone,
+  resolveDeploymentTrustZone,
+} from "./trust-zone"
 import type { DeploymentTrustZone } from "./trust-zone"
 
 export type ReadinessCheck = {
@@ -166,7 +170,7 @@ export function validateDeploymentReadiness(
   } else {
     for (const name of LEGACY_REQUIRED_VERCEL_ENV_VARS) {
       const value = readEnv(name, env)
-      if (name === "BETTER_AUTH_URL" && trustZone === "vercel-preview") {
+      if (name === "BETTER_AUTH_URL" && isHostedPreviewTrustZone(trustZone)) {
         const vercelUrl = readEnv("VERCEL_URL", env)
         const ok = value.length > 0 || vercelUrl.length > 0
         push(
@@ -192,13 +196,13 @@ export function validateDeploymentReadiness(
   const trustedOrigins = readEnv("BETTER_AUTH_TRUSTED_ORIGINS", env)
   push(
     "env:BETTER_AUTH_TRUSTED_ORIGINS",
-    trustedOrigins.length > 0 || trustZone === "vercel-production",
+    trustedOrigins.length > 0 || isHostedProductionTrustZone(trustZone),
     trustedOrigins.length > 0
       ? "BETTER_AUTH_TRUSTED_ORIGINS is configured."
       : "Preview deployments should set BETTER_AUTH_TRUSTED_ORIGINS explicitly."
   )
 
-  if (trustZone === "vercel-preview") {
+  if (isHostedPreviewTrustZone(trustZone)) {
     const previewZone = readEnv("FLEET_PI_DEPLOYMENT_TRUST_ZONE", env)
     push(
       "preview:trust-zone",

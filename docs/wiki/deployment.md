@@ -1,6 +1,6 @@
 # Deployment
 
-Fleet Pi deploys to **Vercel** (`fleet-pi-web`) for the web UI and catalog APIs, with optional **Neon Function** for long-running chat streaming when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set.
+Fleet Pi deploys to **Cloudflare Workers** (`fleet-pi-web`) for the web UI and catalog APIs, with optional **Neon Function** for long-running chat streaming when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set.
 
 ## Neon provisioning (`neon.ts`)
 
@@ -24,7 +24,7 @@ pnpm neon:env-pull   # writes NEON_* vars to .env.local
 
 AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 
-## Vercel environment variables
+## Hosted environment variables (Cloudflare Workers)
 
 ### Neon Managed Auth (recommended)
 
@@ -58,14 +58,26 @@ Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_
 
 The web app (UI, Neon-managed auth proxy, chat API, session list) runs as the
 Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
-`nodejs_compat`. Vercel config is kept but no longer maintained.
+`nodejs_compat`.
 
 - Build: `pnpm --filter web build:cloudflare` (sets `FLEET_PI_TARGET=cloudflare`,
   which enables the Cloudflare plugin in `vite.config.ts`). Local workerd
   preview: `pnpm --filter web preview:cloudflare` with secrets in
   `apps/web/.dev.vars` (gitignored).
 - Deploy: `pnpm --filter web deploy:cloudflare` (or the `Cloudflare Workers`
-  workflow) → `https://fleet-pi-web.<account-subdomain>.workers.dev`.
+  workflow on `main`) → `https://fleet-pi-web.<account-subdomain>.workers.dev`.
+- PR previews: label `cloudflare-preview` runs `wrangler preview` (not
+  `versions upload`) with secrets scoped to the Neon branch
+  `preview/pr-<number>` on `vars.NEON_PROJECT_ID` (soft-art). CI refuses
+  upload when the preview `fleet_pi_app` URL is missing or matches
+  `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`; only an allowlisted secret set is
+  applied (no production `DAYTONA_*` or org `OPENAI_*`; preview Neon AI Gateway
+  uses branch-scoped `PREVIEW_NEON_AI_GATEWAY_*` GitHub secrets mapped to
+  `NEON_AI_GATEWAY_*` on the Worker). Required repo secrets for labeled PR
+  previews include `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`,
+  `FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL`, `NEON_API_KEY`, `vars.NEON_PROJECT_ID`,
+  `PREVIEW_VITE_NEON_AUTH_URL`, `PREVIEW_NEON_AUTH_*`, `PREVIEW_BETTER_AUTH_SECRET`,
+  and `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
   `isVercelDeployment()` true, i.e. the same hosted, fail-closed,
   Postgres-backed paths as Vercel: sessions live in `/tmp` only for the
@@ -96,7 +108,7 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
 ## Build
 
 ```bash
-NITRO_PRESET=vercel pnpm --filter web build:vercel
+pnpm --filter web build:cloudflare
 pnpm verify-deployment-readiness   # when migration URLs set
 ```
 
@@ -111,7 +123,10 @@ See [deployment release gate](../runbooks/deployment-release-gate.md) for produc
 - Project: repo variable `NEON_PROJECT_ID` (must be the non-production `soft-art-21843403` project) and secret `NEON_API_KEY`.
 - Branch: `preview/pr-<number>` (PR number only: stable across head-branch renames, and no branch-name injection into the delete action), child of `main`, expires after 14 days, deleted when the PR closes.
 - On open/reopen/push: `pnpm chat:migrate` (also reconciles `fleet_pi_app` grants) and `pnpm auth:migrate` on the direct owner URL, then a schema-diff comment against `main`. Connection outputs are masked.
-- Vercel previews do **not** receive the branch URL yet. Wiring it needs either the Neon–Vercel integration on the preview environment, or a `VERCEL_TOKEN` secret plus a step that sets branch-scoped `FLEET_PI_CHAT_DATABASE_URL` (pooled `fleet_pi_app` URL — the action only returns owner URLs) and `FLEET_PI_AUTH_DATABASE_URL`, together with the preview trust-zone markers checked by `verify-deployment-readiness`.
+- Cloudflare PR previews (label `cloudflare-preview`) receive the pooled
+  `fleet_pi_app` URL for that branch via `assert-preview-worker-secrets.ts`
+  and `NEON_API_KEY` / `vars.NEON_PROJECT_ID`. Vercel previews do **not**
+  receive the branch URL yet.
 
 ## Devcontainer
 

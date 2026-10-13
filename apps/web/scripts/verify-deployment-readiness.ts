@@ -216,6 +216,16 @@ async function queryChatRuntimeRole(connectionString: string) {
   }
 }
 
+function isSyntheticCiChatDatabaseUrl(connectionString: string) {
+  try {
+    const host = new URL(connectionString.replace(/^postgres(ql)?:/i, "http:"))
+      .hostname
+    return host === "ci-chat" || host === "preview-neon-host"
+  } catch {
+    return false
+  }
+}
+
 async function main() {
   const trustZone = resolveDeploymentTrustZone()
   const input: DeploymentReadinessInput = { trustZone }
@@ -231,11 +241,22 @@ async function main() {
   }
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (chatRuntimeUrl && trustZone !== "local") {
+  const skipLiveProbes =
+    process.env.FLEET_PI_READINESS_SKIP_LIVE_PROBES === "1" ||
+    (chatRuntimeUrl ? isSyntheticCiChatDatabaseUrl(chatRuntimeUrl) : false)
+
+  if (chatRuntimeUrl && trustZone !== "local" && !skipLiveProbes) {
     Object.assign(input, await queryChatRuntimeRole(chatRuntimeUrl))
+  } else if (chatRuntimeUrl && trustZone !== "local" && skipLiveProbes) {
+    console.log("WARN chat-runtime-role: skipped synthetic CI database URL")
   }
 
-  if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
+  if (
+    chatRuntimeUrl &&
+    chatMigrationUrl &&
+    trustZone !== "local" &&
+    !skipLiveProbes
+  ) {
     const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
     const prefix = smoke.ok ? "OK" : "FAIL"
     console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
@@ -243,6 +264,13 @@ async function main() {
       process.exitCode = 1
       return
     }
+  } else if (
+    chatRuntimeUrl &&
+    chatMigrationUrl &&
+    trustZone !== "local" &&
+    skipLiveProbes
+  ) {
+    console.log("WARN chat-rls-smoke: skipped synthetic CI database URL")
   }
 
   const result = validateDeploymentReadiness(input)

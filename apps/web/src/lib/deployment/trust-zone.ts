@@ -1,11 +1,29 @@
 import { getChatAuthSurface } from "../auth/chat-auth-surface"
-import { isVercelDeployment } from "./environment"
+import { isCloudflareDeployment } from "./environment"
 
 export type DeploymentTrustZone =
-  "local" | "vercel-production" | "vercel-preview"
+  | "local"
+  | "vercel-production"
+  | "vercel-preview"
+  | "cloudflare-production"
+  | "cloudflare-preview"
+
+export function isHostedPreviewTrustZone(zone: DeploymentTrustZone) {
+  return zone === "vercel-preview" || zone === "cloudflare-preview"
+}
+
+export function isHostedProductionTrustZone(zone: DeploymentTrustZone) {
+  return zone === "vercel-production" || zone === "cloudflare-production"
+}
 
 export function resolveDeploymentTrustZone(): DeploymentTrustZone {
-  if (!isVercelDeployment()) {
+  if (isCloudflareDeployment()) {
+    return process.env.FLEET_PI_DEPLOYMENT_TRUST_ZONE === "preview"
+      ? "cloudflare-preview"
+      : "cloudflare-production"
+  }
+
+  if (process.env.VERCEL !== "1") {
     return "local"
   }
 
@@ -17,8 +35,8 @@ export function resolveDeploymentTrustZone(): DeploymentTrustZone {
   return "vercel-production"
 }
 
-export function isVercelPreviewDeployment() {
-  return resolveDeploymentTrustZone() === "vercel-preview"
+export function isHostedPreviewDeployment() {
+  return isHostedPreviewTrustZone(resolveDeploymentTrustZone())
 }
 
 /**

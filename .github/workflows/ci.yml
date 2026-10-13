@@ -500,7 +500,7 @@ jobs:
           path: apps/web/test-results/
           retention-days: 30
 
-  vercel-release-gate:
+  cloudflare-release-gate:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     needs: [lint, typecheck]
@@ -521,17 +521,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Vercel output
-        run: NITRO_PRESET=vercel pnpm --filter web build:vercel
+      - name: Build Cloudflare Worker
+        run: pnpm --filter web build:cloudflare
+        env:
+          VITE_NEON_AUTH_URL: https://auth.ci.example
 
       - name: Verify deployment readiness (env-only)
         run: pnpm verify-deployment-readiness
         env:
-          VERCEL: "1"
-          VERCEL_ENV: production
-          BETTER_AUTH_SECRET: ci-placeholder-secret
-          BETTER_AUTH_URL: https://fleet-pi-web.vercel.app
-          FLEET_PI_AUTH_DATABASE_URL: postgres://ci-auth
+          FLEET_PI_DEPLOYMENT: cloudflare
+          NEON_AUTH_BASE_URL: https://auth.ci.example
+          NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+          NEON_AUTH_JWKS_URL: https://auth.ci.example/.well-known/jwks.json
+          NEON_AUTH_ISSUER: https://auth.ci.example
+          VITE_NEON_AUTH_URL: https://auth.ci.example
+          BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+          BETTER_AUTH_URL: https://fleet-pi-web.ci.workers.dev
+          BETTER_AUTH_TRUSTED_ORIGINS: https://fleet-pi-web.ci.workers.dev
           FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
           NEON_AI_GATEWAY_TOKEN: ci-gateway-token
           NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
@@ -539,14 +545,18 @@ jobs:
       - name: Verify preview trust-zone contract
         run: pnpm verify-deployment-readiness
         env:
-          VERCEL: "1"
-          VERCEL_ENV: preview
-          BETTER_AUTH_SECRET: ci-placeholder-secret
-          BETTER_AUTH_URL: https://preview.example
-          BETTER_AUTH_TRUSTED_ORIGINS: https://preview.example
-          FLEET_PI_AUTH_DATABASE_URL: postgres://preview-neon-host/preview-auth
-          FLEET_PI_CHAT_DATABASE_URL: postgres://preview-neon-host/preview-chat
+          FLEET_PI_DEPLOYMENT: cloudflare
           FLEET_PI_DEPLOYMENT_TRUST_ZONE: preview
+          NEON_AUTH_BASE_URL: https://auth.preview.ci.example
+          NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+          NEON_AUTH_JWKS_URL: https://auth.preview.ci.example/.well-known/jwks.json
+          NEON_AUTH_ISSUER: https://auth.preview.ci.example
+          VITE_NEON_AUTH_URL: https://auth.preview.ci.example
+          BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+          BETTER_AUTH_URL: https://pr-0.fleet-pi-web.ci.workers.dev
+          BETTER_AUTH_TRUSTED_ORIGINS: https://pr-0.fleet-pi-web.ci.workers.dev
+          FLEET_PI_CHAT_DATABASE_URL: postgres://preview-neon-host/preview-chat
+          FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: postgres://prod-neon-host/production-chat
           FLEET_PI_PREVIEW_DATABASE_MARKER: preview-neon
           FLEET_PI_PRODUCTION_DATABASE_MARKER: prod-neon
           NEON_AI_GATEWAY_TOKEN: ci-gateway-token
@@ -555,11 +565,15 @@ jobs:
       - name: Verify deployment readiness (migration probes)
         run: pnpm verify-deployment-readiness
         env:
-          VERCEL: "1"
-          VERCEL_ENV: production
-          BETTER_AUTH_SECRET: ci-placeholder-secret
-          BETTER_AUTH_URL: https://fleet-pi-web.vercel.app
-          FLEET_PI_AUTH_DATABASE_URL: postgres://ci-auth
+          FLEET_PI_DEPLOYMENT: cloudflare
+          NEON_AUTH_BASE_URL: https://auth.ci.example
+          NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+          NEON_AUTH_JWKS_URL: https://auth.ci.example/.well-known/jwks.json
+          NEON_AUTH_ISSUER: https://auth.ci.example
+          VITE_NEON_AUTH_URL: https://auth.ci.example
+          BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+          BETTER_AUTH_URL: https://fleet-pi-web.ci.workers.dev
+          BETTER_AUTH_TRUSTED_ORIGINS: https://fleet-pi-web.ci.workers.dev
           FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
           FLEET_PI_AUTH_MIGRATION_DATABASE_URL: ${{ secrets.FLEET_PI_AUTH_MIGRATION_DATABASE_URL }}
           FLEET_PI_CHAT_MIGRATION_DATABASE_URL: ${{ secrets.FLEET_PI_CHAT_MIGRATION_DATABASE_URL }}

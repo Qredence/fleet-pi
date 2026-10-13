@@ -35,6 +35,31 @@ describe("validateDeploymentReadiness", () => {
     ).toBe(false)
   })
 
+  it("requires preview chat URL distinct from production on Cloudflare preview", () => {
+    const productionChat = "postgres://prod-neon-host/production-chat"
+    const result = validateDeploymentReadiness({
+      trustZone: "cloudflare-preview",
+      env: {
+        BETTER_AUTH_SECRET: "secret",
+        BETTER_AUTH_URL: "https://preview.example",
+        FLEET_PI_CHAT_DATABASE_URL: productionChat,
+        FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: productionChat,
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://preview.example",
+        FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
+        FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
+        FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
+        ...testGatewayEnv,
+      },
+    })
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.checks.find(
+        (check) => check.id === "preview:chat-url-not-production"
+      )?.ok
+    ).toBe(false)
+  })
+
   it("requires preview trust-zone markers on Vercel preview", () => {
     const result = validateDeploymentReadiness({
       trustZone: "vercel-preview",

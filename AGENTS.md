@@ -23,10 +23,10 @@
 - Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
 - Apply Neon chat mirror migrations with `pnpm chat:migrate` after setting `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`.
 - Link the existing Neon project with `neon link`, pin a branch with `neon checkout`, then provision services from repo-root `neon.ts` via `pnpm neon:deploy` (or `neon deploy --env .env.local --update-existing --allow-protected`). `neon deploy` provisions Auth and Functions only—run `pnpm auth:migrate` and `pnpm chat:migrate` separately for schema. Pull branch env with `pnpm neon:env-pull`, then verify with `pnpm neon:verify`.
-- Verify Vercel deployment readiness with `pnpm verify-deployment-readiness` (set migration URLs to validate Neon grants/RLS).
+- Verify Cloudflare deployment readiness with `pnpm verify-deployment-readiness` (set migration URLs to validate Neon grants/RLS).
 - Quarantine legacy ownerless mirror rows with `pnpm quarantine-orphan-sessions` (owner URL required; use `--purge` only after approval).
 - Remap `pi_*` ownership after Neon Managed Auth cutover with `pnpm remap-auth-user-ids -- --file=remap.csv` (`email,oldUserId,newUserId` or legacy `email,newUserId` when `public."user"` still exists; `--dry-run` first).
-- Validate the Vercel build output with `NITRO_PRESET=vercel pnpm --filter web build:vercel` when deployment routing changes.
+- Validate the Cloudflare Worker build with `pnpm build:cloudflare` when deployment routing changes.
 
 ## Public Docs & Community Health
 
@@ -42,16 +42,15 @@
 
 The repository includes a VS Code devcontainer configuration at `.devcontainer/devcontainer.json` with Node.js, pnpm, Git, and recommended editor extensions. Open the project in a devcontainer to get a fully pre-configured development environment. Port `3000` is forwarded automatically and `pnpm install` runs after container creation.
 
-## Vercel Deployment
+## Cloudflare Workers Deployment
 
-- The `fleet-pi-web` Vercel project builds from `apps/web`; keep Vercel-specific settings in `apps/web/vercel.json`.
-- Vercel builds run `NITRO_PRESET=vercel pnpm build:vercel`; TanStack Start emits `dist/`, then `apps/web/scripts/build-vercel-output.mjs` packages it into `.vercel/output`.
-- Better Auth on Vercel requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, and `FLEET_PI_AUTH_DATABASE_URL` when **not** using Neon Managed Auth. With Neon Managed Auth (`NEON_AUTH_BASE_URL` or Vercel↔Neon `NEON_AUTH_URL`), use `NEON_AUTH_COOKIE_SECRET`, `VITE_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_ISSUER` (required so bearer JWTs fail closed), and consolidate `FLEET_PI_AUTH_DATABASE_URL` with `FLEET_PI_CHAT_DATABASE_URL` on `fleet-pi-neon` (also linked to Vercel + GitHub). Under Managed Auth, `BETTER_AUTH_SECRET` is still required for BYOK provider AES-GCM encryption (cookie gate prefers `NEON_AUTH_COOKIE_SECRET`). Local anonymous/SQLite Better Auth applies only when neither Neon Auth URL is set.
-- BYOK provider credentials and Pi session mirroring on Vercel also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
-- On Vercel, Pi project settings overrides (skills/packages/models/paths) persist in Neon `pi_user_settings` (not writable `.pi/settings.json`). Fleet base defaults (packages, skill commands) live in code (`fleet-default-project-settings.ts`) and merge at runtime — but carry **no** `defaultProvider`/`defaultModel`/`enabledModels`: the user chooses the provider and model in Settings. Fleet base ships no models enabled; user override `enabledModels: []` is deny-all. Settings paths must be portable (no `/Users/…` absolutes). `.vercelignore` ships `.pi/{skills,extensions,settings.json}` and skips `.pi/npm` plus heavy `agent-workspace/{indexes,artifacts,scratch,evals}`.
-- `PATCH /api/chat/settings` requires authentication on Vercel; settings hot-reload applies only to the signed-in user's active sessions. Vercel Preview deployments need `BETTER_AUTH_SECRET`, `FLEET_PI_AUTH_DATABASE_URL`, and `FLEET_PI_CHAT_DATABASE_URL` scoped to Preview (not only feature-branch aliases). Run `pnpm chat:migrate` with `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` after schema or ownership-probe changes.
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials. Register the production callback as `https://fleet-pi-web.vercel.app/api/auth/callback/google`.
-- Daytona on Vercel requires each authenticated user's BYOK Daytona API key (`daytona` in `pi_user_providers`); org Daytona keys and `DAYTONA_API_KEY` must not back end-user sandboxes. Local/dev may use `DAYTONA_API_KEY` only. Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_PI_REPOSITORY_URL`.
+- The `fleet-pi-web` Worker builds from `apps/web` via `apps/web/wrangler.jsonc` and `pnpm build:cloudflare` (see `docs/wiki/deployment.md`).
+- Neon Managed Auth on Workers uses `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `VITE_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_ISSUER`, and `FLEET_PI_CHAT_DATABASE_URL` (`fleet_pi_app` role). `BETTER_AUTH_SECRET` is still required for BYOK provider AES-GCM encryption. Local anonymous/SQLite Better Auth applies only when neither Neon Auth URL is set.
+- BYOK provider credentials and Pi session mirroring on Workers also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
+- On Workers, Pi project settings overrides (skills/packages/models/paths) persist in Neon `pi_user_settings` (not writable `.pi/settings.json`). Fleet base defaults (packages, skill commands) live in code (`fleet-default-project-settings.ts`) and merge at runtime — but carry **no** `defaultProvider`/`defaultModel`/`enabledModels`: the user chooses the provider and model in Settings. Fleet base ships no models enabled; user override `enabledModels: []` is deny-all. Settings paths must be portable (no `/Users/…` absolutes).
+- `PATCH /api/chat/settings` requires authentication on Workers; settings hot-reload applies only to the signed-in user's active sessions. PR Worker Previews use isolated Neon preview branches and an allowlisted secret set (see `.github/workflows/cloudflare.yml`). Run `pnpm chat:migrate` with `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` after schema or ownership-probe changes.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials; register OAuth callbacks on the active workers.dev origin.
+- Daytona on Workers requires each authenticated user's BYOK Daytona API key (`daytona` in `pi_user_providers`); org Daytona keys and `DAYTONA_API_KEY` must not back end-user sandboxes. Local/dev may use `DAYTONA_API_KEY` only. Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_PI_REPOSITORY_URL`.
 
 ## Pre-commit Hooks
 

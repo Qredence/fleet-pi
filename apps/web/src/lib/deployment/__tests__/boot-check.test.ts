@@ -5,6 +5,8 @@ describe("assertDeploymentReadyOnBoot", () => {
   const originalVercel = process.env.VERCEL
   const originalRegion = process.env.VERCEL_REGION
   const originalSecret = process.env.BETTER_AUTH_SECRET
+  const originalFleetDeployment = process.env.FLEET_PI_DEPLOYMENT
+  const originalCaches = Object.getOwnPropertyDescriptor(globalThis, "caches")
 
   afterEach(() => {
     if (originalVercel === undefined) {
@@ -21,6 +23,16 @@ describe("assertDeploymentReadyOnBoot", () => {
       delete process.env.BETTER_AUTH_SECRET
     } else {
       process.env.BETTER_AUTH_SECRET = originalSecret
+    }
+    if (originalFleetDeployment === undefined) {
+      delete process.env.FLEET_PI_DEPLOYMENT
+    } else {
+      process.env.FLEET_PI_DEPLOYMENT = originalFleetDeployment
+    }
+    if (originalCaches) {
+      Object.defineProperty(globalThis, "caches", originalCaches)
+    } else {
+      delete (globalThis as { caches?: unknown }).caches
     }
   })
 
@@ -44,6 +56,21 @@ describe("assertDeploymentReadyOnBoot", () => {
     process.env.VERCEL = "1"
     process.env.VERCEL_REGION = "iad1"
     delete process.env.BETTER_AUTH_SECRET
+
+    expect(() => assertDeploymentReadyOnBoot()).toThrow(
+      /Deployment readiness check failed/
+    )
+  })
+
+  it("throws on Cloudflare Worker runtime when required env vars are missing", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    delete process.env.VERCEL
+    delete process.env.VERCEL_REGION
+    delete process.env.BETTER_AUTH_SECRET
+    Object.defineProperty(globalThis, "caches", {
+      configurable: true,
+      value: {},
+    })
 
     expect(() => assertDeploymentReadyOnBoot()).toThrow(
       /Deployment readiness check failed/

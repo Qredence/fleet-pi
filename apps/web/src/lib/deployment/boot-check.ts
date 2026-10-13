@@ -1,5 +1,5 @@
 import { logger } from "../logger"
-import { isVercelDeployment } from "./environment"
+import { isCloudflareDeployment, isVercelDeployment } from "./environment"
 import { validateDeploymentReadiness } from "./readiness"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 
@@ -9,6 +9,14 @@ function isVercelServerlessRuntime() {
   )
 }
 
+function isCloudflareWorkerRuntime() {
+  return isCloudflareDeployment() && typeof globalThis.caches !== "undefined"
+}
+
+function isHostedServerlessRuntime() {
+  return isVercelServerlessRuntime() || isCloudflareWorkerRuntime()
+}
+
 export function formatReadinessFailure(
   checks: Array<{ id: string; message: string }>
 ) {
@@ -16,12 +24,12 @@ export function formatReadinessFailure(
 }
 
 /**
- * Fail closed during Vercel cold starts when required auth/chat env is missing.
+ * Fail closed during hosted serverless cold starts when required auth/chat env is missing.
  * Migration verification remains an operator/CI concern via
  * `pnpm verify-deployment-readiness` with owner migration URLs.
  */
 export function assertDeploymentReadyOnBoot() {
-  if (!isVercelDeployment() || !isVercelServerlessRuntime()) {
+  if (!isVercelDeployment() || !isHostedServerlessRuntime()) {
     return
   }
 

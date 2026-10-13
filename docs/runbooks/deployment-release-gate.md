@@ -1,13 +1,13 @@
 # Deployment release gate
 
-Operator and CI workflow for promoting Fleet Pi to Vercel with Neon-backed auth
-and Pi session mirroring.
+Operator and CI workflow for promoting Fleet Pi on Cloudflare Workers with
+Neon-backed auth and Pi session mirroring.
 
 ## What the gate checks
 
 `pnpm verify-deployment-readiness` validates:
 
-- Required Vercel env vars for Better Auth and chat mirroring
+- Required hosted env vars for Neon Managed Auth and chat mirroring
 - Preview trust-zone markers (`FLEET_PI_DEPLOYMENT_TRUST_ZONE=preview`)
 - Distinct preview/production database markers on Preview
 - Optional owner-connection probes when migration URLs are set:
@@ -15,15 +15,15 @@ and Pi session mirroring.
   - `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`
 
 The web app also calls `assertDeploymentReadyOnBoot()` during Better Auth
-initialization on Vercel so missing secrets fail before serving auth routes.
+initialization on hosted Workers so missing secrets fail before serving auth routes.
 
 ## CI
 
-The `vercel-release-gate` job in `.github/workflows/ci.yml` runs:
+The `cloudflare-release-gate` job in `.github/workflows/ci.yml` runs:
 
-1. `NITRO_PRESET=vercel pnpm --filter web build:vercel`
-2. `pnpm verify-deployment-readiness` for production-shaped env
-3. `pnpm verify-deployment-readiness` for preview-shaped env (marker must appear in chat/auth database URLs)
+1. `pnpm --filter web build:cloudflare`
+2. `pnpm verify-deployment-readiness` for production-shaped env (`FLEET_PI_DEPLOYMENT=cloudflare`)
+3. `pnpm verify-deployment-readiness` for preview-shaped env (marker must appear in chat database URLs)
 4. Optional owner-connection probes when GitHub Actions secrets are configured:
    - `FLEET_PI_AUTH_MIGRATION_DATABASE_URL`
    - `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`
@@ -39,52 +39,14 @@ Operators must run step 3 locally with owner URLs before production promotion.
    ```bash
    FLEET_PI_AUTH_MIGRATION_DATABASE_URL=... \
    FLEET_PI_CHAT_MIGRATION_DATABASE_URL=... \
+   FLEET_PI_DEPLOYMENT=cloudflare \
    pnpm verify-deployment-readiness
    ```
-4. Deploy to Preview with isolated Neon branch and preview-only secrets
-5. Run authenticated smoke against Preview (sign in, create session, resume)
-6. Promote to Production only after gate + smoke pass
+4. Deploy Worker: `pnpm --filter web deploy:cloudflare`
 
-## Break-glass
+## Preview Workers (PR)
 
-If production is blocked by a false-positive readiness check:
-
-1. Capture `pnpm verify-deployment-readiness` output
-2. Confirm Neon migration ledger and RLS state manually
-3. Temporarily set missing env vars in Vercel (never disable owner-only mirror rules)
-4. Redeploy and re-run smoke
-
-Do **not** disable `assertDeploymentReadyOnBoot()` or owner-only persistence to
-unblock traffic.
-
-## Neon Managed Auth closed beta
-
-Neon Managed Auth currently allows open sign-up (“Anyone on the web can sign
-up”). Until Neon ships restricted signups:
-
-- Treat production as **invite-known-users** closed beta (share the URL only
-  with intended testers).
-- Do **not** enable Neon Data API or “Grant public schema access” — keep
-  `neon.ts` `dataApi: false`. Fleet Pi uses Managed Auth cookies/JWTs plus
-  `fleet_pi_app` + RLS (server/Function path), not browser→Data API REST.
-- Prefer rate limits / abuse monitoring on the Vercel edge if the URL becomes
-  discoverable.
-- Re-run `pnpm verify-deployment-readiness` with migration URLs before inviting
-  a wider audience.
-
-## Legacy ownerless mirror data
-
-After owner-only enforcement is live:
-
-```bash
-# Inspect only
-pnpm quarantine-orphan-sessions -- --dry-run
-
-# Quarantine ownerless rows (no production delete)
-pnpm quarantine-orphan-sessions
-
-# Purge after explicit approval and migration window
-pnpm quarantine-orphan-sessions -- --purge
-```
-
-Requires `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` (owner connection).
+Label `cloudflare-preview` on a PR to deploy an isolated Worker Preview. CI
+refuses upload when the Neon preview branch `fleet_pi_app` URL is missing or
+matches production. See `.github/workflows/cloudflare.yml` and
+`apps/web/scripts/cloudflare/assert-preview-worker-secrets.ts`.
