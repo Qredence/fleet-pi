@@ -5,6 +5,18 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./src/server.ts",
   "observability": { "enabled": true },
+  "ratelimits": [
+    {
+      "name": "FLEET_PI_SIGN_IN",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      "name": "FLEET_PI_CHAT_START",
+      "namespace_id": "1002",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ],
   // Non-secret config. Secrets (DB URLs, auth, provider keys) go through
   // `wrangler secret`; see docs/wiki/deployment.md.
   "vars": {

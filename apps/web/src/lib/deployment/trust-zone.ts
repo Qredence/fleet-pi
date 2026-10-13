@@ -61,13 +61,16 @@ export function shouldFailClosedOnMirrorError(
 }
 
 /**
- * Neon Function mirror writes fail the turn. JSONL on that surface is
- * ephemeral, so a lost write must not be reported as a saved chat.
- * Vercel, Cloudflare, and local Neon Auth keep streaming: Pi JSONL stays
- * the source of truth and a mirror error is logged.
+ * Mirror writes fail the turn when the transcript has no other durable copy.
+ * The Neon Function's JSONL lives on /tmp. Cloudflare Workers have no durable
+ * JSONL until the Agent cutover. Vercel and local Neon Auth keep streaming:
+ * Pi JSONL stays the source of truth and a mirror error is logged.
  */
-export function shouldFailClosedOnFunctionMirrorWrite() {
-  return getChatAuthSurface() === "neon-function"
+export function shouldFailClosedOnFunctionMirrorWrite(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  if (getChatAuthSurface() === "neon-function") return true
+  return env.FLEET_PI_DEPLOYMENT === "cloudflare"
 }
 
 export function requiresAuthenticatedMirrorOwner(

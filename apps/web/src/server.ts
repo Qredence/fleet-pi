@@ -1,12 +1,20 @@
 import handler from "@tanstack/react-start/server-entry"
+import { enforceNamedEdgeRateLimit } from "@/lib/deployment/edge-rate-limit"
 import { runInRequestScope } from "@/lib/runtime/request-scope"
 
 /**
  * Cloudflare Workers entry (wrangler.jsonc `main`). Wraps TanStack Start's
  * handler so database pools are created per request (see request-scope.ts).
+ * Named rate limits run before chat or auth handlers.
  */
 export default {
-  fetch(request: Request, ...rest: Array<unknown>) {
+  async fetch(request: Request, ...rest: Array<unknown>) {
+    const limited = await enforceNamedEdgeRateLimit({
+      request,
+      env: rest[0] instanceof Object ? rest[0] : undefined,
+    })
+    if (limited) return limited
+
     return runInRequestScope(() =>
       (
         handler.fetch as (

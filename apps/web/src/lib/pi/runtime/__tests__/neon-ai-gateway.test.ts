@@ -62,6 +62,17 @@ describe("neon-ai-gateway", () => {
     })
   })
 
+  it("scrubs an invalid gateway token on Cloudflare and throws", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    process.env.NEON_AI_GATEWAY_BASE_URL = "https://evil.example.com"
+    try {
+      expect(() => captureAndScrubNeonAiGatewayEnv()).toThrow(/invalid/i)
+      expect(process.env.NEON_AI_GATEWAY_TOKEN).toBeUndefined()
+    } finally {
+      delete process.env.FLEET_PI_DEPLOYMENT
+    }
+  })
+
   it("does not scrub env when gateway URL is invalid", () => {
     process.env.NEON_AI_GATEWAY_BASE_URL = "https://evil.example.com"
     captureAndScrubNeonAiGatewayEnv()

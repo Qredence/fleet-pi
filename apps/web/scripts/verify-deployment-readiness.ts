@@ -179,11 +179,25 @@ async function queryChatDatabaseState(connectionString: string) {
       `
     )
 
+    const executeProbe = await pool.query<{ grantee: string }>(`
+      SELECT r.rolname AS grantee
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      JOIN pg_roles AS r ON r.rolname IN ('authenticated', 'anonymous')
+      WHERE n.nspname = 'public'
+        AND p.proname IN (
+          'fleet_pi_check_session_owner',
+          'fleet_pi_lookup_session_id_by_file'
+        )
+        AND has_function_privilege(r.oid, p.oid, 'EXECUTE')
+    `)
+
     return {
       chatMigrationsApplied: migrations.rows.map((row) => row.id),
       piSessionsRlsEnabled: rls.rows[0]?.rls_enabled === true,
       piSessionsForceRls: rls.rows[0]?.force_rls === true,
       ownershipProbePresent: probe.rows.length > 0,
+      ownershipProbeDataApiExecute: executeProbe.rows.map((row) => row.grantee),
       ownershipProbeRecognizesDeleted:
         ownerFunctionDef.includes("'deleted'") &&
         ownerFunctionDef.includes("pi_session_tombstones"),
@@ -286,9 +300,14 @@ async function main() {
   }
 
   if (!chatMigrationUrl) {
-    console.log(
-      "WARN migration-db: Set FLEET_PI_CHAT_MIGRATION_DATABASE_URL to verify chat migrations in CI/deploy."
-    )
+    const message =
+      "Set FLEET_PI_CHAT_MIGRATION_DATABASE_URL to verify chat migrations in CI/deploy."
+    if (process.env.FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES === "1") {
+      console.log(`FAIL migration-db: ${message}`)
+      process.exitCode = 1
+      return
+    }
+    console.log(`WARN migration-db: ${message}`)
   }
 
   if (!authMigrationUrl) {

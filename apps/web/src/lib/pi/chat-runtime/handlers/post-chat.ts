@@ -10,9 +10,12 @@ import {
 } from "@/lib/auth/chat-api-auth"
 import { createRequestLogger } from "@/lib/logger"
 import { handleChatTurn } from "@/lib/pi/handle-chat-turn"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
 import {
   encodeEvent,
   getErrorMessage,
+  hasLiveSessionRuntime,
+  notLiveSessionResponse,
   queuePromptOnActiveSession,
 } from "@/lib/pi/server"
 import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
@@ -56,6 +59,9 @@ export async function postChatHandler(request: Request) {
       }
 
       if (body.streamingBehavior) {
+        if (isCloudflareDeployment() && !hasLiveSessionRuntime(body)) {
+          return notLiveSessionResponse()
+        }
         const queued = await queuePromptOnActiveSession(
           body,
           prompt,

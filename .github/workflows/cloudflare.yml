@@ -71,6 +71,14 @@ jobs:
         if: steps.creds.outputs.ready == 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck
+        if: steps.creds.outputs.ready == 'true'
+        run: pnpm typecheck
+
+      - name: Unit tests
+        if: steps.creds.outputs.ready == 'true'
+        run: pnpm test
+
       - name: Build Worker (production)
         if: steps.creds.outputs.ready == 'true' && github.event_name != 'pull_request'
         working-directory: apps/web

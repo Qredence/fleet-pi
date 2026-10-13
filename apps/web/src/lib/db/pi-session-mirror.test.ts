@@ -552,6 +552,30 @@ describe("Pi session mirror repository", () => {
       "[pi-session-mirror] sync failure; failing the turn"
     )
   })
+
+  it("fails the turn when mirror sync fails on Cloudflare", async () => {
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    const errorSpy = vi
+      .spyOn(logger, "error")
+      .mockImplementation(() => undefined)
+
+    try {
+      await expect(
+        syncPiSessionMirrorSafely(
+          {
+            getHeader() {
+              throw new Error("boom cloudflare")
+            },
+          } as never,
+          { userId: "user-cloudflare" }
+        )
+      ).rejects.toThrow("boom cloudflare")
+      expect(errorSpy).toHaveBeenCalled()
+    } finally {
+      delete process.env.FLEET_PI_DEPLOYMENT
+    }
+  })
 })
 
 // ── Incremental sync helpers ────────────────────────────────────────────────

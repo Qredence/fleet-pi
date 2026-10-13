@@ -51,7 +51,12 @@ beforeEach(async () => {
   originalBridge = bridgeGlobal[bridgeKey]
   delete bridgeGlobal[bridgeKey]
   root = await mkdtemp(join(tmpdir(), "fleet-pi-harness-loader-"))
-  mocks.executeCommand.mockResolvedValue({ exitCode: 0, result: "" })
+  mocks.executeCommand.mockImplementation((_sandbox, command: string) => {
+    if (String(command).includes("test -e")) {
+      return { exitCode: 1, result: "" }
+    }
+    return { exitCode: 0, result: "" }
+  })
   mocks.persistHarnessInstallSettings.mockImplementation(({ settings }) =>
     Promise.resolve(settings)
   )

@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
 import { betterAuth } from "better-auth"
 import { Pool } from "@neondatabase/serverless"
-import Database from "better-sqlite3"
+import type Database from "better-sqlite3"
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 import {
   LOCAL_AUTH_URL,
@@ -64,11 +65,17 @@ function openAuthDatabase() {
     )
   }
 
+  if (isVercelDeployment()) {
+    throw new Error("SQLite auth is unavailable on a hosted deployment.")
+  }
+
   const dbPath =
     process.env.AUTH_DATABASE_PATH ??
     resolve(getDefaultProjectRoot(), ".fleet", "auth.sqlite")
   mkdirSync(dirname(dbPath), { recursive: true })
-  const db = new Database(dbPath)
+  const specifier = "better-" + "sqlite3"
+  const Sqlite = createRequire(import.meta.url)(specifier) as typeof Database
+  const db = new Sqlite(dbPath)
   migrateAuthSchema(db)
   return db
 }

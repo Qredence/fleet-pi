@@ -43,7 +43,12 @@ describe("resolveHarnessWriteTarget", () => {
       await mkdir(directory, { recursive: true })
       const bytes = Buffer.from("0061736dff", "hex")
       await writeFile(join(directory, "module.wasm"), bytes)
-      vi.mocked(executeCommand).mockResolvedValue({ exitCode: 0, result: "" })
+      vi.mocked(executeCommand).mockImplementation((_sandbox, command) => {
+        if (String(command).includes("test -e")) {
+          return { exitCode: 1, result: "" }
+        }
+        return { exitCode: 0, result: "" }
+      })
       const sandbox = { id: "binary" } as Sandbox
       await uploadAgentWorkspaceTree(sandbox, root)
       expect(uploadFile).toHaveBeenCalledWith(

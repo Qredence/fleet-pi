@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { resolveDaytonaRuntimeApiKey } from "../user-provider-secrets"
+import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 vi.mock("@/lib/db/user-providers", () => ({
   loadDecryptedUserProviderSecrets: vi.fn().mockResolvedValue(new Map()),
@@ -48,6 +49,27 @@ describe("resolveDaytonaRuntimeApiKey", () => {
 
     await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBeUndefined()
   })
+
+  it.each([{ surface: "worker" as const }, { surface: "function" as const }])(
+    "refuses the org Daytona key for a $surface user with no BYOK row",
+    async ({ surface }) => {
+      process.env.DAYTONA_API_KEY = "org-key"
+      if (surface === "worker") {
+        process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+        await expect(
+          resolveDaytonaRuntimeApiKey("user-1")
+        ).resolves.toBeUndefined()
+        delete process.env.FLEET_PI_DEPLOYMENT
+        return
+      }
+
+      await runWithChatAuthSurface("neon-function", async () => {
+        await expect(
+          resolveDaytonaRuntimeApiKey("user-1")
+        ).resolves.toBeUndefined()
+      })
+    }
+  )
 })
 
 function restoreEnv(name: string, value: string | undefined) {

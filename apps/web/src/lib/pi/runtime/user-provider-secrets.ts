@@ -14,6 +14,7 @@ import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
+import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 import { isVercelDeployment } from "@/lib/deployment/environment"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
@@ -215,6 +216,11 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  if (isVercelDeployment()) return undefined
+  if (hostedEndUserSandboxRequiresByok()) return undefined
   return process.env.DAYTONA_API_KEY
+}
+
+/** Worker, Vercel, and the Neon Function never use an org Daytona key. */
+export function hostedEndUserSandboxRequiresByok() {
+  return isVercelDeployment() || getChatAuthSurface() === "neon-function"
 }

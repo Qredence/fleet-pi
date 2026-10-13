@@ -147,6 +147,21 @@ export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
   }
 }
 
+export function hasLiveSessionRuntime(metadata: ChatRuntimeMetadata) {
+  return Boolean(findRuntimeRecord(metadata))
+}
+
+export function notLiveSessionResponse() {
+  return Response.json(
+    {
+      error: "not-live",
+      aborted: false,
+      message: "This isolate has no live session for that chat.",
+    },
+    { status: 409 }
+  )
+}
+
 export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
   const active = findRuntimeRecord(metadata)
   if (!active) return false

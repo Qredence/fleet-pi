@@ -1,5 +1,8 @@
 import { defineConfig } from "@neon/config/v1"
 
+// Linked Neon project: fleet-pi-pg18. Readiness and chat:migrate probes for
+// this repo must use that project's branch, not another Neon project.
+
 function chatFunctionEnv(name: string) {
   return process.env[name] ?? ""
 }

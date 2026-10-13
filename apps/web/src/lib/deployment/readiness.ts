@@ -50,6 +50,8 @@ export type DeploymentReadinessInput = {
   chatRuntimeRoleName?: string
   /** Non-empty when Data API roles still hold privileges on critical pi_* tables. */
   dataApiPiPrivileges?: Array<DataApiPrivilegeProbe>
+  /** Data API roles that can still EXECUTE an ownership probe. */
+  ownershipProbeDataApiExecute?: Array<string>
 }
 
 const LEGACY_REQUIRED_VERCEL_ENV_VARS = [
@@ -166,6 +168,23 @@ export function validateDeploymentReadiness(
       neonAuthIssuer.length > 0
         ? "NEON_AUTH_ISSUER is set so bearer JWTs fail closed."
         : "NEON_AUTH_ISSUER is required when Neon Managed Auth is configured."
+    )
+
+    const neonAuthJwksUrl = readEnv("NEON_AUTH_JWKS_URL", env)
+    let jwksOk = false
+    try {
+      jwksOk =
+        neonAuthJwksUrl.length > 0 &&
+        new URL(neonAuthJwksUrl).protocol === "https:"
+    } catch {
+      jwksOk = false
+    }
+    push(
+      "env:NEON_AUTH_JWKS_URL",
+      jwksOk,
+      jwksOk
+        ? "NEON_AUTH_JWKS_URL is an https URL for bearer verification."
+        : "NEON_AUTH_JWKS_URL is required when Neon Managed Auth is configured."
     )
   } else {
     for (const name of LEGACY_REQUIRED_VERCEL_ENV_VARS) {
@@ -408,6 +427,18 @@ export function validateDeploymentReadiness(
       input.chatRuntimeBypassesRls
         ? `Chat runtime role "${roleName}" bypasses row-level security. Set FLEET_PI_CHAT_DATABASE_URL to the non-owner fleet_pi_app role.`
         : `Chat runtime role "${roleName}" does not bypass row-level security.`
+    )
+  }
+
+  if (input.ownershipProbeDataApiExecute) {
+    const executable = input.ownershipProbeDataApiExecute
+    const ok = executable.length === 0
+    push(
+      "db:ownership-probe-execute-revoked",
+      ok,
+      ok
+        ? "Data API roles cannot EXECUTE fleet_pi_check_session_owner."
+        : `Data API roles can still EXECUTE an ownership probe: ${executable.join(", ")}. Run pnpm chat:migrate.`
     )
   }
 

@@ -10,7 +10,14 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "./user-sandbox"
-import { syncDaytonaSecrets } from "./sync-daytona-secrets"
+import {
+  fingerprintDaytonaSecretsConfig,
+  syncDaytonaSecrets,
+} from "./sync-daytona-secrets"
+import {
+  buildPlaintextSandboxCredentials,
+  loadConfiguredProviderSecrets,
+} from "./sandbox-provider-secrets"
 import {
   createDaytonaClient,
   createSandbox,
@@ -130,6 +137,8 @@ afterEach(() => {
   delete process.env.DAYTONA_API_KEY
   delete process.env.ORG_DAYTONA_API_KEY
   delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
+  vi.mocked(fingerprintDaytonaSecretsConfig).mockReturnValue("")
 })
 
 describe("isDaytonaEnabled", () => {
@@ -590,6 +599,65 @@ describe("getUserSandbox", () => {
     expect(handleB.volumeId).toBe("vol-b")
     expect(handleA.sandboxId).toBe("sandbox-a")
     expect(handleB.sandboxId).toBe("sandbox-b")
+  })
+})
+
+describe("sandbox lookup and secrets mount", () => {
+  it("attaches to an existing remote sandbox when the local map is empty", async () => {
+    const client = makeMockClient()
+    const existing = makeMockSandbox({ id: "sandbox-remote" })
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(existing)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+
+    clearSandboxCache()
+    const first = await getUserSandbox({ userId: "user123", apiKey: "byok" })
+    clearSandboxCache()
+    const second = await getUserSandbox({ userId: "user123", apiKey: "byok" })
+
+    expect(first.sandboxId).toBe("sandbox-remote")
+    expect(second.sandboxId).toBe("sandbox-remote")
+    expect(mockedCreateSandbox).not.toHaveBeenCalled()
+    const commands = (
+      existing.process.executeCommand as ReturnType<typeof vi.fn>
+    ).mock.calls.map((call) => String(call[0]))
+    expect(
+      commands.some(
+        (command) =>
+          command.includes("git clone") && command.includes("manifest.json")
+      )
+    ).toBe(true)
+  })
+
+  it("refuses plaintext provider keys on Cloudflare when Secrets are unavailable", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    vi.mocked(fingerprintDaytonaSecretsConfig).mockImplementation(
+      (configured) => (configured.size > 0 ? "eligible" : "empty")
+    )
+    vi.mocked(loadConfiguredProviderSecrets).mockResolvedValueOnce(
+      new Map([["openai", "sk-live-secret"]])
+    )
+    mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+      secrets: {},
+      fingerprint: "eligible",
+      mode: "plaintext-fallback",
+    })
+    const client = makeMockClient()
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+
+    await expect(
+      getUserSandbox({ userId: "user123", apiKey: "byok" })
+    ).rejects.toThrow(/Refusing to write plaintext credentials/)
+    expect(mockedCreateSandbox).not.toHaveBeenCalled()
+    expect(buildPlaintextSandboxCredentials).not.toHaveBeenCalled()
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 })
 

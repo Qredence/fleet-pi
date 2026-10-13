@@ -29,7 +29,9 @@ import {
 import type { DaytonaSecretsSyncResult } from "./sync-daytona-secrets"
 import type { SandboxProviderSecrets } from "./sandbox-prepare"
 import type { Daytona, Sandbox } from "@daytona/sdk"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { hostedEndUserSandboxRequiresByok } from "@/lib/pi/runtime/user-provider-secrets"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
@@ -79,7 +81,7 @@ export function isDaytonaEnabled(
 ): boolean {
   if (!userId) return false
   if (clientApiKey) return true
-  if (isVercelDeployment()) return false
+  if (hostedEndUserSandboxRequiresByok()) return false
   return Boolean(process.env.DAYTONA_API_KEY)
 }
 
@@ -155,11 +157,16 @@ export async function recreateUserSandboxForSecrets(
 async function provisionUserSandbox(
   config: UserSandboxConfig
 ): Promise<UserSandboxHandle> {
+  if (hostedEndUserSandboxRequiresByok() && !config.apiKey?.trim()) {
+    throw new DaytonaCredentialRequiredError()
+  }
+
   const client = createDaytonaClient(config.apiKey)
   const volumeName = getVolumeName(config.userId)
   const volume = await getOrCreateVolume(client, volumeName)
   const configured = await loadConfiguredProviderSecrets(config.userId)
   const daytonaSecrets = await syncDaytonaSecrets(client, configured)
+  assertCloudflareSecretsMount(configured, daytonaSecrets)
   const mountedSecretEnvVars = new Set(Object.keys(daytonaSecrets.secrets))
   const providerSecrets = buildPlaintextSandboxCredentials(
     configured,
@@ -209,16 +216,24 @@ async function provisionUserSandbox(
       }
     }
   } else {
-    sandbox = await createUserSandboxInstance(client, {
-      sandboxName,
-      volumeId: volume.id,
-      labels: buildLabels(config, daytonaSecrets.fingerprint),
-      envVars: providerSecrets.envVars,
-      secrets: daytonaSecrets.secrets,
-      cpu: config.cpu,
-      memory: config.memory,
-      disk: config.disk,
-    })
+    try {
+      sandbox = await createUserSandboxInstance(client, {
+        sandboxName,
+        volumeId: volume.id,
+        labels: buildLabels(config, daytonaSecrets.fingerprint),
+        envVars: providerSecrets.envVars,
+        secrets: daytonaSecrets.secrets,
+        cpu: config.cpu,
+        memory: config.memory,
+        disk: config.disk,
+      })
+    } catch (error) {
+      const raced = await findExistingSandbox(client, sandboxName)
+      if (!raced || !isManagedSandboxForUser(raced, config.userId)) {
+        throw error
+      }
+      sandbox = raced
+    }
   }
 
   await prepareSandboxForUser(sandbox, config.userId, providerSecrets)
@@ -335,6 +350,7 @@ function buildLabels(
   const labels: Record<string, string> = {
     managedBy: MANAGED_BY_LABEL,
     userId: config.userId,
+    volumeName: getVolumeName(config.userId),
     createdAt: new Date().toISOString(),
   }
   if (config.userEmail) labels.email = config.userEmail
@@ -362,6 +378,19 @@ function existingHasMatchingSecretsLabel(
   const short = fingerprint.slice(0, 16)
   if (!short) return true
   return labels?.daytonaSecretsFp === short
+}
+
+function assertCloudflareSecretsMount(
+  configured: Map<string, string>,
+  daytonaSecrets: DaytonaSecretsSyncResult
+) {
+  if (!isCloudflareDeployment()) return
+  if (daytonaSecrets.mode !== "plaintext-fallback") return
+  const emptyFingerprint = fingerprintDaytonaSecretsConfig(new Map())
+  if (fingerprintDaytonaSecretsConfig(configured) === emptyFingerprint) return
+  throw new Error(
+    "Daytona Secrets API is required to mount provider keys on Cloudflare. Refusing to write plaintext credentials."
+  )
 }
 
 function shouldRecreateForSecretsState(

@@ -30,6 +30,7 @@ vi.mock("@/lib/pi/server-chat-stream", () => ({
   })),
   finalizeAssistantTurn: vi.fn(),
   handleSessionEvent: vi.fn(),
+  sendTerminalFrame: vi.fn(),
   shouldEmitInitialPlanEvent: vi.fn(() => false),
 }))
 
@@ -248,5 +249,54 @@ describe("handleChatTurn", () => {
     // turnStartContext is never assigned when createPiRuntime fails,
     // so the error is emitted without a runId
     expect((errorEvent as any).runId).toBeUndefined()
+  })
+
+  it("does not finish a successful turn when the Cloudflare mirror write throws", async () => {
+    const session = {
+      abort: vi.fn(),
+      prompt: vi.fn(() => Promise.resolve(undefined)),
+      sessionManager: {},
+      subscribe: vi.fn(() => () => undefined),
+      waitForIdle: vi.fn(() => Promise.resolve(undefined)),
+    }
+    createPiRuntime.mockResolvedValueOnce({
+      diagnostics: [],
+      runtime: { session },
+      sessionReset: false,
+      workspace: {},
+    })
+    const { syncPiSessionMirrorSafely } =
+      await import("@/lib/db/pi-session-mirror")
+    vi.mocked(syncPiSessionMirrorSafely).mockRejectedValueOnce(
+      new Error("mirror insert failed")
+    )
+    const { completeAssistantTurn, sendTerminalFrame } =
+      await import("@/lib/pi/server-chat-stream")
+
+    const { handleChatTurn } = await import("./handle-chat-turn")
+    const events: Array<ChatStreamEvent> = []
+    const generator = handleChatTurn({
+      body: { message: "hello", sessionId: "sess-mirror" },
+      prompt: "hello",
+      recorder: makeRecorder(),
+      requestId: "req-mirror-1",
+      signal: new AbortController().signal,
+    })
+
+    for await (const event of generator) {
+      events.push(event)
+    }
+
+    expect(completeAssistantTurn).not.toHaveBeenCalled()
+    expect(events.some((event) => event.type === "done")).toBe(false)
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: "mirror insert failed",
+      })
+    )
+    expect(sendTerminalFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ stopReason: "error" })
+    )
   })
 })

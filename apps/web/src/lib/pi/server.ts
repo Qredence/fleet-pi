@@ -14,6 +14,8 @@ export {
 } from "./runtime"
 export {
   abortActiveSession,
+  hasLiveSessionRuntime,
+  notLiveSessionResponse,
   answerChatQuestion,
   createPiRuntime,
   queuePromptOnActiveSession,

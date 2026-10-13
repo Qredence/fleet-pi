@@ -61,6 +61,12 @@ function applyCors(request: Request, response: Response) {
 }
 
 function preflightResponse(request: Request) {
+  if (readAllowedOrigins().length === 0) {
+    return new Response(JSON.stringify({ error: "CORS allowlist is empty" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    })
+  }
   return applyCors(
     request,
     new Response(null, {
