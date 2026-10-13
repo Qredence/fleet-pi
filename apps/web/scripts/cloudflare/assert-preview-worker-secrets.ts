@@ -129,11 +129,33 @@ function loadSecretsInput(previewChatDatabaseUrl: string) {
     betterAuthSecret: readEnv("PREVIEW_BETTER_AUTH_SECRET"),
     betterAuthUrl: workerOrigin,
     betterAuthTrustedOrigins: trustedOrigins,
+    viteNeonAuthUrl:
+      readEnv("PREVIEW_VITE_NEON_AUTH_URL") || readEnv("VITE_NEON_AUTH_URL"),
+    neonAiGatewayToken: readEnv("PREVIEW_NEON_AI_GATEWAY_TOKEN"),
+    neonAiGatewayBaseUrl: readEnv("PREVIEW_NEON_AI_GATEWAY_BASE_URL"),
   })
 }
 
+function assertPreviewSecretsOutputPath(outputPath: string) {
+  const resolved = resolve(outputPath)
+  const allowedRoot = resolve(webRoot)
+  if (
+    !resolved.startsWith(`${allowedRoot}/`) ||
+    !resolved.endsWith(".json") ||
+    resolved.includes("..")
+  ) {
+    throw new PreviewWorkerIsolationError(
+      "Preview secrets output path must be a .json file under apps/web."
+    )
+  }
+}
+
 function writeSecretsFile(outputPath: string, secrets: Record<string, string>) {
+  assertPreviewSecretsOutputPath(outputPath)
   mkdirSync(dirname(outputPath), { recursive: true })
+  // lgtm[js/file-system-write] Secrets are built from validated allowlisted keys
+  // after assertPreviewChatDatabaseUrl / assertPreviewAuthBaseUrl; Neon URLs are
+  // not written until isolation checks pass.
   writeFileSync(outputPath, `${JSON.stringify(secrets, null, 2)}\n`, {
     encoding: "utf8",
     mode: 0o600,

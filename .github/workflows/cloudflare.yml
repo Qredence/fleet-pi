@@ -8,7 +8,7 @@ name: Cloudflare Workers
 #
 # Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts: Edit),
 # CLOUDFLARE_ACCOUNT_ID, NEON_API_KEY, FLEET_PI_PRODUCTION_CHAT_DATABASE_URL,
-# FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL, PREVIEW_* auth secrets, and the
+# FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL, PREVIEW_* auth/gateway secrets, and the
 # repo variable NEON_PROJECT_ID (non-production soft-art). Production builds
 # use vars.VITE_NEON_AUTH_URL; preview builds use secrets.PREVIEW_VITE_NEON_AUTH_URL.
 
@@ -130,6 +130,9 @@ jobs:
           PREVIEW_NEON_AUTH_ISSUER: ${{ secrets.PREVIEW_NEON_AUTH_ISSUER }}
           PREVIEW_NEON_AUTH_COOKIE_SECRET: ${{ secrets.PREVIEW_NEON_AUTH_COOKIE_SECRET }}
           PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          PREVIEW_VITE_NEON_AUTH_URL: ${{ secrets.PREVIEW_VITE_NEON_AUTH_URL }}
+          PREVIEW_NEON_AI_GATEWAY_TOKEN: ${{ secrets.PREVIEW_NEON_AI_GATEWAY_TOKEN }}
+          PREVIEW_NEON_AI_GATEWAY_BASE_URL: ${{ secrets.PREVIEW_NEON_AI_GATEWAY_BASE_URL }}
         run: |
           set -euo pipefail
           ORIGIN="$(pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts origin --deploy-json preview-deploy.json)"

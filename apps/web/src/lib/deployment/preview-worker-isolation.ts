@@ -8,6 +8,8 @@ export class PreviewWorkerIsolationError extends Error {
 export const PREVIEW_WORKER_SECRET_ALLOWLIST = [
   "FLEET_PI_CHAT_DATABASE_URL",
   "DATABASE_URL",
+  "FLEET_PI_PREVIEW_DATABASE_MARKER",
+  "FLEET_PI_PRODUCTION_DATABASE_MARKER",
   "NEON_AUTH_BASE_URL",
   "NEON_AUTH_JWKS_URL",
   "NEON_AUTH_ISSUER",
@@ -15,6 +17,9 @@ export const PREVIEW_WORKER_SECRET_ALLOWLIST = [
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
   "BETTER_AUTH_TRUSTED_ORIGINS",
+  "VITE_NEON_AUTH_URL",
+  "NEON_AI_GATEWAY_TOKEN",
+  "NEON_AI_GATEWAY_BASE_URL",
 ] as const
 
 export type PreviewWorkerSecretName =
@@ -36,6 +41,33 @@ export function previewWorkerName(prNumber: number | string) {
   return `pr-${prNumber}`
 }
 
+/** Normalize Neon direct vs pooler hostnames to the same endpoint identity. */
+export function normalizeNeonPostgresHostname(hostname: string) {
+  return hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^([^.]+)-pooler\./, "$1.")
+}
+
+export function normalizeAuthBaseUrl(url: string) {
+  const trimmed = url.trim()
+  if (!trimmed) return ""
+  try {
+    const parsed = new URL(trimmed)
+    const path = parsed.pathname.replace(/\/$/, "") || ""
+    return `${parsed.origin}${path}`.toLowerCase()
+  } catch {
+    return trimmed.toLowerCase()
+  }
+}
+
+export function previewDatabaseMarkerFromConnectionUrl(
+  connectionString: string
+) {
+  const identity = parsePostgresConnectionIdentity(connectionString)
+  return identity?.host ?? ""
+}
+
 export function parsePostgresConnectionIdentity(
   connectionString: string
 ): PostgresConnectionIdentity | undefined {
@@ -47,7 +79,7 @@ export function parsePostgresConnectionIdentity(
     const url = new URL(normalized)
     const database = url.pathname.replace(/^\//, "").split("/")[0] ?? ""
     const user = decodeURIComponent(url.username || "")
-    const host = url.hostname
+    const host = normalizeNeonPostgresHostname(url.hostname)
     if (!host || !database || !user) return undefined
     return { host, database, user }
   } catch {
@@ -119,7 +151,7 @@ export function assertPreviewAuthBaseUrl(
     )
   }
 
-  if (preview === production) {
+  if (normalizeAuthBaseUrl(preview) === normalizeAuthBaseUrl(production)) {
     throw new PreviewWorkerIsolationError(
       "Preview NEON_AUTH_BASE_URL must not match production."
     )
@@ -137,6 +169,9 @@ export type PreviewWorkerSecretsInput = {
   betterAuthSecret: string
   betterAuthUrl: string
   betterAuthTrustedOrigins: string
+  viteNeonAuthUrl: string
+  neonAiGatewayToken: string
+  neonAiGatewayBaseUrl: string
 }
 
 export function buildPreviewWorkerSecrets(
@@ -190,9 +225,37 @@ export function buildPreviewWorkerSecrets(
     )
   }
 
+  const previewDbMarker = previewDatabaseMarkerFromConnectionUrl(chat)
+  if (!previewDbMarker) {
+    throw new PreviewWorkerIsolationError(
+      "Could not derive FLEET_PI_PREVIEW_DATABASE_MARKER from the preview database URL."
+    )
+  }
+
+  const productionDbMarker = previewDatabaseMarkerFromConnectionUrl(
+    input.productionChatDatabaseUrl
+  )
+
+  const viteNeonAuthUrl = input.viteNeonAuthUrl.trim()
+  if (!viteNeonAuthUrl) {
+    throw new PreviewWorkerIsolationError(
+      "PREVIEW_VITE_NEON_AUTH_URL is required for Cloudflare preview Worker runtime."
+    )
+  }
+
+  const gatewayToken = input.neonAiGatewayToken.trim()
+  const gatewayBaseUrl = input.neonAiGatewayBaseUrl.trim()
+  if (!gatewayToken || !gatewayBaseUrl) {
+    throw new PreviewWorkerIsolationError(
+      "PREVIEW_NEON_AI_GATEWAY_TOKEN and PREVIEW_NEON_AI_GATEWAY_BASE_URL are required for preview Workers."
+    )
+  }
+
   return {
     FLEET_PI_CHAT_DATABASE_URL: chat,
     DATABASE_URL: chat,
+    FLEET_PI_PREVIEW_DATABASE_MARKER: previewDbMarker,
+    FLEET_PI_PRODUCTION_DATABASE_MARKER: productionDbMarker,
     NEON_AUTH_BASE_URL: input.previewNeonAuthBaseUrl.trim(),
     NEON_AUTH_JWKS_URL: jwks,
     NEON_AUTH_ISSUER: issuer,
@@ -200,6 +263,9 @@ export function buildPreviewWorkerSecrets(
     BETTER_AUTH_SECRET: betterAuthSecret,
     BETTER_AUTH_URL: betterAuthUrl,
     BETTER_AUTH_TRUSTED_ORIGINS: trustedOrigins,
+    VITE_NEON_AUTH_URL: viteNeonAuthUrl,
+    NEON_AI_GATEWAY_TOKEN: gatewayToken,
+    NEON_AI_GATEWAY_BASE_URL: gatewayBaseUrl,
   }
 }
 

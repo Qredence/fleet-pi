@@ -73,6 +73,38 @@ describe("preview-worker-isolation", () => {
     ).toBe(false)
   })
 
+  it("treats Neon direct and pooler hostnames as the same database", () => {
+    const direct =
+      "postgresql://fleet_pi_app:prod@ep-prod.us-east-2.aws.neon.tech/neondb"
+    const pooled =
+      "postgresql://fleet_pi_app:prod@ep-prod-pooler.us-east-2.aws.neon.tech/neondb"
+    expect(postgresConnectionIdentitiesEqual(direct, pooled)).toBe(true)
+    expect(() =>
+      assertPreviewChatDatabaseUrl(PREVIEW_CHAT_URL, direct)
+    ).not.toThrow()
+    expect(() => assertPreviewChatDatabaseUrl(direct, direct)).toThrow(
+      /must not match production/
+    )
+    expect(() => assertPreviewChatDatabaseUrl(pooled, direct)).toThrow(
+      /must not match production/
+    )
+  })
+
+  it("normalizes auth base URLs before comparing preview and production", () => {
+    expect(() =>
+      assertPreviewAuthBaseUrl(
+        "https://auth.preview.example/",
+        "https://auth.preview.example"
+      )
+    ).toThrow(PreviewWorkerIsolationError)
+    expect(() =>
+      assertPreviewAuthBaseUrl(
+        "https://AUTH.PREVIEW.EXAMPLE",
+        "https://auth.prod.example"
+      )
+    ).not.toThrow()
+  })
+
   it("rejects production auth base URLs and non-allowlisted secret names", () => {
     expect(() =>
       assertPreviewAuthBaseUrl(
@@ -102,6 +134,9 @@ describe("preview-worker-isolation", () => {
         betterAuthSecret: "y".repeat(32),
         betterAuthUrl: "https://fleet-pi-web.example.workers.dev",
         betterAuthTrustedOrigins: "https://fleet-pi-web.example.workers.dev",
+        viteNeonAuthUrl: "https://auth.preview.example",
+        neonAiGatewayToken: "nt_preview_gateway",
+        neonAiGatewayBaseUrl: "https://preview-gateway.neon.tech",
       })
     ).toThrow(PreviewWorkerIsolationError)
   })
@@ -119,10 +154,16 @@ describe("preview-worker-isolation", () => {
       betterAuthSecret: "y".repeat(32),
       betterAuthUrl: "https://fleet-pi-web.example.workers.dev",
       betterAuthTrustedOrigins: "https://fleet-pi-web.example.workers.dev",
+      viteNeonAuthUrl: "https://auth.preview.example",
+      neonAiGatewayToken: "nt_preview_gateway",
+      neonAiGatewayBaseUrl: "https://preview-gateway.neon.tech",
     })
 
     expect(secrets.FLEET_PI_CHAT_DATABASE_URL).toBe(PREVIEW_CHAT_URL)
     expect(secrets.DATABASE_URL).toBe(PREVIEW_CHAT_URL)
+    expect(secrets.FLEET_PI_PREVIEW_DATABASE_MARKER).toBe(
+      "ep-preview.aws.neon.tech"
+    )
     expect(Object.keys(secrets).sort()).toEqual(
       [
         "BETTER_AUTH_SECRET",
@@ -130,10 +171,15 @@ describe("preview-worker-isolation", () => {
         "BETTER_AUTH_URL",
         "DATABASE_URL",
         "FLEET_PI_CHAT_DATABASE_URL",
+        "FLEET_PI_PREVIEW_DATABASE_MARKER",
+        "FLEET_PI_PRODUCTION_DATABASE_MARKER",
+        "NEON_AI_GATEWAY_BASE_URL",
+        "NEON_AI_GATEWAY_TOKEN",
         "NEON_AUTH_BASE_URL",
         "NEON_AUTH_COOKIE_SECRET",
         "NEON_AUTH_ISSUER",
         "NEON_AUTH_JWKS_URL",
+        "VITE_NEON_AUTH_URL",
       ].sort()
     )
     assertPreviewSecretAllowlist(Object.keys(secrets))

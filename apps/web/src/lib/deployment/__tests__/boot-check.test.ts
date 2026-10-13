@@ -5,6 +5,8 @@ describe("assertDeploymentReadyOnBoot", () => {
   const originalVercel = process.env.VERCEL
   const originalRegion = process.env.VERCEL_REGION
   const originalSecret = process.env.BETTER_AUTH_SECRET
+  const originalFleetDeployment = process.env.FLEET_PI_DEPLOYMENT
+  const originalCaches = Object.getOwnPropertyDescriptor(globalThis, "caches")
 
   afterEach(() => {
     if (originalVercel === undefined) {
@@ -21,6 +23,16 @@ describe("assertDeploymentReadyOnBoot", () => {
       delete process.env.BETTER_AUTH_SECRET
     } else {
       process.env.BETTER_AUTH_SECRET = originalSecret
+    }
+    if (originalFleetDeployment === undefined) {
+      delete process.env.FLEET_PI_DEPLOYMENT
+    } else {
+      process.env.FLEET_PI_DEPLOYMENT = originalFleetDeployment
+    }
+    if (originalCaches) {
+      Object.defineProperty(globalThis, "caches", originalCaches)
+    } else {
+      delete (globalThis as { caches?: unknown }).caches
     }
   })
 
@@ -63,8 +75,5 @@ describe("assertDeploymentReadyOnBoot", () => {
     expect(() => assertDeploymentReadyOnBoot()).toThrow(
       /Deployment readiness check failed/
     )
-
-    delete (globalThis as { caches?: unknown }).caches
-    delete process.env.FLEET_PI_DEPLOYMENT
   })
 })
