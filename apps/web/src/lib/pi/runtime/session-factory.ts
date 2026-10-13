@@ -20,6 +20,7 @@ import {
   usesDatabaseBackedProjectSettings,
 } from "./deployed-chat-runtime"
 import { createIsolatedProjectSettings } from "./isolated-project-settings"
+import { settingsManagerForLoader } from "./fleet-default-project-settings"
 import { createSandboxResourceSettings } from "./sandbox-resource-settings"
 import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
@@ -125,7 +126,11 @@ export async function createSessionServices(
     cwd: context.projectRoot,
     agentDir,
     ...overrides,
-    settingsManager: sandboxResources?.loaderSettings ?? settingsManager,
+    settingsManager: settingsManager
+      ? settingsManagerForLoader(
+          sandboxResources?.loaderSettings ?? settingsManager
+        )
+      : undefined,
     resourceLoaderOptions: {
       ...userResourceOptions,
       // Server-owned extensions: the Fleet Pi identity always, plus the

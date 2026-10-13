@@ -25,7 +25,7 @@ const RESOURCE_KEYS = [
 const PORTABLE_ROOT = "../agent-workspace/pi"
 const REMOTE_ROOT = `${SANDBOX_WORKSPACE_ROOT}/pi`
 const snapshots = new FinalizationRegistry<string>((root) => {
-  void rm(root, { recursive: true, force: true }).catch(() => {})
+  void removePath(root).catch(() => {})
 })
 
 /**
@@ -85,7 +85,7 @@ export function createSandboxResourceSettings(
       })
     )
     if (!hasResources) {
-      if (root) await rm(join(root, "pi"), { recursive: true, force: true })
+      if (root) await removePath(join(root, "pi"))
       return
     }
 
@@ -99,7 +99,7 @@ export function createSandboxResourceSettings(
       snapshots.register(manager, root)
     }
     const localPiRoot = join(root, "pi")
-    await rm(localPiRoot, { recursive: true, force: true })
+    await removePath(localPiRoot)
     await mkdir(localPiRoot, { recursive: true })
     // Missing/removed BYOK leaves an empty private tree, never a host fallback.
     if (!handle) return
@@ -145,6 +145,33 @@ export function createSandboxResourceSettings(
   }
 
   return { loaderSettings, prepare, attach }
+}
+
+/**
+ * Workers implement `node:fs` `rm` but not its `force` option, so deleting a
+ * cache directory that is not there yet throws
+ * `ENOENT: no such file or directory, rm '…/pi'` and fails settings saves.
+ * A missing path is already the state `force` would leave behind.
+ */
+async function removePath(path: string) {
+  try {
+    await rm(path, { recursive: true, force: true })
+  } catch (error) {
+    if (isMissingPath(error)) return
+    throw error
+  }
+}
+
+function isMissingPath(error: unknown) {
+  if (!(error instanceof Error)) return false
+  if (readErrorCode(error) === "ENOENT") return true
+  return error.message.includes("no such file or directory")
+}
+
+function readErrorCode(error: Error) {
+  if (!("code" in error)) return undefined
+  const { code } = error
+  return typeof code === "string" ? code : undefined
 }
 
 function sandboxPath(path: string) {

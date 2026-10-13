@@ -4,7 +4,16 @@ import { join, relative, resolve, sep } from "node:path"
 import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 
 export const RESOURCE_CACHE_PREFIX = join(tmpdir(), "fleet-pi-resources-")
-const TEMP_ROOTS = new Set([tmpdir(), realpathSync(tmpdir())])
+
+function canonicalTempdir() {
+  try {
+    return realpathSync(tmpdir())
+  } catch {
+    return tmpdir()
+  }
+}
+
+const TEMP_ROOTS = new Set([tmpdir(), canonicalTempdir()])
 
 /**
  * Pi needs host files for skill expansion, but its advertised skill paths are

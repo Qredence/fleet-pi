@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { nextEnabledModelPatterns } from "../model-patterns"
+import { isChatListModel, nextEnabledModelPatterns } from "../model-patterns"
 import type { ConfigModelInfo } from "../types"
 
 const googleFlash: ConfigModelInfo = {
@@ -24,6 +24,37 @@ const openAiModel: ConfigModelInfo = {
 }
 
 const catalog = [googleFlash, googlePro, openAiModel]
+
+describe("isChatListModel", () => {
+  const chatModels = [{ provider: "custom+command", modelId: "saved-model" }]
+
+  it("keeps only the chat picker when no enabled list has been saved", () => {
+    expect(
+      isChatListModel(
+        {
+          id: "custom+command/saved-model",
+          name: "saved-model",
+          provider: "custom+command",
+          modelId: "saved-model",
+        },
+        undefined,
+        chatModels
+      )
+    ).toBe(true)
+    expect(
+      isChatListModel(
+        {
+          id: "custom+command/gpt-5.5",
+          name: "GPT-5.5",
+          provider: "custom+command",
+          modelId: "gpt-5.5",
+        },
+        undefined,
+        chatModels
+      )
+    ).toBe(false)
+  })
+})
 
 describe("nextEnabledModelPatterns", () => {
   it("removes a model from allow-all without collapsing back to undefined", () => {
@@ -57,6 +88,17 @@ describe("nextEnabledModelPatterns", () => {
         models: [googleFlash, googlePro],
       })
     ).toEqual(["google/gemini-3.5-flash", "google/gemini-3.1-pro-preview"])
+  })
+
+  it("adds a chat model when nothing has been curated yet", () => {
+    expect(
+      nextEnabledModelPatterns({
+        currentPatterns: undefined,
+        enabled: true,
+        model: openAiModel,
+        models: [googleFlash],
+      })
+    ).toEqual(["google/gemini-3.5-flash", "openai/gpt-4o"])
   })
 
   it("adds model to empty deny-all list", () => {

@@ -233,11 +233,31 @@ describe("listOpenAiCompatibleModels", () => {
       "https://api.commandcode.ai/provider/v1/models",
       expect.objectContaining({
         method: "GET",
+        redirect: "manual",
         headers: expect.objectContaining({
           Authorization: "Bearer cmd-key",
         }),
       })
     )
     expect(models).toHaveLength(4)
+  })
+
+  it("refuses a redirect instead of forwarding the key", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://evil.example/models" },
+        })
+      )
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    await expect(
+      listOpenAiCompatibleModels(
+        "https://api.commandcode.ai/provider/v1",
+        "cmd-key"
+      )
+    ).rejects.toThrow("redirected")
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 })

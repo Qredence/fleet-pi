@@ -256,6 +256,7 @@ function useSettingsForm() {
     saveSection,
     requestCloseSettings,
     resetCommittedModelBaseline,
+    chatModels: models,
   }
 }
 
@@ -324,6 +325,7 @@ export function SettingsDialog({
     saveSection,
     requestCloseSettings,
     resetCommittedModelBaseline,
+    chatModels,
   } = useSettingsForm()
 
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
@@ -449,6 +451,7 @@ export function SettingsDialog({
         modelDirty={modelDirty}
         modelFilter={modelFilter}
         modelOptions={modelOptions}
+        chatModels={chatModels}
         onAddModels={addModels}
         onDiscoverProvider={discoverProvider}
         onModelFilterChange={setModelFilter}

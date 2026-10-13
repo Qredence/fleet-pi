@@ -178,6 +178,16 @@ export function useModelDefaultsForm({
     void commitModelSettings(nextDraft)
   }
 
+  const modelsForPatternUpdate = (patterns: Array<string> | undefined) => {
+    if (patterns !== undefined) return modelOptions
+    return models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      provider: model.provider,
+      modelId: model.modelId,
+    }))
+  }
+
   const setModelEnabled = (model: ConfigModelInfo, enabled: boolean) => {
     if (!draft) return
     const nextDraft: ChatPiSettings = {
@@ -186,7 +196,7 @@ export function useModelDefaultsForm({
         currentPatterns: draft.enabledModels,
         enabled,
         model,
-        models: modelOptions,
+        models: modelsForPatternUpdate(draft.enabledModels),
       }),
     }
     void persistModelSettings(nextDraft)
@@ -200,7 +210,7 @@ export function useModelDefaultsForm({
         currentPatterns: patterns,
         enabled: true,
         model,
-        models: modelOptions,
+        models: modelsForPatternUpdate(patterns),
       })
     }
     void persistModelSettings({ ...draft, enabledModels: patterns })

@@ -21,7 +21,7 @@ import {
   SettingsPane,
 } from "../../../primitives/settings-pane"
 import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
-import { isModelEnabled } from "../shared/model-patterns"
+import { isChatListModel } from "../shared/model-patterns"
 import {
   collectConfiguredModelProviderIds,
   shouldRefreshProviderModels,
@@ -39,6 +39,7 @@ export function ModelDefaultsSection({
   modelDirty,
   modelFilter,
   modelOptions,
+  chatModels,
   onAddModels,
   onDiscoverProvider,
   onModelFilterChange,
@@ -54,6 +55,7 @@ export function ModelDefaultsSection({
   modelDirty: boolean
   modelFilter: string
   modelOptions: Array<ConfigModelInfo>
+  chatModels: ReadonlyArray<{ provider: string; modelId: string }>
   onAddModels: (models: Array<ConfigModelInfo>) => void
   onDiscoverProvider: (providerId: string) => Promise<void>
   onModelFilterChange: (value: string) => void
@@ -65,6 +67,7 @@ export function ModelDefaultsSection({
     isConfigured: boolean
     name?: string
     displayName?: string
+    modelIds?: Array<string>
   }>
   saving: boolean
   settingsLoading: boolean
@@ -75,17 +78,20 @@ export function ModelDefaultsSection({
   const disabled = !draft || settingsLoading
   const normalizedFilter = modelFilter.trim().toLowerCase()
   const normalizedAddFilter = addFilter.trim().toLowerCase()
+  const inChatList = useCallback(
+    (model: ConfigModelInfo) =>
+      isChatListModel(model, draft?.enabledModels, chatModels),
+    [chatModels, draft?.enabledModels]
+  )
 
   const configuredProviderIds = useMemo(() => {
     const ids = collectConfiguredModelProviderIds(providers)
     // Keep providers already on the curated list discoverable after refresh.
     for (const model of modelOptions) {
-      if (isModelEnabled(model, draft?.enabledModels)) {
-        ids.add(model.provider)
-      }
+      if (inChatList(model)) ids.add(model.provider)
     }
     return ids
-  }, [draft?.enabledModels, modelOptions, providers])
+  }, [inChatList, modelOptions, providers])
 
   const providerLabel = useCallback(
     (providerId: string) => {
@@ -98,7 +104,7 @@ export function ModelDefaultsSection({
 
   const listedModels = useMemo(() => {
     return modelOptions.filter((model) => {
-      if (!isModelEnabled(model, draft?.enabledModels)) return false
+      if (!inChatList(model)) return false
       if (!normalizedFilter) return true
       return [
         model.name,
@@ -111,7 +117,7 @@ export function ModelDefaultsSection({
         .toLowerCase()
         .includes(normalizedFilter)
     })
-  }, [draft?.enabledModels, modelOptions, normalizedFilter, providerLabel])
+  }, [inChatList, modelOptions, normalizedFilter, providerLabel])
 
   const groupedListed = useMemo(() => {
     const groups = new Map<string, Array<ConfigModelInfo>>()
@@ -126,7 +132,7 @@ export function ModelDefaultsSection({
   const candidateModels = useMemo(() => {
     return modelOptions.filter((model) => {
       if (!configuredProviderIds.has(model.provider)) return false
-      if (isModelEnabled(model, draft?.enabledModels)) return false
+      if (inChatList(model)) return false
       if (!normalizedAddFilter) return true
       return [
         model.name,
@@ -141,7 +147,7 @@ export function ModelDefaultsSection({
     })
   }, [
     configuredProviderIds,
-    draft?.enabledModels,
+    inChatList,
     modelOptions,
     normalizedAddFilter,
     providerLabel,

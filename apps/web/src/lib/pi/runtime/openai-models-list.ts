@@ -87,6 +87,9 @@ export function parseOpenAiModelsList(
 /**
  * GET `{baseUrl}/models` with the stored key. Neon AI Gateway hosts are
  * skipped so a refresh cannot ingest the platform catalog.
+ *
+ * Command Code's list is `GET https://api.commandcode.ai/provider/v1/models`
+ * when the base URL is `https://api.commandcode.ai/provider/v1`.
  */
 export async function listOpenAiCompatibleModels(
   baseUrl: string,
@@ -95,28 +98,20 @@ export async function listOpenAiCompatibleModels(
 ): Promise<Array<RemoteOpenAiModel>> {
   if (isGatewayHost(baseUrl)) return []
   const url = `${baseUrl.replace(/\/+$/, "")}/models`
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      // Intentional BYOK authentication: only this provider's stored API key
-      // goes to its validated endpoint, never the local provider-store file.
-      Authorization: `Bearer ${apiKey}`,
-      ...(api === "anthropic-messages"
-        ? {
-            "anthropic-version": "2023-06-01",
-            "x-api-key": apiKey,
-            "content-type": "application/json",
-          }
-        : {}),
-    },
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
+  const payload = await fetchModelCatalog(url, {
+    Accept: "application/json",
+    // Intentional BYOK authentication: only this provider's stored API key
+    // goes to its validated endpoint, never the local provider-store file.
+    Authorization: `Bearer ${apiKey}`,
+    ...(api === "anthropic-messages"
+      ? {
+          "anthropic-version": "2023-06-01",
+          "x-api-key": apiKey,
+          "content-type": "application/json",
+        }
+      : {}),
   })
-  if (!response.ok) {
-    throw new Error(`Model list request failed (${response.status}).`)
-  }
-  return parseOpenAiModelsList(await readBoundedCatalog(response))
+  return parseOpenAiModelsList(payload)
 }
 
 function rowsFrom(payload: unknown): Array<unknown> {
@@ -166,20 +161,38 @@ export async function listGoogleGenaiModels(
   apiKey: string
 ): Promise<Array<RemoteOpenAiModel>> {
   const url = `${baseUrl.replace(/\/+$/, "")}/models`
+  const payload = await fetchModelCatalog(url, {
+    Accept: "application/json",
+    // Intentional BYOK authentication with the configured provider's key.
+    "x-goog-api-key": apiKey,
+  })
+  return parseGoogleGenaiModelsList(payload)
+}
+
+/**
+ * GET a model catalog and return its JSON body.
+ * `redirect: "manual"` is required on Cloudflare Workers, which reject
+ * `redirect: "error"`. Redirects are refused so the provider key is not
+ * forwarded to another host.
+ */
+async function fetchModelCatalog(
+  url: string,
+  headers: Record<string, string>
+): Promise<unknown> {
   const response = await fetch(url, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      // Intentional BYOK authentication with the configured provider's key.
-      "x-goog-api-key": apiKey,
-    },
-    redirect: "error",
+    headers,
+    redirect: "manual",
     signal: AbortSignal.timeout(10_000),
   })
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel().catch(() => {})
+    throw new Error("Model list request was redirected.")
+  }
   if (!response.ok) {
     throw new Error(`Model list request failed (${response.status}).`)
   }
-  return parseGoogleGenaiModelsList(await readBoundedCatalog(response))
+  return readBoundedCatalog(response)
 }
 
 async function readBoundedCatalog(response: Response): Promise<unknown> {
