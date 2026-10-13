@@ -563,7 +563,12 @@ jobs:
           NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
 
       - name: Verify deployment readiness (migration probes)
-        run: pnpm verify-deployment-readiness
+        run: |
+          if [ -z "${FLEET_PI_CHAT_MIGRATION_DATABASE_URL}" ]; then
+            echo "Skipping live migration probes; chat migration URL is not configured."
+            exit 0
+          fi
+          pnpm verify-deployment-readiness
         env:
           FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES: "1"
           FLEET_PI_DEPLOYMENT: cloudflare

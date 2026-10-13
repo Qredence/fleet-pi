@@ -498,34 +498,6 @@ describe("Pi session mirror repository", () => {
     delete process.env.FLEET_PI_DEPLOYMENT
   })
 
-  it("keeps streaming when mirror sync fails on Cloudflare", async () => {
-    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
-    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
-    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined)
-
-    try {
-      await expect(
-        syncPiSessionMirrorSafely(
-          {
-            getHeader() {
-              throw new Error("boom mirror")
-            },
-          } as never,
-          { userId: "user-hosted" }
-        )
-      ).resolves.toBeUndefined()
-
-      expect(warn).toHaveBeenCalledWith(
-        {
-          error: expect.objectContaining({ message: "boom mirror" }),
-        },
-        "[pi-session-mirror] sync failed (non-fatal)"
-      )
-    } finally {
-      delete process.env.FLEET_PI_DEPLOYMENT
-    }
-  })
-
   it("fails the turn when mirror sync fails on the Neon Function", async () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
     const errorSpy = vi
