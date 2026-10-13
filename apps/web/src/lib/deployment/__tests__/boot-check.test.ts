@@ -49,4 +49,22 @@ describe("assertDeploymentReadyOnBoot", () => {
       /Deployment readiness check failed/
     )
   })
+
+  it("throws on Cloudflare Worker runtime when required env vars are missing", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    delete process.env.VERCEL
+    delete process.env.VERCEL_REGION
+    delete process.env.BETTER_AUTH_SECRET
+    Object.defineProperty(globalThis, "caches", {
+      configurable: true,
+      value: {},
+    })
+
+    expect(() => assertDeploymentReadyOnBoot()).toThrow(
+      /Deployment readiness check failed/
+    )
+
+    delete (globalThis as { caches?: unknown }).caches
+    delete process.env.FLEET_PI_DEPLOYMENT
+  })
 })

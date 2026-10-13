@@ -523,6 +523,8 @@ jobs:
 
       - name: Build Cloudflare Worker
         run: pnpm --filter web build:cloudflare
+        env:
+          VITE_NEON_AUTH_URL: https://auth.ci.example
 
       - name: Verify deployment readiness (env-only)
         run: pnpm verify-deployment-readiness
@@ -554,6 +556,7 @@ jobs:
           BETTER_AUTH_URL: https://pr-0.fleet-pi-web.ci.workers.dev
           BETTER_AUTH_TRUSTED_ORIGINS: https://pr-0.fleet-pi-web.ci.workers.dev
           FLEET_PI_CHAT_DATABASE_URL: postgres://preview-neon-host/preview-chat
+          FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: postgres://prod-neon-host/production-chat
           FLEET_PI_PREVIEW_DATABASE_MARKER: preview-neon
           FLEET_PI_PRODUCTION_DATABASE_MARKER: prod-neon
           NEON_AI_GATEWAY_TOKEN: ci-gateway-token

@@ -263,9 +263,12 @@ async function main() {
 
   const previewAuthBase = readEnv("PREVIEW_NEON_AUTH_BASE_URL")
   const productionAuthBase = readEnv("FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL")
-  if (previewAuthBase || productionAuthBase) {
-    assertPreviewAuthBaseUrl(previewAuthBase, productionAuthBase)
+  if (!previewAuthBase || !productionAuthBase) {
+    throw new PreviewWorkerIsolationError(
+      "PREVIEW_NEON_AUTH_BASE_URL and FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL are required for preview isolation."
+    )
   }
+  assertPreviewAuthBaseUrl(previewAuthBase, productionAuthBase)
 
   if (command === "validate") {
     return
