@@ -12,7 +12,10 @@ import {
   resolveVercelAllowedHosts,
 } from "@/lib/auth/auth-host-policy"
 import { isVercelDeployment } from "@/lib/deployment/environment"
-import { isVercelPreviewDeployment } from "@/lib/deployment/trust-zone"
+import {
+  isHostedPreviewDeployment,
+  isVercelPreviewDeployment,
+} from "@/lib/deployment/trust-zone"
 import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
 
 function readCsvEnv(name: string) {
@@ -136,7 +139,7 @@ function resolveAuthBaseURL() {
   return {
     allowedHosts: resolveVercelAllowedHosts(configuredBaseURL, vercelUrl),
     protocol: "https" as const,
-    fallback: isVercelPreviewDeployment()
+    fallback: isHostedPreviewDeployment()
       ? (previewFallback ?? PRODUCTION_AUTH_URL)
       : (configuredBaseURL ?? PRODUCTION_AUTH_URL),
   }
@@ -145,7 +148,7 @@ function resolveAuthBaseURL() {
 function resolveTrustedOrigins() {
   return resolveTrustedOriginsForDeployment({
     isVercel: isVercelDeployment(),
-    isPreview: isVercelPreviewDeployment(),
+    isPreview: isHostedPreviewDeployment(),
     configuredOrigins: readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS"),
     betterAuthUrl: process.env.BETTER_AUTH_URL?.trim(),
     vercelUrl: process.env.VERCEL_URL?.trim(),

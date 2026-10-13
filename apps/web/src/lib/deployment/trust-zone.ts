@@ -39,6 +39,10 @@ export function isVercelPreviewDeployment() {
   return resolveDeploymentTrustZone() === "vercel-preview"
 }
 
+export function isHostedPreviewDeployment() {
+  return isHostedPreviewTrustZone(resolveDeploymentTrustZone())
+}
+
 /**
  * Fail closed for mirror ownership / DB errors wherever chat auth is required:
  * Vercel, Neon Managed Auth, Neon Function surface, or explicit runtime flag.
