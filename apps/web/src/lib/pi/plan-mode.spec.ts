@@ -89,17 +89,39 @@ describe("plan-mode utilities (vitest)", () => {
   })
 
   describe("agent workspace mutation tiers", () => {
-    it("blocks raw writes to system/identity.md", () => {
-      const result = callTool("session-tier-system", {
+    it("blocks raw writes that resolve into system/", () => {
+      const direct = callTool("session-tier-system", {
         toolName: "write",
         input: {
           path: "system/identity.md",
           content: "changed",
         },
       })
+      const dotted = callTool("session-tier-system-dotdot", {
+        toolName: "write",
+        input: {
+          path: "agent-workspace/notes/../system/identity.md",
+          content: "changed",
+        },
+      })
+
+      expect(direct).toMatchObject({ block: true })
+      expect(direct?.reason).toContain("protected")
+      expect(dotted).toMatchObject({ block: true })
+      expect(dotted?.reason).toContain("protected")
+    })
+
+    it("requires a rationale for instructions/", () => {
+      const result = callTool("session-tier-instructions", {
+        toolName: "write",
+        input: {
+          path: "instructions/README.md",
+          content: "notes",
+        },
+      })
 
       expect(result).toMatchObject({ block: true })
-      expect(result?.reason).toContain("protected")
+      expect(result?.reason).toContain("rationale")
     })
 
     it("blocks memory/project/decisions.md without a rationale", () => {
@@ -147,6 +169,20 @@ describe("plan-mode utilities (vitest)", () => {
         callTool("session-tier-evals", {
           toolName: "bash",
           input: { command: "cp notes.md evals/memory-quality.md" },
+        })?.reason
+      ).toContain("protected")
+      expect(
+        callTool("session-tier-sed", {
+          toolName: "bash",
+          input: { command: "sed -i 's/a/b/' system/identity.md" },
+        })?.reason
+      ).toContain("protected")
+      expect(
+        callTool("session-tier-find", {
+          toolName: "bash",
+          input: {
+            command: "find agent-workspace/system -name '*.md' -delete",
+          },
         })?.reason
       ).toContain("protected")
     })

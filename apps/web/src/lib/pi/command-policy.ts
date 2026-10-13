@@ -155,8 +155,30 @@ export function listMutatingCommandTargets(command: string): Array<string> {
         targets.push(token)
       }
     }
+    targets.push(...inPlaceEditTargets(commandName, tokens))
   }
   return targets
+}
+
+/**
+ * `sed` without `-n` and `find -delete` / `-exec` edit files, but they are
+ * not in the mutating-command set because Plan mode allows their read forms.
+ */
+function inPlaceEditTargets(
+  commandName: string | undefined,
+  tokens: Array<string>
+): Array<string> {
+  if (!commandName) return []
+  const args = tokens.slice(1).filter((token) => !isEnvAssignment(token))
+  const findDeletes =
+    commandName === "find" &&
+    args.some((arg) => arg === "-delete" || arg === "-exec")
+  const sedEdits =
+    commandName === "sed" &&
+    !args.some((arg) => arg === "-n" || arg.startsWith("-n"))
+  const editsInPlace = findDeletes || sedEdits
+  if (!editsInPlace) return []
+  return args.filter((arg) => !arg.startsWith("-"))
 }
 
 function redirectionTarget(token: string): string | "pending" | undefined {

@@ -19,24 +19,40 @@ const RATIONALE_REQUIRED: Array<RegExp> = [
 
 const PROTECTED: Array<RegExp> = [/^system\//, /^evals\//]
 
-const KNOWN_WORKSPACE_ROOTS = [
-  ...FREELY_MUTABLE,
-  ...RATIONALE_REQUIRED,
-  ...PROTECTED,
-]
+/**
+ * Top-level `agent-workspace/` sections. Kept here so the CLI extension does
+ * not import apps/web. Matches `WORKSPACE_TOP_LEVEL_SECTIONS`.
+ */
+const WORKSPACE_SECTION_ROOTS = new Set([
+  "instructions",
+  "system",
+  "memory",
+  "plans",
+  "skills",
+  "evals",
+  "artifacts",
+  "scratch",
+  "pi",
+  "indexes",
+])
 
 export type ClassifiedWorkspacePath =
   { scoped: false } | { scoped: true; relativePath: string; tier: MutationTier }
 
 export function classifyTier(relativePath: string): MutationTier {
-  if (FREELY_MUTABLE.some((pattern) => pattern.test(relativePath)))
-    return "free"
-  if (RATIONALE_REQUIRED.some((pattern) => pattern.test(relativePath))) {
-    return "rationale-required"
-  }
-  if (PROTECTED.some((pattern) => pattern.test(relativePath)))
-    return "protected"
+  if (matchesTier(FREELY_MUTABLE, relativePath)) return "free"
+  if (matchesTier(RATIONALE_REQUIRED, relativePath)) return "rationale-required"
+  if (matchesTier(PROTECTED, relativePath)) return "protected"
   return "rationale-required"
+}
+
+function matchesTier(patterns: Array<RegExp>, relativePath: string) {
+  const asDirectory = relativePath.endsWith("/")
+    ? relativePath
+    : `${relativePath}/`
+  return patterns.some(
+    (pattern) => pattern.test(relativePath) || pattern.test(asDirectory)
+  )
 }
 
 /**
@@ -47,17 +63,14 @@ export function classifyToolPath(path: string): ClassifiedWorkspacePath {
   const normalized = path.replace(/\\/g, "/").replace(/^\.\//, "")
   const marker = "agent-workspace/"
   const index = normalized.lastIndexOf(marker)
-  if (index >= 0) {
-    return classifyInside(normalized.slice(index + marker.length))
-  }
-  if (
-    normalized.startsWith("/") ||
-    normalized.includes("..") ||
-    !KNOWN_WORKSPACE_ROOTS.some((pattern) => pattern.test(normalized))
-  ) {
-    return { scoped: false }
-  }
-  return classifyInside(normalized)
+  const relative =
+    index >= 0 ? normalized.slice(index + marker.length) : normalized
+  if (index < 0 && relative.startsWith("/")) return { scoped: false }
+
+  const collapsed = normalizeWorkspaceRelative(relative)
+  if (collapsed === null) return { scoped: false }
+  if (index < 0 && !isWorkspaceRelative(collapsed)) return { scoped: false }
+  return classifyInside(collapsed)
 }
 
 export function evaluateWorkspaceWrite(input: {
@@ -117,11 +130,7 @@ export function rawWorkspaceMutationBlock(path: string): string | undefined {
 }
 
 function classifyInside(relativePath: string): ClassifiedWorkspacePath {
-  if (
-    !relativePath ||
-    relativePath.startsWith("/") ||
-    relativePath.startsWith("..")
-  ) {
+  if (!relativePath || relativePath.startsWith("/")) {
     return { scoped: false }
   }
   return {
@@ -129,4 +138,24 @@ function classifyInside(relativePath: string): ClassifiedWorkspacePath {
     relativePath,
     tier: classifyTier(relativePath),
   }
+}
+
+function isWorkspaceRelative(relativePath: string) {
+  const root = relativePath.split("/")[0] ?? ""
+  return WORKSPACE_SECTION_ROOTS.has(root)
+}
+
+/** Collapse `.` and `..`. `null` means the path escaped above the workspace. */
+function normalizeWorkspaceRelative(relativePath: string): string | null {
+  const parts: Array<string> = []
+  for (const segment of relativePath.split("/")) {
+    if (segment === "" || segment === ".") continue
+    if (segment === "..") {
+      if (parts.length === 0) return null
+      parts.pop()
+      continue
+    }
+    parts.push(segment)
+  }
+  return parts.join("/")
 }

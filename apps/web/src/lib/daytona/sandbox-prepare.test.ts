@@ -91,10 +91,9 @@ describe("sandbox-prepare seed", () => {
       "'https://github.com/Qredence/fleet-pi.git'"
     )
 
-    expect(script).toContain("cp -an ")
-    expect(script).toContain(
-      `cp -an "$tmpdir/agent-workspace/." '${SANDBOX_WORKSPACE_ROOT}'/`
-    )
+    expect(script).toContain('if [ -e "$dest" ]; then')
+    expect(script).toContain('cp -a "$src" "$dest"')
+    expect(script).not.toContain("|| [ $? -eq 1 ]")
   })
 
   it("includes safe seed in the prepare script and removes legacy fleet-pi", () => {

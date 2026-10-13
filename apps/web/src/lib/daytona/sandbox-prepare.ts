@@ -252,9 +252,21 @@ export function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd.
     '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
     `mkdir -p ${workspace}`,
-    // Non-clobber: preserve any existing files on a partially filled volume.
-    // macOS cp -n exits 1 when it skips a file that already exists.
-    `cp -an "$tmpdir/agent-workspace/." ${workspace}/ || [ $? -eq 1 ]`,
+    // Copy only missing paths. An existing file stays, and a real copy error
+    // fails the script so the seed revision is not recorded.
+    "while IFS= read -r -d '' src; do",
+    '  rel="${src#"$tmpdir"/agent-workspace/}"',
+    `  dest=${workspace}/"$rel"`,
+    '  if [ -d "$src" ]; then',
+    '    mkdir -p "$dest"',
+    "    continue",
+    "  fi",
+    '  if [ -e "$dest" ]; then',
+    "    continue",
+    "  fi",
+    '  mkdir -p "$(dirname "$dest")"',
+    '  cp -a "$src" "$dest"',
+    'done < <(find "$tmpdir/agent-workspace" -mindepth 1 -print0)',
     'rev="$(git -C "$tmpdir" rev-parse HEAD)"',
     `mkdir -p ${workspace}/.fleet`,
     `printf '%s\\n' "$rev" > ${revFile}`,
