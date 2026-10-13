@@ -10,7 +10,11 @@ import {
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { createPlanModeExtension } from "../plan-mode"
 import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
-import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import {
+  isDeployedChatRuntimeSurface,
+  usesDatabaseBackedProjectSettings,
+} from "./deployed-chat-runtime"
+import { createIsolatedProjectSettings } from "./isolated-project-settings"
 import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -88,11 +92,22 @@ export async function createSessionServices(
   }
 
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
+  const databaseBacked = usesDatabaseBackedProjectSettings()
+  const { hydrateSessionServicesSettings, resolveProjectSettings } =
+    await import("./durable-project-settings")
+  // Seed private settings before Pi's first resource reload. Deployed callers
+  // cannot substitute a manager that reads or writes the shared checkout.
+  const settingsManager = databaseBacked
+    ? createIsolatedProjectSettings(
+        await resolveProjectSettings({ userId: options?.userId })
+      )
+    : overrides?.settingsManager
   const userResourceOptions = overrides?.resourceLoaderOptions
   const services = await createAgentSessionServices({
     cwd: context.projectRoot,
     agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
     ...overrides,
+    settingsManager,
     resourceLoaderOptions: {
       ...userResourceOptions,
       // Server-owned extensions: the Fleet Pi identity always, plus the
@@ -119,12 +134,12 @@ export async function createSessionServices(
     workspaceBootstrap
   )
 
-  const { hydrateSessionServicesSettings } =
-    await import("./durable-project-settings")
-  await hydrateSessionServicesSettings(servicesWithBootstrap, {
-    userId: options?.userId,
-    projectRoot: context.projectRoot,
-  })
+  if (!databaseBacked) {
+    await hydrateSessionServicesSettings(servicesWithBootstrap, {
+      userId: options?.userId,
+      projectRoot: context.projectRoot,
+    })
+  }
 
   const { registerOpenAiChatCompletionsProvider } =
     await import("./openai-chat-completions-provider")

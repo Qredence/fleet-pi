@@ -1,6 +1,9 @@
 import { readFile, readdir } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
-import { registerHarnessWriteResolver } from "../../../../../.pi/extensions/lib/harness-write"
+import {
+  registerHarnessWriteResolver,
+  requireHarnessWriteResolver,
+} from "../../../../../.pi/extensions/lib/harness-write"
 import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
 import { persistHarnessInstallSettings } from "./harness-settings"
 import { executeCommand, uploadFile } from "./client"
@@ -47,6 +50,7 @@ export async function resolveHarnessWriteTarget(input: {
  * The extension files themselves do not import the web server.
  */
 export function installHarnessWriteResolver() {
+  if (isDeployedChatRuntimeSurface()) requireHarnessWriteResolver()
   registerHarnessWriteResolver(async (input) => {
     const target = await resolveHarnessWriteTarget(input)
     if (target.kind !== "sandbox") return target

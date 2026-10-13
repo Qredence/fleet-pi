@@ -27,15 +27,39 @@ type HarnessWriteResolver = (
   input: HarnessWriteInput
 ) => HarnessWriteTarget | Promise<HarnessWriteTarget>
 
-let resolveHarnessWrite: HarnessWriteResolver = (input) => ({
-  kind: "host",
-  cwd: input.cwd,
-})
+type HarnessWriteBridge = {
+  resolver?: HarnessWriteResolver
+  requiresResolver: boolean
+}
+
+// Pi's jiti loader and the server bundle instantiate this module separately.
+// A process-global symbol shares only routing infrastructure, never user data.
+const BRIDGE_KEY = Symbol.for("fleet-pi.harness-write")
+const bridgeGlobal = globalThis as typeof globalThis & {
+  [BRIDGE_KEY]?: HarnessWriteBridge
+}
+
+function getBridge() {
+  return (bridgeGlobal[BRIDGE_KEY] ??= { requiresResolver: false })
+}
+
+export function requireHarnessWriteResolver() {
+  getBridge().requiresResolver = true
+}
 
 export function registerHarnessWriteResolver(next: HarnessWriteResolver) {
-  resolveHarnessWrite = next
+  getBridge().resolver = next
 }
 
 export function resolveHarnessWriteTarget(input: HarnessWriteInput) {
-  return resolveHarnessWrite(input)
+  const bridge = getBridge()
+  if (bridge.resolver) return bridge.resolver(input)
+  if (bridge.requiresResolver) {
+    return {
+      kind: "unavailable" as const,
+      message:
+        "Private workspace writes need your Daytona sandbox. Chat and settings still work without it.",
+    }
+  }
+  return { kind: "host" as const, cwd: input.cwd }
 }

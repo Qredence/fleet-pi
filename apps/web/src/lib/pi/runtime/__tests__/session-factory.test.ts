@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 import { createMockSettingsManager } from "./mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type * as PiCodingAgent from "@earendil-works/pi-coding-agent"
 
 const mocks = vi.hoisted(() => ({
   createAgentSessionServices: vi.fn(),
@@ -11,10 +12,14 @@ const mocks = vi.hoisted(() => ({
   decryptString: vi.fn(),
 }))
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
-  createAgentSessionServices: mocks.createAgentSessionServices,
-  getAgentDir: mocks.getAgentDir,
-}))
+vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
+  const { SettingsManager } = await importOriginal<typeof PiCodingAgent>()
+  return {
+    SettingsManager,
+    createAgentSessionServices: mocks.createAgentSessionServices,
+    getAgentDir: mocks.getAgentDir,
+  }
+})
 
 vi.mock("../../../workspace/bootstrap-agent-workspace", () => ({
   bootstrapAgentWorkspace: mocks.bootstrapAgentWorkspace,

@@ -11,6 +11,7 @@ import {
   readRawProjectSettingsFile,
 } from "./project-settings-file"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
@@ -82,6 +83,14 @@ export async function hydrateSessionServicesSettings(
   services: AgentSessionServices,
   options: ResolveProjectSettingsOptions = {}
 ) {
+  if (usesDatabaseBackedProjectSettings()) {
+    await replaceIsolatedProjectSettings(
+      services.settingsManager,
+      await resolveProjectSettings(options)
+    )
+    await services.resourceLoader.reload()
+    return
+  }
   const rawBefore = options.projectRoot
     ? await readRawProjectSettingsFile(options.projectRoot)
     : undefined
