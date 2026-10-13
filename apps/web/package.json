@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "build:vercel": "vite build && node scripts/build-vercel-output.mjs",
     "build:cloudflare": "FLEET_PI_TARGET=cloudflare vite build",
     "preview:cloudflare": "FLEET_PI_TARGET=cloudflare vite preview",
     "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy",

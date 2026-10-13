@@ -20,6 +20,7 @@
     "neon:deploy": "env -u NEON_API_KEY neon deploy --env .env.local --update-existing --allow-protected",
     "neon:env-pull": "env -u NEON_API_KEY neon env pull",
     "neon:verify": "node scripts/verify-neon-backend.mjs",
+    "build:cloudflare": "pnpm --filter web run build:cloudflare",
     "verify-deployment-readiness": "pnpm --filter web verify-deployment-readiness",
     "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
     "remap-auth-user-ids": "pnpm --filter web remap-auth-user-ids",

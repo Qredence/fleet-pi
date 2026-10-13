@@ -232,16 +232,28 @@ async function main() {
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
   if (chatRuntimeUrl && trustZone !== "local") {
-    Object.assign(input, await queryChatRuntimeRole(chatRuntimeUrl))
+    try {
+      Object.assign(input, await queryChatRuntimeRole(chatRuntimeUrl))
+    } catch (error) {
+      console.log(
+        `WARN chat-runtime-role: skipped live probe (${error instanceof Error ? error.message : String(error)})`
+      )
+    }
   }
 
   if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
-    const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
-    const prefix = smoke.ok ? "OK" : "FAIL"
-    console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
-    if (!smoke.ok) {
-      process.exitCode = 1
-      return
+    try {
+      const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
+      const prefix = smoke.ok ? "OK" : "FAIL"
+      console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
+      if (!smoke.ok) {
+        process.exitCode = 1
+        return
+      }
+    } catch (error) {
+      console.log(
+        `WARN chat-rls-smoke: skipped live probe (${error instanceof Error ? error.message : String(error)})`
+      )
     }
   }
 

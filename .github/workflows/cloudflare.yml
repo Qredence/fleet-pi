@@ -1,15 +1,16 @@
 name: Cloudflare Workers
 
 # Production: every push to main deploys the Worker (fleet-pi-web) to
-# workers.dev. Preview: PRs labelled `cloudflare-preview` upload a Worker
-# version with a `pr-<number>` preview alias (no traffic shift).
+# workers.dev. Preview: PRs labelled `cloudflare-preview` deploy a Worker
+# Preview named `pr-<number>` with Neon preview-branch secrets only (never
+# production database or auth URLs). Opt-in via label; skipped for forks and
+# Dependabot.
 #
-# Previews share the Worker's secrets (production Neon/jolly-lab and auth), so
-# they are opt-in via label and never run for forks or Dependabot.
-#
-# Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts: Edit) and
-# CLOUDFLARE_ACCOUNT_ID, and the repo variable VITE_NEON_AUTH_URL (public,
-# inlined into the client bundle). Jobs skip with a notice when missing.
+# Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts: Edit),
+# CLOUDFLARE_ACCOUNT_ID, NEON_API_KEY, FLEET_PI_PRODUCTION_CHAT_DATABASE_URL,
+# FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL, PREVIEW_* auth secrets, and the
+# repo variable NEON_PROJECT_ID (non-production soft-art). Production builds
+# use vars.VITE_NEON_AUTH_URL; preview builds use secrets.PREVIEW_VITE_NEON_AUTH_URL.
 
 on:
   push:
@@ -37,7 +38,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
       VITE_PUBLIC_POSTHOG_KEY: ${{ vars.VITE_PUBLIC_POSTHOG_KEY }}
       VITE_PUBLIC_POSTHOG_HOST: ${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
     steps:
@@ -71,9 +71,18 @@ jobs:
         if: steps.creds.outputs.ready == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Build Worker
-        if: steps.creds.outputs.ready == 'true'
+      - name: Build Worker (production)
+        if: steps.creds.outputs.ready == 'true' && github.event_name != 'pull_request'
         working-directory: apps/web
+        env:
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        run: pnpm build:cloudflare
+
+      - name: Build Worker (preview)
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        working-directory: apps/web
+        env:
+          VITE_NEON_AUTH_URL: ${{ secrets.PREVIEW_VITE_NEON_AUTH_URL }}
         run: pnpm build:cloudflare
 
       - name: Deploy production
@@ -81,10 +90,76 @@ jobs:
         working-directory: apps/web
         run: pnpm exec wrangler deploy
 
-      - name: Upload preview version
+      - name: Validate preview database isolation
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        working-directory: apps/web
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
+          FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
+          PREVIEW_NEON_AUTH_BASE_URL: ${{ secrets.PREVIEW_NEON_AUTH_BASE_URL }}
+        run: >-
+          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          validate
+          --pr ${{ github.event.pull_request.number }}
+
+      - name: Deploy Cloudflare preview
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        id: preview_deploy
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler preview \
+            --name "pr-${{ github.event.pull_request.number }}" \
+            --ignore-base-config \
+            --message "PR #${{ github.event.pull_request.number }} @ ${GITHUB_SHA::7}" \
+            --json > preview-deploy.json
+
+      - name: Write preview Worker secrets file
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        id: preview_secrets
+        working-directory: apps/web
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
+          FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
+          PREVIEW_NEON_AUTH_BASE_URL: ${{ secrets.PREVIEW_NEON_AUTH_BASE_URL }}
+          PREVIEW_NEON_AUTH_JWKS_URL: ${{ secrets.PREVIEW_NEON_AUTH_JWKS_URL }}
+          PREVIEW_NEON_AUTH_ISSUER: ${{ secrets.PREVIEW_NEON_AUTH_ISSUER }}
+          PREVIEW_NEON_AUTH_COOKIE_SECRET: ${{ secrets.PREVIEW_NEON_AUTH_COOKIE_SECRET }}
+          PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          ORIGIN="$(pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts origin --deploy-json preview-deploy.json)"
+          echo "origin=${ORIGIN}" >> "$GITHUB_OUTPUT"
+          PREVIEW_WORKER_ORIGIN="${ORIGIN}" \
+            pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts write \
+            --pr ${{ github.event.pull_request.number }} \
+            > secrets-file-path.txt
+          echo "file=$(cat secrets-file-path.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview Worker secrets
         if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
         working-directory: apps/web
         run: |
-          pnpm exec wrangler versions upload \
-            --preview-alias "pr-${{ github.event.pull_request.number }}" \
-            --message "PR #${{ github.event.pull_request.number }} @ ${GITHUB_SHA::7}"
+          set -euo pipefail
+          SECRETS_FILE="$(cat secrets-file-path.txt)"
+          pnpm exec wrangler preview secret bulk "${SECRETS_FILE}" \
+            --name "pr-${{ github.event.pull_request.number }}" \
+            --message "PR #${{ github.event.pull_request.number }} preview secrets @ ${GITHUB_SHA::7}"
+          rm -f "${SECRETS_FILE}"
+
+      - name: Audit preview secret allowlist
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        working-directory: apps/web
+        run: >-
+          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          audit
+          --pr ${{ github.event.pull_request.number }}
+
+      - name: Preview URL
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        run: |
+          echo "Cloudflare preview: ${{ steps.preview_secrets.outputs.origin }}" >> "$GITHUB_STEP_SUMMARY"

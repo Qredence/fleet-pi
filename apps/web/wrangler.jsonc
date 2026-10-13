@@ -11,4 +11,13 @@
     "FLEET_PI_DEPLOYMENT": "cloudflare",
     "NODE_ENV": "production",
   },
+  // Worker Previews (PR deploys) do not inherit production secrets; CI uploads
+  // an allowlisted secret set per preview. See assert-preview-worker-secrets.ts.
+  "previews": {
+    "vars": {
+      "FLEET_PI_DEPLOYMENT": "cloudflare",
+      "FLEET_PI_DEPLOYMENT_TRUST_ZONE": "preview",
+      "NODE_ENV": "production",
+    },
+  },
 }
