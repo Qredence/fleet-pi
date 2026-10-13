@@ -162,31 +162,36 @@ describe("local provider instance store", () => {
     })
   })
 
-  it("rejects writes with no model ids instead of corrupting the store", async () => {
-    await upsertLocalProviderInstance(undefined, sampleInstance, "sk-test")
+  it("stores a custom provider with no model ids so discovery can fill them", async () => {
+    await upsertLocalProviderInstance(
+      undefined,
+      { ...sampleInstance, modelId: undefined, modelIds: [] },
+      "sk-test"
+    )
+    const createdId = await createLocalProviderInstance(
+      undefined,
+      {
+        displayName: "No Models",
+        baseUrl: "https://api.example.com/v1",
+        modelIds: [],
+      },
+      toCustomProviderId,
+      "sk-created"
+    )
 
-    await expect(
-      upsertLocalProviderInstance(
-        undefined,
-        { ...sampleInstance, modelId: undefined, modelIds: [] },
-        "sk-bad"
-      )
-    ).rejects.toThrow(/no models configured/)
-    await expect(
-      createLocalProviderInstance(
-        undefined,
-        {
-          displayName: "No Models",
-          baseUrl: "https://api.example.com/v1",
-          modelIds: [],
-        },
-        toCustomProviderId,
-        "sk-bad"
-      )
-    ).rejects.toThrow(/no models configured/)
-
-    // The store stays readable and unchanged after the rejected writes.
-    expect(await listLocalProviderInstances()).toEqual([sampleInstance])
+    const instances = await listLocalProviderInstances()
+    expect(instances).toEqual([
+      expect.objectContaining({
+        id: sampleInstance.id,
+        modelId: "",
+        modelIds: [],
+      }),
+      expect.objectContaining({
+        id: createdId,
+        modelId: "",
+        modelIds: [],
+      }),
+    ])
   })
 
   it("accepts a stored row without modelIds (legacy/hand-edited store)", async () => {

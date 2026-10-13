@@ -126,7 +126,7 @@ export const PROVIDER_METADATA: Record<string, PiProviderUiMetadata> = {
   custom: {
     icon: Plug,
     placeholder: "sk-... / provider key",
-    help: "Register any OpenAI-, Anthropic-, or Google-compatible endpoint through Pi's native custom-provider mechanism. Requires a name, API key, https base URL, API family, and at least one model id. Deployed accounts only.",
+    help: "Register any OpenAI-, Anthropic-, or Google-compatible endpoint through Pi's native custom-provider mechanism. Requires a name, API key, https base URL, and API family. Model ids are optional — leave them blank and discover models from the base URL in LLM Models.",
   },
 }
 

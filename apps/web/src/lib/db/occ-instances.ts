@@ -161,15 +161,13 @@ function rowToInstance(
     api: meta.api,
     modelIds: meta.modelIds,
   })
-  // Rows with neither modelIds nor modelId are malformed; skip them like other
-  // invalid metadata instead of surfacing a provider with an empty model id.
-  const firstModelId = normalized.modelIds[0]
-  if (!firstModelId) return null
+  // An empty model list is valid: the provider can discover models from its
+  // base URL. Legacy rows still fall back to a single modelId.
   return {
     id: row.provider_id,
     displayName: meta.displayName,
     baseUrl: meta.baseUrl,
-    modelId: firstModelId,
+    modelId: normalized.modelIds[0] ?? "",
     api: normalized.api,
     modelIds: normalized.modelIds,
   }

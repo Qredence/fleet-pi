@@ -194,9 +194,11 @@ async function handleCustomProviderUpsert(
     const modelId = sanitizeProviderCredentialValue(body.modelId ?? "")
     if (modelId) models.push(modelId)
   }
-  if (models.length === 0) {
+  // Named OCC instances stay on the ids configured here. General custom
+  // providers may omit model ids and discover them from the base URL later.
+  if (models.length === 0 && isNamedOccTarget) {
     return jsonError(
-      "Custom providers require apiKey, baseUrl, and at least one model."
+      "OpenAI Chat Completions instances require apiKey, baseUrl, and a model id."
     )
   }
 

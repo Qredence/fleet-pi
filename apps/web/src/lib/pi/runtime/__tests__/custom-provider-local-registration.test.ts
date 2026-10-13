@@ -93,6 +93,33 @@ describe("registerCustomProviders with the local file store", () => {
     expect(model?.maxTokens).toBe(32_000)
   })
 
+  it("registers a custom provider that has no stored model ids, then the ids the user enables", async () => {
+    const localId = `${CUSTOM_PROVIDER_ID_PREFIX}discover`
+    listLocalProviderInstancesMock.mockResolvedValue([
+      {
+        id: localId,
+        displayName: "Discover Later",
+        baseUrl: "https://api.example.com/v1",
+        modelId: "",
+        api: "anthropic-messages",
+        modelIds: [],
+      },
+    ])
+    loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-discover")
+
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
+    services.settingsManager.setEnabledModels([`${localId}/claude-haiku-5-5`])
+    await registerCustomProviders(services, undefined)
+
+    expect(services.modelRuntime.getProvider(localId)).toBeDefined()
+    expect(
+      services.modelRuntime.getModel(localId, "claude-haiku-5-5")
+    ).toBeDefined()
+  })
+
   it("registers models the user enabled later, including ids that contain slashes", async () => {
     const localId = `${CUSTOM_PROVIDER_ID_PREFIX}command-code`
     listLocalProviderInstancesMock.mockResolvedValue([

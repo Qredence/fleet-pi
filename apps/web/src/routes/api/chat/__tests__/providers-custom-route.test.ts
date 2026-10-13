@@ -280,6 +280,48 @@ describe("POST /api/chat/providers with createOccInstance", () => {
     )
   })
 
+  it("creates a local custom provider without model ids", async () => {
+    const response = await handlers.POST({
+      request: postRequest({
+        providerId: "custom",
+        apiKey: "sk-test",
+        baseUrl: "https://api.example.com/v1",
+        displayName: "Discover Later",
+        createOccInstance: true,
+        api: "anthropic-messages",
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(createLocalProviderInstanceMock).toHaveBeenCalledWith(
+      undefined,
+      {
+        displayName: "Discover Later",
+        baseUrl: "https://api.example.com/v1",
+        api: "anthropic-messages",
+        modelIds: [],
+      },
+      expect.any(Function),
+      "sk-test"
+    )
+  })
+
+  it("still requires a model id for a named OpenAI Chat Completions instance", async () => {
+    const response = await handlers.POST({
+      request: postRequest({
+        providerId: "openai-chat-completions",
+        apiKey: "sk-test",
+        baseUrl: "https://api.example.com/v1",
+        displayName: "Named OCC",
+        createOccInstance: true,
+        api: "openai-completions",
+      }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(createLocalProviderInstanceMock).not.toHaveBeenCalled()
+  })
+
   it("updates an existing local instance in place (no new id allocation)", async () => {
     const existingId = `${CUSTOM_PROVIDER_ID_PREFIX}my-endpoint`
     const response = await handlers.POST({

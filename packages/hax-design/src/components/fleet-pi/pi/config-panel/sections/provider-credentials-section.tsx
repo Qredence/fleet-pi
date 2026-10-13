@@ -325,7 +325,7 @@ function ActiveProviderList({
               title={provider.name}
               subtitle={
                 isCustom
-                  ? "Custom provider · API key + base URL + models"
+                  ? "Custom provider · API key + base URL"
                   : openAiChat
                     ? "OpenAI-compatible · API key + base URL + model name"
                     : provider.envVarName
@@ -378,7 +378,7 @@ function ActiveProviderList({
               >
                 <ProviderCredentialFields
                   attemptedSave={attemptedSave}
-                  api={provider.api ?? api}
+                  api={api}
                   apiKey={apiKey}
                   baseUrl={baseUrl}
                   modelId={modelId}
@@ -611,7 +611,7 @@ function AddProviderEditorPanel({
           <p className="text-sm font-medium">Configure {provider.name}</p>
           <p className="text-xs text-pretty text-muted-foreground">
             {isCustomTemplate
-              ? "Name this custom provider, pick its API family, then enter its API key, https base URL, and model ids."
+              ? "Name this custom provider, pick its API family, then enter its API key and https base URL. Model ids are optional."
               : openAiChat
                 ? "Name this OpenAI-compatible provider, then enter its API key, base URL, and model name."
                 : `Stored as ${provider.envVarName} for this account.`}
@@ -621,7 +621,7 @@ function AddProviderEditorPanel({
 
       <ProviderCredentialFields
         attemptedSave={attemptedSave}
-        api={provider.api ?? api}
+        api={api}
         apiKey={apiKey}
         baseUrl={baseUrl}
         modelId={modelId}
@@ -743,7 +743,7 @@ function ProviderPickerRow({
         <div className="truncate text-sm font-medium">{provider.name}</div>
         <div className="truncate text-xs text-muted-foreground">
           {isCustomTemplate
-            ? "API family + key + https base URL + models"
+            ? "API family + key + https base URL"
             : openAiChat
               ? "API key + base URL + model name"
               : provider.envVarName}
