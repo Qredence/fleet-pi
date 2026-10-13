@@ -73,6 +73,32 @@ function extractPnpmCommands(content) {
   return Array.from(commands).sort()
 }
 
+function existenceOnlyReasonFor(scriptName) {
+  if (EXISTENCE_ONLY_SCRIPTS.has(scriptName)) {
+    if (scriptName === "syncpack:fix") {
+      return "existence check only - modifies files"
+    }
+    if (
+      scriptName === "chat:migrate" ||
+      scriptName === "auth:migrate" ||
+      scriptName === "neon:deploy" ||
+      scriptName === "neon:env-pull" ||
+      scriptName === "neon:verify" ||
+      scriptName === "quarantine-orphan-sessions" ||
+      scriptName === "remap-auth-user-ids"
+    ) {
+      return "existence check only - requires Neon credentials"
+    }
+    return "existence check only - requires e2e runtime setup"
+  }
+  // CI already runs the full suite in the dedicated test job; a parallel
+  // dry-run here races the same vitest workers and flakes under load.
+  if (scriptName === "test" && process.env.CI) {
+    return "existence check only - verified by CI test job"
+  }
+  return undefined
+}
+
 function extractScriptName(command) {
   const parts = command.split(/\s+/)
   if (parts[0] !== "pnpm") return null
@@ -136,21 +162,9 @@ function main() {
 
     // For scripts that mutate files or require extra runtime setup, only check
     // existence instead of executing them in the validator job.
-    if (EXISTENCE_ONLY_SCRIPTS.has(scriptName)) {
-      const reason =
-        scriptName === "syncpack:fix"
-          ? "existence check only - modifies files"
-          : scriptName === "chat:migrate" ||
-              scriptName === "auth:migrate" ||
-              scriptName === "neon:deploy" ||
-              scriptName === "neon:env-pull" ||
-              scriptName === "neon:verify" ||
-              scriptName === "quarantine-orphan-sessions" ||
-              scriptName === "remap-auth-user-ids"
-            ? "existence check only - requires Neon credentials"
-            : "existence check only - requires e2e runtime setup"
-
-      console.log(`✅ PASS: "${command}" (${reason})`)
+    const existenceOnlyReason = existenceOnlyReasonFor(scriptName)
+    if (existenceOnlyReason) {
+      console.log(`✅ PASS: "${command}" (${existenceOnlyReason})`)
       passed++
       continue
     }
