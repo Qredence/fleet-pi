@@ -465,3 +465,35 @@ function parsePipelineSegments(command: string): Array<string> {
 function deny(reason: string): CommandPolicyResult {
   return { allowed: false, reason }
 }
+
+/**
+ * Agent-mode tiers for the Pi Durable spike. Protected paths stay blocked.
+ * Rationale-required paths stay blocked until a later issue carries a rationale.
+ */
+export function agentWorkspaceMutationBlock(path: string): string | undefined {
+  const classified = classifyToolPath(path)
+  if (!classified.scoped) return undefined
+  switch (classified.tier) {
+    case "free":
+      return undefined
+    case "protected":
+      return `protected ${classified.relativePath}`
+    case "rationale-required":
+      return `${classified.relativePath} without a rationale`
+    default: {
+      const exhaustive: never = classified.tier
+      return exhaustive
+    }
+  }
+}
+
+export function agentWorkspaceBashBlock(command: string): string | undefined {
+  if (bashEvasionTargetsProtectedWorkspace(command)) {
+    return "protected system/** or evals/**"
+  }
+  for (const target of listMutatingCommandTargets(command)) {
+    const block = agentWorkspaceMutationBlock(target)
+    if (block) return block
+  }
+  return undefined
+}

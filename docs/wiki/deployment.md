@@ -1,6 +1,6 @@
 # Deployment
 
-Fleet Pi deploys to **Cloudflare Workers** (`fleet-pi-web`) for the web UI and catalog APIs, with optional **Neon Function** for long-running chat streaming when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set.
+Fleet Pi deploys to **Cloudflare Workers** (`fleet-pi-web`) for the web UI and catalog APIs. The current production chat stream is an **interim Neon Function** when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. The Pi Durable spike keeps a turn inside the user's Durable Object (`UserPiDurable`) instead of stretching that Worker request or the Function.
 
 ## Neon provisioning (`neon.ts`)
 
@@ -103,6 +103,13 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   plan (10 MB limit). Features that need a real filesystem or processes
   (local workspace projection/provenance, npm package installs) degrade the
   same way they do on Cloudflare; tools run in Daytona.
+- Interim split: the Worker serves the UI, Settings, and catalog. Production
+  `/api/chat` still streams from the Neon Function while
+  `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. That Function path is interim.
+  The spike at `POST /api/chat/durable-spike` addresses `USER_PI_DURABLE`
+  by the signed-in user id. The object keeps the transcript and any in-flight
+  task across a new request, so a turn is not a longer Worker invocation.
+  Production `/api/chat` does not enter the spike.
 
 ## Build
 

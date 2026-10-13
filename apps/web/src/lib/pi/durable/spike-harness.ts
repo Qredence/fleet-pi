@@ -1,0 +1,399 @@
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
+import {
+  AssistantEntry,
+  Harness,
+  ToolTask,
+  createRegistry,
+  defineExtension,
+  defineTool,
+} from "@earendil-works/pi-durable"
+import { Type } from "typebox"
+import {
+  agentWorkspaceBashBlock,
+  agentWorkspaceMutationBlock,
+} from "../command-policy"
+import { createSpikeExecutionEnv } from "./spike-env"
+import type {
+  Storage,
+  ToolExecutionApi,
+  ToolExecutionResult,
+} from "@earendil-works/pi-durable"
+import type { Context } from "@earendil-works/chord"
+import type { SpikeSandboxPort } from "./spike-env"
+
+const context: Context = BACKGROUND_CONTEXT
+
+export const SPIKE_MODEL_REPLY = "spike model reply"
+export const SPIKE_ECHO_COMMAND = "echo fleet-pi-spike"
+export const SPIKE_ECHO_TEXT = "fleet-pi-spike"
+
+export type SpikeToolMode = "sandbox" | "model-only"
+
+export type SpikeTrace = {
+  reads: number
+  writes: number
+  bashes: number
+  /** The first read or bash waits forever so a second harness can recover it. */
+  hang: boolean
+}
+
+export function createSpikeTrace(): SpikeTrace {
+  return { reads: 0, writes: 0, bashes: 0, hang: false }
+}
+
+type SpikeHarnessHandle = Awaited<ReturnType<typeof Harness.open>>
+
+const spikeModel = {
+  provider: "spike",
+  id: "spike",
+  api: "openai-completions",
+  name: "spike",
+}
+
+function modelReplyMessage() {
+  return {
+    role: "assistant" as const,
+    content: [{ type: "text" as const, text: SPIKE_MODEL_REPLY }],
+    stopReason: "stop" as const,
+    api: "openai-completions" as const,
+    provider: "spike",
+    model: "spike",
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    timestamp: Date.now(),
+  }
+}
+
+const spikeModels = {
+  getModel(provider: string, modelId: string) {
+    if (provider !== "spike" || modelId !== "spike") return undefined
+    return spikeModel
+  },
+  streamSimple() {
+    const message = modelReplyMessage()
+    return {
+      *[Symbol.asyncIterator]() {
+        yield { type: "text_delta", partial: message }
+      },
+      result: () => Promise.resolve(message),
+    }
+  },
+  fetchDeferred() {
+    return Promise.reject(new Error("Pi Durable spike has no deferred fetch"))
+  },
+  cancelDeferred() {
+    return undefined
+  },
+}
+
+function hangFirst(trace: SpikeTrace, count: number) {
+  if (trace.hang && count === 1) return new Promise<void>(() => undefined)
+  return Promise.resolve()
+}
+
+export function createScriptedPort(trace: SpikeTrace): SpikeSandboxPort {
+  const files = new Map<string, string>([["notes.txt", "notes"]])
+  return {
+    async read(path) {
+      trace.reads += 1
+      await hangFirst(trace, trace.reads)
+      return files.get(path) ?? ""
+    },
+    write(path, content) {
+      const block = agentWorkspaceMutationBlock(path)
+      if (block) return Promise.reject(new Error(block))
+      trace.writes += 1
+      files.set(path, content)
+      return Promise.resolve()
+    },
+    async exec(command) {
+      const block = agentWorkspaceBashBlock(command)
+      if (block) return { exitCode: 1, output: block }
+      trace.bashes += 1
+      await hangFirst(trace, trace.bashes)
+      const output = command.startsWith("echo ")
+        ? `${command.slice("echo ".length)}\n`
+        : ""
+      return { exitCode: 0, output }
+    },
+  }
+}
+
+function blocked(text: string): ToolExecutionResult {
+  return { output: [{ type: "text", text }], isError: true }
+}
+
+function requireEnv(api: ToolExecutionApi) {
+  if (!api.env) throw new Error("Pi Durable spike tool has no execution env")
+  return api.env
+}
+
+function sandboxTools() {
+  const read = defineTool({
+    name: "read",
+    description: "Read a file in the user sandbox.",
+    replay: "safe",
+    parameters: Type.Object({ path: Type.String() }),
+    execute: async (args: { path: string }, api: ToolExecutionApi) => {
+      const text = await requireEnv(api).readTextFile(args.path, context)
+      if (!text.ok) throw new Error(text.error.message)
+      return { output: [{ type: "text" as const, text: text.value }] }
+    },
+  })
+  const search = defineTool({
+    name: "search",
+    description: "Search a file in the user sandbox.",
+    replay: "safe",
+    parameters: Type.Object({ path: Type.String() }),
+    execute: async (args: { path: string }, api: ToolExecutionApi) => {
+      const text = await requireEnv(api).readTextFile(args.path, context)
+      if (!text.ok) throw new Error(text.error.message)
+      return { output: [{ type: "text" as const, text: text.value }] }
+    },
+  })
+  const write = defineTool({
+    name: "write",
+    description: "Write a file in the user sandbox.",
+    parameters: Type.Object({
+      path: Type.String(),
+      content: Type.String(),
+    }),
+    execute: async (
+      args: { path: string; content: string },
+      api: ToolExecutionApi
+    ) => {
+      const block = agentWorkspaceMutationBlock(args.path)
+      if (block) return blocked(block)
+      const written = await requireEnv(api).writeFile(
+        args.path,
+        args.content,
+        context
+      )
+      if (!written.ok) throw new Error(written.error.message)
+      return { output: [{ type: "text" as const, text: "wrote" }] }
+    },
+  })
+  const edit = defineTool({
+    name: "edit",
+    description: "Edit a file in the user sandbox.",
+    parameters: Type.Object({
+      path: Type.String(),
+      content: Type.String(),
+    }),
+    execute: async (
+      args: { path: string; content: string },
+      api: ToolExecutionApi
+    ) => {
+      const block = agentWorkspaceMutationBlock(args.path)
+      if (block) return blocked(block)
+      const written = await requireEnv(api).writeFile(
+        args.path,
+        args.content,
+        context
+      )
+      if (!written.ok) throw new Error(written.error.message)
+      return { output: [{ type: "text" as const, text: "edited" }] }
+    },
+  })
+  const bash = defineTool({
+    name: "bash",
+    description: "Run a command in the user sandbox.",
+    parameters: Type.Object({ command: Type.String() }),
+    execute: async (args: { command: string }, api: ToolExecutionApi) => {
+      const block = agentWorkspaceBashBlock(args.command)
+      if (block) return blocked(block)
+      let output = ""
+      const result = await requireEnv(api).exec(
+        args.command,
+        {
+          onOutput: (text) => {
+            output += text
+          },
+        },
+        context
+      )
+      if (!result.ok) throw new Error(result.error.message)
+      return { output: [{ type: "text" as const, text: output }] }
+    },
+  })
+  return [read, search, write, edit, bash]
+}
+
+function registryFor(mode: SpikeToolMode) {
+  const registry = createRegistry()
+  const tools = mode === "sandbox" ? sandboxTools() : []
+  if (tools.length > 0) {
+    registry.install(defineExtension({ name: "spike-sandbox", tools }))
+  }
+  return { registry, toolNames: tools.map((tool) => tool.name) }
+}
+
+async function assistantToolCall(
+  harness: SpikeHarnessHandle,
+  name: string,
+  args: Record<string, string>,
+  callId: string
+) {
+  const root = await harness.root(context)
+  const entry = await root.commit(
+    (tx) =>
+      tx.appendEntry(AssistantEntry, root.id, {
+        model: [
+          {
+            role: "assistant",
+            content: [{ type: "toolCall", id: callId, name, arguments: args }],
+            stopReason: "toolUse",
+            api: "openai-completions",
+            provider: "spike",
+            model: "spike",
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            timestamp: Date.now(),
+          },
+        ],
+      }),
+    context
+  )
+  await root.commit(async (tx) => {
+    await tx.createTask(
+      ToolTask,
+      { kind: "model", assistant: entry.id, callId },
+      { ownership: { kind: "conversation" }, conversationId: root.id }
+    )
+  }, context)
+  harness.resume()
+}
+
+async function readTranscript(harness: SpikeHarnessHandle): Promise<string> {
+  const root = await harness.root(context)
+  const page = await root.entries(
+    { order: "ascending" },
+    50,
+    undefined,
+    context
+  )
+  return JSON.stringify(page.items)
+}
+
+export type OpenSpikeHarness = {
+  toolNames: Array<string>
+  rootId: () => Promise<string>
+  resume: () => void
+  transcript: () => Promise<string>
+  runEcho: () => Promise<{ rootId: string; transcript: string }>
+  runBlockedBash: (command: string) => Promise<string>
+  beginHanging: (tool: "read" | "bash") => Promise<void>
+  modelReply: (prompt: string) => Promise<string>
+}
+
+export async function openSpikeHarness(
+  storage: Storage,
+  mode: SpikeToolMode,
+  port: SpikeSandboxPort
+): Promise<OpenSpikeHarness> {
+  const { registry, toolNames } = registryFor(mode)
+  const harness = await Harness.open(
+    storage,
+    {
+      models: spikeModels as never,
+      registry,
+      env: () => createSpikeExecutionEnv("spike-sandbox", port),
+    },
+    context
+  )
+  const root = await harness.root(context, {
+    agent: { model: { provider: "spike", modelId: "spike" } },
+  })
+  return {
+    toolNames,
+    resume: () => harness.resume(),
+    rootId: () => Promise.resolve(String(root.id)),
+    transcript: () => readTranscript(harness),
+    async runEcho() {
+      await assistantToolCall(
+        harness,
+        "bash",
+        { command: SPIKE_ECHO_COMMAND },
+        "echo-1"
+      )
+      const transcript = await waitForText(
+        () => readTranscript(harness),
+        SPIKE_ECHO_TEXT
+      )
+      return { rootId: String(root.id), transcript }
+    },
+    async runBlockedBash(command) {
+      await assistantToolCall(harness, "bash", { command }, "block-1")
+      return waitForText(() => readTranscript(harness), "protected")
+    },
+    async beginHanging(tool) {
+      if (tool === "bash") {
+        await assistantToolCall(
+          harness,
+          "bash",
+          { command: "echo hang" },
+          "bash-hang"
+        )
+        return
+      }
+      await assistantToolCall(
+        harness,
+        "read",
+        { path: "notes.txt" },
+        "read-hang"
+      )
+    },
+    async modelReply(prompt) {
+      const submission = await root.submit(
+        { type: "input", content: prompt },
+        context
+      )
+      await submission.wait(context)
+      return waitForText(() => readTranscript(harness), SPIKE_MODEL_REPLY)
+    },
+  }
+}
+
+async function waitForText(
+  read: () => Promise<string>,
+  needle: string
+): Promise<string> {
+  const started = Date.now()
+  let latest = ""
+  while (Date.now() - started < 4000) {
+    latest = await read()
+    if (latest.includes(needle)) return latest
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  throw new Error(`Timed out waiting for ${needle}. Last transcript: ${latest}`)
+}
+
+export async function waitForCount(
+  read: () => number,
+  target: number
+): Promise<void> {
+  const started = Date.now()
+  while (Date.now() - started < 4000) {
+    if (read() >= target) return
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  throw new Error(`Timed out waiting for count ${target}, saw ${read()}`)
+}

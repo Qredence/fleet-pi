@@ -26,7 +26,8 @@ export function rateLimitRuleForRequest(
   if (
     pathname === "/api/chat" ||
     pathname === "/api/chat/new" ||
-    pathname === "/api/chat/resume"
+    pathname === "/api/chat/resume" ||
+    pathname === "/api/chat/durable-spike"
   ) {
     return FLEET_PI_CHAT_START_RATE_LIMIT
   }

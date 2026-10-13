@@ -29,11 +29,14 @@
         "src/routes/**/*.tsx",
         "src/routes/api/**/*.ts",
         "src/lib/pi/chat-runtime/router.ts",
+        "src/lib/pi/durable/user-pi-durable.worker.ts",
         "src/lib/**/*.test.ts",
+        "src/lib/**/*.workers.test.ts",
         "src/lib/**/*.spec.ts"
       ],
       "ignoreDependencies": [
         "nitro",
+        "cloudflare",
         "@tanstack/router-plugin",
         "tailwindcss",
         "pino-pretty",

@@ -101,3 +101,10 @@ minimumReleaseAgeExclude:
   - '@types/node'
   - 'better-sqlite3'
   - 'jscpd'
+  - '@earendil-works/chord@1.2.0'
+  - '@earendil-works/pi-codemode@1.2.0'
+  - '@earendil-works/pi-durable@1.2.0'
+  - '@earendil-works/pi-telemetry@1.2.0'
+  - '@cloudflare/vitest-plugin@1.4.1'
+  - miniflare@5.20261006.2-beta
+  - wrangler@4.150.0

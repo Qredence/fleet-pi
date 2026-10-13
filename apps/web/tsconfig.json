@@ -7,7 +7,9 @@
     "eslint.config.js",
     "vite.config.ts",
     "vitest.config.ts",
-    "playwright.config.ts"
+    "vitest.workers.config.ts",
+    "playwright.config.ts",
+    "src/lib/pi/durable/cloudflare-workers.d.ts"
   ],
   "compilerOptions": {
     "target": "ES2022",

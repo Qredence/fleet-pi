@@ -5,17 +5,25 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./src/server.ts",
   "observability": { "enabled": true },
+  // One SQLite Durable Object per user owns that user's Pi Durable storage.
+  // The spike route reads env.USER_PI_DURABLE, so previews bind the same class.
+  "durable_objects": {
+    "bindings": [{ "name": "USER_PI_DURABLE", "class_name": "UserPiDurable" }],
+  },
+  "exports": {
+    "UserPiDurable": { "type": "durable-object", "storage": "sqlite" },
+  },
   "ratelimits": [
     {
       "name": "FLEET_PI_SIGN_IN",
       "namespace_id": "1001",
-      "simple": { "limit": 10, "period": 60 }
+      "simple": { "limit": 10, "period": 60 },
     },
     {
       "name": "FLEET_PI_CHAT_START",
       "namespace_id": "1002",
-      "simple": { "limit": 30, "period": 60 }
-    }
+      "simple": { "limit": 30, "period": 60 },
+    },
   ],
   // Non-secret config. Secrets (DB URLs, auth, provider keys) go through
   // `wrangler secret`; see docs/wiki/deployment.md.
@@ -30,6 +38,9 @@
       "FLEET_PI_DEPLOYMENT": "cloudflare",
       "FLEET_PI_DEPLOYMENT_TRUST_ZONE": "preview",
       "NODE_ENV": "production",
+    },
+    "durable_objects": {
+      "bindings": [{ "name": "USER_PI_DURABLE", "class_name": "UserPiDurable" }],
     },
   },
 }
