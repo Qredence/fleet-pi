@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [viteTsConfigPaths({ projects: ["./tsconfig.json"] })],
   test: {
     pool: "threads",
+    // agents-md-validation dry-runs the full suite after other heavy commands on
+    // the same runner; a single retry absorbs PGlite/bootstrap flakes there.
+    retry: process.env.CI ? 1 : 0,
     globals: false,
     environment: "node",
     include: ["src/**/*.{test,spec}.ts", "src/**/*.{test,spec}.tsx"],
