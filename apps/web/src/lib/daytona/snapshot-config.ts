@@ -1,15 +1,12 @@
-import { createDaytonaClient } from "./client"
 import type { Daytona } from "@daytona/sdk"
 
 const SNAPSHOT_PREFIX = "fleet-pi-v"
 
 export async function findLatestSnapshot(
-  client?: Daytona
+  client: Daytona
 ): Promise<string | undefined> {
-  const daytona = client ?? createDaytonaClient()
-
   try {
-    const result = await daytona.snapshot.list(1, 20)
+    const result = await client.snapshot.list(1, 20)
     const fleetPiSnapshots = result.items
       .filter((s) => s.name.startsWith(SNAPSHOT_PREFIX) && s.state === "active")
       .sort((a, b) => {

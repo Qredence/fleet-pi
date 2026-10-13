@@ -478,6 +478,16 @@ describe("session factory", () => {
     dateSpy.mockRestore()
   })
 
+  it("does not bootstrap the git workspace for hosted chat", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({
+      projectRoot: "/repo",
+      workspaceRoot: "/repo/agent-workspace",
+    })
+    expect(mocks.bootstrapAgentWorkspace).not.toHaveBeenCalled()
+  })
+
   it("keeps independent caches for distinct projectRoots", async () => {
     mocks.bootstrapAgentWorkspace.mockResolvedValue({
       status: "ok",

@@ -1,7 +1,15 @@
+import { classifyToolPath } from "../../../../../.pi/extensions/lib/mutation-tier"
+
 export type CommandPolicyResult = {
   allowed: boolean
   reason?: string
 }
+
+const PROTECTED_WORKSPACE_MENTION =
+  /agent-workspace\/(?:system|evals)\b|(?:^|[\s;&|()])(?:system|evals)\b|\/(?:system|evals)\//
+
+const BASH_PROTECTED_MUTATION_HINT =
+  /\b(rm|rmdir|mv|cp|install|sed|tee|chmod|truncate|python|node|perl|ruby|php|awk|git|xargs|env)\b/i
 
 const BLOCKED_SYNTAX_PATTERNS = [
   /\$\(/,
@@ -118,6 +126,126 @@ const GIT_READ_ONLY_SUBCOMMANDS = new Set([
 ])
 
 const PACKAGE_MANAGER_READ_ONLY_SUBCOMMANDS = new Set(["list", "ls", "why"])
+
+/**
+ * Path arguments of mutating commands, plus redirection targets.
+ * Agent mode uses this to keep `system/` and `evals/` off raw bash.
+ */
+export function listMutatingCommandTargets(command: string): Array<string> {
+  if (!command || typeof command !== "string") return []
+
+  const targets: Array<string> = []
+  for (const clause of splitShellClauses(command)) {
+    const tokens = tokenizeShellLike(clause)
+    let commandName: string | undefined
+    let expectingRedirect = false
+    for (const token of tokens) {
+      if (!commandName && isEnvAssignment(token)) continue
+      const redirectTarget = redirectionTarget(token)
+      if (redirectTarget === "pending") {
+        expectingRedirect = true
+        continue
+      }
+      if (redirectTarget) {
+        targets.push(redirectTarget)
+        continue
+      }
+      if (expectingRedirect) {
+        targets.push(token)
+        expectingRedirect = false
+        continue
+      }
+      if (!commandName) {
+        commandName = normalizeCommandName(token)
+        continue
+      }
+      if (MUTATING_COMMANDS.has(commandName) && !token.startsWith("-")) {
+        targets.push(token)
+      }
+    }
+    targets.push(...inPlaceEditTargets(commandName, tokens))
+  }
+  return targets
+}
+
+/**
+ * Catches bash shapes that mention `system/` or `evals/` but evade token
+ * extraction (interpreters, wrappers, or `cd` + relative targets).
+ */
+export function bashEvasionTargetsProtectedWorkspace(command: string): boolean {
+  const normalized = command.replace(/\\/g, "/")
+  if (!PROTECTED_WORKSPACE_MENTION.test(normalized)) return false
+
+  for (const target of listMutatingCommandTargets(command)) {
+    const classified = classifyToolPath(target)
+    if (classified.scoped && classified.tier === "protected") {
+      return false
+    }
+  }
+
+  return BASH_PROTECTED_MUTATION_HINT.test(normalized)
+}
+
+/**
+ * `sed` without `-n` and `find -delete` / `-exec` edit files, but they are
+ * not in the mutating-command set because Plan mode allows their read forms.
+ */
+function inPlaceEditTargets(
+  commandName: string | undefined,
+  tokens: Array<string>
+): Array<string> {
+  if (!commandName) return []
+  const args = tokens.slice(1).filter((token) => !isEnvAssignment(token))
+  const findDeletes =
+    commandName === "find" &&
+    args.some((arg) => arg === "-delete" || arg === "-exec")
+  const sedEdits =
+    commandName === "sed" &&
+    !args.some((arg) => arg === "-n" || arg.startsWith("-n"))
+  const editsInPlace = findDeletes || sedEdits
+  if (!editsInPlace) return []
+  return args.filter((arg) => !arg.startsWith("-"))
+}
+
+function redirectionTarget(token: string): string | "pending" | undefined {
+  if (token === ">" || token === ">>") return "pending"
+  if (token.startsWith(">>") && token.length > 2) return token.slice(2)
+  if (token.startsWith(">") && token.length > 1) return token.slice(1)
+  return undefined
+}
+
+function splitShellClauses(command: string): Array<string> {
+  const clauses: Array<string> = []
+  let current = ""
+  let quote: '"' | "'" | undefined
+
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index] ?? ""
+    if (quote) {
+      current += char
+      if (char === quote) quote = undefined
+      continue
+    }
+    if (char === '"' || char === "'") {
+      quote = char
+      current += char
+      continue
+    }
+    const isAnd = char === "&" && command[index + 1] === "&"
+    if (char === ";" || char === "|" || isAnd) {
+      if (isAnd) index += 1
+      const trimmed = current.trim()
+      if (trimmed) clauses.push(trimmed)
+      current = ""
+      continue
+    }
+    current += char
+  }
+
+  const trimmed = current.trim()
+  if (trimmed) clauses.push(trimmed)
+  return clauses
+}
 
 export function evaluatePlanCommand(command: string): CommandPolicyResult {
   // Input validation: reject null/undefined and non-string inputs

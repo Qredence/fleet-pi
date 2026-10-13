@@ -262,6 +262,11 @@ export async function runChatMigrations(
   await client.query(CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL)
   log("Reconciled fleet_pi_check_session_owner (tombstone-aware)")
 
+  // Not ledger-gated: a branch can record 20260723_pi_force_row_level_security
+  // and still have FORCE off if the table was altered after that row.
+  await client.query(CHAT_POSTGRES_FORCE_RLS_SQL)
+  log("Reconciled FORCE ROW LEVEL SECURITY on pi_* tables")
+
   // Not ledger-gated: re-assert fleet_pi_app grants every run so a role
   // created after the migrations were recorded still gets its privileges.
   await client.query(CHAT_POSTGRES_APP_ROLE_GRANTS_SQL)

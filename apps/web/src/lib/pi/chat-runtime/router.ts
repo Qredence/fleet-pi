@@ -1,4 +1,5 @@
 import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
+import { enforceNamedEdgeRateLimit } from "@/lib/deployment/edge-rate-limit"
 import { abortChatHandler } from "@/lib/pi/chat-runtime/handlers/abort"
 import { newChatHandler } from "@/lib/pi/chat-runtime/handlers/new"
 import { postChatHandler } from "@/lib/pi/chat-runtime/handlers/post-chat"
@@ -121,6 +122,15 @@ async function dispatchChatRuntimeRequest(request: Request) {
 }
 
 export async function handleChatRuntimeRequest(request: Request) {
+  // The Function has no Cloudflare rate-limit binding. The in-process bucket
+  // still rejects a burst on this isolate before a mirror or Gateway call.
+  // Isolates do not share the counter; Worker requests keep FLEET_PI_CHAT_START.
+  const limited = await enforceNamedEdgeRateLimit({
+    request,
+    allowMemoryLimit: true,
+  })
+  if (limited) return applyCors(request, limited)
+
   // The Neon Function surface always requires auth.
   const response = await runWithChatAuthSurface("neon-function", () =>
     dispatchChatRuntimeRequest(request)

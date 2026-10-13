@@ -7,11 +7,13 @@ import {
   resolveHarnessWriteTarget,
   uploadAgentWorkspaceTree,
 } from "../harness-write-target"
+import { SANDBOX_WARMING_MESSAGE } from "../resolve-ready-sandbox"
 import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "../tool-context"
 import type { Sandbox } from "@daytona/sdk"
+import type { UserSandboxHandle } from "../user-sandbox"
 
 const getCachedUserSandbox = vi.hoisted(() => vi.fn())
 const getInFlightUserSandbox = vi.hoisted(() => vi.fn())
@@ -107,5 +109,57 @@ describe("resolveHarnessWriteTarget", () => {
     ).resolves.toEqual({ kind: "sandbox", sandbox })
 
     untrackDaytonaToolSession("session-2", undefined)
+  })
+
+  it("returns a warming error when sandbox start exceeds the timeout", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    getCachedUserSandbox.mockReturnValue(undefined)
+    getInFlightUserSandbox.mockReturnValue(undefined)
+    trackDaytonaToolSession("session-3", undefined, "user-3")
+    const startWarmUp = vi.fn(() => new Promise<UserSandboxHandle>(() => {}))
+
+    await expect(
+      resolveHarnessWriteTarget(
+        { cwd: "/repo", sessionId: "session-3" },
+        {
+          timeoutMs: 20,
+          resolveApiKey: () => Promise.resolve("byok-key"),
+          startWarmUp,
+        }
+      )
+    ).resolves.toEqual({
+      kind: "unavailable",
+      message: SANDBOX_WARMING_MESSAGE,
+    })
+    expect(startWarmUp).toHaveBeenCalledWith({
+      userId: "user-3",
+      apiKey: "byok-key",
+    })
+
+    untrackDaytonaToolSession("session-3", undefined)
+  })
+
+  it("does not start a sandbox when the user has no Daytona key", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    getCachedUserSandbox.mockReturnValue(undefined)
+    getInFlightUserSandbox.mockReturnValue(undefined)
+    trackDaytonaToolSession("session-4", undefined, "user-4")
+    const startWarmUp = vi.fn()
+
+    await expect(
+      resolveHarnessWriteTarget(
+        { cwd: "/repo", sessionId: "session-4" },
+        {
+          resolveApiKey: () => Promise.resolve(undefined),
+          startWarmUp,
+        }
+      )
+    ).resolves.toEqual({
+      kind: "unavailable",
+      message: expect.stringContaining("Daytona sandbox"),
+    })
+    expect(startWarmUp).not.toHaveBeenCalled()
+
+    untrackDaytonaToolSession("session-4", undefined)
   })
 })

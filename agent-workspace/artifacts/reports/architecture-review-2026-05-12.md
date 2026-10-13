@@ -1,3 +1,5 @@
+Historical report from 2026-05-12. It is not the current architecture.
+
 # Fleet Pi Agent-Workspace Architecture Review
 
 **Date**: 2026-05-12  

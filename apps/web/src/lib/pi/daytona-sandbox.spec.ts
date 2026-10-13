@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import daytonaSandboxExtension from "../../../../../.pi/extensions/daytona-sandbox"
+import { resolveHarnessWriteTarget } from "../daytona/harness-write-target"
 
 interface RegisteredTool {
   name: string
@@ -19,11 +20,15 @@ interface RegisteredTool {
 
 const {
   mockGetCachedUserSandbox,
+  mockGetInFlightUserSandbox,
   mockGetSandboxStatus,
+  mockResolveDaytonaRuntimeApiKey,
   mockResolveDaytonaToolUser,
 } = vi.hoisted(() => ({
   mockGetCachedUserSandbox: vi.fn(),
+  mockGetInFlightUserSandbox: vi.fn(),
   mockGetSandboxStatus: vi.fn(),
+  mockResolveDaytonaRuntimeApiKey: vi.fn(() => Promise.resolve(undefined)),
   mockResolveDaytonaToolUser: vi.fn(),
 }))
 
@@ -33,8 +38,16 @@ vi.mock("../../../../../apps/web/src/lib/daytona/client", () => ({
 
 vi.mock("../../../../../apps/web/src/lib/daytona/user-sandbox", () => ({
   getCachedUserSandbox: mockGetCachedUserSandbox,
+  getInFlightUserSandbox: mockGetInFlightUserSandbox,
   getVolumeName: (userId: string) => `fleet-pi-ws-${userId}`,
 }))
+
+vi.mock(
+  "../../../../../apps/web/src/lib/pi/runtime/user-provider-secrets",
+  () => ({
+    resolveDaytonaRuntimeApiKey: mockResolveDaytonaRuntimeApiKey,
+  })
+)
 
 vi.mock("../../../../../apps/web/src/lib/daytona/tool-context", () => ({
   resolveDaytonaToolUser: mockResolveDaytonaToolUser,
@@ -129,9 +142,9 @@ describe("daytona sandbox extension", () => {
     const { bash, sessionStart } = registerExtension()
     await sessionStart({}, makeSessionStartContext())
 
-    expect(() =>
+    await expect(
       bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
-    ).toThrow("NOT run on your host")
+    ).rejects.toThrow("NOT run on your host")
   })
 
   it("lazily attaches after background warm-up fills the cache", async () => {
@@ -141,9 +154,9 @@ describe("daytona sandbox extension", () => {
     const { bash, sessionStart } = registerExtension()
     await sessionStart({}, makeSessionStartContext())
 
-    expect(() =>
+    await expect(
       bash.execute("call-1", { command: "pwd" }, undefined, vi.fn())
-    ).toThrow("NOT run on your host")
+    ).rejects.toThrow("NOT run on your host")
 
     const sandbox = {
       id: "sandbox-1",
@@ -195,6 +208,59 @@ describe("daytona sandbox extension", () => {
     expect(result.content[0]?.text).toContain("https://preview.example/3000")
     expect(result.content[0]?.text).toContain("/api/sandbox/preview?port=3000")
     expect(result.content[0]?.text).not.toContain("secret-preview-token")
+  })
+
+  it("attaches harness writes and bash to the same in-flight sandbox", async () => {
+    mockResolveDaytonaToolUser.mockReturnValue("user-1")
+    mockGetCachedUserSandbox.mockReturnValue(undefined)
+    const sandbox = { id: "sandbox-inflight" }
+    let resolveInFlight: (handle: {
+      sandbox: { id: string }
+      sandboxId: string
+      volumeId: string
+      volumeName: string
+      userId: string
+      daytonaSecretEnvVars: Array<string>
+    }) => void = () => {}
+    const inFlight = new Promise<{
+      sandbox: { id: string }
+      sandboxId: string
+      volumeId: string
+      volumeName: string
+      userId: string
+      daytonaSecretEnvVars: Array<string>
+    }>((resolve) => {
+      resolveInFlight = resolve
+    })
+    mockGetInFlightUserSandbox.mockReturnValue(inFlight)
+
+    const { bash, sessionStart } = registerExtension()
+    await sessionStart({}, makeSessionStartContext())
+
+    const write = resolveHarnessWriteTarget({
+      cwd: "/repo",
+      sessionId: "session-1",
+    })
+    const bashResult = bash.execute(
+      "call-1",
+      { command: "pwd" },
+      undefined,
+      vi.fn()
+    )
+    resolveInFlight({
+      sandbox,
+      sandboxId: "sandbox-inflight",
+      volumeId: "vol-1",
+      volumeName: "fleet-pi-ws-user-1",
+      userId: "user-1",
+      daytonaSecretEnvVars: [],
+    })
+
+    await expect(write).resolves.toEqual({
+      kind: "sandbox",
+      sandbox,
+    })
+    await expect(bashResult).resolves.not.toThrow()
   })
 })
 

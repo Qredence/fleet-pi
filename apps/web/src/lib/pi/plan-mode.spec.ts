@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { evaluateWorkspaceWrite } from "../../../../../.pi/extensions/lib/mutation-tier"
 import {
   applyPlanMode,
   cleanStepText,
@@ -87,6 +88,143 @@ describe("plan-mode utilities (vitest)", () => {
     })
   })
 
+  describe("agent workspace mutation tiers", () => {
+    it("blocks raw writes that resolve into system/", () => {
+      const direct = callTool("session-tier-system", {
+        toolName: "write",
+        input: {
+          path: "system/identity.md",
+          content: "changed",
+        },
+      })
+      const dotted = callTool("session-tier-system-dotdot", {
+        toolName: "write",
+        input: {
+          path: "agent-workspace/notes/../system/identity.md",
+          content: "changed",
+        },
+      })
+
+      expect(direct).toMatchObject({ block: true })
+      expect(direct?.reason).toContain("protected")
+      expect(dotted).toMatchObject({ block: true })
+      expect(dotted?.reason).toContain("protected")
+    })
+
+    it("requires a rationale for instructions/", () => {
+      const result = callTool("session-tier-instructions", {
+        toolName: "write",
+        input: {
+          path: "instructions/README.md",
+          content: "notes",
+        },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("rationale")
+    })
+
+    it("blocks memory/project/decisions.md without a rationale", () => {
+      const raw = callTool("session-tier-memory", {
+        toolName: "edit",
+        input: {
+          path: "agent-workspace/memory/project/decisions.md",
+          edits: [],
+        },
+      })
+      const workspaceWrite = evaluateWorkspaceWrite({
+        displayPath: "agent-workspace/memory/project/decisions.md",
+        relativePath: "memory/project/decisions.md",
+      })
+
+      expect(raw).toMatchObject({ block: true })
+      expect(raw?.reason).toContain("rationale")
+      expect(workspaceWrite).toMatchObject({ ok: false })
+    })
+
+    it("allows scratch writes and scratch bash", () => {
+      expect(
+        callTool("session-tier-scratch", {
+          toolName: "write",
+          input: { path: "scratch/note.md", content: "temp" },
+        })
+      ).toBeUndefined()
+      expect(
+        callTool("session-tier-scratch-bash", {
+          toolName: "bash",
+          input: { command: "rm scratch/note.md" },
+        })
+      ).toBeUndefined()
+    })
+
+    it("blocks absolute Daytona paths into system/", () => {
+      const result = callTool("session-tier-daytona-abs", {
+        toolName: "write",
+        input: {
+          path: "/home/daytona/agent-workspace/system/identity.md",
+          content: "changed",
+        },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("protected")
+    })
+
+    it("blocks bash that mentions protected paths without cooperative targets", () => {
+      const result = callTool("session-tier-bash-cd", {
+        toolName: "bash",
+        input: {
+          command: "cd agent-workspace/system && rm identity.md",
+        },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("protected")
+    })
+
+    it("blocks mutating bash aimed at system/ and evals/", () => {
+      const result = callTool("session-tier-bash", {
+        toolName: "bash",
+        input: { command: "rm -rf agent-workspace/system/identity.md" },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("protected")
+      expect(
+        callTool("session-tier-evals", {
+          toolName: "bash",
+          input: { command: "cp notes.md evals/memory-quality.md" },
+        })?.reason
+      ).toContain("protected")
+      expect(
+        callTool("session-tier-sed", {
+          toolName: "bash",
+          input: { command: "sed -i 's/a/b/' system/identity.md" },
+        })?.reason
+      ).toContain("protected")
+      expect(
+        callTool("session-tier-find", {
+          toolName: "bash",
+          input: {
+            command: "find agent-workspace/system -name '*.md' -delete",
+          },
+        })?.reason
+      ).toContain("protected")
+    })
+
+    it("still allows ordinary repo writes", () => {
+      expect(
+        callTool("session-tier-repo", {
+          toolName: "write",
+          input: {
+            path: "apps/web/src/routes/index.tsx",
+            content: "export {}",
+          },
+        })
+      ).toBeUndefined()
+    })
+  })
+
   describe("createPlanModeExtension context filtering", () => {
     it("keeps existing context messages when active mode context has not been injected yet", () => {
       const sessionId = "session-context-missing-active"
@@ -143,6 +281,32 @@ describe("plan-mode utilities (vitest)", () => {
     })
   })
 })
+
+function callTool(
+  sessionId: string,
+  event: { toolName: string; input: Record<string, unknown> }
+) {
+  const handler = createToolCallHandler()
+  return handler(
+    { type: "tool_call", toolCallId: "call-1", ...event },
+    { sessionManager: { getSessionId: () => sessionId } }
+  ) as { block?: boolean; reason?: string } | undefined
+}
+
+function createToolCallHandler() {
+  const handlers = new Map<string, (...args: Array<unknown>) => unknown>()
+  createPlanModeExtension()({
+    on(event: string, handler: unknown) {
+      handlers.set(event, handler as (...args: Array<unknown>) => unknown)
+    },
+    appendEntry() {},
+    registerTool() {},
+  } as unknown as Parameters<ReturnType<typeof createPlanModeExtension>>[0])
+
+  const handler = handlers.get("tool_call")
+  if (!handler) throw new Error("tool_call handler was not registered")
+  return handler
+}
 
 function createContextHandler() {
   const handlers = new Map<string, (...args: Array<unknown>) => unknown>()

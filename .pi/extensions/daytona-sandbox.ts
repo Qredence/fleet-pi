@@ -3,9 +3,9 @@
  * volume at /home/daytona/agent-workspace. Stock npm:@daytona/pi is for CLI only
  * (excluded from the web resource loader).
  *
- * Activation: only attach when `getCachedUserSandbox` is warm (eager warm-up in
- * server-runtime / workspace APIs after isDaytonaEnabled + BYOK key). Never
- * provision a sandbox from this extension without that gate.
+ * Activation: bash, read, write, and edit await the shared sandbox warm-up.
+ * That helper attaches a cached sandbox, joins an in-flight start, or starts
+ * one when the user has a Daytona key. It does not fall back to the host.
  */
 import {
   createBashTool,
@@ -26,6 +26,10 @@ import {
   type Sandbox,
   type ToolOperations,
 } from "../../apps/web/src/lib/daytona/sandbox-operations"
+import {
+  resolveReadySandbox,
+  SANDBOX_WARMING_MESSAGE,
+} from "../../apps/web/src/lib/daytona/resolve-ready-sandbox"
 import { SANDBOX_WORKSPACE_ROOT } from "../../apps/web/src/lib/daytona/sandbox-prepare"
 import { resolveDaytonaToolUser } from "../../apps/web/src/lib/daytona/tool-context"
 import {
@@ -39,6 +43,11 @@ interface ActiveSandbox {
   handle: UserSandboxHandle
   ops: ToolOperations
 }
+
+type SandboxAttach =
+  | { status: "active"; active: ActiveSandbox }
+  | { status: "warming" }
+  | { status: "missing" }
 
 const SANDBOX_UNAVAILABLE_MESSAGE =
   "Daytona sandbox is unavailable — the tool was NOT run on your host."
@@ -65,11 +74,33 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
     return active
   }
 
-  /** Attach now, or lazily once background warm-up populates the cache. */
-  function ensureActive(): ActiveSandbox | null {
-    if (active) return active
-    if (!expectedUserId) return null
-    return tryAttachFromCache(expectedUserId)
+  /** Attach a cached sandbox, or wait for the shared warm-up helper. */
+  async function ensureActive(): Promise<SandboxAttach> {
+    if (active) return { status: "active", active }
+    if (!expectedUserId) return { status: "missing" }
+
+    const ready = await resolveReadySandbox(expectedUserId)
+    switch (ready.status) {
+      case "ready":
+        active = {
+          sandbox: ready.handle.sandbox,
+          cwd: SANDBOX_WORKSPACE_ROOT,
+          handle: ready.handle,
+          ops: createSandboxOperations(
+            ready.handle.sandbox,
+            SANDBOX_WORKSPACE_ROOT
+          ),
+        }
+        return { status: "active", active }
+      case "warming":
+        return { status: "warming" }
+      case "missing":
+        return { status: "missing" }
+      default: {
+        const _exhaustive: never = ready
+        return _exhaustive
+      }
+    }
   }
 
   registerSandboxTools(pi, ensureActive, () => daytonaSessionExpected)
@@ -156,13 +187,14 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
     )
   })
 
-  pi.on("before_agent_start", (event) => {
-    const current = ensureActive()
-    if (!current) return
+  pi.on("before_agent_start", async (event) => {
+    const attached =
+      active ?? (expectedUserId ? tryAttachFromCache(expectedUserId) : null)
+    if (!attached) return
     return applySandboxCwdToPrompt(
       event,
-      current.cwd,
-      shortId(current.sandbox.id)
+      attached.cwd,
+      shortId(attached.sandbox.id)
     )
   })
 
@@ -175,7 +207,7 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
 
 function registerSandboxTools(
   pi: ExtensionAPI,
-  getActive: () => ActiveSandbox | null,
+  getActive: () => Promise<SandboxAttach>,
   isDaytonaSessionExpected: () => boolean
 ) {
   const localCwd = process.cwd()
@@ -188,17 +220,29 @@ function registerSandboxTools(
   const localGrep = createGrepTool(localCwd)
 
   /**
-   * Like stock `@daytona/pi`: sandbox active → remote; Daytona expected but
-   * missing → throw (never host); otherwise dormant → local Pi tools.
-   * getActive may lazily attach once background warm-up fills the cache.
+   * Sandbox active → remote. Daytona expected but still warming or missing →
+   * throw (never the host). Otherwise dormant → local Pi tools.
    */
-  function requireSandbox(): ActiveSandbox | null {
-    const current = getActive()
-    if (current) return current
-    if (isDaytonaSessionExpected()) {
-      throw new Error(SANDBOX_UNAVAILABLE_MESSAGE)
+  async function requireSandbox(): Promise<ActiveSandbox | null> {
+    const attached = await getActive()
+    switch (attached.status) {
+      case "active":
+        return attached.active
+      case "warming":
+        if (isDaytonaSessionExpected()) {
+          throw new Error(SANDBOX_WARMING_MESSAGE)
+        }
+        return null
+      case "missing":
+        if (isDaytonaSessionExpected()) {
+          throw new Error(SANDBOX_UNAVAILABLE_MESSAGE)
+        }
+        return null
+      default: {
+        const _exhaustive: never = attached
+        return _exhaustive
+      }
     }
-    return null
   }
 
   function sandboxTool<T extends { execute: (...args: never[]) => unknown }>(
@@ -207,8 +251,8 @@ function registerSandboxTools(
   ): T {
     return {
       ...local,
-      execute: (...args: Parameters<T["execute"]>) => {
-        const current = requireSandbox()
+      execute: async (...args: Parameters<T["execute"]>) => {
+        const current = await requireSandbox()
         const tool = current ? makeRemote(current.cwd, current.ops) : local
         return tool.execute(...args)
       },
@@ -251,20 +295,30 @@ function registerSandboxTools(
     )
   )
 
-  pi.on("user_bash", () => {
-    const current = getActive()
-    if (current) return { operations: current.ops.bash }
-    if (isDaytonaSessionExpected()) {
-      return {
-        result: {
-          output: SANDBOX_UNAVAILABLE_MESSAGE,
-          exitCode: 1,
-          cancelled: false,
-          truncated: false,
-        },
+  pi.on("user_bash", async () => {
+    const attached = await getActive()
+    switch (attached.status) {
+      case "active":
+        return { operations: attached.active.ops.bash }
+      case "warming":
+      case "missing":
+        if (!isDaytonaSessionExpected()) return
+        return {
+          result: {
+            output:
+              attached.status === "warming"
+                ? SANDBOX_WARMING_MESSAGE
+                : SANDBOX_UNAVAILABLE_MESSAGE,
+            exitCode: 1,
+            cancelled: false,
+            truncated: false,
+          },
+        }
+      default: {
+        const _exhaustive: never = attached
+        return _exhaustive
       }
     }
-    return
   })
 }
 

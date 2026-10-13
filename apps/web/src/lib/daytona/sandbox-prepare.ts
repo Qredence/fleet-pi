@@ -12,6 +12,10 @@ export const SANDBOX_WORKSPACE_ROOT = "/home/daytona/agent-workspace"
 export const LEGACY_SANDBOX_ROOT = "/home/daytona/fleet-pi"
 export const SANDBOX_PI_AUTH_PATH = "/home/daytona/.pi/agent/auth.json"
 export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
+/** Sandbox label. Daytona volumes have no label API; file edits cannot change this. */
+export const FLEET_PI_SEED_REVISION_LABEL = "fleetPiSeedRev"
+export const SEED_REVISION_RELATIVE_PATH = ".fleet/seed-revision"
+export const SCRATCH_TTL_DAYS = 7
 
 const WORKSPACE_PI_DIRS = [
   "pi/packages",
@@ -52,9 +56,13 @@ export function resolveRepositoryUrl(value: string | undefined): string {
   return url.toString()
 }
 
-export function buildPrepareSandboxCommand(repoUrl: string): string {
+export function buildPrepareSandboxCommand(
+  repoUrl: string,
+  options?: { seedRevision?: string }
+): string {
   const workspace = shellEscape(SANDBOX_WORKSPACE_ROOT)
   const url = shellEscape(repoUrl)
+  const seedRevision = options?.seedRevision?.trim() ?? ""
   const piDirs = WORKSPACE_PI_DIRS.map(
     (dir) => `mkdir -p ${shellEscape(`${SANDBOX_WORKSPACE_ROOT}/${dir}`)}`
   ).join("\n")
@@ -66,7 +74,8 @@ export function buildPrepareSandboxCommand(repoUrl: string): string {
     ensureGitInstalledCommand(),
     removeLegacySandboxRootsCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
-    ensureAgentWorkspaceSeedCommand(workspace, url),
+    ensureAgentWorkspaceSeedCommand(workspace, url, seedRevision),
+    sweepScratchCommand(workspace),
     piDirs,
     `mkdir -p ${workspace}`,
   ].join("\n")
@@ -95,13 +104,27 @@ export async function prepareSandboxLayout(
   sandbox: Sandbox,
   repoUrl: string
 ): Promise<void> {
-  const script = buildPrepareSandboxCommand(repoUrl)
+  const labels: Record<string, string | undefined> = sandbox.labels
+  const seedRevision = labels[FLEET_PI_SEED_REVISION_LABEL]?.trim() ?? ""
+  const script = buildPrepareSandboxCommand(repoUrl, { seedRevision })
   const result = await executeCommand(sandbox, `bash -c ${shellEscape(script)}`)
   if (result.exitCode !== 0) {
     throw new Error(
       `Failed to prepare Daytona sandbox layout: ${result.result}`
     )
   }
+
+  const recorded = readSeedRevision(result.result)
+  if (!recorded || recorded === seedRevision) return
+  await sandbox.setLabels({
+    ...sandbox.labels,
+    [FLEET_PI_SEED_REVISION_LABEL]: recorded,
+  })
+}
+
+function readSeedRevision(output: string | undefined) {
+  const match = output?.match(/FLEET_PI_SEED_REVISION=([0-9a-f]{7,40})/)
+  return match?.[1]
 }
 
 export async function syncSandboxProviderCredentials(
@@ -206,24 +229,62 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
 }
 
 /**
- * Sparse-seed only when manifest.json is missing. Non-clobber copy preserves
- * any existing files; bootstrap fills remaining stubs.
+ * Copy the git seed onto the volume without clobbering user files.
+ * When `seedRevision` is set, the sandbox label already records this seed and
+ * the clone is skipped. A missing label still uses `cp -an`.
  * Exported for unit tests.
  */
 export function ensureAgentWorkspaceSeedCommand(
   workspace: string,
-  url: string
+  url: string,
+  seedRevision = ""
 ): string {
+  const recorded = seedRevision.trim()
+  if (recorded) {
+    return `# ${FLEET_PI_SEED_REVISION_LABEL} ${recorded} matches; clone skipped`
+  }
+
+  const revFile = `${workspace}/${SEED_REVISION_RELATIVE_PATH}`
   return [
-    `if [ ! -f ${workspace}/manifest.json ]; then`,
+    "set -euo pipefail",
     "tmpdir=$(mktemp -d)",
     `git clone --depth 1 --filter=blob:none --sparse ${url} "$tmpdir"`,
     // Subshell so sparse-checkout does not change the outer script cwd.
     '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
     `mkdir -p ${workspace}`,
-    // Non-clobber: preserve any existing files on a partially filled volume.
-    `cp -an "$tmpdir/agent-workspace/." ${workspace}/`,
+    // Copy only missing paths. An existing file stays, and a real copy error
+    // fails the script so the seed revision is not recorded.
+    "while IFS= read -r -d '' src; do",
+    '  rel="${src#"$tmpdir"/agent-workspace/}"',
+    `  dest=${workspace}/"$rel"`,
+    '  if [ -d "$src" ]; then',
+    '    mkdir -p "$dest"',
+    "    continue",
+    "  fi",
+    '  if [ -e "$dest" ]; then',
+    "    continue",
+    "  fi",
+    '  mkdir -p "$(dirname "$dest")"',
+    '  cp -a "$src" "$dest"',
+    'done < <(find "$tmpdir/agent-workspace" -mindepth 1 -print0)',
+    'rev="$(git -C "$tmpdir" rev-parse HEAD)"',
+    `mkdir -p ${workspace}/.fleet`,
+    `printf '%s\\n' "$rev" > ${revFile}`,
+    'echo "FLEET_PI_SEED_REVISION=$rev"',
     'rm -rf "$tmpdir"',
+  ].join("\n")
+}
+
+/**
+ * Delete scratch files older than {@link SCRATCH_TTL_DAYS}. Leaves `.gitkeep`
+ * and every path outside `scratch/`.
+ * Exported for unit tests.
+ */
+export function sweepScratchCommand(workspace: string): string {
+  const scratch = `${workspace}/scratch`
+  return [
+    `if [ -d ${scratch} ]; then`,
+    `find ${scratch} -type f -mtime +${SCRATCH_TTL_DAYS} ! -name '.gitkeep' -delete`,
     "fi",
   ].join("\n")
 }

@@ -2,6 +2,7 @@ import { dirname, isAbsolute, relative, resolve } from "node:path"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import { resolveHarnessWriteTarget } from "./lib/harness-write"
+import { evaluateWorkspaceWrite } from "./lib/mutation-tier"
 import {
   assertSafePath,
   ensureSafeDirectory,
@@ -10,39 +11,12 @@ import {
 
 const WORKSPACE_ROOT = "agent-workspace"
 
-type MutationTier = "free" | "rationale-required" | "protected"
-
-const FREELY_MUTABLE: Array<RegExp> = [
-  /^scratch\//,
-  /^artifacts\/traces\//,
-  /^artifacts\/reports\//,
-  /^memory\/daily\//,
-]
-
-const RATIONALE_REQUIRED: Array<RegExp> = [
-  /^memory\/summaries\//,
-  /^plans\//,
-  /^memory\/project\//,
-  /^memory\/research\//,
-  /^skills\//,
-]
-
-const PROTECTED: Array<RegExp> = [/^system\//, /^evals\//]
-
-function classifyTier(relPath: string): MutationTier {
-  if (FREELY_MUTABLE.some((re) => re.test(relPath))) return "free"
-  if (RATIONALE_REQUIRED.some((re) => re.test(relPath)))
-    return "rationale-required"
-  if (PROTECTED.some((re) => re.test(relPath))) return "protected"
-  return "rationale-required"
-}
-
 export default function workspaceWriteExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "workspace_write",
     label: "Workspace Write",
     description:
-      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use resource_install instead of workspace_write for Pi runtime skills/prompts/extensions/packages. For normal 'remember this' requests, prefer canonical memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md rather than creating ad hoc files. Use rationale param for memory/project/**, memory/research/**, memory/summaries/**, plans/**, and skills/**. Protected paths (system/**, evals/**) require override:true.",
+      "Write or update a file within agent-workspace/. Enforces mutation boundaries from workspace-policy.md. Use resource_install instead of workspace_write for Pi runtime skills/prompts/extensions/packages. For normal 'remember this' requests, prefer canonical memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md rather than creating ad hoc files. Use rationale param for memory/project/**, memory/research/**, memory/summaries/**, plans/**, skills/**, pi/skills/**, and pi/prompts/**. Protected paths (system/**, evals/**) require override:true.",
     promptSnippet:
       "workspace_write: write files to agent-workspace/ (memory, plans, artifacts, scratch)",
     parameters: Type.Object({
@@ -56,7 +30,7 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
       rationale: Type.Optional(
         Type.String({
           description:
-            "Why this change is being made. Required for memory/project/**, plans/**, memory/research/**, memory/summaries/**.",
+            "Why this change is being made. Required for memory/project/**, plans/**, memory/research/**, memory/summaries/**, skills/**, pi/skills/**, and pi/prompts/**.",
         })
       ),
       override: Type.Optional(
@@ -88,20 +62,14 @@ export default function workspaceWriteExtension(pi: ExtensionAPI) {
         return error("Path escapes the workspace root.")
       }
 
-      const tier = classifyTier(relToWorkspace)
-
-      if (tier === "protected" && !params.override) {
-        return error(
-          `"${params.path}" is in a protected area (system/**, evals/**). ` +
-            `Set override:true only if this task explicitly concerns agent behavior or workspace design.`
-        )
-      }
-
-      if (tier === "rationale-required" && !params.rationale?.trim()) {
-        return error(
-          `"${params.path}" requires a rationale. Provide a brief explanation of why this change is being made.`
-        )
-      }
+      const decision = evaluateWorkspaceWrite({
+        displayPath: params.path,
+        relativePath: relToWorkspace,
+        rationale: params.rationale,
+        override: params.override,
+      })
+      if (!decision.ok) return error(decision.message)
+      const tier = decision.tier
 
       const target = await resolveHarnessWriteTarget({
         cwd,

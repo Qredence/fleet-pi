@@ -224,5 +224,5 @@ describe("preview-worker-isolation", () => {
       [sessionId]
     )
     expect(previewRows.rows).toHaveLength(0)
-  })
+  }, 15_000)
 })

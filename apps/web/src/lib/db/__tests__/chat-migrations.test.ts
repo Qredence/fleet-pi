@@ -12,6 +12,7 @@ const OWNER_FN = /CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner\(/
 function createFakeDatabase() {
   const ledger = new Set<string>()
   let ownerFunction: string | undefined
+  let forceRlsStatements = 0
   const client: ChatMigrationClient = {
     query: (text: string, params?: Array<unknown>) => {
       if (text.includes("SELECT id FROM fleet_pi_chat_migrations")) {
@@ -30,6 +31,12 @@ function createFakeDatabase() {
         const last = parts[parts.length - 1] ?? ""
         ownerFunction = last.slice(0, last.indexOf("$$;") + 3)
       }
+      if (
+        text.includes("FORCE ROW LEVEL SECURITY") &&
+        text.includes("public.pi_sessions")
+      ) {
+        forceRlsStatements += 1
+      }
       return Promise.resolve({ rows: [] })
     },
   }
@@ -37,6 +44,9 @@ function createFakeDatabase() {
     client,
     get ownerFunction() {
       return ownerFunction
+    },
+    get forceRlsStatements() {
+      return forceRlsStatements
     },
     ledger,
   }
@@ -55,10 +65,14 @@ describe("runChatMigrations", () => {
     // Second run: every numbered migration (including the tombstones one) is
     // ledger-skipped, but the base schema is re-applied. The reconcile step
     // must still leave the tombstone-aware definition live.
+    const forceRlsAfterFirstRun = db.forceRlsStatements
+    expect(forceRlsAfterFirstRun).toBeGreaterThan(0)
+
     await runChatMigrations(db.client, silent)
     expect(db.ledger.size).toBe(ledgerAfterFirstRun)
     expect(db.ownerFunction).toContain("pi_session_tombstones")
     expect(db.ownerFunction).toContain("'deleted'")
+    expect(db.forceRlsStatements).toBeGreaterThan(forceRlsAfterFirstRun)
   })
 
   it("checks tombstones before ownership in the shared definition", () => {

@@ -23,7 +23,13 @@ export function rateLimitRuleForRequest(
 ): RateLimitRuleName | undefined {
   if (request.method !== "POST") return undefined
   const { pathname } = new URL(request.url)
-  if (pathname === "/api/chat") return FLEET_PI_CHAT_START_RATE_LIMIT
+  if (
+    pathname === "/api/chat" ||
+    pathname === "/api/chat/new" ||
+    pathname === "/api/chat/resume"
+  ) {
+    return FLEET_PI_CHAT_START_RATE_LIMIT
+  }
   if (
     pathname.startsWith("/api/auth/") &&
     /sign-in|sign-up|callback/.test(pathname)
@@ -37,6 +43,11 @@ export async function enforceNamedEdgeRateLimit(input: {
   request: Request
   env?: object
   now?: number
+  /**
+   * Use the in-process bucket when this isolate has no Cloudflare rate-limit
+   * binding. The Neon Function sets this; Worker requests keep the binding.
+   */
+  allowMemoryLimit?: boolean
 }): Promise<Response | undefined> {
   const ruleName = rateLimitRuleForRequest(input.request)
   if (!ruleName) return undefined
@@ -50,7 +61,7 @@ export async function enforceNamedEdgeRateLimit(input: {
   }
 
   if (
-    isCloudflareDeployment() &&
+    (input.allowMemoryLimit || isCloudflareDeployment()) &&
     !memoryLimit(ruleName, key, input.now ?? Date.now())
   ) {
     return tooManyRequests(ruleName)
