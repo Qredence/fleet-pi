@@ -3,6 +3,8 @@ import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 
 /** Cap a remote catalog so one provider cannot flood the Add models dialog. */
 export const MAX_REMOTE_MODELS = 300
+/** Bound bytes before JSON parsing, independently of the parsed model cap. */
+export const MAX_REMOTE_CATALOG_BYTES = 2 * 1024 * 1024
 
 export type RemoteOpenAiModel = {
   id: string
@@ -97,6 +99,8 @@ export async function listOpenAiCompatibleModels(
     method: "GET",
     headers: {
       Accept: "application/json",
+      // Intentional BYOK authentication: only this provider's stored API key
+      // goes to its validated endpoint, never the local provider-store file.
       Authorization: `Bearer ${apiKey}`,
       ...(api === "anthropic-messages"
         ? {
@@ -112,7 +116,7 @@ export async function listOpenAiCompatibleModels(
   if (!response.ok) {
     throw new Error(`Model list request failed (${response.status}).`)
   }
-  return parseOpenAiModelsList(await response.json())
+  return parseOpenAiModelsList(await readBoundedCatalog(response))
 }
 
 function rowsFrom(payload: unknown): Array<unknown> {
@@ -166,6 +170,7 @@ export async function listGoogleGenaiModels(
     method: "GET",
     headers: {
       Accept: "application/json",
+      // Intentional BYOK authentication with the configured provider's key.
       "x-goog-api-key": apiKey,
     },
     redirect: "error",
@@ -174,7 +179,37 @@ export async function listGoogleGenaiModels(
   if (!response.ok) {
     throw new Error(`Model list request failed (${response.status}).`)
   }
-  return parseGoogleGenaiModelsList(await response.json())
+  return parseGoogleGenaiModelsList(await readBoundedCatalog(response))
+}
+
+async function readBoundedCatalog(response: Response): Promise<unknown> {
+  const tooLarge = () =>
+    new Error(`Model list response exceeds ${MAX_REMOTE_CATALOG_BYTES} bytes.`)
+  const declaredLength = Number(response.headers.get("content-length"))
+  if (declaredLength > MAX_REMOTE_CATALOG_BYTES) {
+    await response.body?.cancel().catch(() => {})
+    throw tooLarge()
+  }
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error("Model list response has no body.")
+  const chunks: Array<Uint8Array> = []
+  let bytes = 0
+  try {
+    let chunk = await reader.read()
+    while (!chunk.done) {
+      const { value } = chunk
+      bytes += value.byteLength
+      if (bytes > MAX_REMOTE_CATALOG_BYTES) {
+        await reader.cancel().catch(() => {})
+        throw tooLarge()
+      }
+      chunks.push(value)
+      chunk = await reader.read()
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  return JSON.parse(Buffer.concat(chunks, bytes).toString("utf8")) as unknown
 }
 
 export function parseGoogleGenaiModelsList(

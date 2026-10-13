@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  MAX_REMOTE_CATALOG_BYTES,
+  listGoogleGenaiModels,
   listOpenAiCompatibleModels,
   modelSupportsProviderApi,
   parseOpenAiModelsList,
@@ -56,6 +58,113 @@ describe("parseOpenAiModelsList", () => {
         models: ["gpt-4o", { id: "gpt-4o" }, { name: "only-name" }],
       }).map((model) => model.id)
     ).toEqual(["gpt-4o", "only-name"])
+  })
+})
+
+describe.each([
+  ["OpenAI", listOpenAiCompatibleModels],
+  ["Google", listGoogleGenaiModels],
+] as const)("%s catalog response limits", (_name, listModels) => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("rejects an oversized Content-Length without consuming the body", async () => {
+    const cancel = vi.fn()
+    const pull = vi.fn()
+    const body = new ReadableStream<Uint8Array>(
+      { pull, cancel },
+      { highWaterMark: 0 }
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(body, {
+            headers: { "content-length": String(MAX_REMOTE_CATALOG_BYTES + 1) },
+          })
+        )
+      )
+    )
+    await expect(
+      listModels("https://provider.example/v1", "key")
+    ).rejects.toThrow("exceeds")
+    expect(pull).not.toHaveBeenCalled()
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it.each([undefined, "1", "invalid"])(
+    "caps a streamed body with declared length %s",
+    async (length) => {
+      const cancel = vi.fn()
+      let chunk = 0
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            chunk++
+            controller.enqueue(
+              new Uint8Array(chunk === 1 ? MAX_REMOTE_CATALOG_BYTES : 1)
+            )
+          },
+          cancel,
+        },
+        { highWaterMark: 0 }
+      )
+      const headers = new Headers()
+      if (length !== undefined) headers.set("content-length", length)
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => Promise.resolve(new Response(body, { headers })))
+      )
+      await expect(
+        listModels("https://provider.example/v1", "key")
+      ).rejects.toThrow("exceeds")
+      expect(chunk).toBe(2)
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(body.locked).toBe(false)
+    }
+  )
+
+  it("accepts the exact byte limit and split UTF-8 characters", async () => {
+    const payload = {
+      data: [{ id: "model", name: "é" }],
+      models: [{ name: "models/model", displayName: "é" }],
+    }
+    const encoded = new TextEncoder().encode(JSON.stringify(payload))
+    const split = encoded.indexOf(0xc3) + 1
+    const chunks = [
+      encoded.slice(0, split),
+      encoded.slice(split),
+      new Uint8Array(MAX_REMOTE_CATALOG_BYTES - encoded.byteLength).fill(32),
+    ]
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          const next = chunks.shift()
+          if (next) controller.enqueue(next)
+          else controller.close()
+        },
+      },
+      { highWaterMark: 0 }
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(body)))
+    )
+    await expect(
+      listModels("https://provider.example/v1", "key")
+    ).resolves.toEqual([{ id: "model", name: "é" }])
+    expect(body.locked).toBe(false)
+  })
+
+  it("rejects malformed JSON and releases the body reader", async () => {
+    const response = new Response("{invalid")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(response))
+    )
+    await expect(
+      listModels("https://provider.example/v1", "key")
+    ).rejects.toThrow()
+    expect(response.body?.locked).toBe(false)
   })
 })
 
