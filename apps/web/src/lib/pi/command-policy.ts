@@ -1,7 +1,15 @@
+import { classifyToolPath } from "../../../../../.pi/extensions/lib/mutation-tier"
+
 export type CommandPolicyResult = {
   allowed: boolean
   reason?: string
 }
+
+const PROTECTED_WORKSPACE_MENTION =
+  /agent-workspace\/(?:system|evals)\b|(?:^|[\s;&|()])(?:system|evals)\b|\/(?:system|evals)\//
+
+const BASH_PROTECTED_MUTATION_HINT =
+  /\b(rm|rmdir|mv|cp|install|sed|tee|chmod|truncate|python|node|perl|ruby|php|awk|git|xargs|env)\b/i
 
 const BLOCKED_SYNTAX_PATTERNS = [
   /\$\(/,
@@ -158,6 +166,24 @@ export function listMutatingCommandTargets(command: string): Array<string> {
     targets.push(...inPlaceEditTargets(commandName, tokens))
   }
   return targets
+}
+
+/**
+ * Catches bash shapes that mention `system/` or `evals/` but evade token
+ * extraction (interpreters, wrappers, or `cd` + relative targets).
+ */
+export function bashEvasionTargetsProtectedWorkspace(command: string): boolean {
+  const normalized = command.replace(/\\/g, "/")
+  if (!PROTECTED_WORKSPACE_MENTION.test(normalized)) return false
+
+  for (const target of listMutatingCommandTargets(command)) {
+    const classified = classifyToolPath(target)
+    if (classified.scoped && classified.tier === "protected") {
+      return false
+    }
+  }
+
+  return BASH_PROTECTED_MUTATION_HINT.test(normalized)
 }
 
 /**

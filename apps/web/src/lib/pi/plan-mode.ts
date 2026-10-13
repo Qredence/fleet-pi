@@ -3,6 +3,7 @@ import {
   rawWorkspaceMutationBlock,
 } from "../../../../../.pi/extensions/lib/mutation-tier"
 import {
+  bashEvasionTargetsProtectedWorkspace,
   evaluatePlanCommand,
   listMutatingCommandTargets,
 } from "./command-policy"
@@ -375,6 +376,15 @@ function enforceAgentWorkspaceMutation(event: {
 function blockProtectedBashMutation(
   command: string
 ): { block: true; reason: string } | undefined {
+  if (bashEvasionTargetsProtectedWorkspace(command)) {
+    return {
+      block: true,
+      reason:
+        `Agent mode: \`${command}\` would mutate protected system/** or evals/**. ` +
+        "Use workspace_write with override:true.",
+    }
+  }
+
   let rationaleReason: string | undefined
   for (const target of listMutatingCommandTargets(command)) {
     const classified = classifyToolPath(target)

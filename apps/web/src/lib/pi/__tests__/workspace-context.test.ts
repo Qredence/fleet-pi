@@ -113,9 +113,9 @@ describe("workspace context extension", () => {
     )) as { message?: { content?: string } } | undefined
     const content = result?.message?.content ?? ""
 
-    expect(content).toContain("system/workspace-policy.md")
-    expect(content).toContain("system/constraints.md")
-    expect(content).toContain("memory/project/")
+    expect(content).toContain("agent-workspace/system/workspace-policy.md")
+    expect(content).toContain("agent-workspace/system/constraints.md")
+    expect(content).toContain("agent-workspace/memory/project/")
     expect(content).not.toContain("repo-local implementation partner")
     expect(content).not.toContain("Self-imposed operating constraints")
   })

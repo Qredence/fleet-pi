@@ -157,6 +157,31 @@ describe("plan-mode utilities (vitest)", () => {
       ).toBeUndefined()
     })
 
+    it("blocks absolute Daytona paths into system/", () => {
+      const result = callTool("session-tier-daytona-abs", {
+        toolName: "write",
+        input: {
+          path: "/home/daytona/agent-workspace/system/identity.md",
+          content: "changed",
+        },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("protected")
+    })
+
+    it("blocks bash that mentions protected paths without cooperative targets", () => {
+      const result = callTool("session-tier-bash-cd", {
+        toolName: "bash",
+        input: {
+          command: "cd agent-workspace/system && rm identity.md",
+        },
+      })
+
+      expect(result).toMatchObject({ block: true })
+      expect(result?.reason).toContain("protected")
+    })
+
     it("blocks mutating bash aimed at system/ and evals/", () => {
       const result = callTool("session-tier-bash", {
         toolName: "bash",

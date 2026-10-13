@@ -23,7 +23,13 @@ export function rateLimitRuleForRequest(
 ): RateLimitRuleName | undefined {
   if (request.method !== "POST") return undefined
   const { pathname } = new URL(request.url)
-  if (pathname === "/api/chat") return FLEET_PI_CHAT_START_RATE_LIMIT
+  if (
+    pathname === "/api/chat" ||
+    pathname === "/api/chat/new" ||
+    pathname === "/api/chat/resume"
+  ) {
+    return FLEET_PI_CHAT_START_RATE_LIMIT
+  }
   if (
     pathname.startsWith("/api/auth/") &&
     /sign-in|sign-up|callback/.test(pathname)

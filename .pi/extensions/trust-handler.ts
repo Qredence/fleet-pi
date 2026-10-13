@@ -68,18 +68,18 @@ function decideProjectTrust(
         : { trusted: "no" }
     }
     case "tui":
-      if (isWorkspaceNativePath(cwd)) {
-        ctx.ui.notify(`Auto-approved workspace-native path: ${cwd}`, "info")
-        return { trusted: "yes", remember: true }
-      }
       if (isProtectedWorkspacePath(cwd)) {
         ctx.ui.notify(`Protected path requires confirmation: ${cwd}`, "warning")
         return { trusted: "undecided" }
       }
+      if (isWorkspaceNativePath(cwd)) {
+        ctx.ui.notify(`Auto-approved workspace-native path: ${cwd}`, "info")
+        return { trusted: "yes", remember: true }
+      }
       return { trusted: "undecided" }
     default: {
-      const _exhaustive: never = mode
-      return _exhaustive
+      const unreachableMode: never = mode
+      return unreachableMode
     }
   }
 }

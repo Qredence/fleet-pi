@@ -188,12 +188,13 @@ export default function daytonaSandboxExtension(pi: ExtensionAPI) {
   })
 
   pi.on("before_agent_start", async (event) => {
-    const attached = await ensureActive()
-    if (attached.status !== "active") return
+    const attached =
+      active ?? (expectedUserId ? tryAttachFromCache(expectedUserId) : null)
+    if (!attached) return
     return applySandboxCwdToPrompt(
       event,
-      attached.active.cwd,
-      shortId(attached.active.sandbox.id)
+      attached.cwd,
+      shortId(attached.sandbox.id)
     )
   })
 

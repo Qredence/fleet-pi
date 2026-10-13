@@ -1,3 +1,5 @@
+import { USER_VOLUME_ROOT } from "./project-trust"
+
 export type MutationTier = "free" | "rationale-required" | "protected"
 
 const FREELY_MUTABLE: Array<RegExp> = [
@@ -60,12 +62,19 @@ function matchesTier(patterns: Array<RegExp>, relativePath: string) {
  * segments match the policy (`system/identity.md`, `scratch/note.md`).
  */
 export function classifyToolPath(path: string): ClassifiedWorkspacePath {
-  const normalized = path.replace(/\\/g, "/").replace(/^\.\//, "")
+  let normalized = path.replace(/\\/g, "/").replace(/^\.\//, "")
+  const volumeRoot = USER_VOLUME_ROOT.replace(/\/+$/, "")
+  if (normalized === volumeRoot) {
+    return { scoped: false }
+  }
+  if (normalized.startsWith(`${volumeRoot}/`)) {
+    normalized = normalized.slice(volumeRoot.length + 1)
+  }
   const marker = "agent-workspace/"
   const index = normalized.lastIndexOf(marker)
   const relative =
     index >= 0 ? normalized.slice(index + marker.length) : normalized
-  if (index < 0 && relative.startsWith("/")) return { scoped: false }
+  if (relative.startsWith("/")) return { scoped: false }
 
   const collapsed = normalizeWorkspaceRelative(relative)
   if (collapsed === null) return { scoped: false }

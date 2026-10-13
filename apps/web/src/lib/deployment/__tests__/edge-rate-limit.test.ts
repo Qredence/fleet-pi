@@ -3,8 +3,26 @@ import {
   EDGE_RATE_LIMIT_RULES,
   FLEET_PI_CHAT_START_RATE_LIMIT,
   enforceNamedEdgeRateLimit,
+  rateLimitRuleForRequest,
   resetEdgeRateLimitMemoryForTests,
 } from "../edge-rate-limit"
+
+describe("rateLimitRuleForRequest", () => {
+  it("applies chat burst limits to new and resume POST routes", () => {
+    expect(
+      rateLimitRuleForRequest(
+        new Request("https://fleet-pi.example/api/chat/new", { method: "POST" })
+      )
+    ).toBe(FLEET_PI_CHAT_START_RATE_LIMIT)
+    expect(
+      rateLimitRuleForRequest(
+        new Request("https://fleet-pi.example/api/chat/resume", {
+          method: "POST",
+        })
+      )
+    ).toBe(FLEET_PI_CHAT_START_RATE_LIMIT)
+  })
+})
 
 describe("enforceNamedEdgeRateLimit", () => {
   it("returns 429 from the named chat rule before the handler runs", async () => {

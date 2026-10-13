@@ -29,6 +29,10 @@ export async function resolveLoaderProjectTrust(input: {
     return true
   }
 
+  if (isHostedDeployment() && !isInsideUserVolume(input.cwd)) {
+    return false
+  }
+
   const event = { type: "project_trust" as const, cwd: input.cwd }
   const ctx = {
     cwd: input.cwd,

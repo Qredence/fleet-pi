@@ -149,9 +149,7 @@ export async function createSessionServices(
       resolveProjectTrust: ({ extensionsResult }) =>
         resolveLoaderProjectTrust({
           extensionsResult,
-          cwd: context.workspaceFS
-            ? context.workspaceRoot
-            : context.projectRoot,
+          cwd: context.projectRoot,
           mode: "print",
         }),
     },

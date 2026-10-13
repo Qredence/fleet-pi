@@ -10,11 +10,15 @@ import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
-const WORKSPACE_BOOT = [
-  "Identity: You are Fleet Pi, working in agent-workspace.",
-  "Mutation tiers: free — scratch/**, artifacts/traces/**, artifacts/reports/**, memory/daily/**. Rationale required — memory/project/**, memory/research/**, memory/summaries/**, plans/**, skills/**, pi/skills/**, pi/prompts/** via workspace_write. Protected — system/** and evals/** via workspace_write with override:true.",
-  "Read before changing the workspace: system/workspace-policy.md, system/constraints.md, and memory/project/.",
-].join("\n")
+
+function buildWorkspaceBoot(cwd: string): string {
+  const policyPrefix = isInsideUserVolume(cwd) ? "" : `${WORKSPACE_ROOT}/`
+  return [
+    "Identity: You are Fleet Pi, working in agent-workspace.",
+    "Mutation tiers: free — scratch/**, artifacts/traces/**, artifacts/reports/**, memory/daily/**. Rationale required — memory/project/**, memory/research/**, memory/summaries/**, plans/**, skills/**, pi/skills/**, pi/prompts/** via workspace_write. Protected — system/** and evals/** via workspace_write with override:true.",
+    `Read before changing the workspace: ${policyPrefix}system/workspace-policy.md, ${policyPrefix}system/constraints.md, and ${policyPrefix}memory/project/.`,
+  ].join("\n")
+}
 
 export default function workspaceContextExtension(pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, ctx) => {
@@ -22,7 +26,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     const cwd = ctx.sessionManager.getCwd()
     const parts: Array<string> = ["[WORKSPACE CONTEXT]"]
     omitProductRepoAgents(event, cwd)
-    parts.push(WORKSPACE_BOOT)
+    parts.push(buildWorkspaceBoot(cwd))
 
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
@@ -73,7 +77,10 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
     if (lastWorkspaceContextIndex === -1) return undefined
 
     const cwd = ctx.sessionManager.getCwd()
-    const parts: Array<string> = ["[WORKSPACE CONTEXT]", WORKSPACE_BOOT]
+    const parts: Array<string> = [
+      "[WORKSPACE CONTEXT]",
+      buildWorkspaceBoot(cwd),
+    ]
 
     const activePlan = await readActivePlan(cwd)
     if (activePlan) parts.push(`Active plan: ${activePlan}`)
@@ -139,7 +146,7 @@ async function readActivePlan(cwd: string): Promise<string | undefined> {
 function extractTitle(content: string): string | undefined {
   for (const line of content.split("\n")) {
     const match = line.match(/^#\s+(.+)/)
-    if (match) return match[1]?.trim()
+    if (match) return match[1].trim()
   }
   return undefined
 }
