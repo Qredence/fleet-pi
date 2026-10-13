@@ -31,8 +31,8 @@ describe("user-providers store", () => {
     )
   })
 
-  it("throws on Vercel when chat database URL is missing for upsert", async () => {
-    vi.stubEnv("VERCEL", "1")
+  it("throws on Cloudflare when chat database URL is missing for upsert", async () => {
+    vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
     delete process.env.FLEET_PI_CHAT_DATABASE_URL
 
     await expect(
@@ -41,7 +41,7 @@ describe("user-providers store", () => {
   })
 
   it("decrypts stored provider secrets for a single provider", async () => {
-    vi.stubEnv("VERCEL", "1")
+    vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
     vi.stubEnv("FLEET_PI_CHAT_DATABASE_URL", "postgres://example")
     vi.stubEnv("BETTER_AUTH_SECRET", "secret")
 

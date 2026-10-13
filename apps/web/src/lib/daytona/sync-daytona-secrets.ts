@@ -22,18 +22,6 @@ export type DaytonaSecretsSyncResult = {
   mode: DaytonaSecretsSyncMode
 }
 
-/**
- * Host-side fingerprint of Secrets-eligible configured values (no API calls).
- */
-export function hasDaytonaSecretsEligibleValues(
-  configured: Map<string, string>
-): boolean {
-  return (
-    fingerprintDaytonaSecretsConfig(configured) !==
-    fingerprintDaytonaSecretsConfig(new Map())
-  )
-}
-
 export function fingerprintDaytonaSecretsConfig(
   configured: Map<string, string>
 ): string {

@@ -605,10 +605,10 @@ describe("workspace file route errors", () => {
 })
 
 describe("workspace route auth gate", () => {
-  it("requires auth for workspace APIs on Vercel when no session is present", async () => {
+  it("requires auth for workspace APIs on Cloudflare when no session is present", async () => {
     createProjectRoot()
-    const previousVercel = process.env.VERCEL
-    process.env.VERCEL = "1"
+    const previousHosted = process.env.FLEET_PI_DEPLOYMENT
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     mockGetSession.mockResolvedValue(null)
 
     try {
@@ -626,10 +626,10 @@ describe("workspace route auth gate", () => {
       expect(itemsResponse.status).toBe(401)
       expect(reindexResponse.status).toBe(401)
     } finally {
-      if (previousVercel === undefined) {
-        delete process.env.VERCEL
+      if (previousHosted === undefined) {
+        delete process.env.FLEET_PI_DEPLOYMENT
       } else {
-        process.env.VERCEL = previousVercel
+        process.env.FLEET_PI_DEPLOYMENT = previousHosted
       }
     }
   })

@@ -31,8 +31,10 @@ describe("shouldFailClosedOnMirrorError", () => {
     expect(requiresAuthenticatedMirrorOwner({})).toBe(false)
   })
 
-  it("fails closed on Vercel", () => {
-    expect(shouldFailClosedOnMirrorError({ VERCEL: "1" })).toBe(true)
+  it("fails closed on Cloudflare", () => {
+    expect(
+      shouldFailClosedOnMirrorError({ FLEET_PI_DEPLOYMENT: "cloudflare" })
+    ).toBe(true)
   })
 
   it("fails closed when Neon Managed Auth is configured", () => {

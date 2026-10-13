@@ -168,7 +168,7 @@ function writeRecoveredSessionFile(sessionFile: string, content: string) {
   } catch {
     // Parent may already exist with different ownership in tests.
   }
-  // lgtm[js/insecure-temporary-file-creation] Vercel Pi sessions are intentionally
+  // lgtm[js/insecure-temporary-file-creation] Hosted Pi sessions are intentionally
   // reconstructed under user-scoped /tmp/.fleet/sessions paths validated above.
   const fd = openSync(sessionFile, "wx", 0o600)
   try {

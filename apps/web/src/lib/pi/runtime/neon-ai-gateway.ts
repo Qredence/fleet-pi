@@ -2,7 +2,7 @@ import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
 } from "./openai-chat-completions-url"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 import { logger } from "@/lib/logger"
 
@@ -142,7 +142,7 @@ export function captureAndScrubNeonAiGatewayEnv() {
     isEnvVarConfigured("NEON_AI_GATEWAY_TOKEN") ||
     isEnvVarConfigured("NEON_AI_GATEWAY_BASE_URL")
   ) {
-    if (isVercelDeployment()) {
+    if (isHostedDeployment()) {
       for (const envVarName of NEON_AI_GATEWAY_ENV_VAR_NAMES) {
         delete process.env[envVarName]
       }

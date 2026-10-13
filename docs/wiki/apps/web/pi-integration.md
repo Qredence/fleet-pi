@@ -240,7 +240,7 @@ On reload, `hydrateChatSession()` reads the JSONL file, converts entries to mess
 
 **Directory:** `apps/web/src/lib/daytona/`
 
-When `isDaytonaEnabled(userId, resolvedKey)` returns true (BYOK Daytona key on Vercel; env fallback locally), `createPiRuntime()`:
+When `isDaytonaEnabled(userId, resolvedKey)` returns true (BYOK Daytona key on Cloudflare; env fallback locally), `createPiRuntime()`:
 
 1. Calls `resolveUserSandboxContext` to acquire or create a Daytona sandbox (eager warm-up into the per-user cache).
 2. Sets `context.workspaceFS` to a sandbox-backed filesystem.

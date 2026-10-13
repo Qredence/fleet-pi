@@ -48,7 +48,7 @@ export async function upsertUserProjectSettings(
 ) {
   if (!isChatDatabaseConfigured()) {
     throw new Error(
-      "FLEET_PI_CHAT_DATABASE_URL is required to persist Pi settings on Vercel."
+      "FLEET_PI_CHAT_DATABASE_URL is required to persist Pi settings on Cloudflare."
     )
   }
 

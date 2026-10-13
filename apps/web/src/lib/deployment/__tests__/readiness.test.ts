@@ -8,7 +8,7 @@ const testGatewayEnv = {
 } as const
 
 describe("validateDeploymentReadiness", () => {
-  it("passes in local mode without Vercel env vars", () => {
+  it("passes in local mode without hosted env vars", () => {
     const result = validateDeploymentReadiness({
       trustZone: "local",
       env: {},
@@ -18,9 +18,9 @@ describe("validateDeploymentReadiness", () => {
     expect(result.checks.some((check) => check.id === "local-mode")).toBe(true)
   })
 
-  it("requires core auth and chat database env vars on Vercel production", () => {
+  it("requires core auth and chat database env vars on Cloudflare production", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-production",
+      trustZone: "cloudflare-production",
       env: {},
     })
 
@@ -60,9 +60,9 @@ describe("validateDeploymentReadiness", () => {
     ).toBe(false)
   })
 
-  it("requires preview trust-zone markers on Vercel preview", () => {
+  it("requires preview trust-zone markers on Cloudflare preview", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-preview",
+      trustZone: "cloudflare-preview",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://preview.example",
@@ -80,7 +80,7 @@ describe("validateDeploymentReadiness", () => {
 
   it("passes when preview markers and migrations are present", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-preview",
+      trustZone: "cloudflare-preview",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://preview.example",
@@ -117,9 +117,9 @@ describe("validateDeploymentReadiness", () => {
     expect(result.ok).toBe(true)
   })
 
-  it("requires Neon AI Gateway env on Vercel", () => {
+  it("requires Neon AI Gateway env on Cloudflare", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-production",
+      trustZone: "cloudflare-production",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://app.example",
@@ -139,16 +139,15 @@ describe("validateDeploymentReadiness", () => {
     ).toBe(false)
   })
 
-  it("accepts VERCEL_URL as preview auth URL fallback", () => {
+  it("requires BETTER_AUTH_URL on preview", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-preview",
+      trustZone: "cloudflare-preview",
       env: {
         BETTER_AUTH_SECRET: "secret",
-        VERCEL_URL: "fleet-pi-web-git-branch-qredence.vercel.app",
         FLEET_PI_AUTH_DATABASE_URL: "postgres://preview-neon-host/preview-auth",
         FLEET_PI_CHAT_DATABASE_URL: "postgres://preview-neon-host/preview-chat",
         BETTER_AUTH_TRUSTED_ORIGINS:
-          "https://fleet-pi-web-git-branch-qredence.vercel.app",
+          "https://pr-1.fleet-pi-web.example.workers.dev",
         FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
         FLEET_PI_PREVIEW_DATABASE_MARKER: "preview-neon",
         FLEET_PI_PRODUCTION_DATABASE_MARKER: "prod-neon",
@@ -178,13 +177,13 @@ describe("validateDeploymentReadiness", () => {
 
     expect(
       result.checks.find((check) => check.id === "env:BETTER_AUTH_URL")?.ok
-    ).toBe(true)
-    expect(result.ok).toBe(true)
+    ).toBe(false)
+    expect(result.ok).toBe(false)
   })
 
   it("fails when Data API roles still hold privileges on critical pi_* tables", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-production",
+      trustZone: "cloudflare-production",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://app.example",
@@ -286,7 +285,7 @@ describe("validateDeploymentReadiness", () => {
 
   it("requires NEON_AUTH_ISSUER when Neon Managed Auth is configured", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-production",
+      trustZone: "cloudflare-production",
       env: {
         NEON_AUTH_URL: "https://auth.example",
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
@@ -304,7 +303,7 @@ describe("validateDeploymentReadiness", () => {
 
   it("fails when preview database URLs omit the preview marker", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-preview",
+      trustZone: "cloudflare-preview",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://preview.example",
@@ -329,7 +328,7 @@ describe("validateDeploymentReadiness", () => {
 
   it("fails when preview chat URL matches production companion URL", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-preview",
+      trustZone: "cloudflare-preview",
       env: {
         BETTER_AUTH_SECRET: "secret",
         BETTER_AUTH_URL: "https://preview.example",
@@ -354,7 +353,7 @@ describe("validateDeploymentReadiness", () => {
 
   it("fails when the ownership probe no longer returns deleted", () => {
     const result = validateDeploymentReadiness({
-      trustZone: "vercel-production",
+      trustZone: "cloudflare-production",
       env: {
         FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
         NEON_AUTH_BASE_URL: "https://auth.example",

@@ -67,7 +67,7 @@ Fleet Pi is open-source (Apache 2.0). The business model is still being defined,
 
 ## Traction
 
-- Live deployment at [fleet-pi-web.vercel.app](https://fleet-pi-web.vercel.app/)
+- Live deployment at [fleet-pi-web.workers.dev](https://fleet-pi-web.workers.dev/)
 - Fully functional chat with Agent and Plan modes
 - Pi SDK integration at v0.80.10 with active upstream development
 - Neon Postgres integration for session mirroring and settings persistence

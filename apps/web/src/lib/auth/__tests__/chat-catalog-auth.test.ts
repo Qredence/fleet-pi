@@ -43,23 +43,23 @@ vi.mock("@/lib/app-runtime", () => ({
   getResponseStatus: () => 500,
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const originalNeonAuthBase = process.env.NEON_AUTH_BASE_URL
 const originalNeonAuthUrl = process.env.NEON_AUTH_URL
 const originalChatRuntimeAuth = process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
 
 function clearDeployedChatAuthEnv() {
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
   delete process.env.NEON_AUTH_BASE_URL
   delete process.env.NEON_AUTH_URL
   delete process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
 }
 
 function restoreDeployedChatAuthEnv() {
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   if (originalNeonAuthBase === undefined) {
     delete process.env.NEON_AUTH_BASE_URL
@@ -84,9 +84,9 @@ afterEach(() => {
 })
 
 describe("chat catalog route auth", () => {
-  it("returns 401 for catalog routes on Vercel without a session", async () => {
+  it("returns 401 for catalog routes on Cloudflare without a session", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     const models = await chatModelsHandler(

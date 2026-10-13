@@ -11,7 +11,7 @@ import type Database from "better-sqlite3"
 import type { AppRuntimeContext } from "../app-runtime"
 import {
   isCloudflareDeployment,
-  isVercelDeployment,
+  isHostedDeployment,
 } from "@/lib/deployment/environment"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
@@ -279,7 +279,7 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
 ] as const
 
 export function getWorkspaceProjectionDatabasePath(context: AppRuntimeContext) {
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     if (context.workspaceRoot.startsWith("/var/task")) {
       return join(
         "/tmp",

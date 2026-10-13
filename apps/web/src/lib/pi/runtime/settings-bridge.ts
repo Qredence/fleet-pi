@@ -33,7 +33,7 @@ import type {
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { upsertUserProjectSettings } from "@/lib/db/user-settings"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export {
   hydrateSessionServicesSettings,
@@ -105,7 +105,7 @@ export async function updateChatSettings(
         parsedUpdate,
         context.projectRoot
       )
-    } else if (!isVercelDeployment()) {
+    } else if (!isHostedDeployment()) {
       await hotReloadActiveRuntimes(parsedUpdate, context.projectRoot)
     }
   }

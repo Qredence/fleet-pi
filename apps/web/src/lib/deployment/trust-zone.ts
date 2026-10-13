@@ -2,18 +2,14 @@ import { getChatAuthSurface } from "../auth/chat-auth-surface"
 import { isCloudflareDeployment } from "./environment"
 
 export type DeploymentTrustZone =
-  | "local"
-  | "vercel-production"
-  | "vercel-preview"
-  | "cloudflare-production"
-  | "cloudflare-preview"
+  "local" | "cloudflare-production" | "cloudflare-preview"
 
 export function isHostedPreviewTrustZone(zone: DeploymentTrustZone) {
-  return zone === "vercel-preview" || zone === "cloudflare-preview"
+  return zone === "cloudflare-preview"
 }
 
 export function isHostedProductionTrustZone(zone: DeploymentTrustZone) {
-  return zone === "vercel-production" || zone === "cloudflare-production"
+  return zone === "cloudflare-production"
 }
 
 export function resolveDeploymentTrustZone(): DeploymentTrustZone {
@@ -23,16 +19,7 @@ export function resolveDeploymentTrustZone(): DeploymentTrustZone {
       : "cloudflare-production"
   }
 
-  if (process.env.VERCEL !== "1") {
-    return "local"
-  }
-
-  const vercelEnv = process.env.VERCEL_ENV?.trim()
-  if (vercelEnv === "preview") {
-    return "vercel-preview"
-  }
-
-  return "vercel-production"
+  return "local"
 }
 
 export function isHostedPreviewDeployment() {
@@ -41,7 +28,7 @@ export function isHostedPreviewDeployment() {
 
 /**
  * Fail closed for mirror ownership / DB errors wherever chat auth is required:
- * Vercel, Neon Managed Auth, Neon Function surface, or explicit runtime flag.
+ * Cloudflare, Neon Managed Auth, Neon Function surface, or explicit runtime flag.
  * Keep this aligned with `isChatAuthRequired` without importing chat-api-auth
  * (avoids cycles with auth/server).
  */
@@ -57,13 +44,13 @@ export function shouldFailClosedOnMirrorError(
   if (env.NEON_AUTH_BASE_URL?.trim() || env.NEON_AUTH_URL?.trim()) {
     return true
   }
-  return env.VERCEL === "1" || env.FLEET_PI_DEPLOYMENT === "cloudflare"
+  return env.FLEET_PI_DEPLOYMENT === "cloudflare"
 }
 
 /**
  * Mirror writes fail the turn when the transcript has no other durable copy.
  * The Neon Function's JSONL lives on /tmp. Cloudflare Workers have no durable
- * JSONL until the Agent cutover. Vercel and local Neon Auth keep streaming:
+ * JSONL until the Agent cutover. Local Neon Auth keeps streaming:
  * Pi JSONL stays the source of truth and a mirror error is logged.
  */
 export function shouldFailClosedOnFunctionMirrorWrite(

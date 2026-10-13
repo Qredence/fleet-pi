@@ -51,7 +51,7 @@ export function withoutWorkspaceTools(toolNames: ReadonlyArray<string>) {
 }
 
 /**
- * Hosted deploys (Vercel / Cloudflare Workers) have no usable local project
+ * Hosted deploys (Cloudflare / Cloudflare Workers) have no usable local project
  * filesystem: workspace tools only work through a Daytona sandbox.
  */
 export function resolveChatWorkspaceStatus(input: {

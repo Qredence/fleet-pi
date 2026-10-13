@@ -44,13 +44,13 @@ AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 | `VITE_PUBLIC_POSTHOG_KEY` / `VITE_PUBLIC_POSTHOG_HOST` | Optional       | PostHog product analytics (browser)                                  |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`            | Optional       | OAuth via Managed Auth                                               |
 
-### Legacy Better Auth (local fallback only on Vercel if no Neon Auth URL)
+### Legacy Better Auth (when no Neon Auth URL is set)
 
 `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FLEET_PI_AUTH_DATABASE_URL`, `FLEET_PI_CHAT_DATABASE_URL`
 
 ### Daytona
 
-Users need BYOK `daytona` in `pi_user_providers`. Do **not** set org `DAYTONA_API_KEY` for end-user sandboxes on Vercel.
+Users need BYOK `daytona` in `pi_user_providers`. Do **not** set org `DAYTONA_API_KEY` for end-user sandboxes on Cloudflare.
 
 Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_PI_REPOSITORY_URL`
 
@@ -79,8 +79,7 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   `PREVIEW_VITE_NEON_AUTH_URL`, `PREVIEW_NEON_AUTH_*`, `PREVIEW_BETTER_AUTH_SECRET`,
   and `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
-  `isVercelDeployment()` true, i.e. the same hosted, fail-closed,
-  Postgres-backed paths as Vercel: sessions live in `/tmp` only for the
+  `isHostedDeployment()` true: sessions live in `/tmp` only for the
   request and Neon (`pi_sessions` read-back) is the source of truth.
 - Entry: `src/server.ts` wraps TanStack Start's handler in a per-request
   scope (`lib/runtime/request-scope.ts`). Workers forbid reusing I/O objects
@@ -103,7 +102,7 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
 - Limits: the gzip bundle is ~6.6 MB, so the account needs the Workers Paid
   plan (10 MB limit). Features that need a real filesystem or processes
   (local workspace projection/provenance, npm package installs) degrade the
-  same way they do on Vercel; tools run in Daytona.
+  same way they do on Cloudflare; tools run in Daytona.
 
 ## Build
 
@@ -125,8 +124,7 @@ See [deployment release gate](../runbooks/deployment-release-gate.md) for produc
 - On open/reopen/push: `pnpm chat:migrate` (also reconciles `fleet_pi_app` grants) and `pnpm auth:migrate` on the direct owner URL, then a schema-diff comment against `main`. Connection outputs are masked.
 - Cloudflare PR previews (label `cloudflare-preview`) receive the pooled
   `fleet_pi_app` URL for that branch via `assert-preview-worker-secrets.ts`
-  and `NEON_API_KEY` / `vars.NEON_PROJECT_ID`. Vercel previews do **not**
-  receive the branch URL yet.
+  and `NEON_API_KEY` / `vars.NEON_PROJECT_ID`.
 
 ## Devcontainer
 

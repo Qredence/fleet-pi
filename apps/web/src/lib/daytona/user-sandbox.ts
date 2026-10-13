@@ -72,7 +72,7 @@ const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 /**
  * Daytona is enabled when the caller has a userId and a resolved API key.
  * Pass the result of `resolveDaytonaRuntimeApiKey` as `clientApiKey`.
- * On Vercel, only user BYOK enables Daytona — never org env keys.
+ * On Cloudflare, only user BYOK enables Daytona — never org env keys.
  * Local/dev may use `DAYTONA_API_KEY` when no explicit client key is passed.
  */
 export function isDaytonaEnabled(

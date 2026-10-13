@@ -4,10 +4,7 @@ import {
   clearUserSandboxCache,
   getCachedUserSandbox,
 } from "@/lib/daytona/user-sandbox"
-import {
-  isCloudflareDeployment,
-  isVercelDeployment,
-} from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 interface DaytonaWebhookPayload {
   event?: string
@@ -24,7 +21,7 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
     const secret = process.env.DAYTONA_WEBHOOK_SECRET
 
     if (!secret) {
-      if (isCloudflareDeployment() || isVercelDeployment()) {
+      if (isHostedDeployment()) {
         console.error("DAYTONA_WEBHOOK_SECRET is unset on a hosted deployment")
         return Response.json(
           { error: "webhook secret is not configured" },

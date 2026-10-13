@@ -1,1 +1,1 @@
-export { isVercelDeployment } from "./environment"
+export { isHostedDeployment } from "./environment"

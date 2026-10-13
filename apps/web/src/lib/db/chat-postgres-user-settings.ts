@@ -2,7 +2,7 @@ export const CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID =
   "20260718_pi_user_settings"
 
 /**
- * Per-user Pi project settings overlay for Vercel (skills, packages, models, …).
+ * Per-user Pi project settings overlay for Cloudflare (skills, packages, models, …).
  * Local/dev keeps using `.pi/settings.json` on disk; Neon is the durable store
  * when the serverless filesystem is read-only or ephemeral.
  */

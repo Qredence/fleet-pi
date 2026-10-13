@@ -481,8 +481,8 @@ describe("Pi session mirror repository", () => {
     expect(params[4]).toBe('{"type":"tool","value":1}')
   })
 
-  it("requires userId when inserting runs on Vercel", async () => {
-    process.env.VERCEL = "1"
+  it("requires userId when inserting runs on Cloudflare", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const client = createMockClient()
 
     await expect(
@@ -495,12 +495,12 @@ describe("Pi session mirror repository", () => {
       })
     ).rejects.toThrow(/Authenticated owner is required/)
 
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
-  it("keeps streaming when mirror sync fails on Vercel", async () => {
+  it("keeps streaming when mirror sync fails on Cloudflare", async () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined)
 
     try {
@@ -508,21 +508,21 @@ describe("Pi session mirror repository", () => {
         syncPiSessionMirrorSafely(
           {
             getHeader() {
-              throw new Error("boom vercel")
+              throw new Error("boom mirror")
             },
           } as never,
-          { userId: "user-vercel" }
+          { userId: "user-hosted" }
         )
       ).resolves.toBeUndefined()
 
       expect(warn).toHaveBeenCalledWith(
         {
-          error: expect.objectContaining({ message: "boom vercel" }),
+          error: expect.objectContaining({ message: "boom mirror" }),
         },
         "[pi-session-mirror] sync failed (non-fatal)"
       )
     } finally {
-      delete process.env.VERCEL
+      delete process.env.FLEET_PI_DEPLOYMENT
     }
   })
 

@@ -14,7 +14,7 @@ import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 /**
  * A named OpenAI Chat Completions-compatible provider instance. The API key is
@@ -45,7 +45,7 @@ export type OccInstanceInput = Omit<OccInstance, "modelId"> & {
 
 export class ChatPostgresUnavailableError extends Error {
   constructor(
-    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Vercel."
+    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Cloudflare."
   ) {
     super(message)
     this.name = "ChatPostgresUnavailableError"
@@ -69,12 +69,12 @@ type OccInstanceMetaRow = {
 }
 
 /**
- * Ensures the chat database is configured when running on Vercel.
+ * Ensures the chat database is configured when running on Cloudflare.
  *
- * @throws `ChatPostgresUnavailableError` if running on Vercel without chat database configuration
+ * @throws `ChatPostgresUnavailableError` if running on Cloudflare without chat database configuration
  */
-function requireChatDatabaseOnVercel() {
-  if (isVercelDeployment() && !isChatDatabaseConfigured()) {
+function requireChatDatabaseOnHost() {
+  if (isHostedDeployment() && !isChatDatabaseConfigured()) {
     throw new ChatPostgresUnavailableError()
   }
 }
@@ -344,7 +344,7 @@ export async function upsertOccInstance(
   apiKey: string
 ) {
   const secret = requireEncryptionSecret()
-  requireChatDatabaseOnVercel()
+  requireChatDatabaseOnHost()
   const normalized = normalizeCustomProviderInstance(instance)
   const meta: OccInstanceMeta = {
     displayName: instance.displayName,
@@ -391,7 +391,7 @@ export async function upsertOccInstance(
  * @param instanceId - The identifier of the instance to remove
  */
 export async function removeOccInstance(userId: string, instanceId: string) {
-  requireChatDatabaseOnVercel()
+  requireChatDatabaseOnHost()
   await withChatPostgresTransaction(async (client) => {
     await client.query(
       `DELETE FROM pi_user_providers WHERE user_id = $1 AND provider_id = $2`,

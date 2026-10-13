@@ -136,7 +136,7 @@ afterEach(() => {
   vi.clearAllMocks()
   delete process.env.DAYTONA_API_KEY
   delete process.env.ORG_DAYTONA_API_KEY
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
   delete process.env.FLEET_PI_DEPLOYMENT
   vi.mocked(fingerprintDaytonaSecretsConfig).mockReturnValue("")
 })
@@ -160,12 +160,12 @@ describe("isDaytonaEnabled", () => {
     expect(isDaytonaEnabled("user123")).toBe(true)
   })
 
-  it("ignores env DAYTONA_API_KEY on Vercel without a resolved client key", () => {
-    process.env.VERCEL = "1"
+  it("ignores env DAYTONA_API_KEY on Cloudflare without a resolved client key", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.DAYTONA_API_KEY = "org-key"
     expect(isDaytonaEnabled("user123")).toBe(false)
     expect(isDaytonaEnabled("user123", "byok-key")).toBe(true)
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
   it("does not treat ORG_DAYTONA_API_KEY as an enablement signal", () => {

@@ -1,10 +1,10 @@
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export type AuthBackend = "local-better-auth" | "neon-managed"
 
 /**
  * Neon Auth base URL. Prefer Fleet Pi's `NEON_AUTH_BASE_URL`; fall back to
- * `NEON_AUTH_URL` which the Vercel↔Neon integration injects automatically.
+ * `NEON_AUTH_URL` which the Cloudflare↔Neon integration injects automatically.
  */
 export function resolveNeonAuthBaseUrl(env: NodeJS.ProcessEnv = process.env) {
   return env.NEON_AUTH_BASE_URL?.trim() || env.NEON_AUTH_URL?.trim() || ""
@@ -75,13 +75,6 @@ function resolveClientAppOrigin() {
     }
   }
 
-  const vercelUrl =
-    typeof process !== "undefined" ? process.env.VERCEL_URL?.trim() : undefined
-  if (vercelUrl) {
-    const host = vercelUrl.replace(/^https?:\/\//, "")
-    return `https://${host}`
-  }
-
   const fromViteOrigin = import.meta.env.VITE_APP_ORIGIN
   if (typeof fromViteOrigin === "string" && fromViteOrigin.trim()) {
     try {
@@ -101,7 +94,7 @@ export function isNeonManagedAuthClientEnabled() {
 export function isLocalAnonymousAuthAllowed(
   env: NodeJS.ProcessEnv = process.env
 ) {
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     return false
   }
   return !isNeonManagedAuthConfigured(env)

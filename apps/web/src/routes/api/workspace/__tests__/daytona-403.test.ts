@@ -73,10 +73,10 @@ vi.mock("@/lib/pi/server", () => ({
     error instanceof Error ? error.message : String(error),
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 beforeEach(() => {
-  process.env.VERCEL = "1"
+  process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
   vi.clearAllMocks()
   withAuthenticatedChatRequestMock.mockImplementation(
     (
@@ -99,10 +99,10 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   vi.clearAllMocks()
 })

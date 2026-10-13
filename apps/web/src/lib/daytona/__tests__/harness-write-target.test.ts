@@ -26,13 +26,13 @@ vi.mock("../client", () => ({
   uploadFile: vi.fn(),
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 afterEach(() => {
   getCachedUserSandbox.mockReset()
   getInFlightUserSandbox.mockReset()
-  if (originalVercel === undefined) delete process.env.VERCEL
-  else process.env.VERCEL = originalVercel
+  if (originalHosted === undefined) delete process.env.FLEET_PI_DEPLOYMENT
+  else process.env.FLEET_PI_DEPLOYMENT = originalHosted
 })
 
 describe("resolveHarnessWriteTarget", () => {
@@ -45,9 +45,9 @@ describe("resolveHarnessWriteTarget", () => {
       await writeFile(join(directory, "module.wasm"), bytes)
       vi.mocked(executeCommand).mockImplementation((_sandbox, command) => {
         if (String(command).includes("test -e")) {
-          return { exitCode: 1, result: "" }
+          return Promise.resolve({ exitCode: 1, result: "" })
         }
-        return { exitCode: 0, result: "" }
+        return Promise.resolve({ exitCode: 0, result: "" })
       })
       const sandbox = { id: "binary" } as Sandbox
       await uploadAgentWorkspaceTree(sandbox, root)
@@ -61,7 +61,7 @@ describe("resolveHarnessWriteTarget", () => {
     }
   })
   it("writes the host checkout for local sessions", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     await expect(resolveHarnessWriteTarget({ cwd: "/repo" })).resolves.toEqual({
       kind: "host",
       cwd: "/repo",
@@ -69,7 +69,7 @@ describe("resolveHarnessWriteTarget", () => {
   })
 
   it("refuses the shared checkout on deployed chat without a sandbox", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     await expect(resolveHarnessWriteTarget({ cwd: "/repo" })).resolves.toEqual({
       kind: "unavailable",
       message: expect.stringContaining("Daytona sandbox"),
@@ -77,7 +77,7 @@ describe("resolveHarnessWriteTarget", () => {
   })
 
   it("targets the cached user sandbox when one is warm", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const sandbox = { id: "sb" }
     getCachedUserSandbox.mockReturnValue({ sandbox })
     trackDaytonaToolSession("session-1", undefined, "user-1")
@@ -93,7 +93,7 @@ describe("resolveHarnessWriteTarget", () => {
   })
 
   it("waits for a sandbox warm-up that is already in flight", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const sandbox = { id: "warming" }
     getCachedUserSandbox.mockReturnValue(undefined)
     getInFlightUserSandbox.mockReturnValue(Promise.resolve({ sandbox }))

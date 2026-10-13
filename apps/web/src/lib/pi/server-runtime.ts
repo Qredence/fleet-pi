@@ -58,7 +58,7 @@ import type {
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   getCachedUserSandbox,
   isDaytonaEnabled,
@@ -269,7 +269,7 @@ export async function createPiRuntime(
   const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
   const workspace = resolveChatWorkspaceStatus({
     daytonaEnabled: daytona.enabled,
-    hostedDeployment: isVercelDeployment(),
+    hostedDeployment: isHostedDeployment(),
   })
 
   const services = await createSessionServices(context, undefined, {

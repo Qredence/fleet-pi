@@ -65,7 +65,7 @@ Everything is yours:
 - **LLM keys** — your own Gemini, OpenAI, Anthropic, Bedrock, or any Pi-compatible provider
 - **Sandbox compute** — your own Daytona sandbox, or none at all
 - **Database** — your own Neon Postgres for session mirroring, or skip it
-- **Credentials** — encrypted in Postgres on Vercel, local in `.env` for dev
+- **Credentials** — encrypted in Postgres on Cloudflare, local in `.env` for dev
 
 ---
 
@@ -113,7 +113,7 @@ Open [http://localhost:3000](http://localhost:3000). Set your LLM provider key (
 
 ## Where to start
 
-- **Deployed app:** [fleet-pi-web.vercel.app](https://fleet-pi-web.vercel.app/)
+- **Deployed app:** [fleet-pi-web.workers.dev](https://fleet-pi-web.workers.dev/)
 - **Source:** [github.com/Qredence/fleet-pi](https://github.com/Qredence/fleet-pi)
 - **Docs:** [docs/](/docs/README.md)
 - **Quickstart:** [docs/quickstart.md](/docs/quickstart.md)

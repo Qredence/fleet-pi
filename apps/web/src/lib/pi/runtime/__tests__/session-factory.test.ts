@@ -46,7 +46,7 @@ vi.mock("@/lib/db/local-provider-instances", () => ({
 }))
 
 describe("session factory", () => {
-  const originalVercel = process.env.VERCEL
+  const originalHosted = process.env.FLEET_PI_DEPLOYMENT
   const originalGeminiKey = process.env.GEMINI_API_KEY
   const originalAuthSecret = process.env.BETTER_AUTH_SECRET
   const originalChatDb = process.env.FLEET_PI_CHAT_DATABASE_URL
@@ -86,7 +86,7 @@ describe("session factory", () => {
   })
 
   afterEach(() => {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
     process.env.GEMINI_API_KEY = originalGeminiKey
     process.env.BETTER_AUTH_SECRET = originalAuthSecret
     process.env.FLEET_PI_CHAT_DATABASE_URL = originalChatDb
@@ -96,8 +96,8 @@ describe("session factory", () => {
     vi.resetModules()
   })
 
-  it("injects BYOK runtime keys for Vercel users", async () => {
-    process.env.VERCEL = "1"
+  it("injects BYOK runtime keys for Cloudflare users", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
     const { applyRuntimeAuth } = await import("../session-factory")
@@ -124,7 +124,7 @@ describe("session factory", () => {
   })
 
   it("syncs local env vars into runtime auth storage", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     process.env.GEMINI_API_KEY = "local-gemini-key"
     const { applyRuntimeAuth } = await import("../session-factory")
     const setRuntimeApiKey = vi.fn()
@@ -147,7 +147,7 @@ describe("session factory", () => {
   })
 
   it("only touches configured providers and clears stale runtime keys", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     process.env.GEMINI_API_KEY = "local-gemini-key"
     const { applyRuntimeAuth } = await import("../session-factory")
     const setRuntimeApiKey = vi.fn()
@@ -193,8 +193,8 @@ describe("session factory", () => {
     expect(removeRuntimeApiKey).toHaveBeenCalledWith("amazon-bedrock")
   })
 
-  it("scrubs Pi LLM provider env vars including Hugging Face on Vercel", async () => {
-    process.env.VERCEL = "1"
+  it("scrubs Pi LLM provider env vars including Hugging Face on Cloudflare", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.GEMINI_API_KEY = "secret"
     process.env.HF_TOKEN = "hf-org-token"
     process.env.OPENROUTER_API_KEY = "or-secret"
@@ -206,13 +206,13 @@ describe("session factory", () => {
     expect(process.env.GEMINI_API_KEY).toBeUndefined()
     expect(process.env.HF_TOKEN).toBeUndefined()
     expect(process.env.OPENROUTER_API_KEY).toBeUndefined()
-    // Daytona org keys are scrubbed on Vercel; user BYOK is loaded separately.
+    // Daytona org keys are scrubbed on Cloudflare; user BYOK is loaded separately.
     expect(process.env.DAYTONA_API_KEY).toBeUndefined()
     expect(mocks.createAgentSessionServices).toHaveBeenCalled()
   })
 
-  it("scrubs NEON_AI_GATEWAY env on Vercel after capturing credentials", async () => {
-    process.env.VERCEL = "1"
+  it("scrubs NEON_AI_GATEWAY env on Cloudflare after capturing credentials", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
     process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
     process.env.GEMINI_API_KEY = "secret"
@@ -230,8 +230,8 @@ describe("session factory", () => {
     resetCapturedNeonAiGatewayCredentialsForTests()
   })
 
-  it("does not fall back to org env LLM keys on Vercel when BYOK is empty", async () => {
-    process.env.VERCEL = "1"
+  it("does not fall back to org env LLM keys on Cloudflare when BYOK is empty", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.GEMINI_API_KEY = "org-gemini-key"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
@@ -521,7 +521,7 @@ describe("session factory plan mode", () => {
   })
 
   it("registers the plan-mode extension on every session", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     // This file reloads session-factory after vi.resetModules(). A top-level
     // import would keep the first module instance and shadow those reloads.
     const { createSessionServices } = await import("../session-factory")

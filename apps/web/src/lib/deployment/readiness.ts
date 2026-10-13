@@ -54,14 +54,14 @@ export type DeploymentReadinessInput = {
   ownershipProbeDataApiExecute?: Array<string>
 }
 
-const LEGACY_REQUIRED_VERCEL_ENV_VARS = [
+const LEGACY_REQUIRED_HOSTED_ENV_VARS = [
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
   "FLEET_PI_AUTH_DATABASE_URL",
   "FLEET_PI_CHAT_DATABASE_URL",
 ] as const
 
-const NEON_MANAGED_REQUIRED_VERCEL_ENV_VARS = [
+const NEON_MANAGED_REQUIRED_HOSTED_ENV_VARS = [
   "FLEET_PI_CHAT_DATABASE_URL",
 ] as const
 
@@ -104,7 +104,7 @@ export function validateDeploymentReadiness(
     push(
       "local-mode",
       true,
-      "Local development does not require Vercel env vars."
+      "Local development does not require hosted env vars."
     )
     return { ok: checks.every((check) => check.ok), checks }
   }
@@ -119,15 +119,17 @@ export function validateDeploymentReadiness(
       true,
       readEnv("NEON_AUTH_BASE_URL", env).length > 0
         ? "NEON_AUTH_BASE_URL is set."
-        : "NEON_AUTH_URL (Vercel↔Neon integration) is set; NEON_AUTH_BASE_URL optional."
+        : "NEON_AUTH_URL is set; NEON_AUTH_BASE_URL optional."
     )
 
-    for (const name of NEON_MANAGED_REQUIRED_VERCEL_ENV_VARS) {
+    for (const name of NEON_MANAGED_REQUIRED_HOSTED_ENV_VARS) {
       const value = readEnv(name, env)
       push(
         `env:${name}`,
         value.length > 0,
-        value.length > 0 ? `${name} is set.` : `${name} is required on Vercel.`
+        value.length > 0
+          ? `${name} is set.`
+          : `${name} is required on Cloudflare.`
       )
     }
 
@@ -187,27 +189,14 @@ export function validateDeploymentReadiness(
         : "NEON_AUTH_JWKS_URL is required when Neon Managed Auth is configured."
     )
   } else {
-    for (const name of LEGACY_REQUIRED_VERCEL_ENV_VARS) {
+    for (const name of LEGACY_REQUIRED_HOSTED_ENV_VARS) {
       const value = readEnv(name, env)
-      if (name === "BETTER_AUTH_URL" && isHostedPreviewTrustZone(trustZone)) {
-        const vercelUrl = readEnv("VERCEL_URL", env)
-        const ok = value.length > 0 || vercelUrl.length > 0
-        push(
-          `env:${name}`,
-          ok,
-          ok
-            ? value.length > 0
-              ? `${name} is set.`
-              : `${name} falls back to VERCEL_URL on Preview.`
-            : `${name} or VERCEL_URL is required on Preview.`
-        )
-        continue
-      }
-
       push(
         `env:${name}`,
         value.length > 0,
-        value.length > 0 ? `${name} is set.` : `${name} is required on Vercel.`
+        value.length > 0
+          ? `${name} is set.`
+          : `${name} is required on Cloudflare.`
       )
     }
   }

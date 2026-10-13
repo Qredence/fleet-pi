@@ -47,15 +47,15 @@ let root: string
 
 beforeEach(async () => {
   vi.resetAllMocks()
-  vi.stubEnv("VERCEL", "1")
+  vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
   originalBridge = bridgeGlobal[bridgeKey]
   delete bridgeGlobal[bridgeKey]
   root = await mkdtemp(join(tmpdir(), "fleet-pi-harness-loader-"))
   mocks.executeCommand.mockImplementation((_sandbox, command: string) => {
     if (String(command).includes("test -e")) {
-      return { exitCode: 1, result: "" }
+      return Promise.resolve({ exitCode: 1, result: "" })
     }
-    return { exitCode: 0, result: "" }
+    return Promise.resolve({ exitCode: 0, result: "" })
   })
   mocks.persistHarnessInstallSettings.mockImplementation(({ settings }) =>
     Promise.resolve(settings)
@@ -203,7 +203,7 @@ describe("Harness writes through Pi's filesystem extension loader", () => {
   )
 
   it("keeps standalone local CLI host writes", async () => {
-    vi.stubEnv("VERCEL", "")
+    vi.stubEnv("FLEET_PI_DEPLOYMENT", "")
     await mkdir(join(root, "agent-workspace/scratch"), { recursive: true })
     const { write, install } = await loadTools()
     await write.execute(

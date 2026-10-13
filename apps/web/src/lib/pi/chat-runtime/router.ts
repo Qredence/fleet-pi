@@ -121,7 +121,7 @@ async function dispatchChatRuntimeRequest(request: Request) {
 }
 
 export async function handleChatRuntimeRequest(request: Request) {
-  // Neon Functions are not Vercel (`VERCEL=1`); force auth for this surface.
+  // The Neon Function surface always requires auth.
   const response = await runWithChatAuthSurface("neon-function", () =>
     dispatchChatRuntimeRequest(request)
   )

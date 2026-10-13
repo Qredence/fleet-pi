@@ -1,7 +1,7 @@
 import { join } from "node:path"
 
-export const VERCEL_EPHEMERAL_SESSION_BASE = "/tmp/.fleet/sessions"
+export const HOSTED_EPHEMERAL_SESSION_BASE = "/tmp/.fleet/sessions"
 
-export function resolveVercelUserSessionDir(userId: string) {
-  return join(VERCEL_EPHEMERAL_SESSION_BASE, userId)
+export function resolveHostedUserSessionDir(userId: string) {
+  return join(HOSTED_EPHEMERAL_SESSION_BASE, userId)
 }

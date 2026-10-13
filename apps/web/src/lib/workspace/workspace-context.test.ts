@@ -46,14 +46,14 @@ vi.mock("@/lib/daytona/user-sandbox", () => ({
 const originalAuthDatabaseUrl = process.env.FLEET_PI_AUTH_DATABASE_URL
 const originalDaytonaApiKey = process.env.DAYTONA_API_KEY
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const roots = new Set<string>()
 
 beforeEach(() => {
   delete process.env.FLEET_PI_AUTH_DATABASE_URL
   delete process.env.DAYTONA_API_KEY
   delete process.env.FLEET_PI_REPO_ROOT
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
   mockExecuteCommand.mockReset()
   mockGetSession.mockReset()
   mockResolveUserSandboxContext.mockReset()
@@ -64,7 +64,7 @@ afterEach(() => {
   restoreEnv("FLEET_PI_AUTH_DATABASE_URL", originalAuthDatabaseUrl)
   restoreEnv("DAYTONA_API_KEY", originalDaytonaApiKey)
   restoreEnv("FLEET_PI_REPO_ROOT", originalRepoRoot)
-  restoreEnv("VERCEL", originalVercel)
+  restoreEnv("FLEET_PI_DEPLOYMENT", originalHosted)
   for (const root of roots) {
     rmSync(root, { force: true, recursive: true })
   }
@@ -103,8 +103,8 @@ describe("resolveWorkspaceContext", () => {
     expect(context.workspaceFS).toBe(workspaceFS)
   })
 
-  it("throws DaytonaCredentialRequiredError (403) on VERCEL=1 without BYOK", async () => {
-    process.env.VERCEL = "1"
+  it("throws DaytonaCredentialRequiredError (403) on FLEET_PI_DEPLOYMENT=cloudflare without BYOK", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },
     })
@@ -120,7 +120,7 @@ describe("resolveWorkspaceContext", () => {
   })
 
   it("does not gate chat-only surfaces (requireDaytona: false) on hosted deployments without BYOK", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },
     })
@@ -136,7 +136,7 @@ describe("resolveWorkspaceContext", () => {
     expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
   })
 
-  it("resolves a local context when VERCEL is unset and no BYOK is present", async () => {
+  it("resolves a local context when FLEET_PI_DEPLOYMENT is unset and no BYOK is present", async () => {
     mockGetSession.mockResolvedValue({
       user: { email: "user@example.test", id: "user-1" },
     })

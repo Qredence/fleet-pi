@@ -49,7 +49,7 @@ export async function resolveProjectSettings(
   return mergeProjectSettingsRecords(getFleetBaseProjectSettings(), overrides)
 }
 
-/** Drop absolute machine paths that cannot work on Vercel. */
+/** Drop absolute machine paths that cannot work on Cloudflare. */
 export function sanitizePortableResourcePaths(
   settings: Record<string, unknown>
 ): Record<string, unknown> {

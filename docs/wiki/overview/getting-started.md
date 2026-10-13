@@ -48,7 +48,7 @@ NEON_AI_GATEWAY_TOKEN=nt_live_...
 NEON_AI_GATEWAY_BASE_URL=https://<branch>-api.ai.<region>.aws.neon.tech
 
 FLEET_PI_CHAT_DATABASE_URL=postgresql://...
-DAYTONA_API_KEY=...   # local/dev only; Vercel users need BYOK daytona
+DAYTONA_API_KEY=...   # local/dev only; Cloudflare users need BYOK daytona
 ```
 
 ## Run

@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/lib/pi/server"
 import { isEnvVarConfigured, updateEnvVar } from "@/lib/env-manager"
 import { auth } from "@/lib/auth/server"
 import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 const SandboxSettingsUpdateSchema = z.object({
   daytonaApiKey: z.string().optional(),
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/sandbox/settings")({
             return Response.json({ message: "Unauthorized" }, { status: 401 })
           }
 
-          if (isVercelDeployment()) {
+          if (isHostedDeployment()) {
             return Response.json({
               daytonaApiKeyConfigured: false,
               daytonaTargetConfigured: false,
@@ -65,9 +65,9 @@ export const Route = createFileRoute("/api/sandbox/settings")({
           const rawBody = await request.json()
           const body = SandboxSettingsUpdateSchema.parse(rawBody)
 
-          if (isVercelDeployment()) {
+          if (isHostedDeployment()) {
             return Response.json(
-              { message: "Not supported on Vercel" },
+              { message: "Not supported on Cloudflare" },
               { status: 400 }
             )
           } else {

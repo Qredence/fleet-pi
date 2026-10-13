@@ -73,11 +73,11 @@ vi.mock("@/lib/auth/chat-api-auth", () => ({
 }))
 
 vi.mock("@/lib/deployment/environment", () => ({
-  isVercelDeployment: () => false,
+  isHostedDeployment: () => false,
 }))
 
 // The loopback http policy and instance-usable checks branch on the deployed
-// surface; pin it to local dev so the tests don't flip if VERCEL is set.
+// surface; pin it to local dev so the tests don't flip if FLEET_PI_DEPLOYMENT=cloudflare.
 vi.mock("@/lib/pi/runtime/deployed-chat-runtime", () => ({
   isDeployedChatRuntimeSurface: () => false,
 }))

@@ -179,7 +179,7 @@ export async function applyRuntimeAuth(
   const { modelRuntime } = services
 
   // Reconcile ONLY the providers the user actually configured (BYOK rows on
-  // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
+  // Cloudflare, env keys locally). Do NOT sweep the whole Pi provider catalog:
   // every key mutation triggers a Pi availability refresh, and with network
   // model refresh enabled that scan walks every provider and can hang (e.g.
   // amazon-bedrock without AWS credentials).

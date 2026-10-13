@@ -8,11 +8,10 @@ import { getDefaultProjectRoot } from "@/lib/app-runtime"
 import {
   LOCAL_AUTH_URL,
   PRODUCTION_AUTH_URL,
-  resolvePreviewAuthOrigin,
+  resolveHostedAllowedHosts,
   resolveTrustedOriginsForDeployment,
-  resolveVercelAllowedHosts,
 } from "@/lib/auth/auth-host-policy"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isHostedPreviewDeployment } from "@/lib/deployment/trust-zone"
 import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
 
@@ -23,10 +22,10 @@ function readCsvEnv(name: string) {
     .filter(Boolean)
 }
 
-function requiredVercelEnv(name: string) {
+function requiredHostedEnv(name: string) {
   const value = process.env[name]?.trim()
-  if (!value && isVercelDeployment()) {
-    throw new Error(`${name} is required for Better Auth on Vercel.`)
+  if (!value && isHostedDeployment()) {
+    throw new Error(`${name} is required for Better Auth on Cloudflare.`)
   }
   return value
 }
@@ -59,14 +58,10 @@ function openAuthPool(url: string) {
 function openAuthDatabase() {
   const url = process.env.FLEET_PI_AUTH_DATABASE_URL?.trim()
   if (url) return openAuthPool(url)
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     throw new Error(
-      "FLEET_PI_AUTH_DATABASE_URL is required for Better Auth on Vercel."
+      "FLEET_PI_AUTH_DATABASE_URL is required for Better Auth on Cloudflare."
     )
-  }
-
-  if (isVercelDeployment()) {
-    throw new Error("SQLite auth is unavailable on a hosted deployment.")
   }
 
   const dbPath =
@@ -132,34 +127,25 @@ function migrateAuthSchema(db: InstanceType<typeof Database>) {
 
 function resolveAuthBaseURL() {
   const configuredBaseURL = process.env.BETTER_AUTH_URL?.trim()
-  const vercelUrl = process.env.VERCEL_URL?.trim()
-  if (!isVercelDeployment()) return configuredBaseURL ?? LOCAL_AUTH_URL
-
-  const previewFallback = resolvePreviewAuthOrigin({
-    betterAuthUrl: configuredBaseURL,
-    vercelUrl,
-  })
+  if (!isHostedDeployment()) return configuredBaseURL ?? LOCAL_AUTH_URL
 
   return {
-    allowedHosts: resolveVercelAllowedHosts(configuredBaseURL, vercelUrl),
+    allowedHosts: resolveHostedAllowedHosts(configuredBaseURL),
     protocol: "https" as const,
-    fallback: isHostedPreviewDeployment()
-      ? (previewFallback ?? PRODUCTION_AUTH_URL)
-      : (configuredBaseURL ?? PRODUCTION_AUTH_URL),
+    fallback: configuredBaseURL ?? PRODUCTION_AUTH_URL,
   }
 }
 
 function resolveTrustedOrigins() {
   return resolveTrustedOriginsForDeployment({
-    isVercel: isVercelDeployment(),
+    isHosted: isHostedDeployment(),
     isPreview: isHostedPreviewDeployment(),
     configuredOrigins: readCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS"),
     betterAuthUrl: process.env.BETTER_AUTH_URL?.trim(),
-    vercelUrl: process.env.VERCEL_URL?.trim(),
   })
 }
 
-const betterAuthSecret = requiredVercelEnv("BETTER_AUTH_SECRET")
+const betterAuthSecret = requiredHostedEnv("BETTER_AUTH_SECRET")
 const authSecret =
   betterAuthSecret ?? "fleet-pi-local-development-secret-change-in-production"
 

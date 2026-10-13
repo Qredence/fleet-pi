@@ -3,7 +3,7 @@ import {
   enforceChatSessionOwnership,
   enforceRunOwnership,
   isChatAuthRequired,
-  requireVercelChatAuth,
+  requireHostedChatAuth,
   unauthorizedChatResponse,
   withAuthenticatedChatRequest,
 } from "../chat-api-auth"
@@ -31,23 +31,23 @@ vi.mock("@/lib/db/pi-session-ownership-db", () => ({
   isUserScopedEphemeralSessionFile: vi.fn(() => false),
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const originalNeonAuthBase = process.env.NEON_AUTH_BASE_URL
 const originalNeonAuthUrl = process.env.NEON_AUTH_URL
 const originalChatRuntimeAuth = process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
 
 function clearDeployedChatAuthEnv() {
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
   delete process.env.NEON_AUTH_BASE_URL
   delete process.env.NEON_AUTH_URL
   delete process.env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH
 }
 
 function restoreDeployedChatAuthEnv() {
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   if (originalNeonAuthBase === undefined) {
     delete process.env.NEON_AUTH_BASE_URL
@@ -72,12 +72,12 @@ afterEach(() => {
 })
 
 describe("chat-api-auth", () => {
-  it("requires auth on Vercel deployments", async () => {
+  it("requires auth on Cloudflare deployments", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
-    const result = await requireVercelChatAuth(
+    const result = await requireHostedChatAuth(
       new Request("http://localhost/api/chat")
     )
 
@@ -93,7 +93,7 @@ describe("chat-api-auth", () => {
       "https://ep-example.neonauth.aws.neon.tech/neondb/auth"
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
-    const result = await requireVercelChatAuth(
+    const result = await requireHostedChatAuth(
       new Request("http://localhost/api/chat")
     )
 
@@ -103,11 +103,11 @@ describe("chat-api-auth", () => {
     }
   })
 
-  it("allows unauthenticated access outside Vercel and Managed Auth", async () => {
+  it("allows unauthenticated access outside Cloudflare and Managed Auth", async () => {
     clearDeployedChatAuthEnv()
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
-    const result = await requireVercelChatAuth(
+    const result = await requireHostedChatAuth(
       new Request("http://localhost/api/chat")
     )
 
@@ -142,9 +142,9 @@ describe("chat-api-auth", () => {
     expect(result.ok).toBe(true)
   })
 
-  it("denies sessionFile-only access on Vercel when mirror lookup fails", async () => {
+  it("denies sessionFile-only access on Cloudflare when mirror lookup fails", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue(undefined)
     const { isUserScopedEphemeralSessionFile } =
       await import("@/lib/db/pi-session-ownership-db")
@@ -162,9 +162,9 @@ describe("chat-api-auth", () => {
     }
   })
 
-  it("allows sessionFile-only access on Vercel when ephemeral JSONL exists before mirror sync", async () => {
+  it("allows sessionFile-only access on Cloudflare when ephemeral JSONL exists before mirror sync", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue(undefined)
     const { isUserScopedEphemeralSessionFile } =
       await import("@/lib/db/pi-session-ownership-db")
@@ -179,9 +179,9 @@ describe("chat-api-auth", () => {
     expect(result.ok).toBe(true)
   })
 
-  it("resolves sessionFile to sessionId on Vercel before ownership check", async () => {
+  it("resolves sessionFile to sessionId on Cloudflare before ownership check", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(lookupSessionIdBySessionFile).mockResolvedValue("session-1")
     vi.mocked(verifySessionOwnership).mockResolvedValue(true)
 
@@ -196,7 +196,7 @@ describe("chat-api-auth", () => {
     expect(result.ok).toBe(true)
   })
 
-  it("allows sessionFile-only access outside Vercel", async () => {
+  it("allows sessionFile-only access outside Cloudflare", async () => {
     clearDeployedChatAuthEnv()
 
     const result = await enforceChatSessionOwnership({
@@ -225,7 +225,7 @@ describe("chat-api-auth", () => {
 
   it("exposes deployment detection for tests", () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     expect(isChatAuthRequired()).toBe(true)
     expect(unauthorizedChatResponse().status).toBe(401)
   })
@@ -255,9 +255,9 @@ describe("chat-api-auth", () => {
     }
   })
 
-  it("requires auth for run access on Vercel", async () => {
+  it("requires auth for run access on Cloudflare", async () => {
     clearDeployedChatAuthEnv()
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
 
     const result = await enforceRunOwnership({
       runId: "run-1",

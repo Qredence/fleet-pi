@@ -59,7 +59,7 @@ function resolveStorePath(userId?: string): string {
  * Local dev fallback: instances are stored outside Postgres when the chat
  * database is not configured for the account (anonymous local chat, or a
  * local Better Auth sign-in without `FLEET_PI_CHAT_DATABASE_URL`). Never true
- * on Vercel or the Neon Function surface, where the filesystem is ephemeral
+ * on Cloudflare or the Neon Function surface, where the filesystem is ephemeral
  * and `pi_user_providers` is the only durable store.
  *
  * @param userId - The signed-in user's id, or `undefined` for anonymous chat

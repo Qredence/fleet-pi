@@ -33,7 +33,7 @@ export function assertSafeOpenAiCompatibleBaseUrl(baseUrl: string): string {
     throw new Error("Invalid OpenAI Chat Completions base URL.")
   }
 
-  // Loopback http is a local-dev convenience only: it stays blocked on Vercel
+  // Loopback http is a local-dev convenience only: it stays blocked on Cloudflare
   // and on the Neon Function surface, where "loopback" means the Function's own
   // process, not the developer's laptop.
   const allowLocalHttp = !isDeployedChatRuntimeSurface()
@@ -70,7 +70,7 @@ function isBlockedHostname(hostname: string) {
     return true
   }
 
-  // On Vercel (and generally for non-loopback), block private / link-local.
+  // On Cloudflare (and generally for non-loopback), block private / link-local.
   if (isLoopbackHostname(host) && !isDeployedChatRuntimeSurface()) {
     return false
   }
