@@ -9,11 +9,11 @@ import {
   mergeProjectSettingsRecords,
 } from "../project-settings-merge"
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 afterEach(() => {
-  if (originalVercel === undefined) delete process.env.VERCEL
-  else process.env.VERCEL = originalVercel
+  if (originalHosted === undefined) delete process.env.FLEET_PI_DEPLOYMENT
+  else process.env.FLEET_PI_DEPLOYMENT = originalHosted
 })
 
 describe("project-settings-merge", () => {
@@ -114,14 +114,14 @@ describe("project-settings-merge", () => {
   })
 
   it("omits model defaults everywhere: base settings carry no default provider/model locally or deployed", () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     const localBase = getFleetBaseProjectSettings()
     expect(localBase).toEqual({ ...FLEET_PI_SHARED_PROJECT_SETTINGS })
     expect(localBase).not.toHaveProperty("defaultProvider")
     expect(localBase).not.toHaveProperty("defaultModel")
     expect(localBase).not.toHaveProperty("enabledModels")
 
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const deployedBase = getFleetBaseProjectSettings()
     expect(deployedBase).toEqual({ ...FLEET_PI_SHARED_PROJECT_SETTINGS })
     expect(deployedBase).not.toHaveProperty("defaultProvider")

@@ -1,14 +1,18 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
+import { createRequire } from "node:module"
 import { basename, dirname, join } from "node:path"
-import Database from "better-sqlite3"
 import {
   WORKSPACE_INDEX_CATEGORY_VALUES,
   WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES,
   WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES,
 } from "../workspace/workspace-index-types"
+import type Database from "better-sqlite3"
 import type { AppRuntimeContext } from "../app-runtime"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import {
+  isCloudflareDeployment,
+  isHostedDeployment,
+} from "@/lib/deployment/environment"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
   "workspace-projection.sqlite"
@@ -275,7 +279,7 @@ const WORKSPACE_PROJECTION_MIGRATIONS: ReadonlyArray<ProjectionMigration> = [
 ] as const
 
 export function getWorkspaceProjectionDatabasePath(context: AppRuntimeContext) {
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     if (context.workspaceRoot.startsWith("/var/task")) {
       return join(
         "/tmp",
@@ -292,13 +296,40 @@ export function getWorkspaceProjectionDatabasePath(context: AppRuntimeContext) {
   )
 }
 
+export class WorkspaceProjectionUnavailableError extends Error {
+  readonly code = "workspace-projection-unavailable"
+
+  constructor(message: string) {
+    super(message)
+    this.name = "WorkspaceProjectionUnavailableError"
+  }
+}
+
+function loadBetterSqlite(): typeof Database {
+  if (isCloudflareDeployment()) {
+    throw new WorkspaceProjectionUnavailableError(
+      "Workspace projection sqlite is unavailable on Cloudflare. Writes belong in the Daytona sandbox."
+    )
+  }
+  const specifier = "better-" + "sqlite3"
+  const require = createRequire(import.meta.url)
+  return require(specifier) as typeof Database
+}
+
 export function openWorkspaceProjection(
   context: AppRuntimeContext
 ): WorkspaceProjectionConnection {
+  if (isCloudflareDeployment()) {
+    throw new WorkspaceProjectionUnavailableError(
+      "Workspace projection sqlite is unavailable on Cloudflare. Writes belong in the Daytona sandbox."
+    )
+  }
+
   const databasePath = getWorkspaceProjectionDatabasePath(context)
   mkdirSync(dirname(databasePath), { recursive: true })
 
   const created = !existsSync(databasePath)
+  const Database = loadBetterSqlite()
   const db = new Database(databasePath)
   configureWorkspaceProjection(db)
   applyProjectionMigrations(db)

@@ -4,13 +4,13 @@
  */
 
 /**
- * True on a hosted serverless deployment: Vercel, or Cloudflare Workers
- * (`FLEET_PI_DEPLOYMENT=cloudflare`, set in wrangler.jsonc `vars`). Both have
- * an ephemeral, mostly read-only filesystem, so they share the same
- * fail-closed, Postgres-backed code paths. The name predates Workers support.
+ * True on the hosted Cloudflare Workers runtime
+ * (`FLEET_PI_DEPLOYMENT=cloudflare`, set in wrangler.jsonc `vars`).
+ * The filesystem is ephemeral, so chat, auth, and settings stay on the
+ * fail-closed Postgres-backed paths.
  */
-export function isVercelDeployment() {
-  return process.env.VERCEL === "1" || isCloudflareDeployment()
+export function isHostedDeployment() {
+  return isCloudflareDeployment()
 }
 
 export function isCloudflareDeployment() {

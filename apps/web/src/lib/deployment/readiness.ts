@@ -50,16 +50,18 @@ export type DeploymentReadinessInput = {
   chatRuntimeRoleName?: string
   /** Non-empty when Data API roles still hold privileges on critical pi_* tables. */
   dataApiPiPrivileges?: Array<DataApiPrivilegeProbe>
+  /** Data API roles that can still EXECUTE an ownership probe. */
+  ownershipProbeDataApiExecute?: Array<string>
 }
 
-const LEGACY_REQUIRED_VERCEL_ENV_VARS = [
+const LEGACY_REQUIRED_HOSTED_ENV_VARS = [
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
   "FLEET_PI_AUTH_DATABASE_URL",
   "FLEET_PI_CHAT_DATABASE_URL",
 ] as const
 
-const NEON_MANAGED_REQUIRED_VERCEL_ENV_VARS = [
+const NEON_MANAGED_REQUIRED_HOSTED_ENV_VARS = [
   "FLEET_PI_CHAT_DATABASE_URL",
 ] as const
 
@@ -102,7 +104,7 @@ export function validateDeploymentReadiness(
     push(
       "local-mode",
       true,
-      "Local development does not require Vercel env vars."
+      "Local development does not require hosted env vars."
     )
     return { ok: checks.every((check) => check.ok), checks }
   }
@@ -117,15 +119,17 @@ export function validateDeploymentReadiness(
       true,
       readEnv("NEON_AUTH_BASE_URL", env).length > 0
         ? "NEON_AUTH_BASE_URL is set."
-        : "NEON_AUTH_URL (Vercel↔Neon integration) is set; NEON_AUTH_BASE_URL optional."
+        : "NEON_AUTH_URL is set; NEON_AUTH_BASE_URL optional."
     )
 
-    for (const name of NEON_MANAGED_REQUIRED_VERCEL_ENV_VARS) {
+    for (const name of NEON_MANAGED_REQUIRED_HOSTED_ENV_VARS) {
       const value = readEnv(name, env)
       push(
         `env:${name}`,
         value.length > 0,
-        value.length > 0 ? `${name} is set.` : `${name} is required on Vercel.`
+        value.length > 0
+          ? `${name} is set.`
+          : `${name} is required on Cloudflare.`
       )
     }
 
@@ -167,28 +171,32 @@ export function validateDeploymentReadiness(
         ? "NEON_AUTH_ISSUER is set so bearer JWTs fail closed."
         : "NEON_AUTH_ISSUER is required when Neon Managed Auth is configured."
     )
-  } else {
-    for (const name of LEGACY_REQUIRED_VERCEL_ENV_VARS) {
-      const value = readEnv(name, env)
-      if (name === "BETTER_AUTH_URL" && isHostedPreviewTrustZone(trustZone)) {
-        const vercelUrl = readEnv("VERCEL_URL", env)
-        const ok = value.length > 0 || vercelUrl.length > 0
-        push(
-          `env:${name}`,
-          ok,
-          ok
-            ? value.length > 0
-              ? `${name} is set.`
-              : `${name} falls back to VERCEL_URL on Preview.`
-            : `${name} or VERCEL_URL is required on Preview.`
-        )
-        continue
-      }
 
+    const neonAuthJwksUrl = readEnv("NEON_AUTH_JWKS_URL", env)
+    let jwksOk = false
+    try {
+      jwksOk =
+        neonAuthJwksUrl.length > 0 &&
+        new URL(neonAuthJwksUrl).protocol === "https:"
+    } catch {
+      jwksOk = false
+    }
+    push(
+      "env:NEON_AUTH_JWKS_URL",
+      jwksOk,
+      jwksOk
+        ? "NEON_AUTH_JWKS_URL is an https URL for bearer verification."
+        : "NEON_AUTH_JWKS_URL is required when Neon Managed Auth is configured."
+    )
+  } else {
+    for (const name of LEGACY_REQUIRED_HOSTED_ENV_VARS) {
+      const value = readEnv(name, env)
       push(
         `env:${name}`,
         value.length > 0,
-        value.length > 0 ? `${name} is set.` : `${name} is required on Vercel.`
+        value.length > 0
+          ? `${name} is set.`
+          : `${name} is required on Cloudflare.`
       )
     }
   }
@@ -408,6 +416,18 @@ export function validateDeploymentReadiness(
       input.chatRuntimeBypassesRls
         ? `Chat runtime role "${roleName}" bypasses row-level security. Set FLEET_PI_CHAT_DATABASE_URL to the non-owner fleet_pi_app role.`
         : `Chat runtime role "${roleName}" does not bypass row-level security.`
+    )
+  }
+
+  if (input.ownershipProbeDataApiExecute) {
+    const executable = input.ownershipProbeDataApiExecute
+    const ok = executable.length === 0
+    push(
+      "db:ownership-probe-execute-revoked",
+      ok,
+      ok
+        ? "Data API roles cannot EXECUTE fleet_pi_check_session_owner."
+        : `Data API roles can still EXECUTE an ownership probe: ${executable.join(", ")}. Run pnpm chat:migrate.`
     )
   }
 

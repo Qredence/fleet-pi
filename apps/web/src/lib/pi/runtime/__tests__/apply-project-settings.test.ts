@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { applyProjectSettingsToServices } from "../apply-project-settings"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 afterEach(() => {
-  if (originalVercel === undefined) delete process.env.VERCEL
-  else process.env.VERCEL = originalVercel
+  if (originalHosted === undefined) delete process.env.FLEET_PI_DEPLOYMENT
+  else process.env.FLEET_PI_DEPLOYMENT = originalHosted
 })
 
 type SettingsStore = Record<string, unknown>
@@ -53,7 +53,7 @@ function servicesFor(manager: ReturnType<typeof createManagerStub>) {
 
 describe("applyProjectSettingsToServices", () => {
   it("deletes project defaultProvider/defaultModel on deployed surfaces when Fleet settings have none", () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const manager = createManagerStub({
       defaultProvider: "opencode",
       defaultModel: "deepseek-v4-flash-free",
@@ -71,7 +71,7 @@ describe("applyProjectSettingsToServices", () => {
   })
 
   it("applies a Fleet-configured default provider/model in project scope", () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const manager = createManagerStub()
 
     applyProjectSettingsToServices(servicesFor(manager), {
@@ -127,7 +127,7 @@ describe("applyProjectSettingsToServices", () => {
   })
 
   it("skips project-layer deletes for fields already absent on disk", () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const manager = createManagerStub({})
 
     applyProjectSettingsToServices(servicesFor(manager), {})
@@ -138,7 +138,7 @@ describe("applyProjectSettingsToServices", () => {
   })
 
   it("leaves the project default untouched in local dev (non-deployed)", () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     const manager = createManagerStub({
       defaultProvider: "opencode",
       defaultModel: "deepseek-v4-flash-free",

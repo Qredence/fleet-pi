@@ -10,7 +10,7 @@ vi.mock("@/lib/db/user-providers", () => ({
 const ENV_KEYS = [
   "FLEET_PI_CHAT_DATABASE_URL",
   "OPENAI_CHAT_COMPLETIONS_API_KEY",
-  "VERCEL",
+  "FLEET_PI_DEPLOYMENT",
 ] as const
 const original = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]))
 
@@ -18,7 +18,7 @@ describe("OCC secret for local DB-backed signed-in users", () => {
   beforeEach(() => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://local-test"
     process.env.OPENAI_CHAT_COMPLETIONS_API_KEY = "env-occ-key"
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
   afterEach(() => {

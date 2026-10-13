@@ -181,7 +181,8 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `if [ -d ${workspace}/.git ] && [ -f ${workspace}/package.json ]; then polluted=1; fi`,
     'if [ "$polluted" = "1" ]; then',
     `mkdir -p ${quarantine}`,
-    // Nested wins: snapshot nested, quarantine foreign, then force-copy nested onto root.
+    // Nested layout is pollution. Quarantine foreign entries, then copy only
+    // paths that are not already on the volume root.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
     `cp -a ${workspace}/agent-workspace/. "$tmpdir"/`,
@@ -190,7 +191,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
     `mv "$item" ${quarantine}/ 2>/dev/null || true`,
     "done",
-    `cp -a "$tmpdir"/. ${workspace}/`,
+    `cp -an "$tmpdir"/. ${workspace}/`,
     `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
     "else",
     // No nested workspace: quarantine foreign only; keep contract entries.

@@ -32,7 +32,7 @@ export function resourceOptionValue(item: ChatResourceInfo) {
  * Map a discovered filesystem path to the form Pi settings usually stores:
  * `extensions/foo`, `../agent-workspace/pi/…`, or a relative path as-is.
  * Absolute home-dir paths are rejected (return empty) so they cannot be
- * committed for Vercel / shared deploys.
+ * committed for Cloudflare / shared deploys.
  */
 export function toSettingsResourcePath(path: string) {
   const normalized = path.replace(/\\/g, "/")

@@ -9,7 +9,7 @@ import { saveProjectSettingsOverrides } from "./settings-bridge"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { removeEnvVars } from "@/lib/env-manager"
 import { removeProviderCredentialsAndSettings } from "@/lib/db/remove-provider-with-settings"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export async function removeProviderBundle(options: {
   context: AppRuntimeContext
@@ -32,10 +32,10 @@ export async function removeProviderBundle(options: {
     cleanedOverrides
   )
 
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     if (!userId) {
       throw new Error(
-        "Authentication is required to remove providers on Vercel."
+        "Authentication is required to remove providers on Cloudflare."
       )
     }
     await removeProviderCredentialsAndSettings(

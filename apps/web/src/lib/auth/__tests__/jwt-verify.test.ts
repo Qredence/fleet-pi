@@ -21,27 +21,30 @@ describe("verifyNeonAuthAccessToken", () => {
     expect(jwtVerify).not.toHaveBeenCalled()
   })
 
-  it("derives issuer from NEON_AUTH_BASE_URL origin when NEON_AUTH_ISSUER is unset", async () => {
-    const { jwtVerify } = await import("jose")
-    vi.mocked(jwtVerify).mockResolvedValueOnce({
-      payload: { sub: "user-1", email: "a@b.co" },
-      protectedHeader: { alg: "EdDSA" },
-      key: {} as never,
-    })
-
-    const { verifyNeonAuthAccessToken } = await import("../jwt-verify")
-
-    await expect(
-      verifyNeonAuthAccessToken("token", {
+  it.each([
+    {
+      surface: "worker",
+      env: {
+        FLEET_PI_DEPLOYMENT: "cloudflare",
         NEON_AUTH_BASE_URL: "https://auth.example/neondb/auth",
         NEON_AUTH_JWKS_URL: "https://auth.example/.well-known/jwks.json",
-      })
-    ).resolves.toEqual({ sub: "user-1", email: "a@b.co" })
+      },
+    },
+    {
+      surface: "function",
+      env: {
+        NEON_AUTH_URL: "https://auth.example/neondb/auth",
+        NEON_AUTH_JWKS_URL: "https://auth.example/.well-known/jwks.json",
+      },
+    },
+  ])(
+    "rejects a token on the $surface when NEON_AUTH_ISSUER is unset",
+    async ({ env }) => {
+      const { jwtVerify } = await import("jose")
+      const { verifyNeonAuthAccessToken } = await import("../jwt-verify")
 
-    expect(jwtVerify).toHaveBeenCalledWith(
-      "token",
-      expect.anything(),
-      expect.objectContaining({ issuer: "https://auth.example" })
-    )
-  })
+      await expect(verifyNeonAuthAccessToken("token", env)).resolves.toBeNull()
+      expect(jwtVerify).not.toHaveBeenCalled()
+    }
+  )
 })

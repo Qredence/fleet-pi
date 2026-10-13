@@ -1,4 +1,8 @@
 import {
+  KNOWN_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+} from "@workspace/pi-protocol/provider-catalog"
+import {
   createDaytonaClient,
   createSandbox,
   createVolumeMount,
@@ -22,6 +26,7 @@ import {
   loadSandboxProviderSecrets,
 } from "./sandbox-provider-secrets"
 import { findLatestSnapshot } from "./snapshot-config"
+import { isDaytonaSecretsEligibleProvider } from "./secret-hosts"
 import {
   fingerprintDaytonaSecretsConfig,
   syncDaytonaSecrets,
@@ -29,7 +34,9 @@ import {
 import type { DaytonaSecretsSyncResult } from "./sync-daytona-secrets"
 import type { SandboxProviderSecrets } from "./sandbox-prepare"
 import type { Daytona, Sandbox } from "@daytona/sdk"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { hostedEndUserSandboxRequiresByok } from "@/lib/pi/runtime/user-provider-secrets"
 
 const SANDBOX_NAME_PREFIX = "fleet-pi-user-"
 const VOLUME_NAME_PREFIX = "fleet-pi-ws-"
@@ -70,7 +77,7 @@ const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
 /**
  * Daytona is enabled when the caller has a userId and a resolved API key.
  * Pass the result of `resolveDaytonaRuntimeApiKey` as `clientApiKey`.
- * On Vercel, only user BYOK enables Daytona — never org env keys.
+ * On Cloudflare, only user BYOK enables Daytona — never org env keys.
  * Local/dev may use `DAYTONA_API_KEY` when no explicit client key is passed.
  */
 export function isDaytonaEnabled(
@@ -79,7 +86,7 @@ export function isDaytonaEnabled(
 ): boolean {
   if (!userId) return false
   if (clientApiKey) return true
-  if (isVercelDeployment()) return false
+  if (hostedEndUserSandboxRequiresByok()) return false
   return Boolean(process.env.DAYTONA_API_KEY)
 }
 
@@ -155,11 +162,16 @@ export async function recreateUserSandboxForSecrets(
 async function provisionUserSandbox(
   config: UserSandboxConfig
 ): Promise<UserSandboxHandle> {
+  if (hostedEndUserSandboxRequiresByok() && !config.apiKey?.trim()) {
+    throw new DaytonaCredentialRequiredError()
+  }
+
   const client = createDaytonaClient(config.apiKey)
   const volumeName = getVolumeName(config.userId)
   const volume = await getOrCreateVolume(client, volumeName)
   const configured = await loadConfiguredProviderSecrets(config.userId)
   const daytonaSecrets = await syncDaytonaSecrets(client, configured)
+  assertCloudflareSecretsMount(configured, daytonaSecrets)
   const mountedSecretEnvVars = new Set(Object.keys(daytonaSecrets.secrets))
   const providerSecrets = buildPlaintextSandboxCredentials(
     configured,
@@ -168,48 +180,8 @@ async function provisionUserSandbox(
 
   const sandboxName = getSandboxName(config.userId)
 
-  const existing = await findExistingSandbox(client, sandboxName)
-  let sandbox: Sandbox
-
-  if (existing) {
-    if (!isManagedSandboxForUser(existing, config.userId)) {
-      throw new Error(
-        `Refusing to use unmanaged Daytona sandbox named ${sandboxName}`
-      )
-    }
-
-    // Old sandboxes may still mount the full repo at /home/daytona/fleet-pi.
-    // Volumes cannot be remounted in place — recreate the sandbox (keep volume).
-    // Also recreate when Secrets map is non-empty so placeholders remount
-    // (Daytona secrets attach only at create time), and when the sandbox is
-    // stuck in `error` (e.g. failed volume mount) so warm-up can recover.
-    const needsRemount = !(await hasAgentWorkspaceOnlyMount(existing))
-    const needsSecretsRemount = shouldRecreateForSecretsState(
-      existing,
-      daytonaSecrets
-    )
-    const needsErrorRecreate = existing.state === "error"
-
-    if (needsRemount || needsSecretsRemount || needsErrorRecreate) {
-      await deleteSandbox(existing)
-      sandbox = await createUserSandboxInstance(client, {
-        sandboxName,
-        volumeId: volume.id,
-        labels: buildLabels(config, daytonaSecrets.fingerprint),
-        envVars: providerSecrets.envVars,
-        secrets: daytonaSecrets.secrets,
-        cpu: config.cpu,
-        memory: config.memory,
-        disk: config.disk,
-      })
-    } else {
-      sandbox = existing
-      if (existing.state === "stopped" || existing.state === "archived") {
-        await startSandbox(existing)
-      }
-    }
-  } else {
-    sandbox = await createUserSandboxInstance(client, {
+  const create = () =>
+    createUserSandboxInstance(client, {
       sandboxName,
       volumeId: volume.id,
       labels: buildLabels(config, daytonaSecrets.fingerprint),
@@ -219,6 +191,52 @@ async function provisionUserSandbox(
       memory: config.memory,
       disk: config.disk,
     })
+
+  async function reuseOrRecreate(existing: Sandbox): Promise<Sandbox> {
+    if (!isManagedSandboxForUser(existing, config.userId)) {
+      throw new Error(
+        `Refusing to use unmanaged Daytona sandbox named ${sandboxName}`
+      )
+    }
+
+    // Volumes and Secrets cannot be remounted in place. Keep the user's
+    // volume and recreate sandboxes with stale mounts or an error state.
+    const needsRemount =
+      !(await hasAgentWorkspaceOnlyMount(existing)) ||
+      existing.volumes?.[0]?.volumeId !== volume.id
+    const needsSecretsRemount = shouldRecreateForSecretsState(
+      existing,
+      daytonaSecrets
+    )
+    const needsErrorRecreate = existing.state === "error"
+
+    if (needsRemount || needsSecretsRemount || needsErrorRecreate) {
+      await deleteSandbox(existing)
+      return create()
+    }
+
+    if (existing.state === "stopped" || existing.state === "archived") {
+      await startSandbox(existing)
+    }
+    return existing
+  }
+
+  const existing = await findExistingSandbox(client, sandboxName)
+  let sandbox: Sandbox
+  if (existing) {
+    sandbox = await reuseOrRecreate(existing)
+  } else {
+    try {
+      sandbox = await create()
+    } catch (error) {
+      const raced = await findExistingSandbox(client, sandboxName)
+      if (!raced) throw error
+      try {
+        sandbox = await reuseOrRecreate(raced)
+      } catch {
+        throw error
+      }
+    }
   }
 
   await prepareSandboxForUser(sandbox, config.userId, providerSecrets)
@@ -335,6 +353,7 @@ function buildLabels(
   const labels: Record<string, string> = {
     managedBy: MANAGED_BY_LABEL,
     userId: config.userId,
+    volumeName: getVolumeName(config.userId),
     createdAt: new Date().toISOString(),
   }
   if (config.userEmail) labels.email = config.userEmail
@@ -362,6 +381,26 @@ function existingHasMatchingSecretsLabel(
   const short = fingerprint.slice(0, 16)
   if (!short) return true
   return labels?.daytonaSecretsFp === short
+}
+
+function assertCloudflareSecretsMount(
+  configured: Map<string, string>,
+  daytonaSecrets: DaytonaSecretsSyncResult
+) {
+  if (!isCloudflareDeployment()) return
+  const occBaseUrl = configured.get(
+    OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+  )
+  const missingMount = KNOWN_PROVIDERS.some(
+    (provider) =>
+      isDaytonaSecretsEligibleProvider(provider, { occBaseUrl }) &&
+      configured.get(provider.id)?.trim() &&
+      !daytonaSecrets.secrets[provider.envVarName]
+  )
+  if (!missingMount) return
+  throw new Error(
+    "Daytona Secrets API is required to mount provider keys on Cloudflare. Refusing to write plaintext credentials."
+  )
 }
 
 function shouldRecreateForSecretsState(

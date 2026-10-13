@@ -31,7 +31,7 @@ import {
   isChatAuthRequired,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { storeUserProviderApiKey } from "@/lib/db/user-providers"
 import {
   createLocalProviderInstance,
@@ -290,7 +290,7 @@ async function hotReloadActiveRuntimesForUserSafe(
 
 /**
  * Configures a catalog provider with an API key (and, for the default OCC
- * slot, a base URL + model id). Persists to `pi_user_providers` on Vercel or
+ * slot, a base URL + model id). Persists to `pi_user_providers` on Cloudflare or
  * the gitignored `.env.local` locally, then hot-reloads the user's active
  * runtimes.
  */
@@ -332,7 +332,7 @@ async function handleDefaultProviderUpsert(
 
   const context = resolveAppRuntimeContext()
 
-  if (isVercelDeployment()) {
+  if (isHostedDeployment()) {
     await storeUserProviderApiKey(userId!, provider.id, apiKey)
     if (baseUrl && modelId) {
       await storeUserProviderApiKey(

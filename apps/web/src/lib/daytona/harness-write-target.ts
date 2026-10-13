@@ -60,7 +60,9 @@ export function installHarnessWriteResolver() {
       kind: "sandbox" as const,
       sandbox: {
         writeFile: (workspaceRelativePath: string, content: string) =>
-          writeSandboxWorkspaceFile(sandbox, workspaceRelativePath, content),
+          writeSandboxWorkspaceFile(sandbox, workspaceRelativePath, content, {
+            overwrite: true,
+          }),
         uploadWorkspace: (hostProjectRoot: string) =>
           uploadAgentWorkspaceTree(sandbox, hostProjectRoot),
         persistSettings: async (settings: Record<string, unknown>) => {
@@ -72,7 +74,8 @@ export function installHarnessWriteResolver() {
           await writeSandboxWorkspaceFile(
             sandbox,
             ".pi/settings.json",
-            `${JSON.stringify(merged, null, 2)}\n`
+            `${JSON.stringify(merged, null, 2)}\n`,
+            { overwrite: true }
           )
         },
       },
@@ -99,9 +102,17 @@ export function sandboxWorkspaceFilePath(workspaceRelativePath: string) {
 export async function writeSandboxWorkspaceFile(
   sandbox: Sandbox,
   workspaceRelativePath: string,
-  content: string | Buffer
+  content: string | Buffer,
+  options?: { overwrite?: boolean }
 ) {
   const remotePath = sandboxWorkspaceFilePath(workspaceRelativePath)
+  if (!options?.overwrite) {
+    const existing = await executeCommand(
+      sandbox,
+      `test -e ${shellQuote(remotePath)}`
+    )
+    if (existing.exitCode === 0) return
+  }
   const parent = dirname(remotePath)
   const mkdir = await executeCommand(sandbox, `mkdir -p ${shellQuote(parent)}`)
   if (mkdir.exitCode !== 0) {

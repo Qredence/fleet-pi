@@ -7,7 +7,7 @@ import { AsyncLocalStorage } from "node:async_hooks"
  * requests: a module-scope Neon `Pool` created while serving request A hangs
  * or throws when request B reuses it. The Worker entry (src/server.ts) wraps
  * every request in `runInRequestScope`, and `requestScoped` hands out one
- * instance per request there. Outside a scope (Node, Vercel, tests) the
+ * instance per request there. Outside a scope (Node, Cloudflare, tests) the
  * caller keeps its module-level singleton.
  */
 const requestScope = new AsyncLocalStorage<Map<symbol, unknown>>()

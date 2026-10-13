@@ -12,18 +12,18 @@ In **Agent mode** the full Pi bash tool is available, scoped to the active proje
 
 Fleet Pi supports two auth backends (`apps/web/src/lib/auth/auth-mode.ts`):
 
-| Surface                      | Backend                                                                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Deployed (Vercel + Neon)** | **Neon Managed Auth** when `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL` is set. Same-origin `/api/auth` proxy; JWKS-verified Bearer JWTs for Neon Function chat runtime. |
-| **Local**                    | **Better Auth** with SQLite (`.fleet/auth.sqlite`) when no Neon Auth URL is set. Anonymous chat/workspace is allowed locally only.                                  |
+| Surface                          | Backend                                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deployed (Cloudflare + Neon)** | **Neon Managed Auth** when `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL` is set. Same-origin `/api/auth` proxy; JWKS-verified Bearer JWTs for Neon Function chat runtime. |
+| **Local**                        | **Better Auth** with SQLite (`.fleet/auth.sqlite`) when no Neon Auth URL is set. Anonymous chat/workspace is allowed locally only.                                  |
 
-`BETTER_AUTH_SECRET` remains required on Vercel for BYOK provider AES-GCM encryption even under Managed Auth. Cookie gate prefers `NEON_AUTH_COOKIE_SECRET`.
+`BETTER_AUTH_SECRET` remains required on Cloudflare for BYOK provider AES-GCM encryption even under Managed Auth. Cookie gate prefers `NEON_AUTH_COOKIE_SECRET`.
 
-Session-scoped chat and workspace APIs require auth on Vercel, Neon Managed Auth, Neon Function surfaces, or when `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1`.
+Session-scoped chat and workspace APIs require auth on Cloudflare, Neon Managed Auth, Neon Function surfaces, or when `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1`.
 
 ## LLM credentials and org key scrubbing
 
-On Vercel (`VERCEL=1`), org LLM env keys (`GEMINI_API_KEY`, `HF_TOKEN`, etc.) are scrubbed from the process so bash/tools cannot read them. Chat uses:
+On Cloudflare (`FLEET_PI_DEPLOYMENT=cloudflare`), org LLM env keys (`GEMINI_API_KEY`, `HF_TOKEN`, etc.) are scrubbed from the process so bash/tools cannot read them. Chat uses:
 
 1. **Signed-in user BYOK** rows in encrypted `pi_user_providers`, and
 2. **Platform Neon AI Gateway** (`NEON_AI_GATEWAY_TOKEN` + `NEON_AI_GATEWAY_BASE_URL`) as the default OpenAI-compatible backend for authenticated users without OCC BYOK.
@@ -40,7 +40,7 @@ Gateway credentials are not user-editable in Settings and are not exposed as BYO
 
 ## Daytona sandbox isolation
 
-On Vercel, **end-user sandboxes require BYOK** (`daytona` in `pi_user_providers`). Org `DAYTONA_API_KEY` must not back user sandboxes.
+On Cloudflare, **end-user sandboxes require BYOK** (`daytona` in `pi_user_providers`). Org `DAYTONA_API_KEY` must not back user sandboxes.
 
 Each user gets volume `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. Local/dev may use `DAYTONA_API_KEY` when no user BYOK is configured.
 

@@ -7,7 +7,7 @@ import {
   shouldFailClosedOnMirrorError,
 } from "../deployment/trust-zone"
 import { logger } from "../logger"
-import { resolveVercelUserSessionDir } from "../pi/session-paths"
+import { resolveHostedUserSessionDir } from "../pi/session-paths"
 import { requestScoped } from "../runtime/request-scope"
 import {
   isSessionAccessAllowed,
@@ -105,7 +105,7 @@ export function assertMirrorOwnerForPersistence(userId?: string) {
 
   if (!userId) {
     throw new Error(
-      "Authenticated owner is required to persist Pi sessions on Vercel."
+      "Authenticated owner is required to persist Pi sessions on Cloudflare."
     )
   }
 }
@@ -181,7 +181,7 @@ export function isUserScopedEphemeralSessionFile(
   if (!isDeployedChatRuntimeSurface()) return false
 
   const normalized = resolve(sessionFile)
-  const userPrefix = resolveVercelUserSessionDir(userId)
+  const userPrefix = resolveHostedUserSessionDir(userId)
   if (normalized === userPrefix || !normalized.startsWith(`${userPrefix}/`)) {
     return false
   }

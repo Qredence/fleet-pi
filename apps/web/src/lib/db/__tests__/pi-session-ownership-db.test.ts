@@ -38,15 +38,15 @@ vi.mock("@neondatabase/serverless", () => ({
   },
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const originalChatUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
 
 afterEach(() => {
   vi.clearAllMocks()
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   if (originalChatUrl === undefined) {
     delete process.env.FLEET_PI_CHAT_DATABASE_URL
@@ -103,15 +103,15 @@ describe("pi-session-ownership-db", () => {
     expect(poolConnect).toHaveBeenCalled()
   })
 
-  it("verifyRunOwnership fails closed on Vercel when lookup fails", async () => {
-    process.env.VERCEL = "1"
+  it("verifyRunOwnership fails closed on Cloudflare when lookup fails", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     poolConnect.mockRejectedValueOnce(new Error("db down"))
 
     await expect(verifyRunOwnership("run-1", "user-1")).resolves.toBe(false)
   })
 
   it("verifySessionOwnership denies missing mirror rows without user-scoped JSONL", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     poolQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("rolbypassrls")) {
         return {
@@ -135,7 +135,7 @@ describe("pi-session-ownership-db", () => {
   })
 
   it("verifySessionOwnership allows missing mirror rows when user-scoped JSONL exists", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     existsSync.mockReturnValue(true)
     poolQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("rolbypassrls")) {
@@ -160,7 +160,7 @@ describe("pi-session-ownership-db", () => {
   })
 
   it("verifySessionOwnership denies deleted mirror rows even when JSONL exists", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     existsSync.mockReturnValue(true)
     poolQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("rolbypassrls")) {

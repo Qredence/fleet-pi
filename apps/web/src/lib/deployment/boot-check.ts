@@ -1,20 +1,10 @@
 import { logger } from "../logger"
-import { isCloudflareDeployment, isVercelDeployment } from "./environment"
+import { isCloudflareDeployment } from "./environment"
 import { validateDeploymentReadiness } from "./readiness"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 
-function isVercelServerlessRuntime() {
-  return Boolean(
-    process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_REGION
-  )
-}
-
 function isCloudflareWorkerRuntime() {
   return isCloudflareDeployment() && typeof globalThis.caches !== "undefined"
-}
-
-function isHostedServerlessRuntime() {
-  return isVercelServerlessRuntime() || isCloudflareWorkerRuntime()
 }
 
 export function formatReadinessFailure(
@@ -29,7 +19,7 @@ export function formatReadinessFailure(
  * `pnpm verify-deployment-readiness` with owner migration URLs.
  */
 export function assertDeploymentReadyOnBoot() {
-  if (!isVercelDeployment() || !isHostedServerlessRuntime()) {
+  if (!isCloudflareWorkerRuntime()) {
     return
   }
 

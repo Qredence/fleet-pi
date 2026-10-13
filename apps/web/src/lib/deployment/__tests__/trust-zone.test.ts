@@ -31,8 +31,10 @@ describe("shouldFailClosedOnMirrorError", () => {
     expect(requiresAuthenticatedMirrorOwner({})).toBe(false)
   })
 
-  it("fails closed on Vercel", () => {
-    expect(shouldFailClosedOnMirrorError({ VERCEL: "1" })).toBe(true)
+  it("fails closed on Cloudflare", () => {
+    expect(
+      shouldFailClosedOnMirrorError({ FLEET_PI_DEPLOYMENT: "cloudflare" })
+    ).toBe(true)
   })
 
   it("fails closed when Neon Managed Auth is configured", () => {
@@ -52,10 +54,15 @@ describe("shouldFailClosedOnMirrorError", () => {
 })
 
 describe("shouldFailClosedOnFunctionMirrorWrite", () => {
-  it("fails the turn only on the Neon Function", () => {
-    expect(shouldFailClosedOnFunctionMirrorWrite()).toBe(false)
+  it("fails the turn on the Neon Function and on Cloudflare", () => {
+    expect(shouldFailClosedOnFunctionMirrorWrite({})).toBe(false)
     runWithChatAuthSurface("neon-function", () => {
-      expect(shouldFailClosedOnFunctionMirrorWrite()).toBe(true)
+      expect(shouldFailClosedOnFunctionMirrorWrite({})).toBe(true)
     })
+    expect(
+      shouldFailClosedOnFunctionMirrorWrite({
+        FLEET_PI_DEPLOYMENT: "cloudflare",
+      })
+    ).toBe(true)
   })
 })

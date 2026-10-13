@@ -10,22 +10,22 @@ import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { listConfiguredProviderIds } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export async function getProviderConfigStatus(options?: {
   userId?: string
   services?: AgentSessionServices
 }): Promise<Array<ChatProviderInfo>> {
-  if (isVercelDeployment()) {
-    return getVercelProviderConfigStatus(options?.userId)
+  if (isHostedDeployment()) {
+    return getHostedProviderConfigStatus(options?.userId)
   }
 
   return getLocalProviderConfigStatus(options?.userId, options?.services)
 }
 
-async function getVercelProviderConfigStatus(userId?: string) {
+async function getHostedProviderConfigStatus(userId?: string) {
   // Settings lists account BYOK only. Org LLM env keys never back chat on
-  // Vercel and must not appear as user credentials.
+  // Cloudflare and must not appear as user credentials.
   if (!userId) {
     return KNOWN_PROVIDERS.map((provider) => ({
       id: provider.id,
@@ -53,7 +53,7 @@ async function getLocalProviderConfigStatus(
   services?: AgentSessionServices
 ) {
   // Signed-in local accounts backed by the chat database see their stored
-  // BYOK rows as configured, mirroring the Vercel path. Anonymous/dev
+  // BYOK rows as configured, mirroring the Cloudflare path. Anonymous/dev
   // accounts stay env-driven.
   const configuredProviderIds =
     userId && isLocalDbBackedUser(userId)

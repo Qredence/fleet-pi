@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { isCloudflareDeployment, isVercelDeployment } from "../environment"
+import { isCloudflareDeployment, isHostedDeployment } from "../environment"
 
 describe("deployment environment", () => {
   afterEach(() => {
@@ -7,16 +7,14 @@ describe("deployment environment", () => {
   })
 
   it("treats Cloudflare Workers as a hosted deployment", () => {
-    vi.stubEnv("VERCEL", "")
     vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
     expect(isCloudflareDeployment()).toBe(true)
-    expect(isVercelDeployment()).toBe(true)
+    expect(isHostedDeployment()).toBe(true)
   })
 
-  it("is local without VERCEL or FLEET_PI_DEPLOYMENT", () => {
-    vi.stubEnv("VERCEL", "")
+  it("is local without FLEET_PI_DEPLOYMENT", () => {
     vi.stubEnv("FLEET_PI_DEPLOYMENT", "")
     expect(isCloudflareDeployment()).toBe(false)
-    expect(isVercelDeployment()).toBe(false)
+    expect(isHostedDeployment()).toBe(false)
   })
 })

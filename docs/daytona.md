@@ -9,14 +9,14 @@ Fleet Pi provisions one Daytona sandbox per authenticated user, using **that use
 ```
 Authenticated user → POST /api/chat (with session cookie)
   → Better Auth extracts userId
-  → resolveDaytonaRuntimeApiKey(userId) → user BYOK key (Vercel) or env fallback (local)
+  → resolveDaytonaRuntimeApiKey(userId) → user BYOK key (Cloudflare) or env fallback (local)
   → isDaytonaEnabled(userId, key) → true
   → getUserSandbox(userId) → provisions or resumes per-user sandbox
   → Fleet adapter registers sandbox-backed bash/read/write/edit/ls/find/grep
   → agent-workspace volume persists across sandbox restarts
 ```
 
-**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Vercel, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
+**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
 
 **CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` **outside this repo** — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter. The Pi CLI does **not** apply that filter, so keep stock `@daytona/pi` out of `~/.pi/agent/settings.json` while developing in `fleet-pi`.
 
@@ -54,7 +54,7 @@ Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 ## Environment
 
 ```bash
-# Local/dev fallback only (ignored as sole key source on Vercel)
+# Local/dev fallback only (ignored as sole key source on Cloudflare)
 DAYTONA_API_KEY=...          # Optional local fallback
 BETTER_AUTH_SECRET=...       # Required for user authentication
 
@@ -66,7 +66,7 @@ FLEET_PI_REPOSITORY_URL=...  # HTTPS repo used to sparse-seed agent-workspace
 AWS_REGION=us-east-1         # For Bedrock (LLM provider)
 ```
 
-On Vercel, each logged-in user must store their Daytona API key as the `daytona` provider secret.
+On Cloudflare, each logged-in user must store their Daytona API key as the `daytona` provider secret.
 
 ## Sandbox paths
 

@@ -84,7 +84,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mocks.getCachedUserSandbox.mockReset()
   mocks.getInFlightUserSandbox.mockReset()
-  vi.stubEnv("VERCEL", "")
+  vi.stubEnv("FLEET_PI_DEPLOYMENT", "")
   vi.stubEnv("FLEET_PI_CHAT_DATABASE_URL", "")
   vi.stubEnv("DATABASE_URL", "")
   settingsByUser.clear()
@@ -356,10 +356,12 @@ describe("deployed session settings", () => {
     expect(await readFile(sharedFile, "utf8")).toBe(sharedSource)
   })
 
-  it.each(["neon-function", "vercel"] as const)(
+  it.each(["neon-function", "cloudflare"] as const)(
     "keeps concurrent users and deny-all isolated on %s",
     async (surface) => {
-      if (surface === "vercel") vi.stubEnv("VERCEL", "1")
+      if (surface === "cloudflare") {
+        vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
+      }
       settingsByUser.set("a", {
         packages: [],
         enabledModels: ["custom+a/model"],

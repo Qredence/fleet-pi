@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { resolveDaytonaRuntimeApiKey } from "../user-provider-secrets"
+import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 vi.mock("@/lib/db/user-providers", () => ({
   loadDecryptedUserProviderSecrets: vi.fn().mockResolvedValue(new Map()),
@@ -7,22 +8,22 @@ vi.mock("@/lib/db/user-providers", () => ({
 
 const originalOrgKey = process.env.ORG_DAYTONA_API_KEY
 const originalDaytonaKey = process.env.DAYTONA_API_KEY
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 describe("resolveDaytonaRuntimeApiKey", () => {
   beforeEach(() => {
     delete process.env.ORG_DAYTONA_API_KEY
     delete process.env.DAYTONA_API_KEY
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
   afterEach(() => {
     restoreEnv("ORG_DAYTONA_API_KEY", originalOrgKey)
     restoreEnv("DAYTONA_API_KEY", originalDaytonaKey)
-    restoreEnv("VERCEL", originalVercel)
+    restoreEnv("FLEET_PI_DEPLOYMENT", originalHosted)
   })
 
-  it("uses local DAYTONA_API_KEY when not on Vercel", async () => {
+  it("uses local DAYTONA_API_KEY when not on Cloudflare", async () => {
     process.env.ORG_DAYTONA_API_KEY = "org-key"
     process.env.DAYTONA_API_KEY = "legacy-key"
 
@@ -41,13 +42,34 @@ describe("resolveDaytonaRuntimeApiKey", () => {
     await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBeUndefined()
   })
 
-  it("does not fall back to org or DAYTONA_API_KEY on Vercel without BYOK", async () => {
-    process.env.VERCEL = "1"
+  it("does not fall back to org or DAYTONA_API_KEY on Cloudflare without BYOK", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.ORG_DAYTONA_API_KEY = "org-key"
     process.env.DAYTONA_API_KEY = "legacy-key"
 
     await expect(resolveDaytonaRuntimeApiKey("user-1")).resolves.toBeUndefined()
   })
+
+  it.each([{ surface: "worker" as const }, { surface: "function" as const }])(
+    "refuses the org Daytona key for a $surface user with no BYOK row",
+    async ({ surface }) => {
+      process.env.DAYTONA_API_KEY = "org-key"
+      if (surface === "worker") {
+        process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+        await expect(
+          resolveDaytonaRuntimeApiKey("user-1")
+        ).resolves.toBeUndefined()
+        delete process.env.FLEET_PI_DEPLOYMENT
+        return
+      }
+
+      await runWithChatAuthSurface("neon-function", async () => {
+        await expect(
+          resolveDaytonaRuntimeApiKey("user-1")
+        ).resolves.toBeUndefined()
+      })
+    }
+  )
 })
 
 function restoreEnv(name: string, value: string | undefined) {

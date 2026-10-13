@@ -14,7 +14,8 @@ import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
 import { isEnvVarConfigured } from "@/lib/env-manager"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
 
@@ -122,7 +123,7 @@ function stripLegacyOccByokWhenGatewayActive(
 }
 
 /**
- * On Vercel: only the signed-in user's BYOK rows (never org env).
+ * On Cloudflare: only the signed-in user's BYOK rows (never org env).
  * Neon Function chat runtime: same — platform Gateway + user BYOK only.
  * Local/dev: project env LLM keys.
  */
@@ -204,7 +205,7 @@ export async function resolveUserDaytonaApiKey(
 
 /**
  * Resolve the Daytona API key for a user sandbox/runtime.
- * On Vercel: BYOK only (`daytona` in `pi_user_providers`). Never org keys.
+ * On Cloudflare: BYOK only (`daytona` in `pi_user_providers`). Never org keys.
  * Local/dev: BYOK when present, else `DAYTONA_API_KEY`. `ORG_DAYTONA_API_KEY`
  * is never used for end-user sandboxes.
  */
@@ -215,6 +216,11 @@ export async function resolveDaytonaRuntimeApiKey(
     const fromUserStore = await resolveUserDaytonaApiKey(userId)
     if (fromUserStore) return fromUserStore
   }
-  if (isVercelDeployment()) return undefined
+  if (hostedEndUserSandboxRequiresByok()) return undefined
   return process.env.DAYTONA_API_KEY
+}
+
+/** Worker, Cloudflare, and the Neon Function never use an org Daytona key. */
+export function hostedEndUserSandboxRequiresByok() {
+  return isHostedDeployment() || getChatAuthSurface() === "neon-function"
 }

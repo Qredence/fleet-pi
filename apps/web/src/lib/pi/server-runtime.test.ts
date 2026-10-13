@@ -230,6 +230,20 @@ describe("answerChatQuestion", () => {
     expect(runtime.session.abort).toHaveBeenCalledTimes(1)
   })
 
+  it("returns not-live when the runtime map has no session", async () => {
+    const { hasLiveSessionRuntime, notLiveSessionResponse } =
+      await import("./server-runtime")
+
+    expect(hasLiveSessionRuntime({ sessionId: "missing-session" })).toBe(false)
+    const response = notLiveSessionResponse()
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error: "not-live",
+      aborted: false,
+      message: "This isolate has no live session for that chat.",
+    })
+  })
+
   it("does not queue prompts or aborts when no matching runtime is active", async () => {
     const sessionFile = createSessionFile(root, "session-idle.jsonl")
     const { abortActiveSession, queuePromptOnActiveSession, retainPiRuntime } =

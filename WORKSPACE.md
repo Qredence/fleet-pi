@@ -30,14 +30,14 @@ routing: TanStack Router file routes → `routeTree.gen.ts` (generated)
 api: `/api/chat/*`, `/api/workspace/*`, `/api/auth/*`, `/api/sandbox/*`, `/api/health`  
 auth: Neon Managed Auth when `NEON_AUTH_*` set; local Better Auth/SQLite fallback  
 llm: Neon AI Gateway (`NEON_AI_GATEWAY_*`) for authenticated deploy; BYOK via `pi_user_providers`  
-db: Neon Postgres `pi_*` mirror + `pi_user_settings` on Vercel; local SQLite for auth when unset  
-sandbox: Daytona BYOK per user on Vercel (`daytona` in `pi_user_providers`)
+db: Neon Postgres `pi_*` mirror + `pi_user_settings` on Cloudflare; local SQLite for auth when unset  
+sandbox: Daytona BYOK per user on Cloudflare (`daytona` in `pi_user_providers`)
 
 ---
 
 ## STACK
 
-- **web:** TanStack Start, React 19, Pi coding agent `^0.80.10`, Nitro/Vercel preset
+- **web:** TanStack Start, React 19, Pi coding agent `^0.80.10`, Cloudflare Workers
 - **default LLM (deploy):** Neon AI Gateway → `openai-chat-completions` / `qwen35-122b-a10b`
 - **hax-design:** Tailwind v4, Base UI, Motion, Sonner
 - **pi-protocol:** Zod, `@openuidev/lang-core` signatures

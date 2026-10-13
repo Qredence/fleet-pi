@@ -5,7 +5,12 @@ import {
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { createRequestLogger } from "@/lib/logger"
-import { abortActiveSession } from "@/lib/pi/server"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import {
+  abortActiveSession,
+  hasLiveSessionRuntime,
+  notLiveSessionResponse,
+} from "@/lib/pi/server"
 
 export async function abortChatHandler(request: Request) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()
@@ -25,6 +30,12 @@ export async function abortChatHandler(request: Request) {
         }
 
         log.info({ sessionId: metadata.sessionId }, "abort request received")
+        if (
+          isCloudflareDeployment() &&
+          !hasLiveSessionRuntime({ ...metadata, userId })
+        ) {
+          return notLiveSessionResponse()
+        }
         const aborted = await abortActiveSession({ ...metadata, userId })
         log.info({ aborted }, "abort request completed")
         return Response.json({ aborted })

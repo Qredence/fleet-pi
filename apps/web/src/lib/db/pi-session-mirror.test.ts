@@ -481,8 +481,8 @@ describe("Pi session mirror repository", () => {
     expect(params[4]).toBe('{"type":"tool","value":1}')
   })
 
-  it("requires userId when inserting runs on Vercel", async () => {
-    process.env.VERCEL = "1"
+  it("requires userId when inserting runs on Cloudflare", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     const client = createMockClient()
 
     await expect(
@@ -495,35 +495,7 @@ describe("Pi session mirror repository", () => {
       })
     ).rejects.toThrow(/Authenticated owner is required/)
 
-    delete process.env.VERCEL
-  })
-
-  it("keeps streaming when mirror sync fails on Vercel", async () => {
-    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
-    process.env.VERCEL = "1"
-    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined)
-
-    try {
-      await expect(
-        syncPiSessionMirrorSafely(
-          {
-            getHeader() {
-              throw new Error("boom vercel")
-            },
-          } as never,
-          { userId: "user-vercel" }
-        )
-      ).resolves.toBeUndefined()
-
-      expect(warn).toHaveBeenCalledWith(
-        {
-          error: expect.objectContaining({ message: "boom vercel" }),
-        },
-        "[pi-session-mirror] sync failed (non-fatal)"
-      )
-    } finally {
-      delete process.env.VERCEL
-    }
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
   it("fails the turn when mirror sync fails on the Neon Function", async () => {
@@ -551,6 +523,30 @@ describe("Pi session mirror repository", () => {
       },
       "[pi-session-mirror] sync failure; failing the turn"
     )
+  })
+
+  it("fails the turn when mirror sync fails on Cloudflare", async () => {
+    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    const errorSpy = vi
+      .spyOn(logger, "error")
+      .mockImplementation(() => undefined)
+
+    try {
+      await expect(
+        syncPiSessionMirrorSafely(
+          {
+            getHeader() {
+              throw new Error("boom cloudflare")
+            },
+          } as never,
+          { userId: "user-cloudflare" }
+        )
+      ).rejects.toThrow("boom cloudflare")
+      expect(errorSpy).toHaveBeenCalled()
+    } finally {
+      delete process.env.FLEET_PI_DEPLOYMENT
+    }
   })
 })
 

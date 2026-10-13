@@ -58,7 +58,7 @@ import type {
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   getCachedUserSandbox,
   isDaytonaEnabled,
@@ -145,6 +145,21 @@ export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
   return () => {
     scheduleRuntimeDisposal(record)
   }
+}
+
+export function hasLiveSessionRuntime(metadata: ChatRuntimeMetadata) {
+  return Boolean(findRuntimeRecord(metadata))
+}
+
+export function notLiveSessionResponse() {
+  return Response.json(
+    {
+      error: "not-live",
+      aborted: false,
+      message: "This isolate has no live session for that chat.",
+    },
+    { status: 409 }
+  )
 }
 
 export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
@@ -254,7 +269,7 @@ export async function createPiRuntime(
   const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
   const workspace = resolveChatWorkspaceStatus({
     daytonaEnabled: daytona.enabled,
-    hostedDeployment: isVercelDeployment(),
+    hostedDeployment: isHostedDeployment(),
   })
 
   const services = await createSessionServices(context, undefined, {

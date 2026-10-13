@@ -95,7 +95,7 @@ describe("daytonaWebhookHandler", () => {
       }),
     })
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(401)
     expect(getCachedUserSandbox).not.toHaveBeenCalled()
     expect(clearUserSandboxCache).not.toHaveBeenCalled()
   })
@@ -108,12 +108,12 @@ describe("daytonaWebhookHandler", () => {
       request: createWebhookRequest({ secret: "another-secret" }),
     })
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(401)
     expect(getCachedUserSandbox).not.toHaveBeenCalled()
     expect(clearUserSandboxCache).not.toHaveBeenCalled()
   })
 
-  it("rejects a request with a missing signature but still returns 200", async () => {
+  it("rejects a request with a missing signature", async () => {
     process.env.DAYTONA_WEBHOOK_SECRET = TEST_SECRET
     getCachedUserSandbox.mockReturnValue({ sandboxId: "sandbox-1" })
 
@@ -121,8 +121,8 @@ describe("daytonaWebhookHandler", () => {
       request: createWebhookRequest({ omitSignature: true }),
     })
 
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ received: true })
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: "invalid signature" })
     expect(getCachedUserSandbox).not.toHaveBeenCalled()
     expect(clearUserSandboxCache).not.toHaveBeenCalled()
   })
@@ -190,7 +190,7 @@ describe("daytonaWebhookHandler", () => {
     process.env.DAYTONA_WEBHOOK_SECRET = TEST_SECRET
 
     const response = await daytonaWebhookHandler({
-      request: createWebhookRequest({ omitSignature: true, body: "not-json" }),
+      request: createWebhookRequest({ body: "not-json" }),
     })
 
     expect(response.status).toBe(500)

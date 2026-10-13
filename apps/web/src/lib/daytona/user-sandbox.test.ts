@@ -10,7 +10,14 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "./user-sandbox"
-import { syncDaytonaSecrets } from "./sync-daytona-secrets"
+import {
+  fingerprintDaytonaSecretsConfig,
+  syncDaytonaSecrets,
+} from "./sync-daytona-secrets"
+import {
+  buildPlaintextSandboxCredentials,
+  loadConfiguredProviderSecrets,
+} from "./sandbox-provider-secrets"
 import {
   createDaytonaClient,
   createSandbox,
@@ -129,7 +136,9 @@ afterEach(() => {
   vi.clearAllMocks()
   delete process.env.DAYTONA_API_KEY
   delete process.env.ORG_DAYTONA_API_KEY
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
+  delete process.env.FLEET_PI_DEPLOYMENT
+  vi.mocked(fingerprintDaytonaSecretsConfig).mockReturnValue("")
 })
 
 describe("isDaytonaEnabled", () => {
@@ -151,12 +160,12 @@ describe("isDaytonaEnabled", () => {
     expect(isDaytonaEnabled("user123")).toBe(true)
   })
 
-  it("ignores env DAYTONA_API_KEY on Vercel without a resolved client key", () => {
-    process.env.VERCEL = "1"
+  it("ignores env DAYTONA_API_KEY on Cloudflare without a resolved client key", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.DAYTONA_API_KEY = "org-key"
     expect(isDaytonaEnabled("user123")).toBe(false)
     expect(isDaytonaEnabled("user123", "byok-key")).toBe(true)
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
   })
 
   it("does not treat ORG_DAYTONA_API_KEY as an enablement signal", () => {
@@ -591,6 +600,269 @@ describe("getUserSandbox", () => {
     expect(handleA.sandboxId).toBe("sandbox-a")
     expect(handleB.sandboxId).toBe("sandbox-b")
   })
+})
+
+describe("sandbox creation race recovery", () => {
+  it.each(["started", "stopped", "archived"])(
+    "validates and resumes a %s sandbox found after creation fails",
+    async (state) => {
+      const client = makeMockClient()
+      const raced = makeMockSandbox({ state } as Partial<Sandbox>)
+      mockedCreateClient.mockReturnValue(client)
+      mockedGetOrCreateVolume.mockResolvedValue({
+        id: "vol-1",
+        name: "fleet-pi-ws-user123",
+      })
+      vi.mocked(client.get)
+        .mockRejectedValueOnce(new Error("not found"))
+        .mockResolvedValueOnce(raced)
+      mockedCreateSandbox.mockRejectedValueOnce(new Error("name conflict"))
+
+      const handle = await getUserSandbox({ userId: "user123" })
+
+      expect(handle.sandbox).toBe(raced)
+      expect(mockedDeleteSandbox).not.toHaveBeenCalled()
+      if (state !== "started") {
+        expect(mockedStartSandbox).toHaveBeenCalledWith(raced)
+        expect(mockedStartSandbox.mock.invocationCallOrder[0]).toBeLessThan(
+          vi.mocked(raced.process.executeCommand).mock.invocationCallOrder[0]
+        )
+      }
+    }
+  )
+
+  it.each([
+    {
+      reason: "legacy mount",
+      overrides: {
+        volumes: [
+          {
+            volumeId: "vol-1",
+            mountPath: "/home/daytona/fleet-pi/agent-workspace",
+          },
+        ],
+      },
+    },
+    {
+      reason: "wrong volume",
+      overrides: {
+        volumes: [
+          {
+            volumeId: "other-volume",
+            mountPath: "/home/daytona/agent-workspace",
+          },
+        ],
+      },
+    },
+    { reason: "error state", overrides: { state: "error" } },
+    {
+      reason: "stale Secrets",
+      overrides: {
+        labels: {
+          managedBy: "fleet-pi",
+          userId: "user123",
+          daytonaSecretsFp: "old",
+        },
+      },
+    },
+  ])("recovers a raced sandbox with $reason", async ({ overrides }) => {
+    const client = makeMockClient()
+    const raced = makeMockSandbox(overrides as Partial<Sandbox>)
+    const fresh = makeMockSandbox({ id: "sandbox-fresh" })
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+    mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+      secrets: { OPENAI_API_KEY: "fleet_pi_openai" },
+      fingerprint: "new-fingerprint",
+      mode: "mounted",
+    })
+    // Isolate the mount/state cases from Secrets validation.
+    if (!("labels" in overrides)) {
+      raced.labels = { ...raced.labels, daytonaSecretsFp: "new-fingerprint" }
+    }
+    vi.mocked(client.get)
+      .mockRejectedValueOnce(new Error("not found"))
+      .mockResolvedValueOnce(raced)
+    mockedCreateSandbox
+      .mockRejectedValueOnce(new Error("name conflict"))
+      .mockResolvedValueOnce(fresh)
+
+    const handle = await getUserSandbox({ userId: "user123" })
+
+    expect(mockedDeleteSandbox).toHaveBeenCalledWith(raced)
+    expect(mockedCreateSandbox).toHaveBeenLastCalledWith(
+      client,
+      expect.objectContaining({
+        volumes: [expect.objectContaining({ volumeId: "vol-1" })],
+        secrets: { OPENAI_API_KEY: "fleet_pi_openai" },
+      })
+    )
+    expect(handle.sandbox).toBe(fresh)
+    expect(raced.process.executeCommand).not.toHaveBeenCalled()
+  })
+
+  it.each(["ownership", "restart", "recreation"])(
+    "preserves the creation error when raced sandbox %s recovery fails",
+    async (failure) => {
+      const client = makeMockClient()
+      const originalError = new Error("original creation failure")
+      const raced = makeMockSandbox(
+        failure === "ownership"
+          ? { labels: { managedBy: "other", userId: "user123" } }
+          : { state: failure === "restart" ? "stopped" : "error" }
+      )
+      mockedCreateClient.mockReturnValue(client)
+      mockedGetOrCreateVolume.mockResolvedValue({
+        id: "vol-1",
+        name: "fleet-pi-ws-user123",
+      })
+      vi.mocked(client.get)
+        .mockRejectedValueOnce(new Error("not found"))
+        .mockResolvedValueOnce(raced)
+      mockedCreateSandbox.mockRejectedValueOnce(originalError)
+      if (failure === "recreation") {
+        mockedCreateSandbox.mockRejectedValueOnce(
+          new Error("recreation failed")
+        )
+      }
+      if (failure === "restart") {
+        mockedStartSandbox.mockRejectedValueOnce(new Error("restart failed"))
+      }
+
+      await expect(getUserSandbox({ userId: "user123" })).rejects.toBe(
+        originalError
+      )
+      expect(raced.process.executeCommand).not.toHaveBeenCalled()
+      expect(getCachedUserSandbox("user123")).toBeUndefined()
+    }
+  )
+})
+
+describe("sandbox lookup and secrets mount", () => {
+  it("attaches to an existing remote sandbox when the local map is empty", async () => {
+    const client = makeMockClient()
+    const existing = makeMockSandbox({ id: "sandbox-remote" })
+    mockedCreateClient.mockReturnValue(client)
+    client.get = vi.fn().mockResolvedValue(existing)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+
+    clearSandboxCache()
+    const first = await getUserSandbox({ userId: "user123", apiKey: "byok" })
+    clearSandboxCache()
+    const second = await getUserSandbox({ userId: "user123", apiKey: "byok" })
+
+    expect(first.sandboxId).toBe("sandbox-remote")
+    expect(second.sandboxId).toBe("sandbox-remote")
+    expect(mockedCreateSandbox).not.toHaveBeenCalled()
+    const commands = (
+      existing.process.executeCommand as ReturnType<typeof vi.fn>
+    ).mock.calls.map((call) => String(call[0]))
+    expect(
+      commands.some(
+        (command) =>
+          command.includes("git clone") && command.includes("manifest.json")
+      )
+    ).toBe(true)
+  })
+
+  it("refuses plaintext provider keys on Cloudflare when Secrets are unavailable", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    vi.mocked(fingerprintDaytonaSecretsConfig).mockImplementation(
+      (configured) => (configured.size > 0 ? "eligible" : "empty")
+    )
+    vi.mocked(loadConfiguredProviderSecrets).mockResolvedValueOnce(
+      new Map([["openai", "sk-live-secret"]])
+    )
+    mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+      secrets: {},
+      fingerprint: "eligible",
+      mode: "plaintext-fallback",
+    })
+    const client = makeMockClient()
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-1",
+      name: "fleet-pi-ws-user123",
+    })
+
+    await expect(
+      getUserSandbox({ userId: "user123", apiKey: "byok" })
+    ).rejects.toThrow(/Refusing to write plaintext credentials/)
+    expect(mockedCreateSandbox).not.toHaveBeenCalled()
+    expect(buildPlaintextSandboxCredentials).not.toHaveBeenCalled()
+    delete process.env.FLEET_PI_DEPLOYMENT
+  })
+  it.each(["mounted", "plaintext-fallback"] as const)(
+    "rejects partial provider mounts on Cloudflare in %s mode",
+    async (mode) => {
+      process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+      vi.mocked(loadConfiguredProviderSecrets).mockResolvedValueOnce(
+        new Map([
+          ["openai", "test-openai-key"],
+          ["google", "test-google-key"],
+        ])
+      )
+      mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+        secrets: { OPENAI_API_KEY: "fleet_pi_openai" },
+        fingerprint: "partial",
+        mode,
+      })
+      mockedCreateClient.mockReturnValue(makeMockClient())
+      mockedGetOrCreateVolume.mockResolvedValue({
+        id: "vol-1",
+        name: "fleet-pi-ws-user123",
+      })
+
+      await expect(
+        getUserSandbox({ userId: "user123", apiKey: "byok" })
+      ).rejects.toThrow(/Refusing to write plaintext credentials/)
+      expect(mockedCreateSandbox).not.toHaveBeenCalled()
+      expect(buildPlaintextSandboxCredentials).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(["mounted", "plaintext-fallback"] as const)(
+    "accepts complete eligible provider mounts on Cloudflare in %s mode",
+    async (mode) => {
+      process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+      vi.mocked(loadConfiguredProviderSecrets).mockResolvedValueOnce(
+        new Map([
+          ["openai", "test-openai-key"],
+          ["google", "test-google-key"],
+          ["daytona", "test-daytona-key"],
+        ])
+      )
+      mockedSyncDaytonaSecrets.mockResolvedValueOnce({
+        secrets: {
+          OPENAI_API_KEY: "fleet_pi_openai",
+          GEMINI_API_KEY: "fleet_pi_google",
+        },
+        fingerprint: "complete",
+        mode,
+      })
+      const sandbox = makeMockSandbox()
+      mockedCreateClient.mockReturnValue(makeMockClient())
+      mockedGetOrCreateVolume.mockResolvedValue({
+        id: "vol-1",
+        name: "fleet-pi-ws-user123",
+      })
+      mockedCreateSandbox.mockResolvedValueOnce(sandbox)
+
+      const handle = await getUserSandbox({ userId: "user123", apiKey: "byok" })
+
+      expect(handle.sandbox).toBe(sandbox)
+      expect(buildPlaintextSandboxCredentials).toHaveBeenCalledWith(
+        expect.any(Map),
+        new Set(["OPENAI_API_KEY", "GEMINI_API_KEY"])
+      )
+    }
+  )
 })
 
 describe("releaseUserSandbox", () => {

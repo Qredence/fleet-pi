@@ -37,7 +37,7 @@ type MigratedProjectSettingsResult = {
 
 /**
  * Apply the legacy Gateway OCC migration to save-time overrides. On DB-backed
- * (Vercel) surfaces, when the migration changed the stored overrides and the
+ * (Cloudflare) surfaces, when the migration changed the stored overrides and the
  * current stored row is absent or already migrated, flush the compacted record
  * so the caller's persist is a single upsert. Returns `persisted` so the caller
  * can skip its own write when the flush already wrote the identical record.

@@ -6,8 +6,8 @@ import {
   resolveDefaultModelSelection,
 } from "./runtime/diagnostics"
 import {
-  VERCEL_EPHEMERAL_SESSION_BASE,
-  resolveVercelUserSessionDir,
+  HOSTED_EPHEMERAL_SESSION_BASE,
+  resolveHostedUserSessionDir,
 } from "./session-paths"
 import { isDeployedChatRuntimeSurface } from "./runtime/deployed-chat-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
@@ -37,8 +37,8 @@ export function getSessionDir(
 ) {
   if (isDeployedChatRuntimeSurface()) {
     const sessionDir = options.userId
-      ? resolveVercelUserSessionDir(options.userId)
-      : VERCEL_EPHEMERAL_SESSION_BASE
+      ? resolveHostedUserSessionDir(options.userId)
+      : HOSTED_EPHEMERAL_SESSION_BASE
     mkdirSync(sessionDir, { recursive: true })
     return sessionDir
   }

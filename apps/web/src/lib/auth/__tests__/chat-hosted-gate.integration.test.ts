@@ -11,20 +11,20 @@ vi.mock("@/lib/auth/server", () => ({
   },
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
 afterEach(() => {
   vi.clearAllMocks()
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
 })
 
-describe("Vercel chat API auth gate", () => {
-  it("returns 401 for unauthenticated chat handlers on Vercel", async () => {
-    process.env.VERCEL = "1"
+describe("hosted chat API auth gate", () => {
+  it("returns 401 for unauthenticated chat handlers on Cloudflare", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     const response = await withAuthenticatedChatRequest(
@@ -39,7 +39,7 @@ describe("Vercel chat API auth gate", () => {
   })
 
   it("allows local provenance runs without auth when mirror is disabled", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     const response = await chatRunsHandler(

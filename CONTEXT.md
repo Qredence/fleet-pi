@@ -10,7 +10,7 @@ maintainer commands.
 The durable, reviewable state under `agent-workspace/`: project memory, plans, skills, evals, artifacts, and workspace-installed Pi resources. Indexes, caches, databases, and live runtime objects are not canonical adaptive state.
 
 **Canonical transcript**:
-The persisted Pi JSONL session file containing a conversation's messages, tool calls, and results. The Neon session mirror is derived data and may reconstruct an ephemeral transcript copy after an authenticated Vercel cold start; it does not become a second canonical transcript.
+The persisted Pi JSONL session file containing a conversation's messages, tool calls, and results. The Neon session mirror is derived data and may reconstruct an ephemeral transcript copy after an authenticated Worker isolate restart; it does not become a second canonical transcript.
 
 **Pi session**:
 The persisted JSONL conversation identified by a session file and session ID. Avoid using “session” without a qualifier when referring to Better Auth or a live runtime.

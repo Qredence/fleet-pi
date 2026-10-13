@@ -70,7 +70,7 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 | Variable                  | Default                                    | Description                                                                                                                                                             |
 | ------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DAYTONA_API_KEY`         | —                                          | Local/dev Daytona API key fallback. On Vercel, each user must BYOK a `daytona` provider secret in `pi_user_providers` — env alone does not enable Daytona.              |
+| `DAYTONA_API_KEY`         | —                                          | Local/dev Daytona API key fallback. On Cloudflare, each user must BYOK a `daytona` provider secret in `pi_user_providers` — env alone does not enable Daytona.          |
 | `DAYTONA_API_URL`         | `https://app.daytona.io/api`               | Daytona API base URL. The SDK default is used when unset.                                                                                                               |
 | `DAYTONA_TARGET`          | —                                          | Daytona target (region/runner). Leave unset to use the Daytona default.                                                                                                 |
 | `DAYTONA_WEBHOOK_SECRET`  | —                                          | Shared secret expected in the `x-daytona-signature` header for incoming Daytona webhooks. When unset, webhook side effects are skipped but requests are still accepted. |
@@ -80,7 +80,7 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ## `.pi/settings.json`
 
-Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file includes stable resource paths (packages, skills, extensions, prompts); model defaults are merged from code at runtime (`fleet-default-project-settings.ts`). User-specific overrides and model curation still apply on top. On Vercel, per-user overrides live in Neon `pi_user_settings` instead.
+Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file includes stable resource paths (packages, skills, extensions, prompts); model defaults are merged from code at runtime (`fleet-default-project-settings.ts`). User-specific overrides and model curation still apply on top. On Cloudflare, per-user overrides live in Neon `pi_user_settings` instead.
 
 Edit overrides through the Settings dialog or `PATCH /api/chat/settings`. Saves compact values that differ from Fleet base defaults (auto-discovered `.pi/skills` and `.pi/extensions` paths are not re-written).
 

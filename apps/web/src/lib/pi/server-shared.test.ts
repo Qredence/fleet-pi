@@ -21,7 +21,7 @@ vi.mock("@/lib/db/local-provider-instances", () => ({
 
 describe("createSessionServices", () => {
   const roots = new Set<string>()
-  const originalVercel = process.env.VERCEL
+  const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
   beforeEach(() => {
     createAgentSessionServices.mockReset()
@@ -33,8 +33,8 @@ describe("createSessionServices", () => {
 
   afterEach(() => {
     vi.resetModules()
-    if (originalVercel === undefined) delete process.env.VERCEL
-    else process.env.VERCEL = originalVercel
+    if (originalHosted === undefined) delete process.env.FLEET_PI_DEPLOYMENT
+    else process.env.FLEET_PI_DEPLOYMENT = originalHosted
     for (const root of roots) {
       rmSync(root, { force: true, recursive: true })
     }
@@ -78,7 +78,7 @@ describe("createSessionServices", () => {
   })
 
   it("returns no default provider/model when the user has not configured one", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     const { resolveDefaultModelSelection } = await import("./server-shared")
 
     expect(

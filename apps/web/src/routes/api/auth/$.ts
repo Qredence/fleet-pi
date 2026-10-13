@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth/server"
 /**
  * This route only runs in TanStack Start (never the Neon Function bundle).
  * Always attach tanstackStartCookies for local Better Auth so local/dev and
- * Vercel cookie sessions work; Neon Managed Auth uses the shared auth.handler.
+ * Cookie sessions work; Neon Managed Auth uses the shared auth.handler.
  */
 async function handleAuthRoute(request: Request) {
   if (resolveAuthBackend() === "local-better-auth") {

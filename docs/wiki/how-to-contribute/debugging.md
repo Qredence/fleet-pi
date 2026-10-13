@@ -16,7 +16,7 @@
 4. Verify outside Fleet Pi: `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"` should return HTTP 200.
 5. Confirm provider status: `curl -s http://localhost:3000/api/chat/providers | jq '.providers[] | select(.id=="google")'`.
 
-You can also save credentials from the chat UI **Settings → Providers** (writes to `.env.local` locally or encrypted Postgres BYOK on Vercel).
+You can also save credentials from the chat UI **Settings → Providers** (writes to `.env.local` locally or encrypted Postgres BYOK on Cloudflare).
 
 ### AWS credentials missing → Bedrock authentication failure
 
@@ -34,9 +34,9 @@ You can also save credentials from the chat UI **Settings → Providers** (write
 
 **Symptom:** The `/api/sandbox/preview` endpoint returns `503 Sandbox not available`. The app continues to function normally — Daytona sandboxes are an optional feature.
 
-**Cause:** No Daytona API key resolved for the signed-in user. Fleet Pi checks the user's stored `daytona` provider secret on Vercel, then `DAYTONA_API_KEY`.
+**Cause:** No Daytona API key resolved for the signed-in user. Fleet Pi checks the user's stored `daytona` provider secret on Cloudflare, then `DAYTONA_API_KEY`.
 
-**Fix:** On Vercel, save a Daytona API key in Settings for the signed-in user, or set org-level `DAYTONA_API_KEY`. Locally, set `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` in `.env`. If you don't need sandboxes, ignore the 503 — the rest of the app is unaffected.
+**Fix:** On Cloudflare, save a Daytona API key in Settings for the signed-in user, or set org-level `DAYTONA_API_KEY`. Locally, set `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` in `.env`. If you don't need sandboxes, ignore the 503 — the rest of the app is unaffected.
 
 ### Session file path issues → fresh session fallback
 
