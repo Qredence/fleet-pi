@@ -15,6 +15,7 @@ export const ChatPiSettingsSchema = z
       enabled: z.boolean(),
       reserveTokens: positiveIntSchema,
       keepRecentTokens: positiveIntSchema,
+      backgroundTokens: nonNegativeIntSchema.optional(),
     }),
     defaultModel: z.string().optional(),
     defaultProvider: z.string().optional(),
@@ -29,11 +30,27 @@ export const ChatPiSettingsSchema = z
       enabled: z.boolean(),
       maxRetries: nonNegativeIntSchema,
       baseDelayMs: nonNegativeIntSchema,
+      maxAgentDelayMs: nonNegativeIntSchema.optional(),
     }),
     skills: z.array(nonEmptyStringSchema),
     steeringMode: ChatDeliveryModeSchema,
     themes: z.array(nonEmptyStringSchema),
     transport: ChatTransportSchema,
+    codemode: z
+      .object({
+        enabled: z.boolean(),
+        inlineBudget: positiveIntSchema.optional(),
+      })
+      .optional(),
+    mcpServers: z
+      .array(
+        z.object({
+          name: nonEmptyStringSchema,
+          url: nonEmptyStringSchema,
+          headers: z.record(z.string(), z.string()).optional(),
+        })
+      )
+      .optional(),
   })
   .openapi({ description: "Editable Pi settings" })
 
@@ -54,6 +71,8 @@ export const ChatPiSettingsUpdateSchema = z
     steeringMode: ChatDeliveryModeSchema.optional(),
     themes: z.array(nonEmptyStringSchema).optional(),
     transport: ChatTransportSchema.optional(),
+    codemode: ChatPiSettingsSchema.shape.codemode.optional(),
+    mcpServers: ChatPiSettingsSchema.shape.mcpServers.optional(),
   })
   .strict()
   .openapi({ description: "Pi settings update" })

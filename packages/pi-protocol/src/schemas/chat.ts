@@ -185,6 +185,7 @@ export const ChatStartEventSchema = z
     sessionReset: z.boolean().optional(),
     diagnostics: z.array(z.string()).optional(),
     workspace: ChatWorkspaceStatusSchema.optional(),
+    thinkingLevel: ChatThinkingLevelSchema.optional(),
   })
   .openapi({ description: "Stream start event" })
 

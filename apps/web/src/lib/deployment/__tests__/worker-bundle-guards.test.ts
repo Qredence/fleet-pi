@@ -34,6 +34,26 @@ describe("Cloudflare worker bundle guards", () => {
   it("does not declare Neon object storage buckets", () => {
     const neonConfig = readFileSync(join(WEB_SRC, "../../../neon.ts"), "utf8")
     expect(neonConfig).not.toMatch(/objectStorage|storageBuckets|bucketName/)
+    expect(neonConfig).toContain("dataApi: false")
+    expect(neonConfig).not.toMatch(/dataApi:\s*true/)
     expect(neonConfig).toContain("fleet-pi-pg18")
+  })
+
+  it("does not import the S3 client or an R2 binding", () => {
+    const offenders = productionSources(WEB_SRC).filter((path) => {
+      const source = readFileSync(path, "utf8")
+      return /@aws-sdk\/client-s3|lib\/storage\/object-storage|session-blob-store/.test(
+        source
+      )
+    })
+    expect(offenders).toEqual([])
+    const wrangler = readFileSync(join(WEB_SRC, "../wrangler.jsonc"), "utf8")
+    expect(wrangler).not.toMatch(/"r2_buckets"/)
+    const migrations = readFileSync(
+      join(WEB_SRC, "lib/db/chat-migrations.ts"),
+      "utf8"
+    )
+    expect(migrations).not.toContain('from "./chat-postgres-data-api-auth"')
+    expect(migrations).toContain("chat-postgres-data-api-auth")
   })
 })

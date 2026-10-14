@@ -43,7 +43,7 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Issue: Fleet Pi exposes model and thinking level, but richer Pi reasoning/session settings are not yet surfaced as first-class UI/API controls.
 - Affected area: settings schema, Configurations panel, Pi runtime creation, and run provenance.
 - Symptoms: Mode/task-specific reasoning presets and branch/compaction summary controls require code/config changes instead of UI-driven management.
-- Current status: **Partially resolved!** The Configurations panel / Settings Dialog (`settings-dialog.tsx`) now fully exposes and edits provider, model, thinking, retry, compaction, and transport settings inside `.pi/settings.json`, with live hot-reload support.
+- Current status: The Settings Agent loop pane edits compaction (including background tokens), retry, thinking level, and steering/follow-up for the hosted Pi Durable loop. Those values persist in `pi_user_settings` and apply on the next hosted turn.
 - Workaround: Adjust supported `.pi/settings.json` fields manually, via the Configurations tab/Settings Dialog, or through existing configuration controls.
 - Follow-up: Extend the settings schema to support fine-grained thinking budgets and reasoning profiles.
 

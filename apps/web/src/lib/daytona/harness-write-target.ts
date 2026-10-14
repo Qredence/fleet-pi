@@ -109,7 +109,7 @@ export async function writeSandboxWorkspaceFile(
   sandbox: Sandbox,
   workspaceRelativePath: string,
   content: string | Buffer,
-  options?: { overwrite?: boolean }
+  options?: { overwrite?: boolean; parentsReady?: boolean }
 ) {
   const remotePath = sandboxWorkspaceFilePath(workspaceRelativePath)
   if (!options?.overwrite) {
@@ -119,15 +119,22 @@ export async function writeSandboxWorkspaceFile(
     )
     if (existing.exitCode === 0) return
   }
-  const parent = dirname(remotePath)
-  const mkdir = await executeCommand(sandbox, `mkdir -p ${shellQuote(parent)}`)
-  if (mkdir.exitCode !== 0) {
-    throw new Error(
-      `Failed to create sandbox directory ${parent}: ${mkdir.result}`
+  if (!options?.parentsReady) {
+    const parent = dirname(remotePath)
+    const mkdir = await executeCommand(
+      sandbox,
+      `mkdir -p ${shellQuote(parent)}`
     )
+    if (mkdir.exitCode !== 0) {
+      throw new Error(
+        `Failed to create sandbox directory ${parent}: ${mkdir.result}`
+      )
+    }
   }
   await uploadFile(sandbox, content, remotePath)
 }
+
+const WORKSPACE_UPLOAD_CONCURRENCY = 4
 
 export async function uploadAgentWorkspaceTree(
   sandbox: Sandbox,
@@ -135,11 +142,54 @@ export async function uploadAgentWorkspaceTree(
 ) {
   const sourceRoot = join(hostProjectRoot, "agent-workspace")
   const files = await collectFiles(sourceRoot)
+  const parents = new Set<string>()
+  const pending: Array<{ path: string; content: Buffer }> = []
   for (const file of files) {
     const workspaceRelativePath = relative(sourceRoot, file)
-    const content = await readFile(file)
-    await writeSandboxWorkspaceFile(sandbox, workspaceRelativePath, content)
+    parents.add(dirname(sandboxWorkspaceFilePath(workspaceRelativePath)))
+    pending.push({
+      path: workspaceRelativePath,
+      content: await readFile(file),
+    })
   }
+  if (parents.size > 0) {
+    const mkdir = await executeCommand(
+      sandbox,
+      `mkdir -p ${[...parents].map(shellQuote).join(" ")}`
+    )
+    if (mkdir.exitCode !== 0) {
+      throw new Error(`Failed to create sandbox directories: ${mkdir.result}`)
+    }
+  }
+  await mapWithConcurrency(
+    pending,
+    WORKSPACE_UPLOAD_CONCURRENCY,
+    async (file) => {
+      await writeSandboxWorkspaceFile(sandbox, file.path, file.content, {
+        parentsReady: true,
+      })
+    }
+  )
+}
+
+async function mapWithConcurrency<T>(
+  items: Array<T>,
+  limit: number,
+  run: (item: T) => Promise<void>
+) {
+  let index = 0
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (index < items.length) {
+        const current = items[index]
+        index += 1
+        if (!current) return
+        await run(current)
+      }
+    }
+  )
+  await Promise.all(workers)
 }
 
 async function collectFiles(root: string): Promise<Array<string>> {

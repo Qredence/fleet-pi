@@ -127,7 +127,11 @@ export function usePiChatMessaging({
   )
 
   const queueFollowUp = useCallback(
-    async (trimmed: string, requestMode: ChatMode) => {
+    async (
+      trimmed: string,
+      requestMode: ChatMode,
+      behavior: "steer" | "followUp"
+    ) => {
       const userMessage = createTextMessage("user", trimmed)
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
@@ -139,7 +143,7 @@ export function usePiChatMessaging({
           mode: requestMode,
           sessionFile: sessionMetadataRef.current.sessionFile,
           sessionId: sessionMetadataRef.current.sessionId,
-          streamingBehavior: "followUp",
+          streamingBehavior: behavior,
         },
         (event) => {
           if (event.type === "queue") {
@@ -147,7 +151,9 @@ export function usePiChatMessaging({
               steering: event.steering,
               followUp: event.followUp,
             })
-            setActivityLabelSynced("Follow-up queued")
+            setActivityLabelSynced(
+              behavior === "steer" ? "Steering the turn" : "Follow-up queued"
+            )
           }
           if (event.type === "error") {
             throw new Error(event.message)
@@ -173,12 +179,12 @@ export function usePiChatMessaging({
       const requestMode = requestedMode ?? mode
 
       if (status === "streaming") {
-        if (hostedAgentOnly) {
-          toast.error("Wait for the current reply to finish.")
-          return
-        }
         try {
-          await queueFollowUp(trimmed, requestMode)
+          await queueFollowUp(
+            trimmed,
+            requestMode,
+            hostedAgentOnly ? "steer" : "followUp"
+          )
         } catch (err) {
           const nextError = err instanceof Error ? err : new Error(String(err))
           setError(nextError)

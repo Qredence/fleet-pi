@@ -23,6 +23,8 @@ export type ChatPiSettings = {
     enabled: boolean
     reserveTokens: number
     keepRecentTokens: number
+    /** Tokens below the blocking threshold where background compaction starts. `0` disables it. */
+    backgroundTokens?: number
   }
   defaultModel?: string
   defaultProvider?: string
@@ -37,11 +39,23 @@ export type ChatPiSettings = {
     enabled: boolean
     maxRetries: number
     baseDelayMs: number
+    maxAgentDelayMs?: number
   }
   skills: Array<string>
   steeringMode: ChatDeliveryMode
   themes: Array<string>
   transport: ChatTransport
+  /** Hosted code mode. Off unless the user turns it on. */
+  codemode?: {
+    enabled: boolean
+    inlineBudget?: number
+  }
+  /** HTTPS MCP servers. Stdio is not accepted on hosted chat. */
+  mcpServers?: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }
 
 export type ChatPiSettingsUpdate = Partial<{
@@ -60,6 +74,12 @@ export type ChatPiSettingsUpdate = Partial<{
   steeringMode: ChatDeliveryMode
   themes: Array<string>
   transport: ChatTransport
+  codemode: { enabled: boolean; inlineBudget?: number }
+  mcpServers: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }>
 
 export type ChatSettingsUpdateRequest = {
@@ -175,6 +195,7 @@ type ChatStartEvent = {
   sessionReset?: boolean
   diagnostics?: Array<string>
   workspace?: ChatWorkspaceStatus
+  thinkingLevel?: ChatThinkingLevel
 }
 
 /**

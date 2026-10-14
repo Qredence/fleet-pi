@@ -6,6 +6,7 @@ import {
   KeyRound,
   Paintbrush,
   Settings,
+  SlidersHorizontal,
   Sparkles,
 } from "lucide-react"
 
@@ -52,6 +53,7 @@ import { PersonalizationSection } from "./config-panel/sections/personalization-
 import { ProviderCredentialsSection } from "./config-panel/sections/provider-credentials-section"
 import { ModelDefaultsSection } from "./config-panel/sections/model-defaults-section"
 import { ResourcesSection } from "./config-panel/sections/resources-section"
+import { AgentLoopSection } from "./config-panel/sections/agent-loop-section"
 import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider-section"
 
 import {
@@ -76,6 +78,7 @@ type SettingsSectionId =
   | "providers"
   | "llm-models"
   | "skills"
+  | "agent-loop"
   | "pi-harness"
 
 type SettingsSection = {
@@ -90,6 +93,7 @@ const SETTINGS_SECTIONS: Array<SettingsSection> = [
   { id: "providers", title: "Providers", icon: KeyRound },
   { id: "llm-models", title: "LLM Models", icon: Cpu },
   { id: "skills", title: "Skills", icon: Sparkles },
+  { id: "agent-loop", title: "Agent loop", icon: SlidersHorizontal },
   { id: "pi-harness", title: "Pi Harness", icon: Settings },
 ]
 
@@ -230,6 +234,7 @@ function useSettingsForm() {
     onUpdateProvider,
     providers,
     resources,
+    settings,
     settingsLoading,
     themePreference,
     draft,
@@ -299,6 +304,7 @@ export function SettingsDialog({
     onUpdateProvider,
     providers,
     resources,
+    settings,
     settingsLoading,
     themePreference,
     draft,
@@ -464,6 +470,13 @@ export function SettingsDialog({
       />
     ),
     skills: () => resourcesPane("skills"),
+    "agent-loop": () => (
+      <AgentLoopSection
+        onSave={(update) => saveSection("agent-loop", update)}
+        saving={savingSection === "agent-loop"}
+        settings={settings?.effective ?? null}
+      />
+    ),
     "pi-harness": () => resourcesPane("harness"),
   }
 

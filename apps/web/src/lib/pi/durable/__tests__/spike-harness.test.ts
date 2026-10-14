@@ -11,6 +11,7 @@ import {
   createScriptedPort,
   createSpikeTrace,
   openSpikeHarness,
+  toolsForChatMode,
   waitForCount,
 } from "@/lib/pi/durable/spike-harness"
 
@@ -20,6 +21,21 @@ async function sqliteFile(name: string) {
 }
 
 describe("Pi Durable spike harness", () => {
+  it("offers read and search in plan mode and no tools without a sandbox", () => {
+    const tools = [
+      { name: "read" },
+      { name: "search" },
+      { name: "write" },
+      { name: "edit" },
+      { name: "bash" },
+    ]
+    expect(
+      toolsForChatMode(tools, "plan", true).map((tool) => tool.name)
+    ).toEqual(["read", "search"])
+    expect(toolsForChatMode(tools, "agent", false)).toEqual([])
+    expect(toolsForChatMode(tools, "harness", true)).toHaveLength(5)
+  })
+
   it("keeps the same root conversation after another harness opens the file", async () => {
     const dir = mkdtempSync(join(tmpdir(), "fleet-pi-spike-"))
     const file = join(dir, "root.sqlite")
@@ -138,6 +154,31 @@ describe("Pi Durable spike harness", () => {
     expect(harness.toolNames).not.toContain("write")
     expect(harness.toolNames).not.toContain("edit")
     expect(transcript).toContain(SPIKE_MODEL_REPLY)
+  })
+
+  it("applies saved thinking level and retry max on a new conversation", async () => {
+    const harness = await openSpikeHarness(
+      await sqliteFile("loop.sqlite"),
+      "model-only",
+      createScriptedPort(createSpikeTrace()),
+      {
+        loop: {
+          thinkingLevel: "high",
+          retry: { maxRetries: 7 },
+          compaction: { reserveTokens: 111 },
+        },
+      }
+    )
+
+    expect(harness.appliedSettings?.retry?.maxRetries).toBe(7)
+    expect(harness.appliedSettings?.compaction?.reserveTokens).toBe(111)
+    const turn = await harness.runAgentTurn({
+      prompt: "hello",
+      create: true,
+      model: { provider: "spike", modelId: "spike" },
+      onView: () => undefined,
+    })
+    expect(turn.thinkingLevel).toBe("high")
   })
 
   it("sends bash through the Daytona sandbox port", async () => {

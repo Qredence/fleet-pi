@@ -12,7 +12,11 @@ import {
   agentWorkspaceBashBlock,
   agentWorkspaceMutationBlock,
 } from "../command-policy"
+import { classifyToolPath } from "../../../../../../.pi/extensions/lib/mutation-tier"
+import { harnessSettingsFromLoop } from "./durable-loop-settings"
 import { createSpikeExecutionEnv } from "./spike-env"
+import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+import type { DurableLoopSettings } from "./durable-loop-settings"
 import type {
   ConversationView,
   Storage,
@@ -136,7 +140,46 @@ function requireEnv(api: ToolExecutionApi) {
   return api.env
 }
 
-function sandboxTools() {
+type ChatModeRef = { current: ChatMode }
+
+function systemPath(path: string) {
+  const classified = classifyToolPath(path)
+  return (
+    classified.scoped &&
+    (classified.relativePath === "system" ||
+      classified.relativePath.startsWith("system/"))
+  )
+}
+
+function mutationGate(
+  mode: ChatMode,
+  path: string,
+  confirm: boolean | undefined
+) {
+  if (mode === "harness" && systemPath(path)) {
+    if (confirm === true) return undefined
+    return "Confirmation required before a tool writes system/."
+  }
+  return agentWorkspaceMutationBlock(path)
+}
+
+function bashGate(
+  mode: ChatMode,
+  command: string,
+  confirm: boolean | undefined
+) {
+  if (mode === "harness" && confirm === true) {
+    const block = agentWorkspaceBashBlock(command)
+    if (block?.includes("system/")) return undefined
+    return block
+  }
+  if (mode === "harness" && /(?:^|[\s"'`])system\//.test(command)) {
+    return "Confirmation required before a tool writes system/."
+  }
+  return agentWorkspaceBashBlock(command)
+}
+
+function sandboxTools(mode: ChatModeRef) {
   const read = defineTool({
     name: "read",
     description: "Read a file in the user sandbox.",
@@ -165,12 +208,13 @@ function sandboxTools() {
     parameters: Type.Object({
       path: Type.String(),
       content: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string },
+      args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = agentWorkspaceMutationBlock(args.path)
+      const block = mutationGate(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -187,12 +231,13 @@ function sandboxTools() {
     parameters: Type.Object({
       path: Type.String(),
       content: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string },
+      args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = agentWorkspaceMutationBlock(args.path)
+      const block = mutationGate(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -206,9 +251,15 @@ function sandboxTools() {
   const bash = defineTool({
     name: "bash",
     description: "Run a command in the user sandbox.",
-    parameters: Type.Object({ command: Type.String() }),
-    execute: async (args: { command: string }, api: ToolExecutionApi) => {
-      const block = agentWorkspaceBashBlock(args.command)
+    parameters: Type.Object({
+      command: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
+    }),
+    execute: async (
+      args: { command: string; confirm?: boolean },
+      api: ToolExecutionApi
+    ) => {
+      const block = bashGate(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
       const result = await requireEnv(api).exec(
@@ -227,13 +278,31 @@ function sandboxTools() {
   return [read, search, write, edit, bash]
 }
 
-function registryFor(mode: SpikeToolMode) {
+function registryFor() {
   const registry = createRegistry()
-  const tools = mode === "sandbox" ? sandboxTools() : []
-  if (tools.length > 0) {
-    registry.install(defineExtension({ name: "spike-sandbox", tools }))
+  const chatMode: ChatModeRef = { current: "agent" }
+  const tools = sandboxTools(chatMode)
+  registry.install(defineExtension({ name: "spike-sandbox", tools }))
+  return {
+    registry,
+    tools,
+    chatMode,
+    toolNames: tools.map((tool) => tool.name),
   }
-  return { registry, toolNames: tools.map((tool) => tool.name) }
+}
+
+export function toolsForChatMode<T extends { name: string }>(
+  tools: Array<T>,
+  mode: ChatMode,
+  toolsAvailable: boolean
+): Array<T> {
+  if (!toolsAvailable) return []
+  if (mode === "plan") {
+    return tools.filter(
+      (tool) => tool.name === "read" || tool.name === "search"
+    )
+  }
+  return tools
 }
 
 async function assistantToolCall(
@@ -300,6 +369,7 @@ export type SpikeHarnessModel = { provider: string; modelId: string }
 export type SpikeHarnessOptions = {
   models?: unknown
   model?: SpikeHarnessModel
+  loop?: DurableLoopSettings
 }
 
 export type DurableConversationSummary = {
@@ -324,14 +394,22 @@ export type OpenSpikeHarness = {
   runBlockedBash: (command: string) => Promise<string>
   beginHanging: (tool: "read" | "bash") => Promise<void>
   modelReply: (prompt: string) => Promise<string>
+  appliedSettings: ReturnType<typeof harnessSettingsFromLoop>
   runAgentTurn: (input: {
     prompt: string
     conversationId?: string
     create: boolean
     model: SpikeHarnessModel
+    chatMode?: ChatMode
+    whenBusy?: "steer" | "followUp"
     onView: (view: ConversationView) => void
     signal?: AbortSignal
-  }) => Promise<{ conversationId: string }>
+  }) => Promise<{ conversationId: string; thinkingLevel?: string }>
+  submitBusy: (input: {
+    prompt: string
+    whenBusy: "steer" | "followUp"
+  }) => Promise<void>
+  forkConversation: (conversationId: string, entryId: string) => Promise<string>
   listConversations: () => Promise<Array<DurableConversationSummary>>
   readConversation: (
     conversationId: string
@@ -344,22 +422,30 @@ export async function openSpikeHarness(
   port: SpikeSandboxPort,
   options?: SpikeHarnessOptions
 ): Promise<OpenSpikeHarness> {
-  const { registry, toolNames } = registryFor(mode)
+  const { registry, tools, chatMode } = registryFor()
+  const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
+    (tool) => tool.name
+  )
   const agentModel = options?.model ?? { provider: "spike", modelId: "spike" }
+  const appliedSettings = harnessSettingsFromLoop(options?.loop)
   const harness = await Harness.open(
     storage,
     {
       models: (options?.models ?? spikeModels) as never,
       registry,
+      settings: appliedSettings,
       env: () => createSpikeExecutionEnv("spike-sandbox", port),
     },
     context
   )
+  let liveConversation:
+    Awaited<ReturnType<SpikeHarnessHandle["conversation"]>> | undefined
   const root = await harness.root(context, {
     agent: { model: agentModel },
   })
   return {
-    toolNames,
+    toolNames: offeredNames,
+    appliedSettings,
     resume: () => harness.resume(),
     rootId: () => Promise.resolve(String(root.id)),
     transcript: () => readTranscript(harness),
@@ -410,7 +496,12 @@ export async function openSpikeHarness(
         ? await harness.createConversation(
             {
               ownership: { kind: "ownerless" },
-              agent: { model: input.model },
+              agent: {
+                model: input.model,
+                ...(options?.loop?.thinkingLevel
+                  ? { thinkingLevel: options.loop.thinkingLevel }
+                  : {}),
+              },
             },
             context
           )
@@ -421,6 +512,20 @@ export async function openSpikeHarness(
       if (!conversation) {
         throw new DurableConversationMissing(input.conversationId ?? "")
       }
+      liveConversation = conversation
+      const chatModeValue = input.chatMode ?? "agent"
+      chatMode.current = chatModeValue
+      const selected = toolsForChatMode(
+        tools,
+        chatModeValue,
+        mode === "sandbox"
+      )
+      offeredNames.splice(
+        0,
+        offeredNames.length,
+        ...selected.map((tool) => tool.name)
+      )
+      await conversation.configure({ tools: selected }, context)
       const view = await conversation.viewState(context)
       input.onView(view.value)
       const gate = { stopped: false }
@@ -435,7 +540,11 @@ export async function openSpikeHarness(
       })()
       try {
         const submission = await conversation.submit(
-          { type: "input", content: input.prompt },
+          {
+            type: "input",
+            content: input.prompt,
+            ...(input.whenBusy ? { whenBusy: input.whenBusy } : {}),
+          },
           context
         )
         await waitForAgentTurn(
@@ -447,10 +556,41 @@ export async function openSpikeHarness(
         )
       } finally {
         gate.stopped = true
+        liveConversation = undefined
         input.onView(view.value)
         await pump
       }
-      return { conversationId: String(conversation.id) }
+      const agent = await conversation.agent(context)
+      return {
+        conversationId: String(conversation.id),
+        thinkingLevel: agent.thinkingLevel,
+      }
+    },
+    async submitBusy(input) {
+      const conversation = liveConversation
+      if (!conversation) {
+        throw new Error("No hosted turn is in progress")
+      }
+      await conversation.submit(
+        { type: "input", content: input.prompt, whenBusy: input.whenBusy },
+        context
+      )
+    },
+    async forkConversation(conversationId, entryId) {
+      const conversation = await harness.conversation(
+        conversationId as never,
+        context
+      )
+      if (!conversation) throw new DurableConversationMissing(conversationId)
+      const forked = await conversation.fork(
+        entryId as never,
+        {
+          ownership: { kind: "ownerless" },
+          agent: { model: agentModel },
+        },
+        context
+      )
+      return String(forked.id)
     },
     async listConversations() {
       const page = await harness.commit(

@@ -18,7 +18,7 @@ vi.mock("@/lib/db/pi-session-deletion", () => ({
 }))
 
 vi.mock("@/lib/deployment/environment", async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
     isCloudflareDeployment: mocks.isCloudflareDeployment,

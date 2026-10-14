@@ -1,6 +1,8 @@
 # Deployment
 
-Fleet Pi deploys to **Cloudflare Workers** (`fleet-pi-web`) for the web UI and catalog APIs. The current production chat stream is an **interim Neon Function** when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. The Pi Durable spike keeps a turn inside the user's Durable Object (`UserPiDurable`) instead of stretching that Worker request or the Function.
+Cloudflare Workers is the primary host. The `fleet-pi-web` Worker serves the web UI, Settings, and catalog APIs. New hosted Agent turns stream from the signed-in user's Durable Object (`UserPiDurable`). That object's SQLite storage is the transcript. The Daytona volume holds the harness and artifacts. Neon keeps Managed Auth, `pi_user_settings`, and an optional session projection. There is no Neon Object Storage bucket and no R2 binding.
+
+The Neon Function remains an interim path for legacy JSONL sessions when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. Vercel is not a deployment target; `docs/adr/0002-vercel-neon-deployment-trust-zones.md` records that earlier host.
 
 ## Neon provisioning (`neon.ts`)
 
@@ -103,13 +105,13 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   plan (10 MB limit). Features that need a real filesystem or processes
   (local workspace projection/provenance, npm package installs) degrade the
   same way they do on Cloudflare; tools run in Daytona.
-- Interim split: the Worker serves the UI, Settings, and catalog. Production
-  `/api/chat` still streams from the Neon Function while
-  `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. That Function path is interim.
-  The spike at `POST /api/chat/durable-spike` addresses `USER_PI_DURABLE`
-  by the signed-in user id. The object keeps the transcript and any in-flight
-  task across a new request, so a turn is not a longer Worker invocation.
-  Production `/api/chat` does not enter the spike.
+- Hosted split: the Worker serves the UI, Settings, and catalog. A new
+  `/api/chat` turn on Cloudflare addresses `USER_PI_DURABLE` by the signed-in
+  user id. The object keeps the transcript and any in-flight task. Legacy
+  JSONL sessions may still stream from the Neon Function while
+  `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. `POST /api/chat/durable-spike`
+  remains the scripted harness route. Readiness does not require
+  object-storage environment variables.
 
 ## Build
 

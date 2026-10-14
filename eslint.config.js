@@ -17,4 +17,10 @@ export default [
     }
     return { ...config, files: ["packages/hax-design/**/*.{js,ts,tsx}"] }
   }),
+  ...webConfig
+    .filter((config) => !config.ignores)
+    .map((config) => ({
+      ...config,
+      files: [".pi/extensions/**/*.ts", "functions/**/*.ts"],
+    })),
 ]

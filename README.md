@@ -9,7 +9,7 @@
 
 **A self-improving agent workspace. You bring the keys and the sandbox. The agent builds the rest.**
 
-[Quick start](#quick-start) · [Why](#why-fleet-pi) · [Docs](docs/README.md) · [Releases](https://github.com/Qredence/fleet-pi/releases) · [Pitches](docs/pitches/)
+[Quick start](#quick-start) · [Why](#why-fleet-pi) · [Docs](docs/README.md) · [Changelog](CHANGELOG.md) · [Pitches](docs/pitches/)
 
 </div>
 

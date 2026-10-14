@@ -25,7 +25,7 @@
     "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
     "remap-auth-user-ids": "pnpm --filter web remap-auth-user-ids",
     "dev": "turbo dev --filter=web",
-    "lint": "turbo lint",
+    "lint": "turbo lint && eslint .pi/extensions functions",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
@@ -43,8 +43,8 @@
     "check-design-drift": "node scripts/check-design-drift.js"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^1.1.0",
-    "@earendil-works/pi-tui": "^1.1.0",
+    "@earendil-works/pi-coding-agent": "^1.2.0",
+    "@earendil-works/pi-tui": "^1.2.0",
     "diff": "^9.0.0",
     "typebox": "1.3.0",
     "undici": "^8.10.2",
@@ -75,6 +75,12 @@
     ],
     "packages/pi-protocol/**/*.{ts,tsx,js,jsx}": [
       "pnpm --filter @workspace/pi-protocol exec eslint --fix"
+    ],
+    ".pi/extensions/**/*.ts": [
+      "eslint --fix"
+    ],
+    "functions/**/*.ts": [
+      "eslint --fix"
     ]
   },
   "engines": {

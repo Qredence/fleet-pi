@@ -1,18 +1,36 @@
 # Changelog
 
 All notable changes to Fleet Pi are documented here. This file follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); tagged releases are
-also published as `RELEASE_NOTES_v*.md` at the repo root.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Historical notes for
+0.5.x live under `docs/releases/`.
 
 ## [Unreleased]
+
+Hosted Agent turns on Cloudflare stream from the signed-in user's Pi Durable
+object (`@earendil-works/pi-durable` 1.2.0 on `@earendil-works/pi-coding-agent`
+1.1). That object's SQLite storage is the transcript. Neon keeps auth, settings,
+and an optional projection. The Daytona volume holds the harness and artifacts.
+
+### Added
+
+- **Hosted transcript is the Durable Object** — new Cloudflare `/api/chat`
+  sessions address `USER_PI_DURABLE`. Legacy JSONL sessions can still use the
+  Neon Function. Session JSONL is no longer copied to object storage.
+
+### Removed
+
+- **Session blob client** — `object-storage.ts` and `session-blob-store.ts` are
+  gone, along with `@aws-sdk/client-s3`. `neon.ts` declares no buckets.
+  `wrangler.jsonc` has no R2 binding.
+
+## [Unreleased — prior notes]
 
 Hardens the chat wire contract, BYOK provider credential scrubbing, and hot-path
 performance in `@workspace/pi-protocol` and the web chat runtime, with a
 maintainability refactor of the Zod schema surface. Public API is unchanged.
 
 Adds one SQLite Durable Object per signed-in user as the Pi Durable storage
-owner, and opens a Pi Durable harness on that storage for a spike route.
-Production `/api/chat` stays on Pi 1.0+.
+owner, and opens a Pi Durable harness on that storage.
 
 ### Added
 
@@ -29,7 +47,7 @@ Production `/api/chat` stays on Pi 1.0+.
   read runs again once, and a killed bash stays interrupted. Protected
   workspace paths stay blocked. `POST /api/chat/durable-spike` addresses the
   signed-in user's object. Without sandbox tools the same route still accepts
-  a model-only reply. Production `/api/chat` does not enter this route.
+  a model-only reply. New hosted `/api/chat` turns use the same object.
 - **`userId` / `userEmail` on `ChatRequestSchema`** — the Zod schema now matches
   the server-injected `ChatRequest` type, and both fields surface in the
   regenerated `apps/web/openapi.json`.
@@ -44,9 +62,6 @@ Production `/api/chat` stays on Pi 1.0+.
 
 ### Changed
 
-- **Pi SDK 0.82.1** — aligned `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-agent-core`, and
-  `pi-tui` to `^0.82.1` in the root workspace and `apps/web` (no runtime code changes;
-  Fleet Pi already uses `services.modelRuntime` for BYOK).
 - **Deployment split (CF-015)** — `docs/wiki/deployment.md` labels the Neon
   Function chat stream interim. The spike turn stays on `UserPiDurable`, not
   on a longer Worker request.

@@ -6,6 +6,7 @@ import {
   eventsFromConversationView,
   messagesFromEntries,
 } from "./durable-events"
+import { durableLoopSettingsKey } from "./durable-loop-settings"
 import { durableSessionId } from "./durable-session"
 import { openDaytonaSandboxPort } from "./durable-sandbox-port"
 import {
@@ -17,12 +18,15 @@ import {
   waitForCount,
 } from "./spike-harness"
 import type {
+  ChatMode,
   ChatStreamEvent,
+  ChatThinkingLevel,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
 import type { DurableObjectState } from "cloudflare:workers"
 import type { DurableAgentModelConfig } from "./durable-model"
+import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { DurableSandboxConnection } from "./durable-sandbox-port"
 import type { SpikeSandboxPort } from "./spike-env"
 import type {
@@ -70,6 +74,9 @@ type AgentTurnBody = {
   model: DurableAgentModelConfig
   sandbox?: DurableSandboxConnection
   workspace?: ChatWorkspaceStatus
+  whenBusy?: "steer" | "followUp"
+  mode?: ChatMode
+  loop?: DurableLoopSettings
 }
 
 const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
@@ -87,6 +94,11 @@ export class UserPiDurable extends DurableObject {
   #mode: SpikeToolMode = "sandbox"
   #sandboxConnectionKey: string | undefined
   #harnessModelKey: string | undefined
+  #loopKey = ""
+  #queue: { steering: Array<string>; followUp: Array<string> } = {
+    steering: [],
+    followUp: [],
+  }
   #activeTurn: ActiveAgentTurn | undefined
 
   constructor(ctx: DurableObjectState, env: unknown) {
@@ -182,7 +194,32 @@ export class UserPiDurable extends DurableObject {
     if (request.method === "DELETE" && url.pathname === "/session") {
       return this.#deleteSession(url.searchParams.get("id"))
     }
+    if (request.method === "POST" && url.pathname === "/fork") {
+      return this.#forkSession(request)
+    }
     return new Response("Not found", { status: 404 })
+  }
+
+  async #forkSession(request: Request): Promise<Response> {
+    const body = (await request.json()) as {
+      conversationId?: string
+      entryId?: string
+    }
+    if (!body.conversationId || !body.entryId) {
+      return Response.json(
+        { message: "conversationId and entryId are required" },
+        { status: 400 }
+      )
+    }
+    const harness = await this.#reopen()
+    const conversationId = await harness.forkConversation(
+      body.conversationId,
+      body.entryId
+    )
+    return Response.json({
+      sessionId: durableSessionId(conversationId),
+      conversationId,
+    })
   }
 
   #abortAgentTurn(): Response {
@@ -194,6 +231,38 @@ export class UserPiDurable extends DurableObject {
   }
 
   async #agentTurn(request: Request): Promise<Response> {
+    const body = (await request.json()) as Partial<AgentTurnBody>
+    if (
+      this.#activeTurn &&
+      this.#harness &&
+      body.prompt &&
+      (body.whenBusy === "steer" || body.whenBusy === "followUp")
+    ) {
+      try {
+        await this.#harness.submitBusy({
+          prompt: body.prompt,
+          whenBusy: body.whenBusy,
+        })
+      } catch {
+        return Response.json(
+          { message: "An agent turn is already in progress." },
+          { status: 409 }
+        )
+      }
+      const next = {
+        steering: [...this.#queue.steering],
+        followUp: [...this.#queue.followUp],
+      }
+      next[body.whenBusy === "steer" ? "steering" : "followUp"].push(
+        body.prompt
+      )
+      this.#queue = next
+      return new Response(`${JSON.stringify({ type: "queue", ...next })}\n`, {
+        headers: {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+        },
+      })
+    }
     if (this.#activeTurn) {
       return Response.json(
         { message: "An agent turn is already in progress." },
@@ -202,7 +271,7 @@ export class UserPiDurable extends DurableObject {
     }
     const abortController = new AbortController()
     this.#activeTurn = { abortController }
-    const body = (await request.json()) as Partial<AgentTurnBody>
+    this.#queue = { steering: [], followUp: [] }
     const model = body.model
     const prompt = body.prompt
     if (!model?.apiKey || !model.modelId || !prompt) {
@@ -237,6 +306,7 @@ export class UserPiDurable extends DurableObject {
         {
           models,
           model: modelRef,
+          loop: body.loop,
         },
         portChanged
       )
@@ -262,6 +332,9 @@ export class UserPiDurable extends DurableObject {
         let baselined = false
         let started = false
         let streamedText = ""
+        let sessionId = body.conversationId
+          ? durableSessionId(body.conversationId)
+          : "durable:pending"
         const streamedTools = new Map<string, ChatToolPart>()
         const signal = abortController.signal
         try {
@@ -269,13 +342,15 @@ export class UserPiDurable extends DurableObject {
             prompt,
             conversationId: body.conversationId,
             create: body.create === true,
+            whenBusy: body.whenBusy,
+            chatMode: body.mode,
             model: {
               provider: model.provider,
               modelId: model.modelId,
             },
             signal,
             onView: (view) => {
-              const sessionId = durableSessionId(String(view.conversation.id))
+              sessionId = durableSessionId(String(view.conversation.id))
               if (!started) {
                 started = true
                 send({
@@ -289,6 +364,7 @@ export class UserPiDurable extends DurableObject {
                         toolsAvailable: false,
                         reason: "daytona_credential_required",
                       }),
+                  ...thinkingLevelEvent(view),
                 })
               }
               const events = eventsFromConversationView(view, diff)
@@ -325,6 +401,22 @@ export class UserPiDurable extends DurableObject {
           })
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") {
+            send({
+              type: "done",
+              runId,
+              sessionId,
+              stopReason: "aborted",
+              message: {
+                id: messageId,
+                role: "assistant",
+                parts: [
+                  ...(streamedText
+                    ? [{ type: "text" as const, text: streamedText }]
+                    : []),
+                  ...streamedTools.values(),
+                ],
+              },
+            })
             return
           }
           send({
@@ -408,6 +500,7 @@ export class UserPiDurable extends DurableObject {
   ): Promise<OpenSpikeHarness> {
     this.#mode = mode
     this.#harnessModelKey = harnessModelKey(options?.model)
+    this.#loopKey = durableLoopSettingsKey(options?.loop)
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
     this.#harness = await openSpikeHarness(storage, mode, this.#port, options)
@@ -420,11 +513,13 @@ export class UserPiDurable extends DurableObject {
     portChanged: boolean
   ): Promise<OpenSpikeHarness> {
     const modelKey = harnessModelKey(options.model)
+    const loopKey = durableLoopSettingsKey(options.loop)
     if (
       !portChanged &&
       this.#harness !== undefined &&
       this.#mode === mode &&
-      this.#harnessModelKey === modelKey
+      this.#harnessModelKey === modelKey &&
+      this.#loopKey === loopKey
     ) {
       return this.#harness
     }
@@ -449,6 +544,31 @@ export class UserPiDurable extends DurableObject {
     )
     return new Set(stored ?? [])
   }
+}
+
+const THINKING_LEVELS = new Set<ChatThinkingLevel>([
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+])
+
+function thinkingLevelEvent(view: {
+  docs?: Readonly<Record<string, unknown>>
+}): { thinkingLevel?: ChatThinkingLevel } {
+  const agent = view.docs?.["pi.agent"]
+  if (!agent || typeof agent !== "object" || Array.isArray(agent)) return {}
+  const level = (agent as { thinkingLevel?: unknown }).thinkingLevel
+  if (
+    typeof level !== "string" ||
+    !THINKING_LEVELS.has(level as ChatThinkingLevel)
+  ) {
+    return {}
+  }
+  return { thinkingLevel: level as ChatThinkingLevel }
 }
 
 function modelsForAgentTurn(model: DurableAgentModelConfig) {

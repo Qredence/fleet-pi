@@ -27,12 +27,15 @@ type ToolSnapshot = {
   state: "input-available" | "output-available" | "output-error"
   input?: unknown
   output?: unknown
+  startedAt?: number
+  durationMs?: number
 }
 
 export type DurableViewDiff = {
   textByKey: Map<string, string>
   tools: Map<string, ToolSnapshot>
   liveText: string
+  compactionKey?: string
 }
 
 export function createDurableViewDiff(): DurableViewDiff {
@@ -53,6 +56,7 @@ export function eventsFromConversationView(
   }
   const live = liveAssistantMessage(view.docs)
   if (live) collectEntry("live", [live], diff, events)
+  events.push(...compactionEvents(view, diff))
   return events
 }
 
@@ -181,11 +185,17 @@ function pushTool(
   tool: ToolSnapshot & { id: string }
 ) {
   const previous = diff.tools.get(tool.id)
+  const startedAt = previous?.startedAt ?? Date.now()
+  const settled = tool.state !== "input-available"
   const next: ToolSnapshot = {
     name: tool.name,
     state: tool.state,
     input: tool.input ?? previous?.input,
     output: tool.output ?? previous?.output,
+    startedAt,
+    ...(settled
+      ? { durationMs: previous?.durationMs ?? Date.now() - startedAt }
+      : {}),
   }
   if (
     previous &&
@@ -206,7 +216,58 @@ function toolPart(tool: ToolSnapshot & { id: string }): ChatToolPart {
     state: tool.state,
     input: tool.input,
     ...(tool.output === undefined ? {} : { output: tool.output }),
+    ...(tool.durationMs === undefined ? {} : { durationMs: tool.durationMs }),
   }
+}
+
+function compactionEvents(
+  view: DurableConversationSnapshot,
+  diff: DurableViewDiff
+): Array<ChatStreamEvent> {
+  const live = view.docs?.["pi.live"]
+  if (!live || typeof live !== "object") return []
+  const record = live as {
+    compactions?: Array<{
+      reason?: string
+      retry?: { error?: string }
+    }>
+    compactionFailure?: { reason?: string; error?: string }
+  }
+  const key = JSON.stringify({
+    compactions: record.compactions ?? [],
+    failure: record.compactionFailure ?? null,
+  })
+  if (key === diff.compactionKey) return []
+  diff.compactionKey = key
+  const events: Array<ChatStreamEvent> = []
+  for (const item of record.compactions ?? []) {
+    const reason = item.reason ?? "context"
+    if (item.retry) {
+      events.push({
+        type: "compaction",
+        phase: "end",
+        reason,
+        aborted: false,
+        willRetry: true,
+        errorMessage: item.retry.error,
+      })
+      continue
+    }
+    events.push({ type: "compaction", phase: "start", reason })
+  }
+  const failure = record.compactionFailure
+  if (failure) {
+    const message = failure.error ?? "Compaction failed"
+    events.push({
+      type: "compaction",
+      phase: "end",
+      reason: failure.reason ?? "context",
+      aborted: /abort/i.test(message),
+      willRetry: false,
+      errorMessage: message,
+    })
+  }
+  return events
 }
 
 export function normalizeDurableToolName(toolName: string) {

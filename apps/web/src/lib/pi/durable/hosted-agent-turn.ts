@@ -6,15 +6,18 @@ import {
   isDurableSessionId,
 } from "./durable-session"
 import { resolveDurableAgentModel } from "./durable-model-resolve"
+import { durableLoopSettingsFromProject } from "./durable-loop-settings"
 import { readHostedSandboxStatus } from "./durable-sandbox"
 import { userPiDurableName } from "./durable-binding"
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 import type {
+  ChatMode,
   ChatModelSelection,
   ChatSessionInfo,
   ChatSessionResponse,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
+import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
 type DurableNamespace = {
   getByName: (name: string) => {
@@ -27,6 +30,8 @@ export async function streamHostedAgentTurn(input: {
   prompt: string
   sessionId?: string
   model?: ChatModelSelection
+  mode?: ChatMode
+  whenBusy?: "steer" | "followUp"
   signal?: AbortSignal
 }): Promise<Response> {
   const namespace = readDurableNamespace()
@@ -44,6 +49,9 @@ export async function streamHostedAgentTurn(input: {
     )
   }
   const sandboxStatus = await readHostedSandboxStatus(input.userId)
+  const loop = durableLoopSettingsFromProject(
+    await loadUserProjectSettings(input.userId)
+  )
   const workspace = hostedWorkspaceStatus(sandboxStatus)
   const create = !isDurableSessionId(input.sessionId)
   const conversationId =
@@ -64,6 +72,9 @@ export async function streamHostedAgentTurn(input: {
         conversationId,
         model,
         workspace,
+        ...(input.mode ? { mode: input.mode } : {}),
+        ...(input.whenBusy ? { whenBusy: input.whenBusy } : {}),
+        ...(Object.keys(loop).length > 0 ? { loop } : {}),
         ...(sandboxStatus.sandboxReady &&
         sandboxStatus.apiKey &&
         sandboxStatus.sandboxId

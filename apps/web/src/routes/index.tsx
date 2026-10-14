@@ -118,11 +118,7 @@ function ChatWorkspaceShell() {
     themePreference,
   } = useChatShellState(modelsData)
   const { hostedAgentOnly } = Route.useLoaderData()
-  const chatModes = hostedAgentOnly ? CHAT_MODES.slice(0, 1) : CHAT_MODES
-
-  useEffect(() => {
-    if (hostedAgentOnly && mode !== "agent") handleModeChange("agent")
-  }, [handleModeChange, hostedAgentOnly, mode])
+  const chatModes = CHAT_MODES
 
   const {
     data: resourcesData,
@@ -344,7 +340,6 @@ function ChatWorkspaceShell() {
         sessions={sessions}
         isStreaming={status === "streaming"}
         themePreference={themePreference}
-        agentOnly={hostedAgentOnly}
       />
       <RightPanelProvider
         chatPanelData={chatPanelData}

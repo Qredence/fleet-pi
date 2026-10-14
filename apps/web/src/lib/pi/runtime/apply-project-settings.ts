@@ -256,6 +256,9 @@ function buildRuntimeSettingsOverrides(settings: Record<string, unknown>): {
     if (typeof settings.retry.baseDelayMs === "number") {
       retry.baseDelayMs = settings.retry.baseDelayMs
     }
+    if (typeof settings.retry.maxAgentDelayMs === "number") {
+      retry.maxAgentDelayMs = settings.retry.maxAgentDelayMs
+    }
     if (Object.keys(retry).length > 0) {
       overrides.retry = retry
     }

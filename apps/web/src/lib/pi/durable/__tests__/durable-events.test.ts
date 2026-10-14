@@ -103,4 +103,50 @@ describe("durable conversation events", () => {
       },
     ])
   })
+
+  it("keeps willRetry visible and labels an aborted compaction separately", () => {
+    const diff = createDurableViewDiff()
+    const retrying = eventsFromConversationView(
+      {
+        entries: [],
+        docs: {
+          "pi.live": {
+            compactions: [
+              {
+                reason: "context",
+                retry: { error: "summarizer timed out" },
+              },
+            ],
+          },
+        },
+      },
+      diff
+    )
+    expect(retrying).toEqual([
+      {
+        type: "compaction",
+        phase: "end",
+        reason: "context",
+        aborted: false,
+        willRetry: true,
+        errorMessage: "summarizer timed out",
+      },
+    ])
+    const aborted = eventsFromConversationView(
+      {
+        entries: [],
+        docs: {
+          "pi.live": {
+            compactionFailure: { reason: "context", error: "aborted" },
+          },
+        },
+      },
+      diff
+    )
+    expect(aborted[0]).toMatchObject({
+      type: "compaction",
+      aborted: true,
+      willRetry: false,
+    })
+  })
 })

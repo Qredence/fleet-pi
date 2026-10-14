@@ -60,34 +60,17 @@ export async function postChatHandler(request: Request) {
         return new Response("Missing message", { status: 400 })
       }
 
-      if (
-        isCloudflareDeployment() &&
-        (body.mode === "plan" || body.mode === "harness")
-      ) {
-        return Response.json(
-          { message: "Plan and Harness are unavailable on hosted chat." },
-          { status: 400 }
-        )
-      }
-
       if (isCloudflareDeployment() && !isLegacyChatSession(body)) {
         if (!body.userId) {
           return Response.json({ message: "Unauthorized" }, { status: 401 })
-        }
-        if (body.streamingBehavior) {
-          return Response.json(
-            {
-              message:
-                "Follow-up and steering are not available on hosted agent sessions yet.",
-            },
-            { status: 409 }
-          )
         }
         return streamHostedAgentTurn({
           userId: body.userId,
           prompt,
           sessionId: body.sessionId,
           model: body.model,
+          mode: body.mode,
+          whenBusy: body.streamingBehavior,
           signal: request.signal,
         })
       }

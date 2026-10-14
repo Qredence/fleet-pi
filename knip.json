@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
       "entry": [
@@ -15,11 +14,7 @@
         "functions/**/*.ts",
         "!agent-workspace/pi/**"
       ],
-      "ignoreDependencies": [
-        "zod",
-        "@aws-sdk/client-s3",
-        "@neondatabase/serverless"
-      ]
+      "ignoreDependencies": ["zod", "@neondatabase/serverless"]
     },
     "apps/web": {
       "entry": [
@@ -31,6 +26,7 @@
         "src/lib/pi/chat-runtime/router.ts",
         "src/lib/pi/durable/user-pi-durable.worker.ts",
         "src/lib/**/*.test.ts",
+        "src/lib/**/__tests__/**/*.ts",
         "src/lib/**/*.workers.test.ts",
         "src/lib/**/*.spec.ts"
       ],
@@ -45,6 +41,10 @@
     },
     "packages/hax-design": {
       "entry": ["src/**/*.tsx", "src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/pi-protocol": {
+      "entry": ["src/**/*.ts", "src/**/__tests__/**/*.ts"],
+      "project": ["src/**/*.ts"]
     }
   }
 }
