@@ -12,9 +12,43 @@ updates:
       - "dependencies"
       - "automated"
     groups:
-      dev-dependencies:
+      pi:
+        patterns:
+          - "@earendil-works/*"
+          - "pi-*"
+        update-types:
+          - "minor"
+          - "patch"
+      auth:
+        patterns:
+          - "better-auth"
+          - "@neondatabase/*"
+        update-types:
+          - "minor"
+          - "patch"
+      ui:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@radix-ui/*"
+          - "tailwindcss"
+          - "lucide-react"
+        update-types:
+          - "minor"
+          - "patch"
+      tooling:
         patterns:
           - "*"
+        exclude-patterns:
+          - "@earendil-works/*"
+          - "pi-*"
+          - "better-auth"
+          - "@neondatabase/*"
+          - "react"
+          - "react-dom"
+          - "@radix-ui/*"
+          - "tailwindcss"
+          - "lucide-react"
         update-types:
           - "minor"
           - "patch"
