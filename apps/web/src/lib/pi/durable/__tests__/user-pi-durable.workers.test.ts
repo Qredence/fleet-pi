@@ -10,6 +10,54 @@ function durableFetch(
   return target.fetch.call(stub, request)
 }
 
+async function agentTurn(
+  stub: ReturnType<typeof userPiDurableStub>,
+  input: { create: boolean; conversationId?: string; modelId: string }
+): Promise<{ sessionId: string; body: string }> {
+  const response = await durableFetch(
+    stub,
+    new Request("https://user-pi-durable/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "hello",
+        create: input.create,
+        conversationId: input.conversationId,
+        model: {
+          provider: "spike",
+          modelId: input.modelId,
+          apiKey: "test-key",
+          baseUrl: "http://localhost/v1",
+          api: "openai-completions",
+        },
+      }),
+    })
+  )
+  expect(response.ok).toBe(true)
+  const body = await response.text()
+  const done = body
+    .split("\n")
+    .filter((line) => line.startsWith('{"type":"done"'))
+    .map((line) => JSON.parse(line) as { sessionId: string })
+    .at(-1)
+  expect(done).toBeTruthy()
+  return { sessionId: done!.sessionId, body }
+}
+
+/** Sessions the user started; the harness root conversation has no prompt. */
+async function promptedSessions(
+  stub: ReturnType<typeof userPiDurableStub>
+): Promise<Array<{ id: string; firstMessage: string }>> {
+  const response = await durableFetch(
+    stub,
+    new Request("https://user-pi-durable/sessions")
+  )
+  const body = (await response.json()) as {
+    sessions: Array<{ id: string; firstMessage: string }>
+  }
+  return body.sessions.filter((session) => session.firstMessage !== "")
+}
+
 describe("UserPiDurable", () => {
   it("routes two requests for the same user to one object id", async () => {
     const first = userPiDurableStub(env.USER_PI_DURABLE, "user-a")
@@ -187,6 +235,46 @@ describe("UserPiDurable", () => {
       )
     )
     expect(secondDelete.status).toBe(200)
+  })
+
+  it("runs a resumed conversation on the model chosen for that turn", async () => {
+    const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-model-switch")
+    const first = await agentTurn(stub, { create: true, modelId: "spike" })
+    const conversationId = first.sessionId.replace(/^durable:/, "")
+
+    const second = await agentTurn(stub, {
+      create: false,
+      conversationId,
+      modelId: "spike-b",
+    })
+
+    expect(second.sessionId).toBe(first.sessionId)
+    expect(second.body).toContain("spike model reply from spike-b")
+  })
+
+  it("erases every hosted conversation on DELETE /data", async () => {
+    const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-erase")
+    const before = await agentTurn(stub, { create: true, modelId: "spike" })
+    const conversationId = before.sessionId.replace(/^durable:/, "")
+    expect(await promptedSessions(stub)).toHaveLength(1)
+
+    const erased = await durableFetch(
+      stub,
+      new Request("https://user-pi-durable/data", { method: "DELETE" })
+    )
+    expect(await erased.json()).toEqual({ erased: true })
+    expect(await promptedSessions(stub)).toEqual([])
+    const readErased = await durableFetch(
+      stub,
+      new Request(
+        `https://user-pi-durable/session?id=${encodeURIComponent(conversationId)}`
+      )
+    )
+    expect(readErased.status).toBe(404)
+
+    const after = await agentTurn(stub, { create: true, modelId: "spike" })
+    expect(after.body).toContain("spike model reply")
+    expect(await promptedSessions(stub)).toHaveLength(1)
   })
 
   it("rejects an empty or oversized user id", () => {

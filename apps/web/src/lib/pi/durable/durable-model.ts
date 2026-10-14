@@ -66,6 +66,24 @@ export function createDurableModels(config: DurableAgentModelConfig) {
   return models
 }
 
+/**
+ * True when an open harness built from `current` can serve `next`. The models
+ * registry captures the API key at open time, so a rotated key must reopen it.
+ */
+export function sameDurableModelConfig(
+  current: DurableAgentModelConfig | undefined,
+  next: DurableAgentModelConfig
+) {
+  return (
+    current !== undefined &&
+    current.provider === next.provider &&
+    current.modelId === next.modelId &&
+    current.apiKey === next.apiKey &&
+    current.baseUrl === next.baseUrl &&
+    current.api === next.api
+  )
+}
+
 function usesGatewayCap(baseUrl: string, api: DurableModelApi) {
   if (api !== "openai-completions" && api !== "openai-responses") return false
   try {

@@ -22,6 +22,8 @@ declare module "cloudflare:workers" {
         }
       }
       transaction: <T>(closure: () => Promise<T>) => Promise<T>
+      /** SQLite backend: atomically drops all SQL and KV data. */
+      deleteAll: () => Promise<void>
     }
     blockConcurrencyWhile: <T>(callback: () => Promise<T>) => Promise<T>
   }

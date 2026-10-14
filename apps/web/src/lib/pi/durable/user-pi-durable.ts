@@ -1,6 +1,6 @@
 import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare"
 import { DurableObject } from "cloudflare:workers"
-import { createDurableModels } from "./durable-model"
+import { createDurableModels, sameDurableModelConfig } from "./durable-model"
 import {
   createDurableViewDiff,
   eventsFromConversationView,
@@ -83,6 +83,8 @@ const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
 
 type ActiveAgentTurn = {
   abortController: AbortController
+  /** Settles when the turn's stream has closed and stopped writing. */
+  settled: Promise<void>
 }
 
 /** One SQLite Durable Object per user id. */
@@ -93,7 +95,8 @@ export class UserPiDurable extends DurableObject {
   #port: SpikeSandboxPort = createScriptedPort(this.#trace)
   #mode: SpikeToolMode = "sandbox"
   #sandboxConnectionKey: string | undefined
-  #harnessModelKey: string | undefined
+  #options: SpikeHarnessOptions | undefined
+  #modelConfig: DurableAgentModelConfig | undefined
   #loopKey = ""
   #queue: { steering: Array<string>; followUp: Array<string> } = {
     steering: [],
@@ -197,7 +200,28 @@ export class UserPiDurable extends DurableObject {
     if (request.method === "POST" && url.pathname === "/fork") {
       return this.#forkSession(request)
     }
+    if (request.method === "DELETE" && url.pathname === "/data") {
+      return this.#eraseAll()
+    }
     return new Response("Not found", { status: 404 })
+  }
+
+  /**
+   * Account erasure. The Durable Object holds the hosted transcript, so this
+   * drops every conversation and tombstone, not only the Neon projection.
+   */
+  async #eraseAll(): Promise<Response> {
+    const active = this.#activeTurn
+    if (active) {
+      active.abortController.abort()
+      await active.settled
+    }
+    this.#harness = undefined
+    this.#storage = undefined
+    this.#queue = { steering: [], followUp: [] }
+    await this.ctx.storage.deleteAll()
+    await this.#open("sandbox")
+    return Response.json({ erased: true })
   }
 
   async #forkSession(request: Request): Promise<Response> {
@@ -211,7 +235,8 @@ export class UserPiDurable extends DurableObject {
         { status: 400 }
       )
     }
-    const harness = await this.#reopen()
+    // Reopening here would swap the harness under an in-flight turn.
+    const harness = await this.#requireHarness()
     const conversationId = await harness.forkConversation(
       body.conversationId,
       body.entryId
@@ -270,12 +295,17 @@ export class UserPiDurable extends DurableObject {
       )
     }
     const abortController = new AbortController()
-    this.#activeTurn = { abortController }
+    let settle = () => {}
+    const settled = new Promise<void>((resolve) => {
+      settle = resolve
+    })
+    this.#activeTurn = { abortController, settled }
     this.#queue = { steering: [], followUp: [] }
     const model = body.model
     const prompt = body.prompt
     if (!model?.apiKey || !model.modelId || !prompt) {
       this.#activeTurn = undefined
+      settle()
       return Response.json(
         { message: "Choose a model in Settings." },
         { status: 400 }
@@ -308,10 +338,12 @@ export class UserPiDurable extends DurableObject {
           model: modelRef,
           loop: body.loop,
         },
+        model,
         portChanged
       )
     } catch (error) {
       this.#activeTurn = undefined
+      settle()
       throw error
     }
     const onClientAbort = () => abortController.abort()
@@ -428,6 +460,7 @@ export class UserPiDurable extends DurableObject {
           request.signal.removeEventListener("abort", onClientAbort)
           controller.close()
           this.#activeTurn = undefined
+          settle()
         }
       },
     })
@@ -496,10 +529,12 @@ export class UserPiDurable extends DurableObject {
 
   async #open(
     mode: SpikeToolMode,
-    options?: SpikeHarnessOptions
+    options?: SpikeHarnessOptions,
+    modelConfig?: DurableAgentModelConfig
   ): Promise<OpenSpikeHarness> {
     this.#mode = mode
-    this.#harnessModelKey = harnessModelKey(options?.model)
+    this.#options = options
+    this.#modelConfig = modelConfig
     this.#loopKey = durableLoopSettingsKey(options?.loop)
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
@@ -510,24 +545,25 @@ export class UserPiDurable extends DurableObject {
   async #ensureHarness(
     mode: SpikeToolMode,
     options: SpikeHarnessOptions,
+    modelConfig: DurableAgentModelConfig,
     portChanged: boolean
   ): Promise<OpenSpikeHarness> {
-    const modelKey = harnessModelKey(options.model)
     const loopKey = durableLoopSettingsKey(options.loop)
     if (
       !portChanged &&
       this.#harness !== undefined &&
       this.#mode === mode &&
-      this.#harnessModelKey === modelKey &&
+      sameDurableModelConfig(this.#modelConfig, modelConfig) &&
       this.#loopKey === loopKey
     ) {
       return this.#harness
     }
-    return this.#open(mode, options)
+    return this.#open(mode, options, modelConfig)
   }
 
+  /** Reopen with the last options so a restart keeps the turn's real models. */
   async #reopen() {
-    await this.#open(this.#mode)
+    await this.#open(this.#mode, this.#options, this.#modelConfig)
     return this.#requireHarness()
   }
 
@@ -572,15 +608,10 @@ function thinkingLevelEvent(view: {
 }
 
 function modelsForAgentTurn(model: DurableAgentModelConfig) {
-  if (model.provider === "spike" && model.modelId === "spike") {
+  if (model.provider === "spike") {
     return spikeModels
   }
   return createDurableModels(model)
-}
-
-function harnessModelKey(model: SpikeHarnessOptions["model"]) {
-  if (!model) return ""
-  return `${model.provider}\0${model.modelId}`
 }
 
 function sandboxConnectionKey(connection: DurableSandboxConnection) {

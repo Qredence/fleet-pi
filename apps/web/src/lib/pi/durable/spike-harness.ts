@@ -56,14 +56,19 @@ const spikeModel = {
   name: "spike",
 }
 
-function modelReplyMessage() {
+/** Names any model other than the default so tests can see which one ran. */
+function modelReplyMessage(modelId = "spike") {
+  const text =
+    modelId === "spike"
+      ? SPIKE_MODEL_REPLY
+      : `${SPIKE_MODEL_REPLY} from ${modelId}`
   return {
     role: "assistant" as const,
-    content: [{ type: "text" as const, text: SPIKE_MODEL_REPLY }],
+    content: [{ type: "text" as const, text }],
     stopReason: "stop" as const,
     api: "openai-completions" as const,
     provider: "spike",
-    model: "spike",
+    model: modelId,
     usage: {
       input: 0,
       output: 0,
@@ -78,11 +83,11 @@ function modelReplyMessage() {
 
 export const spikeModels = {
   getModel(provider: string, modelId: string) {
-    if (provider !== "spike" || modelId !== "spike") return undefined
-    return spikeModel
+    if (provider !== "spike") return undefined
+    return { ...spikeModel, id: modelId, name: modelId }
   },
-  streamSimple() {
-    const message = modelReplyMessage()
+  streamSimple(model?: { id?: string }) {
+    const message = modelReplyMessage(model?.id)
     return {
       *[Symbol.asyncIterator]() {
         yield { type: "text_delta", partial: message }
@@ -525,7 +530,12 @@ export async function openSpikeHarness(
         offeredNames.length,
         ...selected.map((tool) => tool.name)
       )
-      await conversation.configure({ tools: selected }, context)
+      // The harness registry only knows the model chosen for this turn, so a
+      // resumed conversation must switch to it before the next request.
+      await conversation.configure(
+        { tools: selected, model: input.model },
+        context
+      )
       const view = await conversation.viewState(context)
       input.onView(view.value)
       const gate = { stopped: false }
@@ -582,12 +592,10 @@ export async function openSpikeHarness(
         context
       )
       if (!conversation) throw new DurableConversationMissing(conversationId)
+      // No agent override: a fork inherits the parent's agent at the fork entry.
       const forked = await conversation.fork(
         entryId as never,
-        {
-          ownership: { kind: "ownerless" },
-          agent: { model: agentModel },
-        },
+        { ownership: { kind: "ownerless" } },
         context
       )
       return String(forked.id)

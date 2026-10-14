@@ -17,6 +17,20 @@ and an optional projection. The Daytona volume holds the harness and artifacts.
   sessions address `USER_PI_DURABLE`. Legacy JSONL sessions can still use the
   Neon Function. Session JSONL is no longer copied to object storage.
 
+### Fixed
+
+- **Account erasure reaches hosted transcripts** — `DELETE /api/chat/account`
+  now clears the user's Durable Object storage as well as the Neon projection.
+  Deleting a single hosted session still only hides it; Pi Durable 1.2 has no
+  per-conversation delete.
+- **Hosted model changes apply to resumed conversations** — each turn sets the
+  conversation's model, so switching models no longer fails on an existing
+  session. A changed API key, base URL, or API reopens the harness.
+- **Forks keep their parent's model** — a fork inherits the parent agent
+  instead of the harness default, and no longer reopens the harness mid-turn.
+- **Spike route is opt-in** — `POST /api/chat/durable-spike` is served only
+  with `FLEET_PI_DURABLE_SPIKE=1`.
+
 ### Removed
 
 - **Session blob client** — `object-storage.ts` and `session-blob-store.ts` are

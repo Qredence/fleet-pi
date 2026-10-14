@@ -110,8 +110,11 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   user id. The object keeps the transcript and any in-flight task. Legacy
   JSONL sessions may still stream from the Neon Function while
   `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. `POST /api/chat/durable-spike`
-  remains the scripted harness route. Readiness does not require
-  object-storage environment variables.
+  is the scripted harness route. It is served only when the Worker sets
+  `FLEET_PI_DURABLE_SPIKE=1`; leave it unset in production because the route
+  reopens the user's harness. `DELETE /api/chat/account` also erases the
+  user's Durable Object storage. Readiness does not require object-storage
+  environment variables.
 
 ## Build
 

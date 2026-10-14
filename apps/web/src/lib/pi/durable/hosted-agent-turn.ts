@@ -202,6 +202,23 @@ export async function abortHostedAgentTurn(userId: string): Promise<Response> {
   )
 }
 
+/**
+ * Erase the user's hosted transcripts. Returns `false` when no Durable Object
+ * binding exists (local runtimes keep transcripts in JSONL instead).
+ */
+export async function eraseHostedDurableData(userId: string): Promise<boolean> {
+  const namespace = readDurableNamespace()
+  if (!namespace) return false
+  const stub = namespace.getByName(userPiDurableName(userId))
+  const response = await stub.fetch(
+    new Request("https://user-pi-durable/data", { method: "DELETE" })
+  )
+  if (!response.ok) {
+    throw new Error("Hosted transcripts could not be erased")
+  }
+  return true
+}
+
 export function mergeDurableSessions(
   existing: Array<ChatSessionInfo>,
   durable: Array<ChatSessionInfo>
