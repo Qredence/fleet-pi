@@ -1,156 +1,223 @@
 # AGENTS.md
 
-## Project Conventions
+Fleet Pi is a web workspace for the Pi coding agent: a TanStack Start app on
+Cloudflare Workers, a shadcn-style UI package, and a repo-local agent home in
+`agent-workspace/`. This file holds the rules agents must follow. Background
+and reference detail live in the linked docs. Start with `docs/README.md`,
+`CONTEXT.md`, and `DESIGN.md`.
 
-- Use `pnpm` from the repository root for dependency and task commands.
-- The root `pnpm-lock.yaml` is the canonical lockfile; do not create nested app lockfiles.
-- Run workspace commands with `pnpm --filter <workspace> <script>` when only one package is affected.
+## Commands
 
-## Validation
+Run everything from the repository root with `pnpm`. Use
+`pnpm --filter <workspace> <script>` when only one package is affected.
+CI runs every backticked `pnpm` command in this file through
+`pnpm validate-agents-md`, so only add commands that are safe to execute.
 
-- Install/update dependencies with `pnpm install`.
-- Type-check with `pnpm typecheck`.
-- Lint with `pnpm lint`.
-- Build with `pnpm build`.
-- Run unit tests with `pnpm test`.
-- Run end-to-end tests with `pnpm e2e`.
-- Check dependency version consistency with `pnpm syncpack`.
-- Auto-fix dependency version drift with `pnpm syncpack:fix`.
-- Detect unused exports and dependencies with `pnpm knip`.
-- Detect duplicate code with `pnpm jscpd`.
-- Scan for tech debt markers with `pnpm tech-debt`.
-- Validate AGENTS.md commands with `pnpm validate-agents-md`.
-- Analyze bundle size with `pnpm build --filter web` then open `apps/web/bundle-report/stats.html`.
-- Apply Neon chat mirror migrations with `pnpm chat:migrate` after setting `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`.
-- Link the existing Neon project with `neon link`, pin a branch with `neon checkout`, then provision services from repo-root `neon.ts` via `pnpm neon:deploy` (or `neon deploy --env .env.local --update-existing --allow-protected`). `neon deploy` provisions Auth and Functions only—run `pnpm auth:migrate` and `pnpm chat:migrate` separately for schema. Pull branch env with `pnpm neon:env-pull`, then verify with `pnpm neon:verify`.
-- Verify Cloudflare deployment readiness with `pnpm verify-deployment-readiness` (set migration URLs to validate Neon grants/RLS).
-- Quarantine legacy ownerless mirror rows with `pnpm quarantine-orphan-sessions` (owner URL required; use `--purge` only after approval).
-- Remap `pi_*` ownership after Neon Managed Auth cutover with `pnpm remap-auth-user-ids -- --file=remap.csv` (`email,oldUserId,newUserId` or legacy `email,newUserId` when `public."user"` still exists; `--dry-run` first).
-- Validate the Cloudflare Worker build with `pnpm build:cloudflare` when deployment routing changes.
+- Setup: `pnpm install`. Devcontainer: `.devcontainer/devcontainer.json`
+  (port `3000`, runs `pnpm install` on create).
+- Daily: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm e2e`.
+- Quality: `pnpm syncpack` (fix drift with `pnpm syncpack:fix`), `pnpm knip`,
+  `pnpm jscpd`, `pnpm tech-debt`.
+- Docs: `pnpm generate:docs` after doc-generator sources change;
+  `pnpm generate:openui-signatures` after OpenUI component signatures change;
+  `pnpm validate-agents-md` after editing this file.
+- Bundle size: `pnpm build --filter web`, then open
+  `apps/web/bundle-report/stats.html`.
+- Cloudflare: `pnpm build:cloudflare` when Worker routing changes;
+  `pnpm verify-deployment-readiness` before promotion.
+- Neon (needs credentials): `pnpm neon:deploy`, `pnpm neon:env-pull`,
+  `pnpm neon:verify`, `pnpm auth:migrate`, `pnpm chat:migrate`
+  (needs `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`). `neon deploy` provisions
+  services only; run both migrations separately.
+- Data repair (owner URL; dry-run first, `--purge` only after approval):
+  `pnpm quarantine-orphan-sessions`,
+  `pnpm remap-auth-user-ids -- --file=remap.csv`.
 
-## Public Docs & Community Health
+Deploy steps: `docs/wiki/deployment.md` and
+`docs/runbooks/deployment-release-gate.md`.
 
-- `README.md` is the public landing page. Keep it concise, user-focused, and centered on the recommended standalone path.
-- `docs/README.md` is the docs hub and the recommended entrypoint for the human-facing docs set.
-- `docs/quickstart.md` is the primary onboarding doc for setup and local verification.
-- `docs/agent-workspace.md` explains how `agent-workspace/` acts as Fleet Pi's durable adaptive layer.
-- `docs/api.md`, `docs/project-structure.md`, and `docs/architecture.md` are secondary reference docs. If they drift, fix the generator or its source inputs rather than hand-waving around stale output.
-- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and the issue templates are part of the public repository surface and should stay aligned with actual maintainer workflow.
-- When doc-generation sources change, run `pnpm generate:docs`. When command examples or AGENTS instructions change, run `pnpm validate-agents-md`.
+## Repository map
 
-## Devcontainer
+- `apps/web`: TanStack Start app. Routes in `src/routes/`;
+  `src/routeTree.gen.ts` is generated, never edit it. `/api/chat` is
+  `src/routes/api/chat.ts`.
+- `apps/web/src/lib/pi/`: server-side Pi integration. `runtime/` holds the
+  session factory, settings bridge, catalogs, and hot reload. `durable/` holds
+  the hosted `UserPiDurable` path. `server.ts` is the route-facing barrel.
+- `packages/hax-design`: the only UI source (primitives, `agent-elements/`,
+  `components/openui/`, `components/fleet-pi/`).
+- `packages/pi-protocol`: browser-safe chat wire layer (types, Zod schemas,
+  `chat-types`, provider catalog, OpenUI prompt). No React.
+- `.pi/`: Pi compatibility bridge (settings, skills, extensions, vendored
+  extensions with `UPSTREAM.md`).
+- `agent-workspace/`: the agent's durable home (skills, memory, plans, evals,
+  artifacts). See `docs/agent-workspace.md`.
 
-The repository includes a VS Code devcontainer configuration at `.devcontainer/devcontainer.json` with Node.js, pnpm, Git, and recommended editor extensions. Open the project in a devcontainer to get a fully pre-configured development environment. Port `3000` is forwarded automatically and `pnpm install` runs after container creation.
+## General rules
 
-## Cloudflare Workers Deployment
+- One lockfile: root `pnpm-lock.yaml`. Never create nested lockfiles.
+- Put new tests in a `__tests__/` directory next to the code. Write E2E
+  artifacts to Playwright `testInfo.outputPath()`, never machine paths.
+- `AGENTS.md` is the only agent instruction file; do not recreate `CLAUDE.md`.
+- Never commit `defaultProvider`, `defaultModel`, or `enabledModels` in
+  `.pi/settings.json`. Users choose models in Settings, and
+  `resource-expectations.spec.ts` enforces this.
+- When executing an attached plan, do not edit the plan file; finish its todos.
+- The pre-commit hook (Husky + lint-staged) runs Prettier and `eslint --fix`
+  on staged files in `apps`, `packages`, `.pi/extensions`, and `functions`.
+  `git config core.hooksPath` must point at `.husky`. Fix lint errors; do not
+  bypass the hook.
+- Keep security and isolation audit notes gitignored (`.cursor/hooks/state/`),
+  never under tracked `agent-workspace/artifacts/`.
 
-Cloudflare is the primary host. See `docs/wiki/deployment.md` and `docs/runbooks/deployment-release-gate.md`. Hosted transcripts live in `UserPiDurable`. Auth and settings stay in Neon. Harness files and artifacts stay on the Daytona volume. Do not add Neon Object Storage or an R2 binding for transcripts.
+## UI rules
 
-- The `fleet-pi-web` Worker builds from `apps/web` via `apps/web/wrangler.jsonc` and `pnpm build:cloudflare` (see `docs/wiki/deployment.md`).
-- Neon Managed Auth on Workers uses `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `VITE_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_ISSUER`, and `FLEET_PI_CHAT_DATABASE_URL` (`fleet_pi_app` role). `BETTER_AUTH_SECRET` is still required for BYOK provider AES-GCM encryption. Local anonymous/SQLite Better Auth applies only when neither Neon Auth URL is set.
-- BYOK provider credentials and Pi session mirroring on Workers also require `FLEET_PI_CHAT_DATABASE_URL`. Run `pnpm chat:migrate` after deploy when schema changes affect `pi_user_providers` (for example `google-genai` → `google` remap).
-- On Workers, Pi project settings overrides (skills/packages/models/paths) persist in Neon `pi_user_settings` (not writable `.pi/settings.json`). Fleet base defaults (packages, skill commands) live in code (`fleet-default-project-settings.ts`) and merge at runtime — but carry **no** `defaultProvider`/`defaultModel`/`enabledModels`: the user chooses the provider and model in Settings. Fleet base ships no models enabled; user override `enabledModels: []` is deny-all. Settings paths must be portable (no `/Users/…` absolutes).
-- `PATCH /api/chat/settings` requires authentication on Workers; settings hot-reload applies only to the signed-in user's active sessions. PR Worker Previews use isolated Neon preview branches and an allowlisted secret set (see `.github/workflows/cloudflare.yml`). Run `pnpm chat:migrate` with `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` after schema or ownership-probe changes.
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are Better Auth OAuth credentials; register OAuth callbacks on the active workers.dev origin.
-- Daytona on Workers requires each authenticated user's BYOK Daytona API key (`daytona` in `pi_user_providers`); org Daytona keys and `DAYTONA_API_KEY` must not back end-user sandboxes. Local/dev may use `DAYTONA_API_KEY` only. Optional: `DAYTONA_TARGET`, `DAYTONA_API_URL`, `DAYTONA_WEBHOOK_SECRET`, `FLEET_PI_REPOSITORY_URL`.
+Design context: `DESIGN.md`, `PRODUCT.md`, `packages/hax-design/ARCHITECTURE.md`.
 
-## Pre-commit Hooks
+- All UI lives in `packages/hax-design`; routes only compose its exports. Never
+  add components under `apps/web/src/components/`. Add registry components
+  with `pnpm dlx shadcn@latest add <name> -c packages/hax-design`.
+- Inside hax-design use relative imports; apps import `@workspace/hax-design/*`.
+- OpenUI library and registry code lives in `components/openui/`. Deepen it
+  instead of adopting `@openuidev/react-ui` unless asked.
+- No inline `style` props. Use Tailwind, `cva`, co-located CSS, or the
+  semantic tokens in `fleet-pi/styles/tokens.ts`. Prefer `fleet-pi/primitives/`
+  (`ItemRow` variants) over nested cards or repeated class strings.
+- Prefer export-map hygiene over new shell or page-controller layers (for
+  example `FleetPiChatShell`) until protocol types settle.
+- Header chrome stays floating pills (`bg-sidebar` when inactive,
+  `rounded-full`). Panel tabs use `TabsSubtle` (Active Label and pill
+  variants) inline when panels are open, and the header stacks above the
+  content row (`CHAT_HEADER_LAYER_CLASS`).
+- The chat column is one transcript plus the InputBar. The right panel holds
+  Workspace, Pi Resources, and Artifacts only, all scoped to
+  `agent-workspace/`. Settings (providers, models, skills, appearance,
+  sandbox) live in the Settings dialog.
+- The Settings dialog follows shadcn sidebar-13: icon+label nav, flat
+  `ItemRow` lists, an inline drill-down for Add provider (no nested Dialogs),
+  and auto-save via `PATCH /api/chat/settings`.
+- Slash suggestions come from `/api/chat/commands`, scroll, and are arrow-key
+  navigable. Pi builtins open UI (`/model` opens the picker; `/models`,
+  `/settings`, `/config` open Settings); skill and prompt commands go to the
+  agent.
+- Settings › Providers lists only configured providers. LLM Models curates
+  models discovered from them, grouped by provider with an All/Enabled filter.
+- Avoid generic AI SaaS looks (cream backgrounds, gradient heroes, card grids)
+  and dense IDE toolbars unless asked.
 
-The repository uses **Husky** + **lint-staged** to enforce code quality before every commit.
+## Chat runtime
 
-- The pre-commit hook is registered at `.husky/pre-commit` and runs `pnpm exec lint-staged`.
-- `git config core.hooksPath` must return `.husky`.
-- Staged files are automatically processed:
-  - **Prettier** (`prettier --write`) runs on `*.{ts,tsx,js,jsx,json,css,md}`
-  - **ESLint** (`eslint --fix`) runs on `{apps,packages}/**/*.{ts,tsx,js,jsx}`
-- Commits are blocked if ESLint reports errors that cannot be auto-fixed.
-- The root `eslint.config.js` delegates to workspace configs so lint-staged works from the repository root.
+Reference: `docs/wiki/apps/web/pi-integration.md`,
+`docs/wiki/apps/web/plan-mode.md`, `docs/wiki/api/endpoints.md`.
 
-## Architecture Notes
+- Protocol types come from `@workspace/pi-protocol`. The hax-design
+  `agent-elements/chat-types.ts` is a deprecated re-export. Server code never
+  imports `agent-elements` or `openui` components.
+- `handleChatTurn` (`apps/web/src/lib/pi/handle-chat-turn.ts`) owns turn logic.
+  The `/api/chat` route only authenticates, parses, and pipes NDJSON.
+- Local and legacy sessions are Pi JSONL files. An invalid, outside, or
+  missing session file starts a fresh project-scoped session; never surface an
+  error. Hosted Agent sessions use `durable:` ids, and their transcript is the
+  Durable Object. Legacy Neon Function JSONL is ephemeral, so a failed mirror
+  write there still fails the turn.
+- File tools and bash cwd stay inside the active project or workspace root.
+- Modes: Agent has the coding tools plus approved external tools. Plan is
+  read-only: never give it mutating, file-change, subagent, or `fetch_content`
+  tools. Harness allows evaluation writes. Allowlists live in `plan-mode.ts`.
+- Model choices come from Pi `ModelRegistry`/`SettingsManager`, never a
+  hard-coded UI list. `enabledModels: []` means deny-all.
 
-- `apps/web` is a TanStack Start app. File routes are generated into `apps/web/src/routeTree.gen.ts`; do not edit that generated file manually.
-- `packages/hax-design` is the shadcn-style registry (`components.json`, primitives, `agent-elements/`, generative UI in `components/openui/`, Fleet Pi UI under `components/fleet-pi/`). Import from `@workspace/hax-design/*` in apps; use relative imports inside the package. UI registries: `@shadcn` (base-nova primitives), `@agent-elements` (chat; owned fork under `agent-elements/`), `@fluid` (motion; wire-only unless explicitly adopting controls). Add components with `pnpm dlx shadcn@latest add <name> -c packages/hax-design` only — never emit UI into `apps/web`.
-- Do not add React components under `apps/web/src/components/`. All UI goes in `packages/hax-design`. Routes may only compose hax-design exports. OpenUI library/registry code must live in `components/openui/`, not in `apps/web`.
-- Chat UI types live in `packages/hax-design/src/components/agent-elements/chat-types.ts`.
+## Hosted deployment (Cloudflare)
 
-## AI Integration
+Reference: `docs/wiki/deployment.md`, `docs/adr/0004-user-controlled-transcript-deletion.md`.
 
-- The chat backend uses `@earendil-works/pi-coding-agent` 1.2 on `@earendil-works/pi-ai`. Hosted Cloudflare turns run `@earendil-works/pi-durable` 1.2 inside `UserPiDurable`. Local and legacy JSONL sessions still use the coding-agent session factory. BYOK uses `services.modelRuntime` (`setRuntimeApiKey` / `getRuntimeApiKey`).
-- Pi coding-agent extensions can access `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()`. Hosted tools are Pi Durable extensions selected on the conversation. Follow-up queues on the coding-agent path wait for `agent_settled`. Hosted steer and follow-up use Pi Durable `submit({ whenBusy })`.
-- The platform LLM backend for authenticated deploys is **Neon AI Gateway** via Pi's `openai-chat-completions` provider (model ids `qwen35-122b-a10b` and `gpt-oss-120b` are available to pick; gateway rejects `max_tokens` above 25_000). No provider/model is pre-selected — the user configures one in Settings. Local anonymous chat uses env/BYOK providers instead. User BYOK OCC replaces the Gateway OCC registration when configured.
-- The chat API route is `apps/web/src/routes/api/chat.ts`.
-- `apps/web/src/lib/app-runtime.ts` resolves the active runtime context, falling back to this repo root.
-- Shared browser-safe chat protocol types and Zod schemas live in `@workspace/pi-protocol` (`packages/pi-protocol/src/chat-protocol.ts`, `chat-protocol.zod.ts`); `packages/hax-design/src/lib/pi/*` keeps only non-protocol helpers such as `chat-helpers.ts`. Server-only Pi integration is centralized in `apps/web/src/lib/pi/runtime/` (session factory, settings bridge, model/resource/provider catalogs, hot reload) with `apps/web/src/lib/pi/server.ts` as the route-facing barrel.
-- The browser chat client consumes newline-delimited JSON events from `/api/chat`.
-- `/api/chat` is session-based: the client sends a single `message` plus optional Pi `sessionFile`/`sessionId` metadata, and the server resumes or creates a persistent Pi session.
-- Supporting chat endpoints are `/api/chat/models`, `/api/chat/models/discover`, `/api/chat/resources`, `/api/chat/settings`, `/api/chat/providers`, `/api/chat/commands`, `/api/chat/session`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/resume`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, `/api/workspace/tree`, `/api/workspace/file`, `/api/workspace/item`, `/api/workspace/items`, `/api/workspace/search`, `/api/workspace/reindex`, and `/api/workspace/health`.
-- The server keeps live Pi `AgentSessionRuntime` instances in memory for a short TTL (`FLEET_PI_RUNTIME_TTL_MS`, default 10 minutes) so aborts and queued follow-ups operate on the same runtime. Invalid, outside, or missing session files must still start a fresh project-scoped session for the active runtime context.
-- The web chat enables Pi's built-in `read`, `write`, `edit`, and `bash` tools scoped to the active `projectRoot`. File paths and bash cwd must remain project-scoped. Tool execution is direct in v1; there is no approval gate.
-- Pi tool execution events are normalized into existing agent-elements tool parts (`tool-Read`, `tool-Write`, `tool-Edit`, `tool-Bash`) for rendering.
-- The chat InputBar includes Agent, Plan, and Harness mode selectors. Agent mode enables the normal coding tools plus approved external Pi tools; Plan mode enables read-only `read`, `bash`, `grep`, `find`, `ls`, `questionnaire`, `project_inventory`, `workspace_index`, and safe Autocontext status tools only; Harness mode enables evaluation-oriented tools with workspace writes.
-- Plan mode is implemented in `apps/web/src/lib/pi/plan-mode.ts` as a web-native Pi extension. It injects read-only planning instructions, blocks unsafe bash commands, extracts numbered `Plan:` steps, persists plan state in the Pi session, and uses `tool-Question` parts plus `/api/chat/question` for InputBar question prompts and plan execute/refine/stay decisions.
-- The Pi resources browser in `apps/web/src/routes/index.tsx` fetches `/api/chat/resources` and surfaces discovered skills, prompts, extensions, themes, context files, and diagnostics. It opens as a resizable right-side canvas that opens at 70% viewport width and clamps resizing to that maximum; mobile open state is a compact overlay. The canvas has read-only `Workspace` and `Artifacts` tabs backed by workspace APIs. Pi settings, providers, LLM models, skills, appearance, and sandbox controls live in the **Settings dialog** (not the right panel).
-- `apps/web/src/lib/workspace/server.ts` owns the `agent-workspace/` layout, creates seeded Markdown stubs without overwriting existing files, returns a sorted read-only filesystem tree, and safely previews file contents for paths inside the active `workspaceRoot`.
-- Fleet Pi's repo-local agent home is `agent-workspace/`: durable skills, tool context, memory, plans, evals, artifacts, and extension orientation should be discoverable there. Chat-installed Pi runtime resources live under `agent-workspace/pi/{skills,prompts,extensions,packages}`. Root `.pi/settings.json` remains the Pi compatibility bridge for **user/workspace overrides**; Fleet base defaults merge from code at runtime.
-- Use `resource_install` for chat-driven Pi resource installs. Skills/prompts become usable after reload/new session; executable extensions and package bundles are staged unless the user explicitly asks to activate them. In v1, "plugins" means Pi resource packages/bundles, not Codex or Claude plugin bundles.
-- Canonical durable project memory lives in `agent-workspace/memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md`. Normal "remember this" requests should update the narrowest canonical file; ad hoc project-memory files are only for explicit user requests, temporary harness tests, or raw material that will later be synthesized.
-- Local and legacy sessions are persistent JSONL sessions. Browser mode stores only Pi session metadata in localStorage and hydrates visible messages from the Pi session file after refresh. Hosted Agent sessions use `durable:` ids. Their transcript is the Durable Object, not a JSONL blob.
-- When `FLEET_PI_CHAT_DATABASE_URL` is set, Fleet Pi can mirror session entries into Neon Postgres tables prefixed with `pi_`. For hosted Durable Object turns the mirror is an optional projection and must not fail the turn. Legacy Function JSONL remains ephemeral, so a failed Function mirror write still fails that turn. Ownership probes still fail closed on every authenticated surface.
-- Settings saves hot-reload every in-memory Pi runtime in the deployment because `.pi/settings.json` is project-scoped; BYOK provider credential saves hot-reload only the authenticated user's active runtimes via `hotReloadActiveRuntimesForUser`.
-- Model choices should come from Pi `ModelRegistry`/`SettingsManager`, not a hard-coded UI list. Project-local Pi resources under `.pi/skills`, `.pi/prompts`, and `.pi/extensions` are loaded through `DefaultResourceLoader` and surfaced through `/api/chat/resources`.
-- The composer model picker (`/api/chat/models` without `scope=all`) lists only the models the user added — the OCC slot's registered model id (or the Neon AI Gateway defaults when the gateway backs the slot), custom provider instance model ids, plus the configured default — never the full registry catalog. The complete catalog stays available in Settings (`scope=all`) for discovery/curation.
-- Project-local Pi skills currently include `.pi/skills/fleet-pi-orientation`, `.pi/skills/chat-runtime-debugging`, `.pi/skills/agent-ui-workflows`, and the `.pi/skills/agent-elements` symlink to `.agents/skills/agent-elements`.
-- `.pi/settings.json` may be `{}` locally; runtime merges Fleet base packages (`npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, `npm:pi-web-access`) from code. Vendored extensions under `.pi/extensions/` auto-load without listing each path.
-- `.pi/extensions/project-inventory.ts` registers the read-only `project_inventory` tool, `.pi/extensions/workspace-index.ts` registers the read-only `workspace_index` tool, and `.pi/extensions/trust-handler.ts` implements Pi `project_trust` event handling with mode-aware auto-approval for workspace-native paths. All are included in Agent and Plan mode tool allowlists.
-- `.pi/extensions/vendor/filechanges` provides `/filechanges`, `/filechanges-accept`, and `/filechanges-decline`; `.pi/extensions/vendor/subagents` registers the `subagent` tool. Keep each folder's `UPSTREAM.md` current when refreshing vendored source.
-- Agent mode explicitly allows external tools `init_experiment`, `run_experiment`, `log_experiment`, `autocontext_judge`, `autocontext_improve`, `autocontext_status`, `autocontext_scenarios`, `autocontext_queue`, `autocontext_runtime_snapshot`, `subagent`, `web_search`, `fetch_content`, `code_search`, `get_search_content`, `daytona_get_status`, and `preview_url`. Do not add mutating research, file-change, or subagent tools to Plan mode.
-- Plan mode and Harness mode also allow `web_search`, `code_search`, and `get_search_content` (read-only). `fetch_content` is Agent and Harness mode only — it can clone GitHub repos to `/tmp/`, which is a side effect inconsistent with Plan mode's read-only contract.
-- Bedrock credentials should come from standard AWS environment/profile configuration. `AWS_REGION` defaults to `us-east-1` when unset.
+- Hosted transcripts live in each user's `UserPiDurable` Durable Object. Neon
+  holds auth, settings, and an optional projection that must never fail a
+  hosted turn. The Daytona volume holds harness files and artifacts. Never add
+  Neon Object Storage or an R2 binding.
+- `DELETE /api/chat/account` erases the Durable Object as well as Neon rows.
+  Deleting one hosted session is only a tombstone (Pi Durable has no
+  per-conversation delete).
+- `POST /api/chat/durable-spike` is served only with
+  `FLEET_PI_DURABLE_SPIKE=1`; keep it unset in production.
+- Worker code must not import from `.pi/`; colocate helpers under
+  `apps/web/src/lib/pi/`. Existing exceptions are tracked in
+  `agent-workspace/memory/project/known-issues.md`.
+- Per-user Pi settings persist in Neon `pi_user_settings`; `.pi/settings.json`
+  is not writable on Workers. Fleet base defaults merge from code
+  (`fleet-default-project-settings.ts`) and ship no provider or model.
+  Settings paths must be portable (no `/Users/…`).
+- Org LLM keys (`GEMINI_API_KEY`, `OPENROUTER_API_KEY`, …) never back chat on
+  Workers. They are scrubbed from the process. Chat uses signed-in user BYOK
+  or the platform Neon AI Gateway.
 
-## Manual Chat Checks
+## Auth and data isolation
 
-- Ask `read package.json` and verify a Read tool card appears.
-- Ask `create a small temp file under this repo` and verify Write renders and the file is created inside the repo.
-- Ask `edit that temp file` and verify Edit renders a diff.
-- Ask `run pnpm --version` and verify Bash renders command and output.
-- Refresh the page and confirm the visible transcript hydrates from stored Pi session metadata.
-- Corrupt localStorage with `/etc/hosts` as `sessionFile`; the app should silently start a fresh repo-scoped session instead of showing an outside-session error.
-- While streaming, send another prompt and verify a follow-up queue status appears.
-- Switch to Plan mode, ask for a plan, and verify the assistant produces a numbered `Plan:` without edit/write tool use.
-- In Plan mode, ask an ambiguous request and verify the InputBar Question bar appears, answer it, and confirm the same Pi turn continues.
-- After a plan, choose Execute and verify the app switches to Agent mode, full tools are available, and `[DONE:n]` progress updates the plan status.
-- Open the Pi resources browser and verify the starter skills, npm package resources, vendored extensions, `project-inventory.ts`, and `workspace-index.ts` appear. Verify the resources canvas docks to the right and resizes; on mobile, verify it opens as an overlay. Switch to the Workspace tab, verify `agent-workspace` plus representative seeded files appear, and click a Markdown file to verify the preview panel renders its content. Open Settings and verify Pi settings load, provider/model controls can become dirty and save, and Light/Dark/System theme control remains local. If both project-local and global `agent-elements` skills are installed, the resources diagnostics may include that expected name collision.
+Reference: `docs/wiki/security.md`, `docs/runbooks/deployment-release-gate.md`.
 
-## Learned User Preferences
+- Deploys use Neon Managed Auth (`NEON_AUTH_BASE_URL` / `VITE_NEON_AUTH_URL`).
+  Local anonymous or SQLite Better Auth applies only when neither is set.
+  `BETTER_AUTH_SECRET` is still required for BYOK encryption.
+- Session-scoped chat and workspace APIs require auth on Workers through
+  `withAuthenticatedChatRequest`. `auth-mode.ts` stays client-safe; server
+  auth lives in `chat-api-auth.ts`.
+- Runtime `FLEET_PI_CHAT_DATABASE_URL` must be the non-owner `fleet_pi_app`
+  role. `pi_*` tables keep `FORCE ROW LEVEL SECURITY`. Mirror ownership
+  probes fail closed.
+- Neon Data API stays off (`dataApi: false`). Never grant `authenticated` or
+  `anonymous` on `pi_*`, and never expose `neon_auth.*`.
+- Run `pnpm chat:migrate` after schema, ownership, or grant changes.
 
-- Treat `@workspace/hax-design` as the sole UI source of truth; if a surface is missing, add it to hax-design rather than creating app-local components. Prefer export-map hygiene over shell/page-controller deepens (e.g. `FleetPiChatShell`) until protocol types settle. Deepen the custom OpenUI library under `components/openui/` rather than adopting `@openuidev/react-ui` unless explicitly requested.
-- Keep floating pill-style header chrome; do not replace it with a unified full-width top bar unless explicitly requested. Prefer `bg-sidebar` for inactive header pills and floating panel launcher buttons; use pill-shaped rounding (`rounded-full` / `rounded-[100px]`) for header controls and InputBar mode/model selectors.
-- When executing an attached implementation plan, do not edit the plan file; follow existing todos to completion.
-- Avoid inline `style` props in Fleet Pi UI; prefer Tailwind utilities, `cva`, co-located component CSS, or shared hax-design tokens.
-- Keep ChatWorkspace header panel tabs (Pi Resources, Workspace, Artifacts) inline when panels are open; use hax-design `TabsSubtle` (`tabs-subtle`) with Active Label and pill variants; stack the header above the content row (`CHAT_HEADER_LAYER_CLASS` / `relative z-10 overflow-visible`).
-- Prefer semantic tokens in `fleet-pi/styles/tokens.ts` and primitives in `fleet-pi/primitives/` (especially `ItemRow` variants) over nested card stacks or duplicated Tailwind class strings in Settings lists.
-- Avoid generic AI SaaS aesthetics (cream backgrounds, gradient heroes, card grids) and heavy IDE-style dense toolbars unless explicitly requested.
-- Keep the chat column a single full-width transcript plus InputBar; show artifact previews in the right panel Artifacts tab, not a horizontal split inside chat.
-- Settings dialog should follow shadcn sidebar-13: icon+label nav only (no subtitles), scrollable main pane, and flat `ItemRow` lists without nested SectionSurface wrappers; Providers lists only configured/active providers and Add provider uses an inline drill-down (picker → configure), not nested Dialog modals inside Settings; OpenAI Chat Completions requires API key + base URL + model ID; LLM Models should discover models from configured providers into a curated enable/remove list (grouped by provider, All/Enabled filter)—except OCC, which must stay limited to the configured model ID, not a full remote `/models` catalog—and add/remove auto-saves immediately via `PATCH /api/chat/settings` (routine changes should not depend on Commit).
-- InputBar slash-command suggestions must be scrollable and arrow-key navigable; Pi builtins like `/model` open the model picker (and `/models`/`/settings`/`/config` open Settings), not insert as a chat prompt.
-- Use Playwright `testInfo.outputPath()` for E2E screenshots and artifacts instead of hardcoded machine-specific paths; put new tests under dedicated `__tests__/` directories rather than scattering colocated test files.
-- Prefer Neon Managed Auth cutover (`neon_auth` identity + `pi_*` tenancy RLS) over RLS-hardening legacy public Better Auth leftovers as a permanent posture; keep security/isolation audit notes gitignored (e.g. `.cursor/hooks/state/`), not under tracked `agent-workspace/artifacts/`.
+## Providers and models
 
-## Learned Workspace Facts
+Reference: `docs/wiki/apps/web/pi-integration.md`.
 
-- Repo-root `neon.ts` (`@neon/config`) enables Managed Auth, **Neon AI Gateway** (`preview.aiGateway: true`), and the `chat` Neon Function on `fleet-pi-neon` in `aws-us-east-2` (required for Neon beta services). Authenticated chat defaults to Gateway models via `NEON_AI_GATEWAY_TOKEN` + `NEON_AI_GATEWAY_BASE_URL`. Object Storage buckets are not declared in `neon.ts`; discard any `AWS_*` Object Storage vars `neon deploy` pulls into `.env`. Transcript durability is the Durable Object. Link the existing project with `neon link` (`.neon` branch pin is gitignored). `neon deploy` provisions services only—run `pnpm auth:migrate` / `pnpm chat:migrate` separately. New hosted `/api/chat` turns stream from `UserPiDurable` on the Worker. Legacy JSONL sessions may still stream from the Neon Function when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set; the Function's `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS` allowlist must include the Cloudflare app origins or that browser stream is blocked. Settings/providers/workspace stay on Cloudflare. `.github/workflows/neon_workflow.yml` creates/deletes Neon preview branches for PRs (needs repo `NEON_PROJECT_ID` + `NEON_API_KEY`).
-- Hard-cutover auth migration: users re-authenticate on Neon Managed Auth; best-effort email remap via `pnpm remap-auth-user-ids -- --file=remap.csv` (owner migration URL). Orphan mirror cleanup: `pnpm quarantine-orphan-sessions`. Identity lives in `neon_auth` (Managed Auth); `pnpm auth:migrate` drops legacy `public` Better Auth tables when `neon_auth` exists—do not keep those leftovers as the long-term model. Keep Neon-owned identity tables private and do not create views that expose `neon_auth.user` to Data API roles. Fleet Pi follows Neon’s Managed Auth **server/Function** pattern (cookies + JWKS Bearer JWT + per-user scoping on `fleet_pi_app`); Neon Data API is a separate optional product and must stay **off**—do not enable it to “complete” Managed Auth. Neon user-scoped RLS applies to `pi_*` mirror tables via `app.current_user_id` (live DBs may also expose `fleet_pi_current_user_id()` wrapping `auth.user_id()` then the GUC); `FORCE ROW LEVEL SECURITY` is required on `pi_*` so owner connection strings cannot silently bypass isolation—runtime `FLEET_PI_CHAT_DATABASE_URL` must be non-owner `fleet_pi_app`. Better Auth tables (`user`, `session`, `account`, `verification`) and `neon_auth.*` must not use RLS—`pnpm auth:migrate` chains `auth-post-migrate.ts` to disable RLS and grant `fleet_pi_app` DML. Chat migrations revoke Neon Data API `authenticated`/`anonymous` table grants on `pi_*` and EXECUTE on ownership SECURITY DEFINER probes (`fleet_pi_check_session_owner`, `fleet_pi_lookup_session_id_by_file`)—only `fleet_pi_app` may call them. Keep Neon Data API **disabled** in `neon.ts` (`dataApi: false`) and in console (no public-schema grants). Do not re-apply `chat-postgres-data-api-auth` grant migrations for closed beta; re-assert with `20260723_revoke_data_api_pi_grants_again` if orphan Data API grant migrations reappear; `verify-deployment-readiness` fails when those roles still hold privileges on `pi_sessions` / `pi_user_providers` / `pi_user_settings`. Neon Managed Auth open signup is closed-beta only until restricted signups exist (see `docs/runbooks/deployment-release-gate.md`). On Cloudflare, per-user Pi project settings (skills/packages/models) live in `pi_user_settings` JSONB and are hydrated into live `SettingsManager` instances because `.pi/settings.json` is not writable.
-- Daytona provisions per-user sandboxes via `resolveUserSandboxContext({ userId, surface })` (`apps/web/src/lib/daytona/resolve-user-sandbox-context.ts`). Deployed users require BYOK (`daytona` in `pi_user_providers`); missing BYOK means no Daytona sandbox (org keys and `DAYTONA_API_KEY` never back end-user sandboxes on Cloudflare). Durable volume `fleet-pi-ws-{userId}` mounts only at `/home/daytona/agent-workspace` (sparse-seeded from git `agent-workspace/`, never the full repo; seed must not overwrite user changes on reopen). Legacy sandboxes on `/home/daytona/fleet-pi` and sandboxes stuck in `error` (for example failed volume mount) are recreated on warm-up with the same volume. Phase 2 Secrets (`sync-daytona-secrets.ts`, `secret-hosts.ts`): upsert org secrets `fleet_pi_<providerId>` with host allowlists; changing Secrets-eligible BYOK recreates the sandbox on that volume; unavailable Secrets API falls back to plaintext `auth.json`/env. OAuth, Vertex ADC, Bedrock, and similar stay on `auth.json`/plain env. Web path uses Fleet adapter `.pi/extensions/daytona-sandbox` (ops via `createSandboxOperations`); stock `npm:@daytona/pi` is CLI/global-only—do not list it in project `.pi/settings.json` packages (CLI loads project packages without the web filter and conflicts with Fleet tools); the web loader also excludes it. Agent/Harness allow `daytona_get_status` + `preview_url` only. Authenticated chat must not block the stream on cold Daytona sandbox creation—use a cached sandbox or background warm-up (`server-runtime.ts`). Cloudflare Workers output must pin `tslib@2` beside traced `@daytona/*` packages because `tslib@1` (via Neon Auth passkey) lacks `__esDecorate`.
-- On Cloudflare (`FLEET_PI_DEPLOYMENT=cloudflare`), session-scoped chat endpoints require auth (Neon Managed Auth when `NEON_AUTH_BASE_URL`/`NEON_AUTH_URL` is set, otherwise Better Auth): `/api/chat`, `/api/chat/session`, `/api/chat/resume`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, `PATCH /api/chat/settings`, plus catalog `/api/chat/models`, `/api/chat/models/discover`, `/api/chat/resources`, and `/api/chat/commands`. Workspace APIs (`/api/workspace/tree`, `/file`, `/item(s)`, `/search`, `/reindex`, `/health`) use the same `withAuthenticatedChatRequest` gate when chat auth is required and resolve Daytona via `resolveWorkspaceContext` when the user has Daytona BYOK. Local anonymous chat/workspace applies only when neither Neon Auth URL is set. `auth-mode.ts` must stay client-safe—server chat auth (`isChatAuthRequired`, `chat-auth-surface`, `node:async_hooks`) lives in `chat-api-auth.ts`. Neon Auth clients use same-origin `/api/auth` when `VITE_NEON_AUTH_URL` is set (proxy to Managed Auth) so cookies are first-party; mint JWTs via `authClient.token()` with `credentials: "include"` (cached + single-flight; not Better Auth `getJWTToken()`). `/api/chat/providers` uses `getChatAuthSession`/`withAuthenticatedChatRequest` like settings. Mirror ownership fail-closed (`shouldFailClosedOnMirrorError` / `requiresAuthenticatedMirrorOwner`) lives in `deployment/trust-zone.ts` (not client-safe `environment.ts`) on Cloudflare, Neon Managed Auth, Neon Function surface, or `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH`; probes use `fleet_pi_check_session_owner` (SECURITY DEFINER) so RLS cannot hide foreign-owned rows—run `pnpm chat:migrate` after deploy when ownership or Data API revoke migrations change.
-- Chat shell layout constants (`layout-constants.ts`, `canvas-utils.ts`, 960px breakpoint, 70% panel width) live in hax-design. Appearance, Sandbox, Providers, LLM Models, and Skills live in the Settings dialog; the right panel is Workspace, Pi Resources, and Artifacts only. Settings resource catalog option values must ignore Pi provenance sources (`auto`/`local`/…) and persist portable paths via `toSettingsResourcePath` (`extensions/…`, `../agent-workspace/…`), never absolute machine paths. Slash suggestions come from `/api/chat/commands`; Pi builtins are intercepted client-side (picker/Settings/new session), while skill/prompt commands go to the agent.
-- Agent instruction surface is `AGENTS.md` only; do not recreate `CLAUDE.md`.
-- OpenUI components and registry code belong under `packages/hax-design/src/components/openui/` (shared tones in `tones.ts`; regenerate prompt signatures with `pnpm generate:openui-signatures` into `packages/pi-protocol/src/openui-signatures.ts` only); files inside `packages/hax-design` must use relative imports and apps import via `@workspace/hax-design/*`.
-- `PRODUCT.md`, `DESIGN.md`, `CONTEXT.md`, `packages/hax-design/ARCHITECTURE.md`, and Fleet Pi building blocks under `fleet-pi/{layout,chat,pi,primitives,styles}/` are canonical UI design context; semantic tokens live in `fleet-pi/styles/tokens.ts`.
-- Pi provider credential IDs live in `@workspace/pi-protocol/provider-catalog.ts`; Settings UI metadata in `fleet-pi/pi/config-panel/shared/provider-metadata.ts`. Canonical Google id is `google` (`GEMINI_API_KEY`); `GOOGLE_CLIENT_*` are Better Auth only. OpenAI Chat Completions (`openai-chat-completions`) needs `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}` in one atomic providers POST for BYOK; on authenticated deploys without OCC BYOK, Neon AI Gateway supplies the OCC backend with `qwen35-122b-a10b` and `gpt-oss-120b`. Vite must ignore `.env`/`.env.local` in `server.watch` so credential saves do not restart mid-request; `/chat/completions` base URLs normalize to the API root; OCC BYOK registers only the configured model ID (do not ingest full OpenCode Zen `/models` catalogs). Chat model catalog (`model-catalog.ts`) must select an available enabled model—rematch stale `openai` defaults onto `openai-chat-completions` when that provider holds the model. On Cloudflare, org LLM env keys (e.g. `GEMINI_API_KEY`, `HF_TOKEN`, `OPENROUTER_API_KEY`) must never back chat — only signed-in user BYOK or platform `NEON_AI_GATEWAY_*` for authenticated OCC; those org keys are scrubbed from the process so tools/Pi cannot read them. AutoContext may still default to provider id `openai` with OCC model ids—that mismatch is intentional. Dev loads `.env` then `.env.local` with override. PostHog lives in `apps/web/src/lib/analytics/posthog.ts`.
-- **Custom providers (native Pi mechanism).** Users can register any OpenAI/Anthropic/Google-compatible endpoint, each `{ displayName, apiKey, baseUrl, api, modelIds }` with `api` one of `openai-completions`, `openai-responses`, `anthropic-messages`, `google-genai`. General custom providers get a slug id `custom+<slug>`; legacy named OCC instances keep `openai-chat-completions+<slug>` — both register through the same path. The reserved `openai-chat-completions` id stays the default/Neon AI Gateway slot. Storage reuses `pi_user_providers` (`provider_id` = slug, encrypted `encrypted_key` for the apiKey, encrypted `encrypted_payload` JSON `{displayName, baseUrl, api, modelIds}` — legacy payloads with `modelId` normalize on read); no Neon migration. `apps/web/src/lib/db/occ-instances.ts` is the persistence layer; `custom-provider-registry.ts` (`registerCustomProviders`) registers each instance as its own native Pi provider (`<instanceId>/<modelId>` in the model picker; `google-genai` maps to Pi's `google-generative-ai`) with a per-host `max_tokens` cap (25k + gateway compat on `*.neon.tech` OCC endpoints, else 32k). Custom instances pick a storage backend at runtime: Postgres `pi_user_providers` when the account is DB-backed (`userId` + `FLEET_PI_CHAT_DATABASE_URL`), otherwise a gitignored per-scope local file store at `<projectRoot>/.fleet/providers.anonymous.json` (anonymous chat) or `<projectRoot>/.fleet/providers.user-<hash>.json` (local signed-in accounts; plaintext, atomic temp-file+rename) that enables anonymous/local non-DB chat — `POST /api/chat/providers` with `createOccInstance: true` or an existing `…+<slug>` id. OCC-family instances may use loopback `http://localhost` base URLs in local dev; everything else stays https-only. The reserved default OCC slot remains the env-backed `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}`; `apps/web/src/lib/db/local-provider-instances.ts` is the local store (and `useLocalProviderStore` picks the backend). Sandbox credential sync covers only the reserved default OCC slot for now (custom instances are not yet pushed to Daytona).
-- Workspace and Artifacts panels are agent-workspace-scoped only (local and Daytona)—never the full repo tree; Artifacts uses `agent-workspace/artifacts/` via the workspace tree API; both share `selectedWorkspacePath` and `workspace-panel` clears selections outside each panel's `scopePath`.
-- Cloudflare Worker builds must not import from `.pi/` — colocate server helpers like `context-filter` under `apps/web/src/lib/pi/`. Feature-branch Worker previews need `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` on the preview secret set, not production-only.
-- `@workspace/pi-protocol` (`packages/pi-protocol`) is the canonical chat wire layer: message types, Zod schemas, model-patterns, `buildOpenUIPrompt` (no React); import protocol types from `@workspace/pi-protocol` (or hax-design `chat-helpers` for UI helpers only). Server code imports protocol, not `agent-elements`/`openui` components. `handleChatTurn` in `apps/web/src/lib/pi/handle-chat-turn.ts` owns stream turn logic; `/api/chat` is auth/parse/pipe only. Pi `enabledModels: []` means deny-all models. Chat client sets `status` to `ready` on each NDJSON `done` event while the HTTP stream may stay open for queued follow-ups; abort/stop clears the follow-up queue and remains available during both `submitted` and `streaming`.
+- Provider ids live in `packages/pi-protocol/src/provider-catalog.ts`. The
+  Google id is `google` (`GEMINI_API_KEY`); `GOOGLE_CLIENT_*` are OAuth only.
+- The composer picker lists only models the user added. The full catalog is
+  Settings-only (`scope=all`).
+- OpenAI Chat Completions (`openai-chat-completions`) registers only the
+  configured model id, never a remote `/models` catalog. Without OCC BYOK,
+  authenticated deploys back it with Neon AI Gateway (`max_tokens` ≤ 25,000).
+- Custom providers register as native Pi providers (`custom+<slug>`) and
+  reuse `pi_user_providers`; there is no migration.
+
+## Daytona
+
+Reference: `docs/daytona.md`.
+
+- On Workers, sandboxes use only each user's BYOK Daytona key. Org keys and
+  `DAYTONA_API_KEY` never back user sandboxes (local dev may use them).
+- Volume `fleet-pi-ws-{userId}` mounts only at `/home/daytona/agent-workspace`.
+  Seeding never overwrites user files.
+- Never block a chat stream on cold sandbox creation; use the cached sandbox
+  or a background warm-up.
+- The web adapter is `.pi/extensions/daytona-sandbox.ts`. Stock
+  `npm:@daytona/pi` is CLI-only; never list it in `.pi/settings.json`.
+
+## agent-workspace and memory
+
+- Durable project memory lives in
+  `agent-workspace/memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md`.
+  "Remember this" updates the narrowest file; do not create ad hoc memory files.
+- `apps/web/src/lib/workspace/server.ts` owns the layout. Seeding creates
+  missing Markdown stubs and never overwrites existing files.
+- Chat-driven Pi resource installs use `resource_install` and land under
+  `agent-workspace/pi/{skills,prompts,extensions,packages}`. Skills and prompts
+  apply after reload. Extensions and packages stay staged unless the user asks
+  to activate them. "Plugins" means Pi resource packages, not Codex or Claude
+  plugin bundles.
+- Keep each vendored extension's `UPSTREAM.md` current when refreshing it.
+
+## Docs upkeep
+
+- `README.md` is the public landing page; keep it short. `docs/README.md` is
+  the docs hub, and `docs/quickstart.md` is onboarding.
+- `docs/api.md`, `docs/architecture.md`, and `docs/project-structure.md` are
+  generated. Fix the generator or its sources, never the output.
+- Keep `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, and issue
+  templates aligned with the real maintainer workflow.
+- Manual chat checks before release: `docs/wiki/how-to-contribute/testing.md`.
 
 <!-- AUTOCTX_GUIDE_START -->
 

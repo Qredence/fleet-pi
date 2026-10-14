@@ -62,3 +62,11 @@ Label `cloudflare-preview` on a PR to deploy an isolated Worker Preview. CI
 refuses upload when the Neon preview branch `fleet_pi_app` URL is missing or
 matches production. See `.github/workflows/cloudflare.yml` and
 `apps/web/scripts/cloudflare/assert-preview-worker-secrets.ts`.
+
+- `.github/workflows/neon_workflow.yml` creates and deletes the Neon preview
+  branch per PR. It needs the repo secrets `NEON_PROJECT_ID` and `NEON_API_KEY`.
+- Previews deploy an allowlisted secret set. Feature-branch previews also need
+  `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` on that set, not only
+  on production.
+- Neon Managed Auth signup is open, so keep the deployment closed-beta until
+  restricted signups exist.

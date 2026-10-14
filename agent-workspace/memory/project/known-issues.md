@@ -29,6 +29,15 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: Record repeated friction manually in `known-issues.md` or `plans/backlog.md` with source evidence.
 - Follow-up: Add self-improvement candidate extraction and eval-run artifacts.
 
+## Worker code still imports from `.pi/`
+
+- Issue: AGENTS.md says Cloudflare Worker builds must not import from `.pi/`, but three Worker-bundled modules import `classifyToolPath` / `evaluateWorkspaceWrite` from `.pi/extensions/lib/mutation-tier.ts`.
+- Affected area: `apps/web/src/lib/pi/command-policy.ts`, `apps/web/src/lib/pi/plan-mode.ts`, `apps/web/src/lib/pi/durable/spike-harness.ts` (hosted Durable Object path).
+- Symptoms: None today; Vite bundles the relative import. The risk is a future `.pi/` change pulling Node-only code into the Worker bundle, and no guard catches it (`worker-bundle-guards.test.ts` has no `.pi/` rule).
+- Current status: Open. Found while reviewing the hosted Durable Object cutover (2026-10-15).
+- Workaround: Keep `mutation-tier.ts` and its `project-trust` dependency free of Node-only APIs.
+- Follow-up: Move `mutation-tier` under `apps/web/src/lib/pi/`, re-export it from `.pi/extensions/lib/`, then add a `.pi/` import rule to `worker-bundle-guards.test.ts`.
+
 ## Resource manager does not yet cover full Pi package lifecycle
 
 - Issue: `resource_install` supports workspace skills, prompts, single-file extensions, and local directory packages, but not full npm/git package installation, pinning, updating, filtering, or trust metadata.
