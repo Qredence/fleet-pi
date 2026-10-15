@@ -10,6 +10,7 @@ import { hostedHarnessKey } from "./durable-loop-settings"
 import { durableSessionId } from "./durable-session"
 import { openDaytonaSandboxPort } from "./durable-sandbox-port"
 import {
+  DurableConversationEmpty,
   DurableConversationMissing,
   createScriptedPort,
   createSpikeTrace,
@@ -88,11 +89,18 @@ type AgentTurnBody = {
 
 const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
 
-type ActiveAgentTurn = {
+type TurnClaim = {
+  kind: "turn"
+  phase: "pending" | "active"
+  /** The stream owns release once the response has been returned. */
+  handedOff: boolean
   abortController: AbortController
-  /** Settles when the turn's stream has closed and stopped writing. */
+  /** Settles when the turn has stopped writing. */
   settled: Promise<void>
+  settle: () => void
 }
+
+type AgentGate = TurnClaim | { kind: "fork" }
 
 /** One SQLite Durable Object per user id. */
 export class UserPiDurable extends DurableObject {
@@ -109,7 +117,8 @@ export class UserPiDurable extends DurableObject {
     steering: [],
     followUp: [],
   }
-  #activeTurn: ActiveAgentTurn | undefined
+  /** Held for the whole turn or fork, including the time before the first await. */
+  #gate: AgentGate | undefined
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -190,7 +199,7 @@ export class UserPiDurable extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     if (request.method === "POST" && url.pathname === "/agent") {
-      return this.#agentTurn(request)
+      return this.#startAgentTurn(request)
     }
     if (request.method === "POST" && url.pathname === "/agent/abort") {
       return this.#abortAgentTurn()
@@ -205,7 +214,11 @@ export class UserPiDurable extends DurableObject {
       return this.#deleteSession(url.searchParams.get("id"))
     }
     if (request.method === "POST" && url.pathname === "/fork") {
-      return this.#forkSession(request)
+      if (this.#gate) return agentTurnBusyResponse()
+      this.#gate = { kind: "fork" }
+      return this.#forkSession(request).finally(() => {
+        if (this.#gate?.kind === "fork") this.#gate = undefined
+      })
     }
     if (request.method === "DELETE" && url.pathname === "/data") {
       return this.#eraseAll()
@@ -218,8 +231,8 @@ export class UserPiDurable extends DurableObject {
    * drops every conversation and tombstone, not only the Neon projection.
    */
   async #eraseAll(): Promise<Response> {
-    const active = this.#activeTurn
-    if (active) {
+    const active = this.#gate
+    if (active?.kind === "turn") {
       active.abortController.abort()
       await active.settled
     }
@@ -231,41 +244,77 @@ export class UserPiDurable extends DurableObject {
     return Response.json({ erased: true })
   }
 
-  async #forkSession(request: Request): Promise<Response> {
-    const body = (await request.json()) as {
-      conversationId?: string
-      entryId?: string
-    }
-    if (!body.conversationId || !body.entryId) {
-      return Response.json(
-        { message: "conversationId and entryId are required" },
-        { status: 400 }
-      )
-    }
-    // Reopening here would swap the harness under an in-flight turn.
-    const harness = await this.#requireHarness()
-    const conversationId = await harness.forkConversation(
-      body.conversationId,
-      body.entryId
-    )
-    return Response.json({
-      sessionId: durableSessionId(conversationId),
-      conversationId,
+  /**
+   * Reserves the gate before the first await so a fork cannot pass the idle
+   * check while this turn is still reading its body.
+   */
+  #startAgentTurn(request: Request): Promise<Response> {
+    if (this.#gate) return this.#agentTurnWhileBusy(request)
+    const claim = createTurnClaim()
+    this.#gate = claim
+    return this.#agentTurn(request, claim).finally(() => {
+      if (this.#gate === claim && !claim.handedOff) {
+        this.#releaseTurn(claim)
+      }
     })
   }
 
+  #releaseTurn(claim: TurnClaim) {
+    if (this.#gate !== claim) return
+    this.#gate = undefined
+    claim.settle()
+  }
+
+  async #forkSession(request: Request): Promise<Response> {
+    const body = (await request.json()) as { conversationId?: string }
+    if (!body.conversationId) {
+      return Response.json(
+        { message: "conversationId is required" },
+        { status: 400 }
+      )
+    }
+    if ((await this.#readDeletedConversations()).has(body.conversationId)) {
+      return Response.json({ message: "Session not found" }, { status: 404 })
+    }
+    if (this.#harness === undefined) {
+      await this.#open(this.#mode, this.#options, this.#modelConfig)
+    }
+    const harness = await this.#requireHarness()
+    if (this.#gate?.kind !== "fork") return agentTurnBusyResponse()
+    try {
+      const conversationId = await harness.forkConversation(body.conversationId)
+      return Response.json({
+        sessionId: durableSessionId(conversationId),
+        conversationId,
+      })
+    } catch (error) {
+      if (error instanceof DurableConversationMissing) {
+        return Response.json({ message: "Session not found" }, { status: 404 })
+      }
+      if (error instanceof DurableConversationEmpty) {
+        return Response.json(
+          { message: "Conversation has no entries to fork." },
+          { status: 400 }
+        )
+      }
+      throw error
+    }
+  }
+
   #abortAgentTurn(): Response {
-    if (!this.#activeTurn) {
+    const active = this.#gate
+    if (active?.kind !== "turn") {
       return Response.json({ aborted: false })
     }
-    this.#activeTurn.abortController.abort()
+    active.abortController.abort()
     return Response.json({ aborted: true })
   }
 
-  async #agentTurn(request: Request): Promise<Response> {
+  async #agentTurnWhileBusy(request: Request): Promise<Response> {
     const body = (await request.json()) as Partial<AgentTurnBody>
+    const claim = this.#gate?.kind === "turn" ? this.#gate : undefined
     if (
-      this.#activeTurn &&
+      claim?.phase === "active" &&
       this.#harness &&
       body.prompt &&
       (body.whenBusy === "steer" || body.whenBusy === "followUp")
@@ -276,10 +325,7 @@ export class UserPiDurable extends DurableObject {
           whenBusy: body.whenBusy,
         })
       } catch {
-        return Response.json(
-          { message: "An agent turn is already in progress." },
-          { status: 409 }
-        )
+        return agentTurnBusyResponse()
       }
       const next = {
         steering: [...this.#queue.steering],
@@ -295,29 +341,22 @@ export class UserPiDurable extends DurableObject {
         },
       })
     }
-    if (this.#activeTurn) {
-      return Response.json(
-        { message: "An agent turn is already in progress." },
-        { status: 409 }
-      )
-    }
-    const abortController = new AbortController()
-    let settle = () => {}
-    const settled = new Promise<void>((resolve) => {
-      settle = resolve
-    })
-    this.#activeTurn = { abortController, settled }
-    this.#queue = { steering: [], followUp: [] }
+    return agentTurnBusyResponse()
+  }
+
+  async #agentTurn(request: Request, claim: TurnClaim): Promise<Response> {
+    const body = (await request.json()) as Partial<AgentTurnBody>
     const model = body.model
     const prompt = body.prompt
     if (!model?.apiKey || !model.modelId || !prompt) {
-      this.#activeTurn = undefined
-      settle()
       return Response.json(
         { message: "Choose a model in Settings." },
         { status: 400 }
       )
     }
+    claim.phase = "active"
+    this.#queue = { steering: [], followUp: [] }
+    const abortController = claim.abortController
     const turnMode: SpikeToolMode = body.sandbox ? "sandbox" : "model-only"
     let portChanged = false
     if (body.sandbox) {
@@ -336,26 +375,19 @@ export class UserPiDurable extends DurableObject {
     this.#mode = turnMode
     const modelRef = { provider: model.provider, modelId: model.modelId }
     const models = modelsForAgentTurn(model)
-    let harness: OpenSpikeHarness
-    try {
-      harness = await this.#ensureHarness(
-        turnMode,
-        {
-          models,
-          model: modelRef,
-          loop: body.loop,
-          extensions: body.extensions,
-          codemode: body.codemode,
-          mcpServers: body.mcpServers,
-        },
-        model,
-        portChanged
-      )
-    } catch (error) {
-      this.#activeTurn = undefined
-      settle()
-      throw error
-    }
+    const harness = await this.#ensureHarness(
+      turnMode,
+      {
+        models,
+        model: modelRef,
+        loop: body.loop,
+        extensions: body.extensions,
+        codemode: body.codemode,
+        mcpServers: body.mcpServers,
+      },
+      model,
+      portChanged
+    )
     const onClientAbort = () => abortController.abort()
     if (request.signal.aborted) {
       abortController.abort()
@@ -469,11 +501,11 @@ export class UserPiDurable extends DurableObject {
         } finally {
           request.signal.removeEventListener("abort", onClientAbort)
           controller.close()
-          this.#activeTurn = undefined
-          settle()
+          this.#releaseTurn(claim)
         }
       },
     })
+    claim.handedOff = true
     return new Response(readable, {
       headers: {
         "Cache-Control": "no-cache",
@@ -601,6 +633,33 @@ const THINKING_LEVELS = new Set<ChatThinkingLevel>([
   "xhigh",
   "max",
 ])
+
+function createTurnClaim(): TurnClaim {
+  let resolveSettled = () => {}
+  const settled = new Promise<void>((resolve) => {
+    resolveSettled = resolve
+  })
+  let settledOnce = false
+  return {
+    kind: "turn",
+    phase: "pending",
+    handedOff: false,
+    abortController: new AbortController(),
+    settled,
+    settle: () => {
+      if (settledOnce) return
+      settledOnce = true
+      resolveSettled()
+    },
+  }
+}
+
+function agentTurnBusyResponse(): Response {
+  return Response.json(
+    { message: "An agent turn is already in progress." },
+    { status: 409 }
+  )
+}
 
 function thinkingLevelEvent(view: {
   docs?: Readonly<Record<string, unknown>>

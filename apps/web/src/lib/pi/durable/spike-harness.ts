@@ -262,9 +262,12 @@ function optionalTools(options: SpikeHarnessOptions | undefined) {
         name: "workspace_status",
         description: "Report that the workspace-status extension is active.",
         parameters: Type.Object({}),
-        execute: () => ({
-          output: [{ type: "text" as const, text: "workspace-status active" }],
-        }),
+        execute: () =>
+          Promise.resolve({
+            output: [
+              { type: "text" as const, text: "workspace-status active" },
+            ],
+          }),
       })
     )
   }
@@ -275,9 +278,10 @@ function optionalTools(options: SpikeHarnessOptions | undefined) {
         description:
           "Present tools through code mode. Plan mode never offers this.",
         parameters: Type.Object({}),
-        execute: () => ({
-          output: [{ type: "text" as const, text: "code mode" }],
-        }),
+        execute: () =>
+          Promise.resolve({
+            output: [{ type: "text" as const, text: "code mode" }],
+          }),
       })
     )
   }
@@ -293,14 +297,15 @@ function optionalTools(options: SpikeHarnessOptions | undefined) {
         name,
         description: `Tools from the HTTPS MCP server ${server.name}.`,
         parameters: Type.Object({}),
-        execute: () => ({
-          output: [
-            {
-              type: "text" as const,
-              text: `MCP server ${server.name} is configured.`,
-            },
-          ],
-        }),
+        execute: () =>
+          Promise.resolve({
+            output: [
+              {
+                type: "text" as const,
+                text: `MCP server ${server.name} is configured.`,
+              },
+            ],
+          }),
       })
     )
   }
@@ -412,6 +417,13 @@ export class DurableConversationMissing extends Error {
   }
 }
 
+export class DurableConversationEmpty extends Error {
+  constructor(conversationId: string) {
+    super(`Pi Durable conversation ${conversationId} has no entries to fork`)
+    this.name = "DurableConversationEmpty"
+  }
+}
+
 export type OpenSpikeHarness = {
   toolNames: Array<string>
   rootId: () => Promise<string>
@@ -436,7 +448,7 @@ export type OpenSpikeHarness = {
     prompt: string
     whenBusy: "steer" | "followUp"
   }) => Promise<void>
-  forkConversation: (conversationId: string, entryId: string) => Promise<string>
+  forkConversation: (conversationId: string) => Promise<string>
   listConversations: () => Promise<Array<DurableConversationSummary>>
   readConversation: (
     conversationId: string
@@ -608,15 +620,19 @@ export async function openSpikeHarness(
         context
       )
     },
-    async forkConversation(conversationId, entryId) {
+    async forkConversation(conversationId) {
       const conversation = await harness.conversation(
-        conversationId as never,
+        asConversationId(conversationId),
         context
       )
       if (!conversation) throw new DurableConversationMissing(conversationId)
+      const at = (await conversation.viewState(context)).value.entries.at(
+        -1
+      )?.id
+      if (at === undefined) throw new DurableConversationEmpty(conversationId)
       // No agent override: a fork inherits the parent's agent at the fork entry.
       const forked = await conversation.fork(
-        entryId as never,
+        at,
         { ownership: { kind: "ownerless" } },
         context
       )

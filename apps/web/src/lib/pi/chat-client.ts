@@ -52,6 +52,7 @@ import {
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>
+  forkSession: (metadata: ChatSessionMetadata) => Promise<{ sessionId: string }>
   answerQuestion: (
     request: ChatQuestionAnswerRequest
   ) => Promise<ChatQuestionAnswerResponse>
@@ -90,6 +91,18 @@ export const chatClient: ChatClient = {
   async abortSession(metadata) {
     await fetchJson(
       "/api/chat/abort",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata),
+      },
+      metadata
+    )
+  },
+
+  async forkSession(metadata) {
+    return fetchJson<{ sessionId: string }>(
+      "/api/chat/fork",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -245,6 +245,35 @@ export async function readHostedDurableSession(
   }
 }
 
+export async function forkHostedConversation(
+  userId: string,
+  sessionId: string
+): Promise<Response> {
+  if (!isDurableSessionId(sessionId)) {
+    return Response.json(
+      { message: "Only a hosted conversation can be forked." },
+      { status: 400 }
+    )
+  }
+  const namespace = readDurableNamespace()
+  if (!namespace) {
+    return Response.json(
+      { message: "Hosted agent runtime is unavailable." },
+      { status: 503 }
+    )
+  }
+  const stub = namespace.getByName(userPiDurableName(userId))
+  return stub.fetch(
+    new Request("https://user-pi-durable/fork", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: conversationIdFromDurableSession(sessionId),
+      }),
+    })
+  )
+}
+
 export async function abortHostedAgentTurn(userId: string): Promise<Response> {
   const namespace = readDurableNamespace()
   if (!namespace) {

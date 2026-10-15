@@ -64,6 +64,7 @@ export function usePiChat(
   const [activityLabel, setActivityLabel] = useState<string | undefined>()
   const [planLabel, setPlanLabel] = useState<string | undefined>()
   const [queue, setQueue] = useState<QueueState>(EMPTY_QUEUE_STATE)
+  const [forking, setForking] = useState(false)
   const sessionScope = getChatSessionScope(mode)
   const initialSessionMetadataRef = useRef(initialSessionMetadata)
   const messagesRef = useRef(messages)
@@ -72,6 +73,7 @@ export function usePiChat(
   const planLabelRef = useRef(planLabel)
   const queueRef = useRef(queue)
   const abortRef = useRef<AbortController | null>(null)
+  const forkInFlight = useRef(false)
   const sendMessageRef = useRef<(input: SendMessageInput) => Promise<void>>(
     () => Promise.resolve()
   )
@@ -337,7 +339,7 @@ export function usePiChat(
   ])
 
   const resumeSession = useCallback(
-    async (metadata: ChatSessionMetadata) => {
+    async (metadata: ChatSessionMetadata, notice = "Session resumed") => {
       try {
         const result = await client.resumeSession(metadata)
         setSessionMetadataSynced(result.session)
@@ -347,7 +349,7 @@ export function usePiChat(
           result.sessionReset ? "Started a fresh Pi session" : undefined
         )
         setPlanLabelSynced(undefined)
-        toast.success("Session resumed")
+        toast.success(notice)
         await refreshSessions()
       } catch (err) {
         if (
@@ -376,6 +378,29 @@ export function usePiChat(
     ]
   )
 
+  const forkSession = useCallback(async () => {
+    if (forkInFlight.current) return
+    const sessionId = sessionMetadata.sessionId
+    if (!sessionId) return
+    forkInFlight.current = true
+    setForking(true)
+    try {
+      const forked = await client.forkSession({ sessionId })
+      await resumeSession(
+        { sessionId: forked.sessionId },
+        "Conversation forked"
+      )
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error(String(err))
+      setError(nextError)
+      setStatus("error")
+      toast.error(nextError.message)
+    } finally {
+      forkInFlight.current = false
+      setForking(false)
+    }
+  }, [client, resumeSession, sessionMetadata.sessionId])
+
   useEffect(() => {
     sendMessageRef.current = sendMessage
   }, [sendMessage])
@@ -394,6 +419,8 @@ export function usePiChat(
     messages: enhancedMessages,
     planLabel,
     queue,
+    forkSession,
+    forking,
     refreshSessions,
     resumeSession,
     sendMessage,

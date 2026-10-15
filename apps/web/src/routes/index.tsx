@@ -28,6 +28,7 @@ import {
 } from "@/lib/pi/use-send-when-model-ready"
 import { useOptionalUser } from "@/lib/auth/use-auth"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import {
   useChatCommands,
@@ -171,6 +172,8 @@ function ChatWorkspaceShell() {
     error,
     messages,
     planLabel,
+    forkSession,
+    forking,
     queue,
     resumeSession,
     sendMessage,
@@ -316,6 +319,10 @@ function ChatWorkspaceShell() {
     activeSessionId: sessionMetadata.sessionId,
     activeSessionLabel,
     sessions,
+    forkDisabled: forking || status === "streaming" || status === "submitted",
+    onForkSession: isDurableSessionId(sessionMetadata.sessionId)
+      ? () => void forkSession()
+      : undefined,
     onNewSession: () => void startNewSession(),
     onResumeSession: (metadata) => void resumeSession(metadata),
     onOpenSettings: () => openSettings(),

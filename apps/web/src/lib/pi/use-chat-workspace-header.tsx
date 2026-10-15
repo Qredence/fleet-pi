@@ -16,6 +16,8 @@ type UseChatWorkspaceHeaderOptions = {
   activeSessionId: string | undefined
   activeSessionLabel: string
   sessions: Array<ChatSessionInfo>
+  forkDisabled?: boolean
+  onForkSession?: () => void
   onNewSession: () => void
   onResumeSession: (metadata: ChatSessionMetadata) => void
   onOpenSettings: () => void
@@ -25,6 +27,8 @@ export function useChatWorkspaceHeader({
   activeSessionId,
   activeSessionLabel,
   sessions,
+  forkDisabled,
+  onForkSession,
   onNewSession,
   onResumeSession,
   onOpenSettings,
@@ -50,7 +54,9 @@ export function useChatWorkspaceHeader({
       <SessionControls
         activeSessionId={activeSessionId}
         activeSessionLabel={activeSessionLabel}
+        forkDisabled={forkDisabled}
         sessions={sessions}
+        onForkSession={onForkSession}
         onNewSession={onNewSession}
         onResumeSession={onResumeSession}
       />
