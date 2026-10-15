@@ -111,10 +111,6 @@ export function harnessSettingsFromLoop(
   return Object.keys(settings).length > 0 ? settings : undefined
 }
 
-export function durableLoopSettingsKey(loop: DurableLoopSettings | undefined) {
-  return JSON.stringify(loop ?? {})
-}
-
 export function hostedHarnessKey(options: {
   loop?: DurableLoopSettings
   extensions?: Array<string>

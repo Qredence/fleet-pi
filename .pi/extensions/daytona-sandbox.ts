@@ -15,27 +15,27 @@ import {
   createLsTool,
   createReadTool,
   createWriteTool,
-  type ExtensionAPI,
-  type ExtensionContext,
 } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import { applySandboxCwdToPrompt } from "./lib/sandbox-prompt-cwd"
 import { getSandboxStatus } from "../../apps/web/src/lib/daytona/client"
+import { createSandboxOperations } from "../../apps/web/src/lib/daytona/sandbox-operations"
 import {
-  createSandboxOperations,
-  type Sandbox,
-  type ToolOperations,
-} from "../../apps/web/src/lib/daytona/sandbox-operations"
-import {
-  resolveReadySandbox,
   SANDBOX_WARMING_MESSAGE,
+  resolveReadySandbox,
 } from "../../apps/web/src/lib/daytona/resolve-ready-sandbox"
 import { SANDBOX_WORKSPACE_ROOT } from "../../apps/web/src/lib/daytona/sandbox-prepare"
 import { resolveDaytonaToolUser } from "../../apps/web/src/lib/daytona/tool-context"
-import {
-  getCachedUserSandbox,
-  type UserSandboxHandle,
-} from "../../apps/web/src/lib/daytona/user-sandbox"
+import { getCachedUserSandbox } from "../../apps/web/src/lib/daytona/user-sandbox"
+import { applySandboxCwdToPrompt } from "./lib/sandbox-prompt-cwd"
+import type { UserSandboxHandle } from "../../apps/web/src/lib/daytona/user-sandbox"
+import type {
+  Sandbox,
+  ToolOperations,
+} from "../../apps/web/src/lib/daytona/sandbox-operations"
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent"
 
 interface ActiveSandbox {
   sandbox: Sandbox
@@ -245,10 +245,9 @@ function registerSandboxTools(
     }
   }
 
-  function sandboxTool<T extends { execute: (...args: never[]) => unknown }>(
-    local: T,
-    makeRemote: (cwd: string, ops: ToolOperations) => T
-  ): T {
+  function sandboxTool<
+    T extends { execute: (...args: Array<never>) => unknown },
+  >(local: T, makeRemote: (cwd: string, ops: ToolOperations) => T): T {
     return {
       ...local,
       execute: async (...args: Parameters<T["execute"]>) => {
@@ -256,7 +255,7 @@ function registerSandboxTools(
         const tool = current ? makeRemote(current.cwd, current.ops) : local
         return tool.execute(...args)
       },
-    } as T
+    }
   }
 
   pi.registerTool(

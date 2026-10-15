@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
       "entry": [
@@ -14,9 +15,14 @@
         "functions/**/*.ts",
         "!agent-workspace/pi/**"
       ],
-      "ignoreDependencies": ["zod", "@neondatabase/serverless"]
+      "ignoreDependencies": [
+        "zod",
+        "@aws-sdk/client-s3",
+        "@neondatabase/serverless"
+      ]
     },
     "apps/web": {
+      "ignore": ["src/lib/pi/durable/cloudflare-workers-node-stub.ts"],
       "entry": [
         "scripts/**/*.ts",
         "src/router.tsx",

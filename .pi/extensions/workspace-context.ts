@@ -1,12 +1,12 @@
-import { readdir, readFile } from "node:fs/promises"
+import { readFile, readdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { isInsideUserVolume } from "./lib/project-trust"
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import {
   formatProjectMemoryForStartupContext,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
 import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 const WORKSPACE_ROOT = "agent-workspace"
 const CUSTOM_TYPE = "workspace-context"
@@ -100,7 +100,7 @@ export default function workspaceContextExtension(pi: ExtensionAPI) {
       if (index === lastWorkspaceContextIndex) return true
       const customMessage = message as { customType?: string }
       return customMessage.customType !== CUSTOM_TYPE
-    }) as typeof messages
+    })
 
     return { messages: filteredMessages }
   })
