@@ -29,7 +29,10 @@ The `cloudflare-release-gate` job in `.github/workflows/ci.yml` runs:
    - `FLEET_PI_CHAT_MIGRATION_DATABASE_URL`
 
 When migration secrets are absent, CI still enforces env + preview URL/marker checks.
-Operators must run step 3 locally with owner URLs before production promotion.
+Operators must run the owner-connection probe locally before production promotion.
+That probe includes the Data API privilege check (`authenticated` and `anonymous`
+must not hold grants on `pi_*`). CI also fails when `neon.ts` sets `dataApi: true`
+or the chat migrate runner imports `chat-postgres-data-api-auth`.
 
 ## Pre-promotion checklist
 
@@ -44,9 +47,26 @@ Operators must run step 3 locally with owner URLs before production promotion.
    ```
 4. Deploy Worker: `pnpm --filter web deploy:cloudflare`
 
+## Neon projection and recovery
+
+Hosted transcripts live on the Durable Object. The Neon `pi_*` projection is
+fail-open and is not the chat stream. The Neon Function pool stays at most 5
+connections when it still serves legacy JSONL sessions. Schedule
+`pnpm chat:maintain` weekly and alert when it fails. Declare a daily snapshot
+for the `main` branch and record that recovery point before a production
+promotion.
+
 ## Preview Workers (PR)
 
 Label `cloudflare-preview` on a PR to deploy an isolated Worker Preview. CI
 refuses upload when the Neon preview branch `fleet_pi_app` URL is missing or
 matches production. See `.github/workflows/cloudflare.yml` and
 `apps/web/scripts/cloudflare/assert-preview-worker-secrets.ts`.
+
+- `.github/workflows/neon_workflow.yml` creates and deletes the Neon preview
+  branch per PR. It needs the repo secrets `NEON_PROJECT_ID` and `NEON_API_KEY`.
+- Previews deploy an allowlisted secret set. Feature-branch previews also need
+  `BETTER_AUTH_SECRET` and `FLEET_PI_AUTH_DATABASE_URL` on that set, not only
+  on production.
+- Neon Managed Auth signup is open, so keep the deployment closed-beta until
+  restricted signups exist.

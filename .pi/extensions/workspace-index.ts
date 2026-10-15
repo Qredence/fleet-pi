@@ -1,11 +1,11 @@
 import { readdir, stat } from "node:fs/promises"
 import { resolve } from "node:path"
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import {
   formatProjectMemoryForWorkspaceIndex,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 type ExtensionMode = "tui" | "rpc" | "json" | "print"
 

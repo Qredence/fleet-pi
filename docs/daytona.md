@@ -47,7 +47,11 @@ Hint: Start without extensions using "pi -ne".
 
 **Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an`. Do not delete the workspace volume unless intentionally resetting that user.
 
-**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Do not auto-delete volumes.
+**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Sandboxes stuck in `error` (for example after a failed volume mount) are also recreated on warm-up with the same volume. Do not auto-delete volumes.
+
+**Cold start:** Authenticated chat must never block the stream on cold sandbox creation. Use the cached sandbox or a background warm-up (`server-runtime.ts`).
+
+**Worker bundle:** Cloudflare Workers output must pin `tslib@2` beside the traced `@daytona/*` packages, because `tslib@1` (pulled in by Neon Auth passkey) lacks `__esDecorate`.
 
 Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 

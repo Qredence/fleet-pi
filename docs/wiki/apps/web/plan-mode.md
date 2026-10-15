@@ -42,9 +42,11 @@ When a user selects **Plan** in the mode selector, the next message is handled d
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Plan**    | `read`, `bash` (read-only), `grep`, `find`, `ls`, `questionnaire`, `project_inventory`, `workspace_index`, `autocontext_status`, `autocontext_scenarios`, `autocontext_runtime_snapshot`, `web_search`, `code_search`, `get_search_content` |
 | **Harness** | Adds `workspace_write`, `resource_install`, `web_fetch`, plus Daytona sandbox tools and full web access. Excludes `edit` and `write`.                                                                                                       |
-| **Agent**   | Full set — adds `edit`, `write`, `autocontext_judge`, `autocontext_improve`, `autocontext_queue`, `init_experiment`, `run_experiment`, `log_experiment`, `subagent`, `fetch_content`.                                                       |
+| **Agent**   | Full set — adds `edit`, `write`, `autocontext_judge`, `autocontext_improve`, `autocontext_queue`, `init_experiment`, `run_experiment`, `log_experiment`, `subagent`, `fetch_content`, `daytona_get_status`, `preview_url`.                  |
 
 The `CHAT_TOOL_ALLOWLIST` (union of all modes) is the master list passed to `createAgentSessionFromServices`. The active subset is narrowed by `setActiveToolsByName` at turn time.
+
+Never add mutating research, file-change, or subagent tools to Plan mode. `fetch_content` is Agent and Harness only, because it can clone GitHub repos into `/tmp/`, a side effect that breaks Plan mode's read-only contract.
 
 ---
 

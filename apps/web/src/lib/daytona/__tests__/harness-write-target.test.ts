@@ -58,10 +58,76 @@ describe("resolveHarnessWriteTarget", () => {
         bytes,
         "/home/daytona/agent-workspace/pi/packages/test/module.wasm"
       )
+      const mkdirCalls = vi
+        .mocked(executeCommand)
+        .mock.calls.filter((call) => String(call[1]).startsWith("mkdir -p"))
+      expect(mkdirCalls.length).toBe(1)
     } finally {
       await rm(root, { force: true, recursive: true })
     }
   })
+
+  it("uploads several new files with one mkdir and at most four at a time", async () => {
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(executeCommand).mockReset()
+    const root = await mkdtemp(join(tmpdir(), "fleet-tree-upload-"))
+    let inFlight = 0
+    let maxInFlight = 0
+    try {
+      const directory = join(root, "agent-workspace/notes")
+      await mkdir(directory, { recursive: true })
+      const fileCount = 6
+      for (let index = 0; index < fileCount; index += 1) {
+        await writeFile(join(directory, `note-${index}.md`), `note ${index}`)
+      }
+      vi.mocked(uploadFile).mockImplementation(async () => {
+        inFlight += 1
+        maxInFlight = Math.max(maxInFlight, inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        inFlight -= 1
+      })
+      vi.mocked(executeCommand).mockImplementation((_sandbox, command) => {
+        if (String(command).includes("test -e")) {
+          return Promise.resolve({ exitCode: 1, result: "" })
+        }
+        return Promise.resolve({ exitCode: 0, result: "" })
+      })
+      const sandbox = { id: "tree" } as Sandbox
+      await uploadAgentWorkspaceTree(sandbox, root)
+      expect(uploadFile).toHaveBeenCalledTimes(fileCount)
+      const mkdirCalls = vi
+        .mocked(executeCommand)
+        .mock.calls.filter((call) => String(call[1]).startsWith("mkdir -p"))
+      expect(mkdirCalls.length).toBe(1)
+      expect(maxInFlight).toBeLessThanOrEqual(4)
+      expect(maxInFlight).toBeGreaterThan(1)
+    } finally {
+      vi.mocked(uploadFile).mockReset()
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
+  it("leaves an existing user file untouched", async () => {
+    vi.mocked(uploadFile).mockClear()
+    const root = await mkdtemp(join(tmpdir(), "fleet-seed-skip-"))
+    try {
+      const directory = join(root, "agent-workspace/memory")
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, "notes.md"), "seed")
+      vi.mocked(executeCommand).mockImplementation((_sandbox, command) => {
+        if (String(command).includes("test -e")) {
+          return Promise.resolve({ exitCode: 0, result: "" })
+        }
+        return Promise.resolve({ exitCode: 0, result: "" })
+      })
+      const sandbox = { id: "seed" } as Sandbox
+      await uploadAgentWorkspaceTree(sandbox, root)
+      expect(uploadFile).not.toHaveBeenCalled()
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
   it("writes the host checkout for local sessions", async () => {
     delete process.env.FLEET_PI_DEPLOYMENT
     await expect(resolveHarnessWriteTarget({ cwd: "/repo" })).resolves.toEqual({

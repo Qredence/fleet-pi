@@ -249,6 +249,7 @@ function toEffectiveSettings(
       enabled: compaction.enabled,
       reserveTokens: compaction.reserveTokens,
       keepRecentTokens: compaction.keepRecentTokens,
+      ...backgroundTokensFrom(projectOverrides.compaction),
     },
     defaultModel:
       typeof projectOverrides.defaultModel === "string"
@@ -275,6 +276,9 @@ function toEffectiveSettings(
       enabled: retry.enabled,
       maxRetries: retry.maxRetries,
       baseDelayMs: retry.baseDelayMs,
+      ...(typeof retry.maxAgentDelayMs === "number"
+        ? { maxAgentDelayMs: retry.maxAgentDelayMs }
+        : {}),
     },
     skills: settingsManager.getSkillPaths(),
     steeringMode: settingsManager.getSteeringMode(),
@@ -314,6 +318,7 @@ function toEditableProjectSettings(
     copyBoolean(settings.compaction, compaction, "enabled")
     copyNumber(settings.compaction, compaction, "reserveTokens")
     copyNumber(settings.compaction, compaction, "keepRecentTokens")
+    copyNumber(settings.compaction, compaction, "backgroundTokens")
     project.compaction = compaction
   }
   if (isRecord(settings.retry)) {
@@ -321,6 +326,7 @@ function toEditableProjectSettings(
     copyBoolean(settings.retry, retry, "enabled")
     copyNumber(settings.retry, retry, "maxRetries")
     copyNumber(settings.retry, retry, "baseDelayMs")
+    copyNumber(settings.retry, retry, "maxAgentDelayMs")
     project.retry = retry
   }
 
@@ -394,6 +400,13 @@ function copyNumber<T extends Record<string, unknown>>(
   if (typeof source[key] === "number") {
     target[key] = source[key] as T[keyof T & string]
   }
+}
+
+function backgroundTokensFrom(value: unknown) {
+  if (!isRecord(value) || typeof value.backgroundTokens !== "number") {
+    return {}
+  }
+  return { backgroundTokens: value.backgroundTokens }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,14 +1,16 @@
 import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare"
 import { DurableObject } from "cloudflare:workers"
-import { createDurableModels } from "./durable-model"
+import { createDurableModels, sameDurableModelConfig } from "./durable-model"
 import {
   createDurableViewDiff,
   eventsFromConversationView,
   messagesFromEntries,
 } from "./durable-events"
+import { hostedHarnessKey } from "./durable-loop-settings"
 import { durableSessionId } from "./durable-session"
 import { openDaytonaSandboxPort } from "./durable-sandbox-port"
 import {
+  DurableConversationEmpty,
   DurableConversationMissing,
   createScriptedPort,
   createSpikeTrace,
@@ -17,12 +19,15 @@ import {
   waitForCount,
 } from "./spike-harness"
 import type {
+  ChatMode,
   ChatStreamEvent,
+  ChatThinkingLevel,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
 import type { DurableObjectState } from "cloudflare:workers"
 import type { DurableAgentModelConfig } from "./durable-model"
+import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { DurableSandboxConnection } from "./durable-sandbox-port"
 import type { SpikeSandboxPort } from "./spike-env"
 import type {
@@ -70,13 +75,32 @@ type AgentTurnBody = {
   model: DurableAgentModelConfig
   sandbox?: DurableSandboxConnection
   workspace?: ChatWorkspaceStatus
+  whenBusy?: "steer" | "followUp"
+  mode?: ChatMode
+  loop?: DurableLoopSettings
+  extensions?: Array<string>
+  codemode?: boolean
+  mcpServers?: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }
 
 const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
 
-type ActiveAgentTurn = {
+type TurnClaim = {
+  kind: "turn"
+  phase: "pending" | "active"
+  /** The stream owns release once the response has been returned. */
+  handedOff: boolean
   abortController: AbortController
+  /** Settles when the turn has stopped writing. */
+  settled: Promise<void>
+  settle: () => void
 }
+
+type AgentGate = TurnClaim | { kind: "fork" }
 
 /** One SQLite Durable Object per user id. */
 export class UserPiDurable extends DurableObject {
@@ -86,8 +110,15 @@ export class UserPiDurable extends DurableObject {
   #port: SpikeSandboxPort = createScriptedPort(this.#trace)
   #mode: SpikeToolMode = "sandbox"
   #sandboxConnectionKey: string | undefined
-  #harnessModelKey: string | undefined
-  #activeTurn: ActiveAgentTurn | undefined
+  #options: SpikeHarnessOptions | undefined
+  #modelConfig: DurableAgentModelConfig | undefined
+  #loopKey = ""
+  #queue: { steering: Array<string>; followUp: Array<string> } = {
+    steering: [],
+    followUp: [],
+  }
+  /** Held for the whole turn or fork, including the time before the first await. */
+  #gate: AgentGate | undefined
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
@@ -168,7 +199,7 @@ export class UserPiDurable extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     if (request.method === "POST" && url.pathname === "/agent") {
-      return this.#agentTurn(request)
+      return this.#startAgentTurn(request)
     }
     if (request.method === "POST" && url.pathname === "/agent/abort") {
       return this.#abortAgentTurn()
@@ -182,36 +213,150 @@ export class UserPiDurable extends DurableObject {
     if (request.method === "DELETE" && url.pathname === "/session") {
       return this.#deleteSession(url.searchParams.get("id"))
     }
+    if (request.method === "POST" && url.pathname === "/fork") {
+      if (this.#gate) return agentTurnBusyResponse()
+      this.#gate = { kind: "fork" }
+      return this.#forkSession(request).finally(() => {
+        if (this.#gate?.kind === "fork") this.#gate = undefined
+      })
+    }
+    if (request.method === "DELETE" && url.pathname === "/data") {
+      return this.#eraseAll()
+    }
     return new Response("Not found", { status: 404 })
   }
 
+  /**
+   * Account erasure. The Durable Object holds the hosted transcript, so this
+   * drops every conversation and tombstone, not only the Neon projection.
+   */
+  async #eraseAll(): Promise<Response> {
+    const active = this.#gate
+    if (active?.kind === "turn") {
+      active.abortController.abort()
+      await active.settled
+    }
+    this.#harness = undefined
+    this.#storage = undefined
+    this.#queue = { steering: [], followUp: [] }
+    await this.ctx.storage.deleteAll()
+    await this.#open("sandbox")
+    return Response.json({ erased: true })
+  }
+
+  /**
+   * Reserves the gate before the first await so a fork cannot pass the idle
+   * check while this turn is still reading its body.
+   */
+  #startAgentTurn(request: Request): Promise<Response> {
+    if (this.#gate) return this.#agentTurnWhileBusy(request)
+    const claim = createTurnClaim()
+    this.#gate = claim
+    return this.#agentTurn(request, claim).finally(() => {
+      if (this.#gate === claim && !claim.handedOff) {
+        this.#releaseTurn(claim)
+      }
+    })
+  }
+
+  #releaseTurn(claim: TurnClaim) {
+    if (this.#gate !== claim) return
+    this.#gate = undefined
+    claim.settle()
+  }
+
+  async #forkSession(request: Request): Promise<Response> {
+    const body = (await request.json()) as { conversationId?: string }
+    if (!body.conversationId) {
+      return Response.json(
+        { message: "conversationId is required" },
+        { status: 400 }
+      )
+    }
+    if ((await this.#readDeletedConversations()).has(body.conversationId)) {
+      return Response.json({ message: "Session not found" }, { status: 404 })
+    }
+    if (this.#harness === undefined) {
+      await this.#open(this.#mode, this.#options, this.#modelConfig)
+    }
+    const harness = await this.#requireHarness()
+    if (this.#gate?.kind !== "fork") return agentTurnBusyResponse()
+    try {
+      const conversationId = await harness.forkConversation(body.conversationId)
+      return Response.json({
+        sessionId: durableSessionId(conversationId),
+        conversationId,
+      })
+    } catch (error) {
+      if (error instanceof DurableConversationMissing) {
+        return Response.json({ message: "Session not found" }, { status: 404 })
+      }
+      if (error instanceof DurableConversationEmpty) {
+        return Response.json(
+          { message: "Conversation has no entries to fork." },
+          { status: 400 }
+        )
+      }
+      throw error
+    }
+  }
+
   #abortAgentTurn(): Response {
-    if (!this.#activeTurn) {
+    const active = this.#gate
+    if (active?.kind !== "turn") {
       return Response.json({ aborted: false })
     }
-    this.#activeTurn.abortController.abort()
+    active.abortController.abort()
     return Response.json({ aborted: true })
   }
 
-  async #agentTurn(request: Request): Promise<Response> {
-    if (this.#activeTurn) {
-      return Response.json(
-        { message: "An agent turn is already in progress." },
-        { status: 409 }
+  async #agentTurnWhileBusy(request: Request): Promise<Response> {
+    const body = (await request.json()) as Partial<AgentTurnBody>
+    const claim = this.#gate?.kind === "turn" ? this.#gate : undefined
+    if (
+      claim?.phase === "active" &&
+      this.#harness &&
+      body.prompt &&
+      (body.whenBusy === "steer" || body.whenBusy === "followUp")
+    ) {
+      try {
+        await this.#harness.submitBusy({
+          prompt: body.prompt,
+          whenBusy: body.whenBusy,
+        })
+      } catch {
+        return agentTurnBusyResponse()
+      }
+      const next = {
+        steering: [...this.#queue.steering],
+        followUp: [...this.#queue.followUp],
+      }
+      next[body.whenBusy === "steer" ? "steering" : "followUp"].push(
+        body.prompt
       )
+      this.#queue = next
+      return new Response(`${JSON.stringify({ type: "queue", ...next })}\n`, {
+        headers: {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+        },
+      })
     }
-    const abortController = new AbortController()
-    this.#activeTurn = { abortController }
+    return agentTurnBusyResponse()
+  }
+
+  async #agentTurn(request: Request, claim: TurnClaim): Promise<Response> {
     const body = (await request.json()) as Partial<AgentTurnBody>
     const model = body.model
     const prompt = body.prompt
     if (!model?.apiKey || !model.modelId || !prompt) {
-      this.#activeTurn = undefined
       return Response.json(
         { message: "Choose a model in Settings." },
         { status: 400 }
       )
     }
+    claim.phase = "active"
+    this.#queue = { steering: [], followUp: [] }
+    const abortController = claim.abortController
     const turnMode: SpikeToolMode = body.sandbox ? "sandbox" : "model-only"
     let portChanged = false
     if (body.sandbox) {
@@ -230,20 +375,19 @@ export class UserPiDurable extends DurableObject {
     this.#mode = turnMode
     const modelRef = { provider: model.provider, modelId: model.modelId }
     const models = modelsForAgentTurn(model)
-    let harness: OpenSpikeHarness
-    try {
-      harness = await this.#ensureHarness(
-        turnMode,
-        {
-          models,
-          model: modelRef,
-        },
-        portChanged
-      )
-    } catch (error) {
-      this.#activeTurn = undefined
-      throw error
-    }
+    const harness = await this.#ensureHarness(
+      turnMode,
+      {
+        models,
+        model: modelRef,
+        loop: body.loop,
+        extensions: body.extensions,
+        codemode: body.codemode,
+        mcpServers: body.mcpServers,
+      },
+      model,
+      portChanged
+    )
     const onClientAbort = () => abortController.abort()
     if (request.signal.aborted) {
       abortController.abort()
@@ -262,6 +406,9 @@ export class UserPiDurable extends DurableObject {
         let baselined = false
         let started = false
         let streamedText = ""
+        let sessionId = body.conversationId
+          ? durableSessionId(body.conversationId)
+          : "durable:pending"
         const streamedTools = new Map<string, ChatToolPart>()
         const signal = abortController.signal
         try {
@@ -269,13 +416,15 @@ export class UserPiDurable extends DurableObject {
             prompt,
             conversationId: body.conversationId,
             create: body.create === true,
+            whenBusy: body.whenBusy,
+            chatMode: body.mode,
             model: {
               provider: model.provider,
               modelId: model.modelId,
             },
             signal,
             onView: (view) => {
-              const sessionId = durableSessionId(String(view.conversation.id))
+              sessionId = durableSessionId(String(view.conversation.id))
               if (!started) {
                 started = true
                 send({
@@ -289,6 +438,7 @@ export class UserPiDurable extends DurableObject {
                         toolsAvailable: false,
                         reason: "daytona_credential_required",
                       }),
+                  ...thinkingLevelEvent(view),
                 })
               }
               const events = eventsFromConversationView(view, diff)
@@ -325,6 +475,22 @@ export class UserPiDurable extends DurableObject {
           })
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") {
+            send({
+              type: "done",
+              runId,
+              sessionId,
+              stopReason: "aborted",
+              message: {
+                id: messageId,
+                role: "assistant",
+                parts: [
+                  ...(streamedText
+                    ? [{ type: "text" as const, text: streamedText }]
+                    : []),
+                  ...streamedTools.values(),
+                ],
+              },
+            })
             return
           }
           send({
@@ -335,10 +501,11 @@ export class UserPiDurable extends DurableObject {
         } finally {
           request.signal.removeEventListener("abort", onClientAbort)
           controller.close()
-          this.#activeTurn = undefined
+          this.#releaseTurn(claim)
         }
       },
     })
+    claim.handedOff = true
     return new Response(readable, {
       headers: {
         "Cache-Control": "no-cache",
@@ -404,10 +571,13 @@ export class UserPiDurable extends DurableObject {
 
   async #open(
     mode: SpikeToolMode,
-    options?: SpikeHarnessOptions
+    options?: SpikeHarnessOptions,
+    modelConfig?: DurableAgentModelConfig
   ): Promise<OpenSpikeHarness> {
     this.#mode = mode
-    this.#harnessModelKey = harnessModelKey(options?.model)
+    this.#options = options
+    this.#modelConfig = modelConfig
+    this.#loopKey = hostedHarnessKey(options ?? {})
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
     this.#harness = await openSpikeHarness(storage, mode, this.#port, options)
@@ -417,22 +587,25 @@ export class UserPiDurable extends DurableObject {
   async #ensureHarness(
     mode: SpikeToolMode,
     options: SpikeHarnessOptions,
+    modelConfig: DurableAgentModelConfig,
     portChanged: boolean
   ): Promise<OpenSpikeHarness> {
-    const modelKey = harnessModelKey(options.model)
+    const loopKey = hostedHarnessKey(options)
     if (
       !portChanged &&
       this.#harness !== undefined &&
       this.#mode === mode &&
-      this.#harnessModelKey === modelKey
+      sameDurableModelConfig(this.#modelConfig, modelConfig) &&
+      this.#loopKey === loopKey
     ) {
       return this.#harness
     }
-    return this.#open(mode, options)
+    return this.#open(mode, options, modelConfig)
   }
 
+  /** Reopen with the last options so a restart keeps the turn's real models. */
   async #reopen() {
-    await this.#open(this.#mode)
+    await this.#open(this.#mode, this.#options, this.#modelConfig)
     return this.#requireHarness()
   }
 
@@ -451,16 +624,63 @@ export class UserPiDurable extends DurableObject {
   }
 }
 
+const THINKING_LEVELS = new Set<ChatThinkingLevel>([
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+])
+
+function createTurnClaim(): TurnClaim {
+  let resolveSettled = () => {}
+  const settled = new Promise<void>((resolve) => {
+    resolveSettled = resolve
+  })
+  let settledOnce = false
+  return {
+    kind: "turn",
+    phase: "pending",
+    handedOff: false,
+    abortController: new AbortController(),
+    settled,
+    settle: () => {
+      if (settledOnce) return
+      settledOnce = true
+      resolveSettled()
+    },
+  }
+}
+
+function agentTurnBusyResponse(): Response {
+  return Response.json(
+    { message: "An agent turn is already in progress." },
+    { status: 409 }
+  )
+}
+
+function thinkingLevelEvent(view: {
+  docs?: Readonly<Record<string, unknown>>
+}): { thinkingLevel?: ChatThinkingLevel } {
+  const agent = view.docs?.["pi.agent"]
+  if (!agent || typeof agent !== "object" || Array.isArray(agent)) return {}
+  const level = (agent as { thinkingLevel?: unknown }).thinkingLevel
+  if (
+    typeof level !== "string" ||
+    !THINKING_LEVELS.has(level as ChatThinkingLevel)
+  ) {
+    return {}
+  }
+  return { thinkingLevel: level as ChatThinkingLevel }
+}
+
 function modelsForAgentTurn(model: DurableAgentModelConfig) {
-  if (model.provider === "spike" && model.modelId === "spike") {
+  if (model.provider === "spike") {
     return spikeModels
   }
   return createDurableModels(model)
-}
-
-function harnessModelKey(model: SpikeHarnessOptions["model"]) {
-  if (!model) return ""
-  return `${model.provider}\0${model.modelId}`
 }
 
 function sandboxConnectionKey(connection: DurableSandboxConnection) {

@@ -156,10 +156,7 @@ export function applyChatStreamEvent(
       assistantId,
       snapshot: {
         ...snapshot,
-        activityLabel:
-          event.phase === "start"
-            ? "Compacting session"
-            : "Compaction finished",
+        activityLabel: compactionActivityLabel(event),
       },
     }
   }
@@ -184,7 +181,7 @@ export function applyChatStreamEvent(
       assistantId: null,
       snapshot: {
         ...snapshot,
-        activityLabel: undefined,
+        activityLabel: event.stopReason === "aborted" ? "Stopped" : undefined,
         messages: replaceOrAppendMessage(snapshot.messages, event.message),
         queue: EMPTY_QUEUE_STATE,
         sessionMetadata: {
@@ -196,6 +193,24 @@ export function applyChatStreamEvent(
   }
 
   return transition
+}
+
+function compactionActivityLabel(
+  event: Extract<ChatStreamEvent, { type: "compaction" }>
+) {
+  switch (event.phase) {
+    case "start":
+      return "Compacting session"
+    case "end":
+      if (event.willRetry) return "Compaction will retry"
+      if (event.aborted) return "Compaction aborted"
+      if (event.errorMessage) return "Compaction failed"
+      return "Compaction finished"
+    default: {
+      const unreachable: never = event
+      return unreachable
+    }
+  }
 }
 
 function replaceOrAppendMessage(

@@ -1,9 +1,16 @@
 // @ts-check
 
+import tseslint from "typescript-eslint"
+
 import webConfig from "./apps/web/eslint.config.js"
 import haxDesignConfig from "./packages/hax-design/eslint.config.ts"
 
+const piExtensionFiles = [".pi/extensions/**/*.ts", "functions/**/*.ts"]
+
 export default [
+  {
+    ignores: [".pi/extensions/vendor/**"],
+  },
   ...webConfig.map((config) => {
     if (config.files) return config
     return { ...config, files: ["apps/web/**/*.{js,ts,tsx}"] }
@@ -17,4 +24,8 @@ export default [
     }
     return { ...config, files: ["packages/hax-design/**/*.{js,ts,tsx}"] }
   }),
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: piExtensionFiles,
+  },
 ]

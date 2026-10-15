@@ -28,6 +28,7 @@ import {
 } from "@/lib/pi/use-send-when-model-ready"
 import { useOptionalUser } from "@/lib/auth/use-auth"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import {
   useChatCommands,
@@ -118,11 +119,7 @@ function ChatWorkspaceShell() {
     themePreference,
   } = useChatShellState(modelsData)
   const { hostedAgentOnly } = Route.useLoaderData()
-  const chatModes = hostedAgentOnly ? CHAT_MODES.slice(0, 1) : CHAT_MODES
-
-  useEffect(() => {
-    if (hostedAgentOnly && mode !== "agent") handleModeChange("agent")
-  }, [handleModeChange, hostedAgentOnly, mode])
+  const chatModes = CHAT_MODES
 
   const {
     data: resourcesData,
@@ -175,6 +172,8 @@ function ChatWorkspaceShell() {
     error,
     messages,
     planLabel,
+    forkSession,
+    forking,
     queue,
     resumeSession,
     sendMessage,
@@ -188,6 +187,7 @@ function ChatWorkspaceShell() {
     onModeChange: handleModeChange,
     persistSession,
     hostedAgentOnly,
+    steeringMode: settingsData?.effective.steeringMode,
   })
   const sendWhenModelReady = useSendWhenModelReady(
     sendMessage,
@@ -319,6 +319,10 @@ function ChatWorkspaceShell() {
     activeSessionId: sessionMetadata.sessionId,
     activeSessionLabel,
     sessions,
+    forkDisabled: forking || status === "streaming" || status === "submitted",
+    onForkSession: isDurableSessionId(sessionMetadata.sessionId)
+      ? () => void forkSession()
+      : undefined,
     onNewSession: () => void startNewSession(),
     onResumeSession: (metadata) => void resumeSession(metadata),
     onOpenSettings: () => openSettings(),
@@ -344,7 +348,6 @@ function ChatWorkspaceShell() {
         sessions={sessions}
         isStreaming={status === "streaming"}
         themePreference={themePreference}
-        agentOnly={hostedAgentOnly}
       />
       <RightPanelProvider
         chatPanelData={chatPanelData}

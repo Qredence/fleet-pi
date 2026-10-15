@@ -1,3 +1,7 @@
+import {
+  BUNDLED_HOSTED_EXTENSIONS,
+  selectHostedExtensions,
+} from "@workspace/pi-protocol/hosted-resources"
 import { Switch } from "../../../../switch"
 import { ItemRow } from "../../../primitives/item-row"
 import {
@@ -129,10 +133,8 @@ export function ResourcesSection({
             label="Extensions"
             count={draft?.extensions.length ?? 0}
           >
-            <CatalogValueList
-              addLabel="Add extension"
-              catalog={resources?.extensions ?? []}
-              placeholder="../agent-workspace/pi/extensions"
+            <HostedExtensionList
+              disabled={disabled}
               values={draft?.extensions ?? []}
               onChange={onExtensionsChange}
             />
@@ -161,6 +163,59 @@ export function ResourcesSection({
       )}
     </SettingsPane>
   )
+}
+
+function HostedExtensionList({
+  disabled,
+  onChange,
+  values,
+}: {
+  disabled: boolean
+  onChange: (extensions: Array<string>) => void
+  values: Array<string>
+}) {
+  const selection = selectHostedExtensions(values)
+  return (
+    <div className="flex flex-col gap-1">
+      {BUNDLED_HOSTED_EXTENSIONS.filter((name) => name !== "spike-sandbox").map(
+        (name) => {
+          const active = selection.enabled.includes(name)
+          return (
+            <ItemRow
+              key={name}
+              title={name}
+              subtitle={active ? "Active" : "Staged"}
+              trailing={
+                <Switch
+                  aria-label={`${name} extension`}
+                  checked={active}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => {
+                    const without = values.filter(
+                      (item) => extensionBaseName(item) !== name
+                    )
+                    onChange(checked === true ? [...without, name] : without)
+                  }}
+                />
+              }
+            />
+          )
+        }
+      )}
+      {selection.unavailable.map((path) => (
+        <ItemRow
+          key={path}
+          interactive={false}
+          title={path}
+          subtitle="Staged"
+        />
+      ))}
+    </div>
+  )
+}
+
+function extensionBaseName(value: string) {
+  return value.split("/").pop()?.replace(/\.ts$/, "")
 }
 
 function ResourceGroup({

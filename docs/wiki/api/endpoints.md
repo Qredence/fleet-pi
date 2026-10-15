@@ -2,6 +2,16 @@
 
 All types referenced below are defined in [`packages/pi-protocol/src/chat-protocol.ts`](../../../packages/pi-protocol/src/chat-protocol.ts) unless noted otherwise.
 
+## Authentication
+
+On Cloudflare (`FLEET_PI_DEPLOYMENT=cloudflare`) these routes require a signed-in user through `withAuthenticatedChatRequest`. Neon Managed Auth applies when `NEON_AUTH_BASE_URL`/`NEON_AUTH_URL` is set; otherwise Better Auth.
+
+- Session routes: `/api/chat`, `/api/chat/session`, `/api/chat/resume`, `/api/chat/sessions`, `/api/chat/new`, `/api/chat/abort`, `/api/chat/question`, `/api/chat/runs`, `/api/chat/run`, `/api/chat/provenance`, `PATCH /api/chat/settings`, `/api/chat/providers`, `DELETE /api/chat/account`.
+- Catalog routes: `/api/chat/models`, `/api/chat/models/discover`, `/api/chat/resources`, `/api/chat/commands`.
+- Workspace routes: `/api/workspace/tree`, `/file`, `/item`, `/items`, `/search`, `/reindex`, `/health`. With Daytona BYOK they resolve the sandbox through `resolveWorkspaceContext`.
+
+Anonymous local chat and workspace access applies only when neither Neon Auth URL is set. `POST /api/chat/durable-spike` exists only when the Worker sets `FLEET_PI_DURABLE_SPIKE=1`.
+
 ---
 
 ## Chat Endpoints

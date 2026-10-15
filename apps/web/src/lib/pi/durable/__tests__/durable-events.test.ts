@@ -71,6 +71,10 @@ describe("durable conversation events", () => {
       type: "tool",
       part: { type: "tool-Write", state: "output-available", output: "ok" },
     })
+    const settled = events[2]
+    if (settled.type === "tool") {
+      expect(typeof settled.part.durationMs).toBe("number")
+    }
 
     const message = assistantMessageFromDiff(diff, "message-1")
     expect(
@@ -102,5 +106,51 @@ describe("durable conversation events", () => {
         parts: [{ type: "text", text: "hi" }],
       },
     ])
+  })
+
+  it("keeps willRetry visible and labels an aborted compaction separately", () => {
+    const diff = createDurableViewDiff()
+    const retrying = eventsFromConversationView(
+      {
+        entries: [],
+        docs: {
+          "pi.live": {
+            compactions: [
+              {
+                reason: "context",
+                retry: { error: "summarizer timed out" },
+              },
+            ],
+          },
+        },
+      },
+      diff
+    )
+    expect(retrying).toEqual([
+      {
+        type: "compaction",
+        phase: "end",
+        reason: "context",
+        aborted: false,
+        willRetry: true,
+        errorMessage: "summarizer timed out",
+      },
+    ])
+    const aborted = eventsFromConversationView(
+      {
+        entries: [],
+        docs: {
+          "pi.live": {
+            compactionFailure: { reason: "context", error: "aborted" },
+          },
+        },
+      },
+      diff
+    )
+    expect(aborted[0]).toMatchObject({
+      type: "compaction",
+      aborted: true,
+      willRetry: false,
+    })
   })
 })

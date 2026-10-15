@@ -1,6 +1,8 @@
 # Deployment
 
-Fleet Pi deploys to **Cloudflare Workers** (`fleet-pi-web`) for the web UI and catalog APIs. The current production chat stream is an **interim Neon Function** when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. The Pi Durable spike keeps a turn inside the user's Durable Object (`UserPiDurable`) instead of stretching that Worker request or the Function.
+Cloudflare Workers is the primary host. The `fleet-pi-web` Worker serves the web UI, Settings, and catalog APIs. New hosted Agent turns stream from the signed-in user's Durable Object (`UserPiDurable`). That object's SQLite storage is the transcript. The Daytona volume holds the harness and artifacts. Neon keeps Managed Auth, `pi_user_settings`, and an optional session projection. There is no Neon Object Storage bucket and no R2 binding.
+
+The Neon Function remains an interim path for legacy JSONL sessions when `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. Vercel is not a deployment target; `docs/adr/0002-vercel-neon-deployment-trust-zones.md` records that earlier host.
 
 ## Neon provisioning (`neon.ts`)
 
@@ -24,25 +26,29 @@ pnpm neon:env-pull   # writes NEON_* vars to .env.local
 
 AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 
+`neon.ts` declares no Object Storage buckets. Discard any `AWS_*` Object Storage
+variables that `neon deploy` pulls into `.env`. The `.neon` branch pin is
+gitignored.
+
 ## Hosted environment variables (Cloudflare Workers)
 
 ### Neon Managed Auth (recommended)
 
-| Variable                                               | Required       | Notes                                                                |
-| ------------------------------------------------------ | -------------- | -------------------------------------------------------------------- |
-| `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL`                | Yes            | Managed Auth base                                                    |
-| `NEON_AUTH_COOKIE_SECRET`                              | Yes            | ≥32 chars; cookie gate                                               |
-| `VITE_NEON_AUTH_URL`                                   | Yes            | Client proxy target                                                  |
-| `NEON_AUTH_JWKS_URL`                                   | Yes            | JWT verification                                                     |
-| `NEON_AUTH_ISSUER`                                     | Yes            | Fail-closed bearer JWTs                                              |
-| `FLEET_PI_CHAT_DATABASE_URL`                           | Yes            | `fleet_pi_app` role; mirrors + settings                              |
-| `BETTER_AUTH_SECRET`                                   | Yes            | BYOK AES-GCM encryption                                              |
-| `NEON_AI_GATEWAY_TOKEN`                                | Yes*           | *When `preview.aiGateway` enabled                                    |
-| `NEON_AI_GATEWAY_BASE_URL`                             | Yes*           | Bare branch gateway host                                             |
-| `VITE_FLEET_PI_CHAT_RUNTIME_URL`                       | When streaming | Neon Function chat stream URL (set in Production)                    |
-| `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS`                   | When streaming | Browser origin allowlist; must match the Function's origin allowlist |
-| `VITE_PUBLIC_POSTHOG_KEY` / `VITE_PUBLIC_POSTHOG_HOST` | Optional       | PostHog product analytics (browser)                                  |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`            | Optional       | OAuth via Managed Auth                                               |
+| Variable                                               | Required       | Notes                                                                       |
+| ------------------------------------------------------ | -------------- | --------------------------------------------------------------------------- |
+| `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL`                | Yes            | Managed Auth base                                                           |
+| `NEON_AUTH_COOKIE_SECRET`                              | Yes            | ≥32 chars; cookie gate                                                      |
+| `VITE_NEON_AUTH_URL`                                   | Yes            | Client proxy target                                                         |
+| `NEON_AUTH_JWKS_URL`                                   | Yes            | JWT verification                                                            |
+| `NEON_AUTH_ISSUER`                                     | Yes            | Fail-closed bearer JWTs                                                     |
+| `FLEET_PI_CHAT_DATABASE_URL`                           | Yes            | `fleet_pi_app` role; mirrors + settings                                     |
+| `BETTER_AUTH_SECRET`                                   | Yes            | BYOK AES-GCM encryption                                                     |
+| `NEON_AI_GATEWAY_TOKEN`                                | Yes*           | *When `preview.aiGateway` enabled                                           |
+| `NEON_AI_GATEWAY_BASE_URL`                             | Yes*           | Bare branch gateway host                                                    |
+| `VITE_FLEET_PI_CHAT_RUNTIME_URL`                       | When streaming | Neon Function chat stream URL (set in Production)                           |
+| `FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS`                   | When streaming | Browser origin allowlist; must match the Function's origin allowlist        |
+| `VITE_PUBLIC_POSTHOG_KEY` / `VITE_PUBLIC_POSTHOG_HOST` | Optional       | PostHog product analytics (browser)                                         |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`            | Optional       | OAuth via Managed Auth; register callbacks on the active workers.dev origin |
 
 ### Legacy Better Auth (when no Neon Auth URL is set)
 
@@ -103,13 +109,16 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   plan (10 MB limit). Features that need a real filesystem or processes
   (local workspace projection/provenance, npm package installs) degrade the
   same way they do on Cloudflare; tools run in Daytona.
-- Interim split: the Worker serves the UI, Settings, and catalog. Production
-  `/api/chat` still streams from the Neon Function while
-  `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. That Function path is interim.
-  The spike at `POST /api/chat/durable-spike` addresses `USER_PI_DURABLE`
-  by the signed-in user id. The object keeps the transcript and any in-flight
-  task across a new request, so a turn is not a longer Worker invocation.
-  Production `/api/chat` does not enter the spike.
+- Hosted split: the Worker serves the UI, Settings, and catalog. A new
+  `/api/chat` turn on Cloudflare addresses `USER_PI_DURABLE` by the signed-in
+  user id. The object keeps the transcript and any in-flight task. Legacy
+  JSONL sessions may still stream from the Neon Function while
+  `VITE_FLEET_PI_CHAT_RUNTIME_URL` is set. `POST /api/chat/durable-spike`
+  is the scripted harness route. It is served only when the Worker sets
+  `FLEET_PI_DURABLE_SPIKE=1`; leave it unset in production because the route
+  reopens the user's harness. `DELETE /api/chat/account` also erases the
+  user's Durable Object storage. Readiness does not require object-storage
+  environment variables.
 
 ## Build
 

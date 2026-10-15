@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises"
+import { readFile, readdir, stat } from "node:fs/promises"
 import { basename, resolve } from "node:path"
 
 const WORKSPACE_ROOT = "agent-workspace"

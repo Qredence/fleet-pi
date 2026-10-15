@@ -62,10 +62,6 @@ vi.mock("@/lib/db/pi-session-mirror", () => ({
   syncPiSessionMirrorSafely: vi.fn(),
 }))
 
-vi.mock("@/lib/pi/server-sessions", () => ({
-  scheduleSessionBlobPersist: vi.fn(),
-}))
-
 const PROVIDER = "faux"
 const MODEL_ID = "contract-model"
 

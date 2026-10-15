@@ -12,7 +12,18 @@ import {
   agentWorkspaceBashBlock,
   agentWorkspaceMutationBlock,
 } from "../command-policy"
+import { assertHttpsMcpServer, hostedMcpToolName } from "./durable-mcp"
+import { harnessSettingsFromLoop } from "./durable-loop-settings"
+import { selectHostedExtensions } from "./hosted-extensions"
+import {
+  hostedBashBlock,
+  hostedToolAllowed,
+  hostedWriteBlock,
+} from "./hosted-tool-registry"
 import { createSpikeExecutionEnv } from "./spike-env"
+import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+import type { DurableLoopSettings } from "./durable-loop-settings"
+import type { HostedMcpServer } from "./durable-mcp"
 import type {
   ConversationView,
   Storage,
@@ -52,14 +63,19 @@ const spikeModel = {
   name: "spike",
 }
 
-function modelReplyMessage() {
+/** Names any model other than the default so tests can see which one ran. */
+function modelReplyMessage(modelId = "spike") {
+  const text =
+    modelId === "spike"
+      ? SPIKE_MODEL_REPLY
+      : `${SPIKE_MODEL_REPLY} from ${modelId}`
   return {
     role: "assistant" as const,
-    content: [{ type: "text" as const, text: SPIKE_MODEL_REPLY }],
+    content: [{ type: "text" as const, text }],
     stopReason: "stop" as const,
     api: "openai-completions" as const,
     provider: "spike",
-    model: "spike",
+    model: modelId,
     usage: {
       input: 0,
       output: 0,
@@ -74,11 +90,11 @@ function modelReplyMessage() {
 
 export const spikeModels = {
   getModel(provider: string, modelId: string) {
-    if (provider !== "spike" || modelId !== "spike") return undefined
-    return spikeModel
+    if (provider !== "spike") return undefined
+    return { ...spikeModel, id: modelId, name: modelId }
   },
-  streamSimple() {
-    const message = modelReplyMessage()
+  streamSimple(model?: { id?: string }) {
+    const message = modelReplyMessage(model?.id)
     return {
       *[Symbol.asyncIterator]() {
         yield { type: "text_delta", partial: message }
@@ -136,7 +152,9 @@ function requireEnv(api: ToolExecutionApi) {
   return api.env
 }
 
-function sandboxTools() {
+type ChatModeRef = { current: ChatMode }
+
+function sandboxTools(mode: ChatModeRef) {
   const read = defineTool({
     name: "read",
     description: "Read a file in the user sandbox.",
@@ -165,12 +183,13 @@ function sandboxTools() {
     parameters: Type.Object({
       path: Type.String(),
       content: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string },
+      args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = agentWorkspaceMutationBlock(args.path)
+      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -187,12 +206,13 @@ function sandboxTools() {
     parameters: Type.Object({
       path: Type.String(),
       content: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string },
+      args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = agentWorkspaceMutationBlock(args.path)
+      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -206,9 +226,15 @@ function sandboxTools() {
   const bash = defineTool({
     name: "bash",
     description: "Run a command in the user sandbox.",
-    parameters: Type.Object({ command: Type.String() }),
-    execute: async (args: { command: string }, api: ToolExecutionApi) => {
-      const block = agentWorkspaceBashBlock(args.command)
+    parameters: Type.Object({
+      command: Type.String(),
+      confirm: Type.Optional(Type.Boolean()),
+    }),
+    execute: async (
+      args: { command: string; confirm?: boolean },
+      api: ToolExecutionApi
+    ) => {
+      const block = hostedBashBlock(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
       const result = await requireEnv(api).exec(
@@ -227,13 +253,85 @@ function sandboxTools() {
   return [read, search, write, edit, bash]
 }
 
-function registryFor(mode: SpikeToolMode) {
-  const registry = createRegistry()
-  const tools = mode === "sandbox" ? sandboxTools() : []
-  if (tools.length > 0) {
-    registry.install(defineExtension({ name: "spike-sandbox", tools }))
+function optionalTools(options: SpikeHarnessOptions | undefined) {
+  const tools = []
+  const enabled = selectHostedExtensions(options?.extensions ?? [])
+  if (enabled.enabled.includes("workspace-status")) {
+    tools.push(
+      defineTool({
+        name: "workspace_status",
+        description: "Report that the workspace-status extension is active.",
+        parameters: Type.Object({}),
+        execute: () =>
+          Promise.resolve({
+            output: [
+              { type: "text" as const, text: "workspace-status active" },
+            ],
+          }),
+      })
+    )
   }
-  return { registry, toolNames: tools.map((tool) => tool.name) }
+  if (options?.codemode) {
+    tools.push(
+      defineTool({
+        name: "codemode",
+        description:
+          "Present tools through code mode. Plan mode never offers this.",
+        parameters: Type.Object({}),
+        execute: () =>
+          Promise.resolve({
+            output: [{ type: "text" as const, text: "code mode" }],
+          }),
+      })
+    )
+  }
+  for (const server of options?.mcpServers ?? []) {
+    try {
+      assertHttpsMcpServer(server)
+    } catch {
+      continue
+    }
+    const name = hostedMcpToolName(server.name, "list")
+    tools.push(
+      defineTool({
+        name,
+        description: `Tools from the HTTPS MCP server ${server.name}.`,
+        parameters: Type.Object({}),
+        execute: () =>
+          Promise.resolve({
+            output: [
+              {
+                type: "text" as const,
+                text: `MCP server ${server.name} is configured.`,
+              },
+            ],
+          }),
+      })
+    )
+  }
+  return tools
+}
+
+function registryFor(options?: SpikeHarnessOptions) {
+  const registry = createRegistry()
+  const chatMode: ChatModeRef = { current: "agent" }
+  const tools = [...sandboxTools(chatMode), ...optionalTools(options)]
+  registry.install(defineExtension({ name: "spike-sandbox", tools }))
+  return {
+    registry,
+    tools,
+    chatMode,
+    toolNames: tools.map((tool) => tool.name),
+  }
+}
+
+export function toolsForChatMode<T extends { name: string }>(
+  tools: Array<T>,
+  mode: ChatMode,
+  toolsAvailable: boolean
+): Array<T> {
+  if (!toolsAvailable) return []
+  return tools.filter((tool) => hostedToolAllowed(tool.name, mode))
 }
 
 async function assistantToolCall(
@@ -300,6 +398,10 @@ export type SpikeHarnessModel = { provider: string; modelId: string }
 export type SpikeHarnessOptions = {
   models?: unknown
   model?: SpikeHarnessModel
+  loop?: DurableLoopSettings
+  extensions?: Array<string>
+  codemode?: boolean
+  mcpServers?: Array<HostedMcpServer>
 }
 
 export type DurableConversationSummary = {
@@ -315,6 +417,13 @@ export class DurableConversationMissing extends Error {
   }
 }
 
+export class DurableConversationEmpty extends Error {
+  constructor(conversationId: string) {
+    super(`Pi Durable conversation ${conversationId} has no entries to fork`)
+    this.name = "DurableConversationEmpty"
+  }
+}
+
 export type OpenSpikeHarness = {
   toolNames: Array<string>
   rootId: () => Promise<string>
@@ -324,14 +433,22 @@ export type OpenSpikeHarness = {
   runBlockedBash: (command: string) => Promise<string>
   beginHanging: (tool: "read" | "bash") => Promise<void>
   modelReply: (prompt: string) => Promise<string>
+  appliedSettings: ReturnType<typeof harnessSettingsFromLoop>
   runAgentTurn: (input: {
     prompt: string
     conversationId?: string
     create: boolean
     model: SpikeHarnessModel
+    chatMode?: ChatMode
+    whenBusy?: "steer" | "followUp"
     onView: (view: ConversationView) => void
     signal?: AbortSignal
-  }) => Promise<{ conversationId: string }>
+  }) => Promise<{ conversationId: string; thinkingLevel?: string }>
+  submitBusy: (input: {
+    prompt: string
+    whenBusy: "steer" | "followUp"
+  }) => Promise<void>
+  forkConversation: (conversationId: string) => Promise<string>
   listConversations: () => Promise<Array<DurableConversationSummary>>
   readConversation: (
     conversationId: string
@@ -344,22 +461,30 @@ export async function openSpikeHarness(
   port: SpikeSandboxPort,
   options?: SpikeHarnessOptions
 ): Promise<OpenSpikeHarness> {
-  const { registry, toolNames } = registryFor(mode)
+  const { registry, tools, chatMode } = registryFor(options)
+  const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
+    (tool) => tool.name
+  )
   const agentModel = options?.model ?? { provider: "spike", modelId: "spike" }
+  const appliedSettings = harnessSettingsFromLoop(options?.loop)
   const harness = await Harness.open(
     storage,
     {
       models: (options?.models ?? spikeModels) as never,
       registry,
+      settings: appliedSettings,
       env: () => createSpikeExecutionEnv("spike-sandbox", port),
     },
     context
   )
+  let liveConversation:
+    Awaited<ReturnType<SpikeHarnessHandle["conversation"]>> | undefined
   const root = await harness.root(context, {
     agent: { model: agentModel },
   })
   return {
-    toolNames,
+    toolNames: offeredNames,
+    appliedSettings,
     resume: () => harness.resume(),
     rootId: () => Promise.resolve(String(root.id)),
     transcript: () => readTranscript(harness),
@@ -410,7 +535,12 @@ export async function openSpikeHarness(
         ? await harness.createConversation(
             {
               ownership: { kind: "ownerless" },
-              agent: { model: input.model },
+              agent: {
+                model: input.model,
+                ...(options?.loop?.thinkingLevel
+                  ? { thinkingLevel: options.loop.thinkingLevel }
+                  : {}),
+              },
             },
             context
           )
@@ -421,13 +551,32 @@ export async function openSpikeHarness(
       if (!conversation) {
         throw new DurableConversationMissing(input.conversationId ?? "")
       }
+      liveConversation = conversation
+      const chatModeValue = input.chatMode ?? "agent"
+      chatMode.current = chatModeValue
+      const selected = toolsForChatMode(
+        tools,
+        chatModeValue,
+        mode === "sandbox"
+      )
+      offeredNames.splice(
+        0,
+        offeredNames.length,
+        ...selected.map((tool) => tool.name)
+      )
+      // The harness registry only knows the model chosen for this turn, so a
+      // resumed conversation must switch to it before the next request.
+      await conversation.configure(
+        { tools: selected, model: input.model },
+        context
+      )
       const view = await conversation.viewState(context)
       input.onView(view.value)
       const gate = { stopped: false }
       const pump = (async () => {
         while (!gate.stopped) {
           if (input.signal?.aborted) {
-            throw new DOMException("Aborted", "AbortError")
+            break
           }
           await new Promise((resolve) => setTimeout(resolve, 40))
           input.onView(view.value)
@@ -435,7 +584,11 @@ export async function openSpikeHarness(
       })()
       try {
         const submission = await conversation.submit(
-          { type: "input", content: input.prompt },
+          {
+            type: "input",
+            content: input.prompt,
+            ...(input.whenBusy ? { whenBusy: input.whenBusy } : {}),
+          },
           context
         )
         await waitForAgentTurn(
@@ -447,10 +600,43 @@ export async function openSpikeHarness(
         )
       } finally {
         gate.stopped = true
+        liveConversation = undefined
         input.onView(view.value)
         await pump
       }
-      return { conversationId: String(conversation.id) }
+      const agent = await conversation.agent(context)
+      return {
+        conversationId: String(conversation.id),
+        thinkingLevel: agent.thinkingLevel,
+      }
+    },
+    async submitBusy(input) {
+      const conversation = liveConversation
+      if (!conversation) {
+        throw new Error("No hosted turn is in progress")
+      }
+      await conversation.submit(
+        { type: "input", content: input.prompt, whenBusy: input.whenBusy },
+        context
+      )
+    },
+    async forkConversation(conversationId) {
+      const conversation = await harness.conversation(
+        asConversationId(conversationId),
+        context
+      )
+      if (!conversation) throw new DurableConversationMissing(conversationId)
+      const at = (await conversation.viewState(context)).value.entries.at(
+        -1
+      )?.id
+      if (at === undefined) throw new DurableConversationEmpty(conversationId)
+      // No agent override: a fork inherits the parent's agent at the fork entry.
+      const forked = await conversation.fork(
+        at,
+        { ownership: { kind: "ownerless" } },
+        context
+      )
+      return String(forked.id)
     },
     async listConversations() {
       const page = await harness.commit(

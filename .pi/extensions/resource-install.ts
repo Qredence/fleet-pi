@@ -1,18 +1,12 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import {
-  resolveHarnessWriteTarget,
-  type HarnessSandboxWriter,
-} from "./lib/harness-write"
-import {
-  installWorkspaceResource,
-  type ResourceInstallKind,
-  type ResourceInstallParams,
-  type ResourceInstallSourceType,
-} from "./lib/resource-install"
+import { resolveHarnessWriteTarget } from "./lib/harness-write"
+import { installWorkspaceResource } from "./lib/resource-install"
+import type { HarnessSandboxWriter } from "./lib/harness-write"
+import type { ResourceInstallParams } from "./lib/resource-install"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 export default function resourceInstallExtension(pi: ExtensionAPI) {
   pi.registerTool({
@@ -69,10 +63,10 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
 
         const installParams = {
           activate: params.activate,
-          kind: params.kind as ResourceInstallKind,
+          kind: params.kind,
           name: params.name,
           source: params.source,
-          sourceType: params.sourceType as ResourceInstallSourceType,
+          sourceType: params.sourceType,
         }
         const result =
           target.kind === "sandbox"

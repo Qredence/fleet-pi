@@ -71,8 +71,11 @@ export interface UserSandboxHandle {
   daytonaSecretEnvVars: Array<string>
 }
 
+const MAX_LOCAL_SANDBOXES = 32
+const SANDBOX_IDLE_MS = 15 * 60 * 1000
 const userSandboxes = new Map<string, UserSandboxHandle>()
 const userSandboxRequests = new Map<string, Promise<UserSandboxHandle>>()
+const sandboxTouchedAt = new Map<string, number>()
 
 /**
  * Daytona is enabled when the caller has a userId and a resolved API key.
@@ -255,8 +258,27 @@ async function provisionUserSandbox(
     daytonaSecretEnvVars: mountedEnvVars,
   }
 
-  userSandboxes.set(config.userId, handle)
+  rememberUserSandbox(config.userId, handle)
   return handle
+}
+
+function rememberUserSandbox(userId: string, handle: UserSandboxHandle) {
+  const now = Date.now()
+  for (const [cachedId, touchedAt] of sandboxTouchedAt) {
+    if (now - touchedAt < SANDBOX_IDLE_MS) continue
+    userSandboxes.delete(cachedId)
+    sandboxTouchedAt.delete(cachedId)
+  }
+  while (userSandboxes.size >= MAX_LOCAL_SANDBOXES) {
+    const oldest = [...sandboxTouchedAt.entries()]
+      .sort((left, right) => left[1] - right[1])
+      .at(0)
+    if (!oldest) break
+    userSandboxes.delete(oldest[0])
+    sandboxTouchedAt.delete(oldest[0])
+  }
+  userSandboxes.set(userId, handle)
+  sandboxTouchedAt.set(userId, now)
 }
 
 async function maybeRecreateForSecretsChange(
@@ -339,11 +361,13 @@ export function getInFlightUserSandbox(
 export function clearSandboxCache(): void {
   userSandboxes.clear()
   userSandboxRequests.clear()
+  sandboxTouchedAt.clear()
 }
 
 export function clearUserSandboxCache(userId: string): void {
   userSandboxes.delete(userId)
   userSandboxRequests.delete(userId)
+  sandboxTouchedAt.delete(userId)
 }
 
 function buildLabels(
