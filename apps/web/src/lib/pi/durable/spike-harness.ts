@@ -576,7 +576,7 @@ export async function openSpikeHarness(
       const pump = (async () => {
         while (!gate.stopped) {
           if (input.signal?.aborted) {
-            throw new DOMException("Aborted", "AbortError")
+            break
           }
           await new Promise((resolve) => setTimeout(resolve, 40))
           input.onView(view.value)
