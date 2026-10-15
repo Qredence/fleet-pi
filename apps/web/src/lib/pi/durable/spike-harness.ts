@@ -12,11 +12,18 @@ import {
   agentWorkspaceBashBlock,
   agentWorkspaceMutationBlock,
 } from "../command-policy"
-import { classifyToolPath } from "../../../../../../.pi/extensions/lib/mutation-tier"
+import { assertHttpsMcpServer, hostedMcpToolName } from "./durable-mcp"
 import { harnessSettingsFromLoop } from "./durable-loop-settings"
+import { selectHostedExtensions } from "./hosted-extensions"
+import {
+  hostedBashBlock,
+  hostedToolAllowed,
+  hostedWriteBlock,
+} from "./hosted-tool-registry"
 import { createSpikeExecutionEnv } from "./spike-env"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 import type { DurableLoopSettings } from "./durable-loop-settings"
+import type { HostedMcpServer } from "./durable-mcp"
 import type {
   ConversationView,
   Storage,
@@ -147,43 +154,6 @@ function requireEnv(api: ToolExecutionApi) {
 
 type ChatModeRef = { current: ChatMode }
 
-function systemPath(path: string) {
-  const classified = classifyToolPath(path)
-  return (
-    classified.scoped &&
-    (classified.relativePath === "system" ||
-      classified.relativePath.startsWith("system/"))
-  )
-}
-
-function mutationGate(
-  mode: ChatMode,
-  path: string,
-  confirm: boolean | undefined
-) {
-  if (mode === "harness" && systemPath(path)) {
-    if (confirm === true) return undefined
-    return "Confirmation required before a tool writes system/."
-  }
-  return agentWorkspaceMutationBlock(path)
-}
-
-function bashGate(
-  mode: ChatMode,
-  command: string,
-  confirm: boolean | undefined
-) {
-  if (mode === "harness" && confirm === true) {
-    const block = agentWorkspaceBashBlock(command)
-    if (block?.includes("system/")) return undefined
-    return block
-  }
-  if (mode === "harness" && /(?:^|[\s"'`])system\//.test(command)) {
-    return "Confirmation required before a tool writes system/."
-  }
-  return agentWorkspaceBashBlock(command)
-}
-
 function sandboxTools(mode: ChatModeRef) {
   const read = defineTool({
     name: "read",
@@ -219,7 +189,7 @@ function sandboxTools(mode: ChatModeRef) {
       args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = mutationGate(mode.current, args.path, args.confirm)
+      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -242,7 +212,7 @@ function sandboxTools(mode: ChatModeRef) {
       args: { path: string; content: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = mutationGate(mode.current, args.path, args.confirm)
+      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -264,7 +234,7 @@ function sandboxTools(mode: ChatModeRef) {
       args: { command: string; confirm?: boolean },
       api: ToolExecutionApi
     ) => {
-      const block = bashGate(mode.current, args.command, args.confirm)
+      const block = hostedBashBlock(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
       const result = await requireEnv(api).exec(
@@ -283,10 +253,64 @@ function sandboxTools(mode: ChatModeRef) {
   return [read, search, write, edit, bash]
 }
 
-function registryFor() {
+function optionalTools(options: SpikeHarnessOptions | undefined) {
+  const tools = []
+  const enabled = selectHostedExtensions(options?.extensions ?? [])
+  if (enabled.enabled.includes("workspace-status")) {
+    tools.push(
+      defineTool({
+        name: "workspace_status",
+        description: "Report that the workspace-status extension is active.",
+        parameters: Type.Object({}),
+        execute: () => ({
+          output: [{ type: "text" as const, text: "workspace-status active" }],
+        }),
+      })
+    )
+  }
+  if (options?.codemode) {
+    tools.push(
+      defineTool({
+        name: "codemode",
+        description:
+          "Present tools through code mode. Plan mode never offers this.",
+        parameters: Type.Object({}),
+        execute: () => ({
+          output: [{ type: "text" as const, text: "code mode" }],
+        }),
+      })
+    )
+  }
+  for (const server of options?.mcpServers ?? []) {
+    try {
+      assertHttpsMcpServer(server)
+    } catch {
+      continue
+    }
+    const name = hostedMcpToolName(server.name, "list")
+    tools.push(
+      defineTool({
+        name,
+        description: `Tools from the HTTPS MCP server ${server.name}.`,
+        parameters: Type.Object({}),
+        execute: () => ({
+          output: [
+            {
+              type: "text" as const,
+              text: `MCP server ${server.name} is configured.`,
+            },
+          ],
+        }),
+      })
+    )
+  }
+  return tools
+}
+
+function registryFor(options?: SpikeHarnessOptions) {
   const registry = createRegistry()
   const chatMode: ChatModeRef = { current: "agent" }
-  const tools = sandboxTools(chatMode)
+  const tools = [...sandboxTools(chatMode), ...optionalTools(options)]
   registry.install(defineExtension({ name: "spike-sandbox", tools }))
   return {
     registry,
@@ -302,12 +326,7 @@ export function toolsForChatMode<T extends { name: string }>(
   toolsAvailable: boolean
 ): Array<T> {
   if (!toolsAvailable) return []
-  if (mode === "plan") {
-    return tools.filter(
-      (tool) => tool.name === "read" || tool.name === "search"
-    )
-  }
-  return tools
+  return tools.filter((tool) => hostedToolAllowed(tool.name, mode))
 }
 
 async function assistantToolCall(
@@ -375,6 +394,9 @@ export type SpikeHarnessOptions = {
   models?: unknown
   model?: SpikeHarnessModel
   loop?: DurableLoopSettings
+  extensions?: Array<string>
+  codemode?: boolean
+  mcpServers?: Array<HostedMcpServer>
 }
 
 export type DurableConversationSummary = {
@@ -427,7 +449,7 @@ export async function openSpikeHarness(
   port: SpikeSandboxPort,
   options?: SpikeHarnessOptions
 ): Promise<OpenSpikeHarness> {
-  const { registry, tools, chatMode } = registryFor()
+  const { registry, tools, chatMode } = registryFor(options)
   const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
     (tool) => tool.name
   )

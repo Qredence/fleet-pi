@@ -71,6 +71,10 @@ describe("durable conversation events", () => {
       type: "tool",
       part: { type: "tool-Write", state: "output-available", output: "ok" },
     })
+    const settled = events[2]
+    if (settled.type === "tool") {
+      expect(typeof settled.part.durationMs).toBe("number")
+    }
 
     const message = assistantMessageFromDiff(diff, "message-1")
     expect(

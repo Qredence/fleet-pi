@@ -156,19 +156,22 @@ describe("Pi Durable spike harness", () => {
     expect(transcript).toContain(SPIKE_MODEL_REPLY)
   })
 
-  it("applies saved thinking level and retry max on a new conversation", async () => {
-    const harness = await openSpikeHarness(
-      await sqliteFile("loop.sqlite"),
-      "model-only",
-      createScriptedPort(createSpikeTrace()),
-      {
-        loop: {
-          thinkingLevel: "high",
-          retry: { maxRetries: 7 },
-          compaction: { reserveTokens: 111 },
-        },
-      }
-    )
+  it("applies saved thinking level and retry max on a new conversation and a resumed open", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "fleet-pi-spike-"))
+    const file = join(dir, "loop.sqlite")
+    const loop = {
+      thinkingLevel: "high" as const,
+      retry: { maxRetries: 7 },
+      compaction: { reserveTokens: 111 },
+    }
+    const open = async () =>
+      openSpikeHarness(
+        await openNodeSqliteStorage(file),
+        "model-only",
+        createScriptedPort(createSpikeTrace()),
+        { loop }
+      )
+    const harness = await open()
 
     expect(harness.appliedSettings?.retry?.maxRetries).toBe(7)
     expect(harness.appliedSettings?.compaction?.reserveTokens).toBe(111)
@@ -179,6 +182,50 @@ describe("Pi Durable spike harness", () => {
       onView: () => undefined,
     })
     expect(turn.thinkingLevel).toBe("high")
+
+    const resumed = await open()
+    expect(resumed.appliedSettings?.retry?.maxRetries).toBe(7)
+    expect(resumed.appliedSettings?.compaction?.reserveTokens).toBe(111)
+  })
+
+  it("loads code mode, an activated extension, and one HTTPS MCP tool", async () => {
+    const plain = await openSpikeHarness(
+      await sqliteFile("plain-tools.sqlite"),
+      "sandbox",
+      createScriptedPort(createSpikeTrace())
+    )
+    expect(plain.toolNames).not.toContain("codemode")
+    expect(plain.toolNames).not.toContain("workspace_status")
+    expect(plain.toolNames).not.toContain("docs_list")
+
+    const httpOnly = await openSpikeHarness(
+      await sqliteFile("http-mcp.sqlite"),
+      "sandbox",
+      createScriptedPort(createSpikeTrace()),
+      { mcpServers: [{ name: "docs", url: "http://example.com/mcp" }] }
+    )
+    expect(httpOnly.toolNames).not.toContain("docs_list")
+
+    const expanded = await openSpikeHarness(
+      await sqliteFile("expanded-tools.sqlite"),
+      "sandbox",
+      createScriptedPort(createSpikeTrace()),
+      {
+        codemode: true,
+        extensions: ["workspace-status"],
+        mcpServers: [{ name: "docs", url: "https://example.com/mcp" }],
+      }
+    )
+    expect(expanded.toolNames).toEqual(
+      expect.arrayContaining(["codemode", "workspace_status", "docs_list"])
+    )
+    expect(
+      toolsForChatMode(
+        expanded.toolNames.map((name) => ({ name })),
+        "plan",
+        true
+      ).map((tool) => tool.name)
+    ).toEqual(["read", "search"])
   })
 
   it("sends bash through the Daytona sandbox port", async () => {

@@ -14,14 +14,28 @@ describe("hosted extensions, code mode, and MCP", () => {
     expect(selected.unavailable).toEqual(["extensions/vendor/filechanges.ts"])
   })
 
-  it("keeps code mode off the plan tool list", () => {
-    const tools = [{ name: "read" }, { name: "search" }, { name: "codemode" }]
+  it("keeps code mode and MCP off the plan tool list", () => {
+    const tools = [
+      { name: "read" },
+      { name: "search" },
+      { name: "codemode" },
+      { name: "docs_list" },
+    ]
     expect(
       toolsForChatMode(tools, "plan", true).map((tool) => tool.name)
     ).toEqual(["read", "search"])
     expect(
       toolsForChatMode(tools, "agent", true).map((tool) => tool.name)
-    ).toContain("codemode")
+    ).toEqual(["read", "search", "codemode", "docs_list"])
+    expect(
+      toolsForChatMode(
+        tools.filter(
+          (tool) => tool.name !== "codemode" && tool.name !== "docs_list"
+        ),
+        "agent",
+        true
+      ).map((tool) => tool.name)
+    ).toEqual(["read", "search"])
   })
 
   it("refuses stdio and non-https MCP servers", () => {

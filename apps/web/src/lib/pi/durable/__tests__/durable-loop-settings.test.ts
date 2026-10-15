@@ -7,7 +7,12 @@ import {
 describe("durable loop settings", () => {
   it("maps a saved reserve and retry max onto harness settings", () => {
     const loop = durableLoopSettingsFromProject({
-      compaction: { reserveTokens: 111, backgroundTokens: 50 },
+      compaction: {
+        enabled: true,
+        reserveTokens: 111,
+        keepRecentTokens: 80,
+        backgroundTokens: 50,
+      },
       retry: { maxRetries: 7, maxAgentDelayMs: 4000 },
       steeringMode: "all",
       followUpMode: "one-at-a-time",
@@ -15,7 +20,12 @@ describe("durable loop settings", () => {
     })
 
     expect(harnessSettingsFromLoop(loop)).toEqual({
-      compaction: { reserveTokens: 111, backgroundTokens: 50 },
+      compaction: {
+        enabled: true,
+        reserveTokens: 111,
+        keepRecentTokens: 80,
+        backgroundTokens: 50,
+      },
       retry: { maxRetries: 7, maxAgentDelayMs: 4000 },
       steeringMode: "all",
       followUpMode: "one-at-a-time",

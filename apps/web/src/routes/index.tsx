@@ -184,6 +184,7 @@ function ChatWorkspaceShell() {
     onModeChange: handleModeChange,
     persistSession,
     hostedAgentOnly,
+    steeringMode: settingsData?.effective.steeringMode,
   })
   const sendWhenModelReady = useSendWhenModelReady(
     sendMessage,

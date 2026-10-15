@@ -115,6 +115,20 @@ export function durableLoopSettingsKey(loop: DurableLoopSettings | undefined) {
   return JSON.stringify(loop ?? {})
 }
 
+export function hostedHarnessKey(options: {
+  loop?: DurableLoopSettings
+  extensions?: Array<string>
+  codemode?: boolean
+  mcpServers?: Array<{ name: string; url: string }>
+}) {
+  return JSON.stringify({
+    loop: options.loop ?? {},
+    extensions: options.extensions ?? [],
+    codemode: options.codemode === true,
+    mcpServers: options.mcpServers ?? [],
+  })
+}
+
 function dropUndefined<T extends Record<string, unknown>>(record: T) {
   return Object.fromEntries(
     Object.entries(record).filter((entry) => entry[1] !== undefined)

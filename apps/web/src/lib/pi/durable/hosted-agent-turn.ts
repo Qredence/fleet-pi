@@ -49,9 +49,9 @@ export async function streamHostedAgentTurn(input: {
     )
   }
   const sandboxStatus = await readHostedSandboxStatus(input.userId)
-  const loop = durableLoopSettingsFromProject(
-    await loadUserProjectSettings(input.userId)
-  )
+  const project = await loadUserProjectSettings(input.userId)
+  const loop = durableLoopSettingsFromProject(project)
+  const extras = hostedSessionExtras(project)
   const workspace = hostedWorkspaceStatus(sandboxStatus)
   const create = !isDurableSessionId(input.sessionId)
   const conversationId =
@@ -75,6 +75,13 @@ export async function streamHostedAgentTurn(input: {
         ...(input.mode ? { mode: input.mode } : {}),
         ...(input.whenBusy ? { whenBusy: input.whenBusy } : {}),
         ...(Object.keys(loop).length > 0 ? { loop } : {}),
+        ...(extras.extensions.length > 0
+          ? { extensions: extras.extensions }
+          : {}),
+        ...(extras.codemode ? { codemode: true } : {}),
+        ...(extras.mcpServers.length > 0
+          ? { mcpServers: extras.mcpServers }
+          : {}),
         ...(sandboxStatus.sandboxReady &&
         sandboxStatus.apiKey &&
         sandboxStatus.sandboxId
@@ -118,6 +125,56 @@ export async function deleteHostedDurableSession(
     return { ok: false, reason: "unavailable" }
   }
   return { ok: true }
+}
+
+function hostedSessionExtras(stored: Record<string, unknown> | null) {
+  const extensions = Array.isArray(stored?.extensions)
+    ? stored.extensions.filter(
+        (item): item is string => typeof item === "string"
+      )
+    : []
+  const codemodeRecord =
+    stored?.codemode &&
+    typeof stored.codemode === "object" &&
+    !Array.isArray(stored.codemode)
+      ? (stored.codemode as { enabled?: unknown })
+      : undefined
+  const mcpServers = Array.isArray(stored?.mcpServers)
+    ? stored.mcpServers.flatMap((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return []
+        const record = item as {
+          name?: unknown
+          url?: unknown
+          headers?: unknown
+        }
+        if (typeof record.name !== "string" || typeof record.url !== "string") {
+          return []
+        }
+        const headers =
+          record.headers &&
+          typeof record.headers === "object" &&
+          !Array.isArray(record.headers)
+            ? Object.fromEntries(
+                Object.entries(record.headers).filter(
+                  (entry): entry is [string, string] =>
+                    typeof entry[1] === "string"
+                )
+              )
+            : undefined
+        return [
+          {
+            name: record.name,
+            url: record.url,
+            ...(headers ? { headers } : {}),
+          },
+        ]
+      })
+    : []
+  return {
+    extensions,
+    codemode: codemodeRecord?.enabled === true,
+    mcpServers,
+  }
 }
 
 function hostedWorkspaceStatus(

@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { toast } from "sonner"
 import { createTextMessage } from "./chat-message-helpers"
 import { applyChatStreamEvent } from "./chat-stream-state"
+import { hostedWhenBusy } from "./hosted-busy-delivery"
 import { tryRecoverForbiddenSession } from "./use-pi-chat-forbidden-session"
 import type { MutableRefObject } from "react"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
@@ -50,6 +51,7 @@ export type UsePiChatMessagingOptions = PiChatMessagingRefs &
     recoverFromForbiddenSession: () => Promise<void>
     refreshSessions: () => Promise<void>
     status: ChatStatus
+    steeringMode?: string
   }
 
 export function usePiChatMessaging({
@@ -73,6 +75,7 @@ export function usePiChatMessaging({
   setSessionMetadataSynced,
   setStatus,
   status,
+  steeringMode,
 }: UsePiChatMessagingOptions) {
   const handleStreamEvent = useCallback(
     (event: ChatStreamEvent, assistantIdRef: { current: string | null }) => {
@@ -183,7 +186,7 @@ export function usePiChatMessaging({
           await queueFollowUp(
             trimmed,
             requestMode,
-            hostedAgentOnly ? "steer" : "followUp"
+            hostedWhenBusy({ hostedAgentOnly, steeringMode })
           )
         } catch (err) {
           const nextError = err instanceof Error ? err : new Error(String(err))
@@ -266,6 +269,7 @@ export function usePiChatMessaging({
       setMessagesSynced,
       setStatus,
       status,
+      steeringMode,
     ]
   )
 

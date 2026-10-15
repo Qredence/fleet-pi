@@ -37,6 +37,8 @@ export type UsePiChatOptions = {
   onModeChange?: (mode: ChatMode) => void
   persistSession: (metadata: ChatSessionMetadata) => void
   hostedAgentOnly?: boolean
+  /** Saved Settings › Agent loop steering mode. */
+  steeringMode?: string
 }
 
 export function usePiChat(
@@ -50,6 +52,7 @@ export function usePiChat(
     onModeChange,
     persistSession,
     hostedAgentOnly = false,
+    steeringMode,
   } = options
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [status, setStatus] = useState<ChatStatus>("ready")
@@ -292,6 +295,7 @@ export function usePiChat(
     setSessionMetadataSynced,
     setStatus,
     status,
+    steeringMode,
   })
 
   const stop = useCallback(() => {

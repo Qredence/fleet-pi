@@ -6,7 +6,7 @@ import {
   eventsFromConversationView,
   messagesFromEntries,
 } from "./durable-events"
-import { durableLoopSettingsKey } from "./durable-loop-settings"
+import { hostedHarnessKey } from "./durable-loop-settings"
 import { durableSessionId } from "./durable-session"
 import { openDaytonaSandboxPort } from "./durable-sandbox-port"
 import {
@@ -77,6 +77,13 @@ type AgentTurnBody = {
   whenBusy?: "steer" | "followUp"
   mode?: ChatMode
   loop?: DurableLoopSettings
+  extensions?: Array<string>
+  codemode?: boolean
+  mcpServers?: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }
 
 const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
@@ -337,6 +344,9 @@ export class UserPiDurable extends DurableObject {
           models,
           model: modelRef,
           loop: body.loop,
+          extensions: body.extensions,
+          codemode: body.codemode,
+          mcpServers: body.mcpServers,
         },
         model,
         portChanged
@@ -535,7 +545,7 @@ export class UserPiDurable extends DurableObject {
     this.#mode = mode
     this.#options = options
     this.#modelConfig = modelConfig
-    this.#loopKey = durableLoopSettingsKey(options?.loop)
+    this.#loopKey = hostedHarnessKey(options ?? {})
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
     this.#harness = await openSpikeHarness(storage, mode, this.#port, options)
@@ -548,7 +558,7 @@ export class UserPiDurable extends DurableObject {
     modelConfig: DurableAgentModelConfig,
     portChanged: boolean
   ): Promise<OpenSpikeHarness> {
-    const loopKey = durableLoopSettingsKey(options.loop)
+    const loopKey = hostedHarnessKey(options)
     if (
       !portChanged &&
       this.#harness !== undefined &&

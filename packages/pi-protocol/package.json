@@ -28,6 +28,7 @@
     "./chat-protocol.zod": "./src/chat-protocol.zod.ts",
     "./model-patterns": "./src/model-patterns.ts",
     "./provider-catalog": "./src/provider-catalog.ts",
-    "./openui-prompt": "./src/openui-prompt.ts"
+    "./openui-prompt": "./src/openui-prompt.ts",
+    "./hosted-resources": "./src/hosted-resources.ts"
   }
 }

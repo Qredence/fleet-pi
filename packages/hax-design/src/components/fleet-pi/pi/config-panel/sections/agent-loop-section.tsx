@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Input } from "../../../../input"
 import { Select } from "../../../../select"
 import { Switch } from "../../../../switch"
+import { Button } from "../../../../button"
 import { ItemRow } from "../../../primitives/item-row"
 import type {
   ChatDeliveryMode,
@@ -199,9 +200,155 @@ export function AgentLoopSection({
             })
           }
         />
+        <McpServerList
+          disabled={disabled}
+          servers={settings?.mcpServers ?? []}
+          onSave={onSave}
+        />
       </div>
     </div>
   )
+}
+
+function McpServerList({
+  disabled,
+  onSave,
+  servers,
+}: {
+  disabled: boolean
+  onSave: (update: ChatPiSettingsUpdate) => Promise<void>
+  servers: NonNullable<ChatPiSettings["mcpServers"]>
+}) {
+  const [name, setName] = useState("")
+  const [url, setUrl] = useState("")
+  const [headers, setHeaders] = useState("")
+  const [error, setError] = useState<string | undefined>()
+  return (
+    <div className="flex flex-col gap-2">
+      <ItemRow
+        interactive={false}
+        title="MCP servers"
+        subtitle="HTTPS only. Tools appear after the next hosted turn reloads."
+      />
+      {servers.map((server) => (
+        <ItemRow
+          key={`${server.name}:${server.url}`}
+          title={server.name}
+          subtitle={server.url}
+          trailing={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() =>
+                void onSave({
+                  mcpServers: servers.filter(
+                    (item) => item.name !== server.name
+                  ),
+                })
+              }
+            >
+              Remove
+            </Button>
+          }
+        />
+      ))}
+      <ItemRow
+        title="Server name"
+        trailing={
+          <Input
+            aria-label="MCP server name"
+            className="w-[180px]"
+            disabled={disabled}
+            onChange={(event) => setName(event.target.value)}
+            value={name}
+          />
+        }
+      />
+      <ItemRow
+        title="HTTPS URL"
+        trailing={
+          <Input
+            aria-label="MCP server URL"
+            className="w-[220px]"
+            disabled={disabled}
+            onChange={(event) => setUrl(event.target.value)}
+            value={url}
+          />
+        }
+      />
+      <ItemRow
+        title="Headers"
+        subtitle="Optional. One Name=value pair per line."
+        trailing={
+          <Input
+            aria-label="MCP server headers"
+            className="w-[220px]"
+            disabled={disabled}
+            onChange={(event) => setHeaders(event.target.value)}
+            value={headers}
+          />
+        }
+      />
+      {error ? <p className="px-1 text-xs text-destructive">{error}</p> : null}
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled}
+        onClick={() => {
+          let parsed: URL
+          try {
+            parsed = new URL(url)
+          } catch {
+            setError("Enter an HTTPS URL.")
+            return
+          }
+          if (parsed.protocol !== "https:" || !name.trim()) {
+            setError("MCP servers need a name and an HTTPS URL.")
+            return
+          }
+          const parsedHeaders = parseMcpHeaders(headers)
+          if (parsedHeaders === null) {
+            setError("Headers use one Name=value pair per line.")
+            return
+          }
+          setError(undefined)
+          void onSave({
+            mcpServers: [
+              ...servers.filter((item) => item.name !== name.trim()),
+              {
+                name: name.trim(),
+                url: parsed.toString(),
+                ...(parsedHeaders ? { headers: parsedHeaders } : {}),
+              },
+            ],
+          })
+          setName("")
+          setUrl("")
+          setHeaders("")
+        }}
+      >
+        Add MCP server
+      </Button>
+    </div>
+  )
+}
+
+function parseMcpHeaders(
+  value: string
+): Record<string, string> | null | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const headers: Record<string, string> = {}
+  for (const line of trimmed.split("\n")) {
+    const splitAt = line.indexOf("=")
+    const key = splitAt > 0 ? line.slice(0, splitAt).trim() : ""
+    const headerValue = splitAt > 0 ? line.slice(splitAt + 1).trim() : ""
+    if (!key || !headerValue) return null
+    headers[key] = headerValue
+  }
+  return headers
 }
 
 function NumberRow({
