@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
-  Cpu,
-  HardDrive,
-  KeyRound,
-  Paintbrush,
-  Settings,
-  SlidersHorizontal,
-  Sparkles,
-} from "lucide-react"
-
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -43,227 +33,12 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "../../sidebar"
-
-import {
-  useChatPanelDataContext,
-  useSettingsActionsContext,
-} from "../layout/right-panel-context"
 import { DiscreteTabs } from "../primitives/discrete-tab"
-import { PersonalizationSection } from "./config-panel/sections/personalization-section"
-import { ProviderCredentialsSection } from "./config-panel/sections/provider-credentials-section"
-import { ModelDefaultsSection } from "./config-panel/sections/model-defaults-section"
-import { ResourcesSection } from "./config-panel/sections/resources-section"
-import { AgentLoopSection } from "./config-panel/sections/agent-loop-section"
-import { SandboxProviderSection } from "./config-panel/sections/sandbox-provider-section"
-
-import {
-  modelSettings,
-  resourceSettings,
-  sameJson,
-  summarizeResources,
-} from "./config-panel/shared/settings-mappers"
-import { useModelDefaultsForm } from "./settings/use-model-defaults-form"
-import { useResourcesForm } from "./settings/use-resources-form"
-import type { ReactNode } from "react"
-import type {
-  ChatPiSettings,
-  ChatPiSettingsUpdate,
-} from "@workspace/pi-protocol/chat-protocol"
-
-type LucideIcon = typeof Cpu
-
-type SettingsSectionId =
-  | "appearance"
-  | "sandbox"
-  | "providers"
-  | "llm-models"
-  | "skills"
-  | "agent-loop"
-  | "pi-harness"
-
-type SettingsSection = {
-  id: SettingsSectionId
-  title: string
-  icon: LucideIcon
-}
-
-const SETTINGS_SECTIONS: Array<SettingsSection> = [
-  { id: "appearance", title: "Appearance", icon: Paintbrush },
-  { id: "sandbox", title: "Sandbox", icon: HardDrive },
-  { id: "providers", title: "Providers", icon: KeyRound },
-  { id: "llm-models", title: "LLM Models", icon: Cpu },
-  { id: "skills", title: "Skills", icon: Sparkles },
-  { id: "agent-loop", title: "Agent loop", icon: SlidersHorizontal },
-  { id: "pi-harness", title: "Pi Harness", icon: Settings },
-]
-
-function isSettingsSectionId(value: string): value is SettingsSectionId {
-  return SETTINGS_SECTIONS.some((section) => section.id === value)
-}
-
-/**
- * Thin composer over the per-section form hooks; keeps the dialog-level
- * draft core, tab state, saving orchestration, and the discard flow.
- */
-function useSettingsForm() {
-  const {
-    isLoadingProviders,
-    isUpdatingProvider,
-    modelCatalog,
-    onDiscoverModels,
-    onRemoveProvider,
-    onThemePreferenceChange,
-    onUpdateProvider,
-    providers = [],
-    saveSettings,
-    settings,
-    settingsLoading,
-    themePreference,
-  } = useSettingsActionsContext()
-  const { models, resources } = useChatPanelDataContext()
-
-  const [draft, setDraft] = useState<ChatPiSettings | null>(null)
-  const [savingSection, setSavingSection] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<SettingsSectionId>("appearance")
-
-  const resourceSummary = summarizeResources(resources)
-
-  const updateDraft = (
-    updater: (current: ChatPiSettings) => ChatPiSettings
-  ) => {
-    setDraft((current: ChatPiSettings | null) =>
-      current ? updater(current) : current
-    )
-  }
-
-  const {
-    packageRows,
-    packageError,
-    resourceDirty,
-    handlePackageRowsChange,
-    revertResourceDraft,
-  } = useResourcesForm({ draft, settings, updateDraft })
-
-  const {
-    modelFilter,
-    setModelFilter,
-    modelOptions,
-    modelDirty,
-    addModels,
-    removeModel,
-    discoverProvider,
-    discoveringProviderId,
-    commitModelSettings,
-    revertModelDraft,
-    resetCommittedModelBaseline,
-  } = useModelDefaultsForm({
-    draft,
-    setDraft,
-    updateDraft,
-    settings,
-    providers,
-    models,
-    modelCatalog,
-    onDiscoverModels,
-    saveSettings,
-    setSavingSection,
-  })
-
-  const hasUnsavedChanges = modelDirty || resourceDirty
-
-  const resetDraft = () => {
-    if (!settings) return
-    // Only the draft is owned here; package rows/error reconcile in
-    // useResourcesForm's sync effect once draft settles.
-    setDraft(settings.effective)
-  }
-
-  useEffect(() => {
-    if (!settings) return
-
-    const nextDraft = settings.effective
-
-    if (draft && hasUnsavedChanges) return
-    if (draft && sameJson(draft, nextDraft)) return
-
-    setDraft(nextDraft)
-  }, [draft, hasUnsavedChanges, settings])
-
-  const saveSection = async (section: string, update: ChatPiSettingsUpdate) => {
-    if (section === "models" && draft) {
-      const saved = await commitModelSettings(draft)
-      if (!saved) {
-        throw new Error("Settings save failed")
-      }
-      return
-    }
-
-    setSavingSection(section)
-    try {
-      await saveSettings(update)
-      toast.success("Pi settings saved")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Settings save failed"
-      )
-      throw error
-    } finally {
-      setSavingSection(null)
-    }
-  }
-
-  const requestCloseSettings = async (): Promise<
-    "close" | "discard-prompt" | "wait"
-  > => {
-    if (savingSection === "models") return "wait"
-    if (resourceDirty) return "discard-prompt"
-    // modelDirty already requires a non-null draft
-    if (modelDirty && draft) {
-      return (await commitModelSettings(draft, { silent: true }))
-        ? "close"
-        : "discard-prompt"
-    }
-    return "close"
-  }
-
-  return {
-    isLoadingProviders,
-    isUpdatingProvider,
-    onThemePreferenceChange,
-    onRemoveProvider,
-    onUpdateProvider,
-    providers,
-    resources,
-    settings,
-    settingsLoading,
-    themePreference,
-    draft,
-    savingSection,
-    packageRows,
-    packageError,
-    modelFilter,
-    setModelFilter,
-    activeTab,
-    setActiveTab,
-    resourceSummary,
-    modelOptions,
-    modelDirty,
-    resourceDirty,
-    revertResourceDraft,
-    revertModelDraft,
-    resetDraft,
-    updateDraft,
-    handlePackageRowsChange,
-    addModels,
-    removeModel,
-    discoverProvider,
-    discoveringProviderId,
-    saveSection,
-    requestCloseSettings,
-    resetCommittedModelBaseline,
-    chatModels: models,
-  }
-}
+import { settingsSectionPanes } from "./settings/settings-dialog-panes"
+import { useSettingsForm } from "./settings/use-settings-form"
+import { SETTINGS_SECTIONS, isSettingsSectionId } from "./settings-sections"
+import type { SettingsSectionId } from "./settings-sections"
+import type { LucideIcon } from "lucide-react"
 
 function SidebarNavItem({
   active,
@@ -296,51 +71,15 @@ export function SettingsDialog({
   /** When provided, selects this nav tab each time the dialog opens. */
   initialTab?: SettingsSectionId
 }) {
-  const {
-    isLoadingProviders,
-    isUpdatingProvider,
-    onThemePreferenceChange,
-    onRemoveProvider,
-    onUpdateProvider,
-    providers,
-    resources,
-    settings,
-    settingsLoading,
-    themePreference,
-    draft,
-    savingSection,
-    packageRows,
-    packageError,
-    modelFilter,
-    setModelFilter,
-    activeTab,
-    setActiveTab,
-    resourceSummary,
-    modelOptions,
-    modelDirty,
-    resourceDirty,
-    revertResourceDraft,
-    revertModelDraft,
-    resetDraft,
-    updateDraft,
-    handlePackageRowsChange,
-    addModels,
-    removeModel,
-    discoverProvider,
-    discoveringProviderId,
-    saveSection,
-    requestCloseSettings,
-    resetCommittedModelBaseline,
-    chatModels,
-  } = useSettingsForm()
-
+  const form = useSettingsForm()
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
   const [discardReason, setDiscardReason] = useState<"resource" | "model">(
     "resource"
   )
   const activeSection =
-    SETTINGS_SECTIONS.find((section) => section.id === activeTab) ??
+    SETTINGS_SECTIONS.find((section) => section.id === form.activeTab) ??
     SETTINGS_SECTIONS[0]
+  const panes = settingsSectionPanes(form)
 
   const handleOpenChange = (
     nextOpen: boolean,
@@ -353,7 +92,7 @@ export function SettingsDialog({
 
     eventDetails?.cancel()
     void (async () => {
-      const result = await requestCloseSettings()
+      const result = await form.requestCloseSettings()
       if (result === "close") {
         onOpenChange(false)
         return
@@ -362,14 +101,14 @@ export function SettingsDialog({
         toast.message("Saving model list…")
         return
       }
-      setDiscardReason(resourceDirty ? "resource" : "model")
+      setDiscardReason(form.resourceDirty ? "resource" : "model")
       setDiscardDialogOpen(true)
     })()
   }
 
   const handleDiscardChanges = () => {
-    resetDraft()
-    resetCommittedModelBaseline()
+    form.resetDraft()
+    form.resetCommittedModelBaseline()
     setDiscardDialogOpen(false)
     onOpenChange(false)
   }
@@ -377,108 +116,11 @@ export function SettingsDialog({
   const wasOpenRef = useRef(false)
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      resetCommittedModelBaseline()
-      if (initialTab) setActiveTab(initialTab)
+      form.resetCommittedModelBaseline()
+      if (initialTab) form.setActiveTab(initialTab)
     }
     wasOpenRef.current = open
-  }, [initialTab, open, resetCommittedModelBaseline, setActiveTab])
-
-  const resourcesPane = (scope: "skills" | "harness") => (
-    <ResourcesSection
-      scope={scope}
-      draft={draft}
-      onEnableSkillCommandsChange={(enableSkillCommands) =>
-        updateDraft((current) => ({
-          ...current,
-          enableSkillCommands,
-        }))
-      }
-      onExtensionsChange={(extensions) =>
-        updateDraft((current) => ({ ...current, extensions }))
-      }
-      onPackageRowsChange={handlePackageRowsChange}
-      onPromptsChange={(prompts) =>
-        updateDraft((current) => ({ ...current, prompts }))
-      }
-      onRevert={revertResourceDraft}
-      onSave={() => draft && saveSection("resources", resourceSettings(draft))}
-      onSkillsChange={(skills) =>
-        updateDraft((current) => ({ ...current, skills }))
-      }
-      onThemesChange={(themes) =>
-        updateDraft((current) => ({ ...current, themes }))
-      }
-      packageError={packageError}
-      packageRows={packageRows}
-      resourceDirty={resourceDirty}
-      resources={resources}
-      resourceSummary={resourceSummary}
-      saving={savingSection === "resources"}
-      settingsLoading={settingsLoading}
-    />
-  )
-
-  const panes: Record<SettingsSectionId, () => ReactNode> = {
-    appearance: () => (
-      <div className="flex flex-col gap-6">
-        <div>
-          <h3 className="text-lg font-medium">Appearance</h3>
-          <p className="text-sm text-muted-foreground">
-            Customize the look and feel of the interface.
-          </p>
-        </div>
-        <PersonalizationSection
-          onThemePreferenceChange={onThemePreferenceChange}
-          themePreference={themePreference}
-        />
-      </div>
-    ),
-    sandbox: () => (
-      <SandboxProviderSection
-        isLoading={isLoadingProviders ?? false}
-        isPending={isUpdatingProvider ?? false}
-        providers={providers}
-        onUpdateProvider={onUpdateProvider}
-      />
-    ),
-    providers: () => (
-      <ProviderCredentialsSection
-        isLoading={isLoadingProviders ?? false}
-        isPending={isUpdatingProvider ?? false}
-        providers={providers}
-        onRemoveProvider={onRemoveProvider}
-        onUpdateProvider={onUpdateProvider}
-      />
-    ),
-    "llm-models": () => (
-      <ModelDefaultsSection
-        draft={draft}
-        discoveringProviderId={discoveringProviderId}
-        modelDirty={modelDirty}
-        modelFilter={modelFilter}
-        modelOptions={modelOptions}
-        chatModels={chatModels}
-        onAddModels={addModels}
-        onDiscoverProvider={discoverProvider}
-        onModelFilterChange={setModelFilter}
-        onRemoveModel={removeModel}
-        providers={providers}
-        onRevert={revertModelDraft}
-        onSave={() => draft && saveSection("models", modelSettings(draft))}
-        saving={savingSection === "models"}
-        settingsLoading={settingsLoading}
-      />
-    ),
-    skills: () => resourcesPane("skills"),
-    "agent-loop": () => (
-      <AgentLoopSection
-        onSave={(update) => saveSection("agent-loop", update)}
-        saving={savingSection === "agent-loop"}
-        settings={settings?.effective ?? null}
-      />
-    ),
-    "pi-harness": () => resourcesPane("harness"),
-  }
+  }, [form, initialTab, open])
 
   return (
     // Nest AlertDialog under Dialog.Root so Base UI tracks nested open
@@ -500,13 +142,11 @@ export function SettingsDialog({
           enableKeyboardShortcut={false}
           persistState={false}
         >
-          {/* Left Sidebar */}
           <Sidebar
             collapsible="none"
             className="hidden h-full shrink-0 flex-col border-r border-border/40 bg-muted/20 md:flex md:w-[240px]"
           >
             <div className="flex h-14 shrink-0 items-center border-b border-border/40 p-4">
-              {/* Visual only — DialogTitle (sr-only) is the accessible name */}
               <span className="text-sm font-semibold">Settings</span>
             </div>
             <SidebarContent>
@@ -516,8 +156,8 @@ export function SettingsDialog({
                     {SETTINGS_SECTIONS.map((section) => (
                       <SidebarNavItem
                         key={section.id}
-                        active={activeTab === section.id}
-                        onClick={() => setActiveTab(section.id)}
+                        active={form.activeTab === section.id}
+                        onClick={() => form.setActiveTab(section.id)}
                         icon={section.icon}
                         label={section.title}
                       />
@@ -528,7 +168,6 @@ export function SettingsDialog({
             </SidebarContent>
           </Sidebar>
 
-          {/* Main Content Pane */}
           <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
             <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/10 bg-background px-6">
               <div className="flex flex-1 items-center justify-between">
@@ -552,22 +191,22 @@ export function SettingsDialog({
                 className="min-w-max"
                 size="compact"
                 tabs={SETTINGS_SECTIONS}
-                value={activeTab}
+                value={form.activeTab}
                 onValueChange={(next) => {
-                  if (isSettingsSectionId(next)) setActiveTab(next)
+                  if (isSettingsSectionId(next)) form.setActiveTab(next)
                 }}
               />
             </div>
 
             <ScrollArea className="min-h-0 flex-1">
               <div
-                id={`panel-${activeTab}`}
+                id={`panel-${form.activeTab}`}
                 role="tabpanel"
                 aria-label={activeSection.title}
                 tabIndex={0}
                 className="p-6 outline-none"
               >
-                {panes[activeTab]()}
+                {panes[form.activeTab]()}
               </div>
             </ScrollArea>
           </main>
