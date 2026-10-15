@@ -5,11 +5,7 @@ import { Type } from "typebox"
 import { resolveHarnessWriteTarget } from "./lib/harness-write"
 import { installWorkspaceResource } from "./lib/resource-install"
 import type { HarnessSandboxWriter } from "./lib/harness-write"
-import type {
-  ResourceInstallKind,
-  ResourceInstallParams,
-  ResourceInstallSourceType,
-} from "./lib/resource-install"
+import type { ResourceInstallParams } from "./lib/resource-install"
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 export default function resourceInstallExtension(pi: ExtensionAPI) {
