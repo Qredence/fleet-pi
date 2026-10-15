@@ -110,4 +110,125 @@ describe("chat stream state", () => {
       },
     ])
   })
+
+  it("labels an aborted done as Stopped and keeps a finished tool", () => {
+    const finished = applyChatStreamEvent(streamingTurn(), {
+      type: "done",
+      runId: "assistant-1",
+      stopReason: "aborted",
+      message: {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-Read",
+            toolCallId: "tool-1",
+            state: "output-available",
+            output: "notes",
+          },
+          {
+            type: "tool-Bash",
+            toolCallId: "tool-2",
+            state: "input-available",
+          },
+        ],
+      },
+      sessionId: "session-1",
+    })
+
+    expect(finished.snapshot.activityLabel).toBe("Stopped")
+    expect(finished.snapshot.messages[0]?.parts).toEqual([
+      {
+        type: "tool-Read",
+        toolCallId: "tool-1",
+        state: "output-available",
+        output: "notes",
+      },
+      {
+        type: "tool-Bash",
+        toolCallId: "tool-2",
+        state: "input-available",
+      },
+    ])
+  })
+
+  it("clears the activity label when a turn finishes", () => {
+    const finished = applyChatStreamEvent(
+      {
+        ...streamingTurn(),
+        snapshot: {
+          ...streamingTurn().snapshot,
+          activityLabel: "Compaction will retry",
+        },
+      },
+      {
+        type: "done",
+        runId: "assistant-1",
+        message: {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "Done" }],
+        },
+        sessionId: "session-1",
+      }
+    )
+
+    expect(finished.snapshot.activityLabel).toBeUndefined()
+  })
+
+  it("keeps a will-retry compaction label until the next compaction event", () => {
+    const started = applyChatStreamEvent(streamingTurn(), {
+      type: "compaction",
+      phase: "start",
+      reason: "context",
+    })
+    expect(started.snapshot.activityLabel).toBe("Compacting session")
+
+    const retrying = applyChatStreamEvent(streamingTurn(), {
+      type: "compaction",
+      phase: "end",
+      reason: "context",
+      aborted: false,
+      willRetry: true,
+      errorMessage: "context length",
+    })
+    expect(retrying.snapshot.activityLabel).toBe("Compaction will retry")
+
+    const aborted = applyChatStreamEvent(retrying, {
+      type: "compaction",
+      phase: "end",
+      reason: "context",
+      aborted: true,
+      willRetry: false,
+      errorMessage: "aborted",
+    })
+    expect(aborted.snapshot.activityLabel).toBe("Compaction aborted")
+
+    const failed = applyChatStreamEvent(streamingTurn(), {
+      type: "compaction",
+      phase: "end",
+      reason: "context",
+      aborted: false,
+      willRetry: false,
+      errorMessage: "model failed",
+    })
+    expect(failed.snapshot.activityLabel).toBe("Compaction failed")
+  })
 })
+
+function streamingTurn(): ChatStreamTransition {
+  return {
+    assistantId: "assistant-1",
+    snapshot: {
+      messages: [
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "" }],
+        },
+      ],
+      queue: EMPTY_QUEUE_STATE,
+      sessionMetadata: { sessionId: "session-1" },
+    },
+  }
+}
