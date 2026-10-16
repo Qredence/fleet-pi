@@ -52,9 +52,10 @@ or the chat migrate runner imports `chat-postgres-data-api-auth`.
 Hosted transcripts live on the Durable Object. The Neon `pi_*` projection is
 fail-open and is not the chat stream. The Neon Function pool stays at most 5
 connections when it still serves legacy JSONL sessions (limits below). Schedule
-`pnpm chat:maintain` weekly and alert when it fails. Declare a daily snapshot
-for the `main` branch and record that recovery point before a production
-promotion.
+`pnpm chat:maintain` weekly and alert when it fails. Production `main` has a
+daily snapshot schedule (see
+[Production backups and recovery](./neon-backup-recovery.md)); record the
+latest recovery point before a production promotion.
 
 ### Legacy Function Postgres pool (NEON-013)
 
