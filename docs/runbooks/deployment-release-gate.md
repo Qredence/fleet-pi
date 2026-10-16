@@ -80,14 +80,12 @@ Scope and concurrency:
 - **Neon Function / Node:** one module-scoped pool per process, so the cap is
   5 connections per Function instance. Requests beyond 5 concurrent queries
   queue, then fail after 5 s. Total connections = 5 x running instances.
-- **Cloudflare Worker:** I/O cannot cross requests, so the same factory runs
-  per request (`request-scope.ts`): up to 5 connections per in-flight request,
-  closed with the request. The Worker mirror is fail-open, so pool exhaustion
-  must not fail a turn.
+- **Cloudflare Worker:** uses the same factory per request, not this
+  module-scoped pool. See
+  [worker-postgres-connections.md](./worker-postgres-connections.md) (CF-003)
+  for the Worker budget.
 - The in-process Pi runtime cap is `MAX_CONCURRENT_RUNTIMES = 50`
   (`apps/web/src/lib/pi/server-runtime.ts`); runtimes share the 5 slots.
-- Better Auth uses a separate pool (`legacy-better-auth-server.ts`) with the
-  driver default `max` (10); it is not counted above.
 - Neon's pooled endpoint (PgBouncer) accepts far more client connections than
   this, so the 5-connection cap is the binding limit, not Neon.
 
