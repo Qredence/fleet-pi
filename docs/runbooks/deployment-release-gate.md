@@ -51,10 +51,49 @@ or the chat migrate runner imports `chat-postgres-data-api-auth`.
 
 Hosted transcripts live on the Durable Object. The Neon `pi_*` projection is
 fail-open and is not the chat stream. The Neon Function pool stays at most 5
-connections when it still serves legacy JSONL sessions. Schedule
+connections when it still serves legacy JSONL sessions (limits below). Schedule
 `pnpm chat:maintain` weekly and alert when it fails. Declare a daily snapshot
 for the `main` branch and record that recovery point before a production
 promotion.
+
+### Legacy Function Postgres pool (NEON-013)
+
+**How many DB connections can the legacy Function use? At most 5 per
+Function instance.**
+
+The pool is created by `createChatPostgresPool()` in
+`apps/web/src/lib/db/pi-session-ownership-db.ts` and used through
+`getChatPostgresPool()` by the `pi_*` mirror modules. `functions/chat.ts`
+(the Neon Function declared in `neon.ts`) reaches it through the chat runtime
+router when it serves legacy JSONL sessions.
+
+| Setting                   | Value                                           | Meaning                                             |
+| ------------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| `max`                     | `5`                                             | Hard cap on open connections per pool               |
+| `idleTimeoutMillis`       | `30_000`                                        | Idle connections close after 30 s                   |
+| `connectionTimeoutMillis` | `5_000`                                         | A query waiting for a free slot fails after 5 s     |
+| Max lifetime              | none                                            | Connections live until idle timeout or process exit |
+| Role                      | `fleet_pi_app` via `FLEET_PI_CHAT_DATABASE_URL` | Non-owner; RLS applies                              |
+
+Scope and concurrency:
+
+- **Neon Function / Node:** one module-scoped pool per process, so the cap is
+  5 connections per Function instance. Requests beyond 5 concurrent queries
+  queue, then fail after 5 s. Total connections = 5 x running instances.
+- **Cloudflare Worker:** I/O cannot cross requests, so the same factory runs
+  per request (`request-scope.ts`): up to 5 connections per in-flight request,
+  closed with the request. The Worker mirror is fail-open, so pool exhaustion
+  must not fail a turn.
+- The in-process Pi runtime cap is `MAX_CONCURRENT_RUNTIMES = 50`
+  (`apps/web/src/lib/pi/server-runtime.ts`); runtimes share the 5 slots.
+- Better Auth uses a separate pool (`legacy-better-auth-server.ts`) with the
+  driver default `max` (10); it is not counted above.
+- Neon's pooled endpoint (PgBouncer) accepts far more client connections than
+  this, so the 5-connection cap is the binding limit, not Neon.
+
+The pool stays: the Worker mirror, session ownership checks and recovery all
+use it, not only the legacy path. Change the numbers in
+`createChatPostgresPool()` and this table together.
 
 ## Preview Workers (PR)
 
