@@ -51,8 +51,8 @@ or the chat migrate runner imports `chat-postgres-data-api-auth`.
 
 Hosted transcripts live on the Durable Object. The Neon `pi_*` projection is
 fail-open and is not the chat stream. The Neon Function pool stays at most 5
-connections when it still serves legacy JSONL sessions (limits below). Schedule
-`pnpm chat:maintain` weekly and alert when it fails. Production `main` has a
+connections when it still serves legacy JSONL sessions (limits below). `pnpm chat:maintain`
+is retired (see below). Production `main` has a
 daily snapshot schedule (see
 [Production backups and recovery](./neon-backup-recovery.md)); record the
 latest recovery point before a production promotion.
@@ -93,6 +93,26 @@ Scope and concurrency:
 The pool stays: the Worker mirror, session ownership checks and recovery all
 use it, not only the legacy path. Change the numbers in
 `createChatPostgresPool()` and this table together.
+
+### `chat:maintain` retired (NEON-011)
+
+`pnpm chat:maintain` (`apps/web/scripts/maintain-chat-mirror.ts`) was removed
+and is not scheduled. It ran `VACUUM FULL` + `REINDEX` on `pi_user_settings`
+and `VACUUM ANALYZE` on four other `pi_*` tables. Nothing it did is still
+needed:
+
+- Migration `20260807_db_optimization_2` lowered
+  `autovacuum_vacuum_threshold` / `autovacuum_analyze_threshold` to 10 on
+  `pi_user_settings` and `pi_user_providers`, the only tables that never hit
+  the default thresholds. Neon autovacuum now keeps them and the larger
+  tables vacuumed and analyzed.
+- The `pi_*` projection is optional and fail-open; hosted transcripts live on
+  the Durable Object, so mirror bloat cannot affect chat turns.
+- Retention stays with `pnpm chat:purge` (90-day TTL), which is unchanged.
+
+If bloat comes back, check `pg_stat_user_tables` (`last_autovacuum`,
+`n_dead_tup`) and tune reloptions in a `chat:migrate` migration before
+reintroducing a scheduled job.
 
 ## Preview Workers (PR)
 

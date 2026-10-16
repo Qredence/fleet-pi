@@ -25,7 +25,8 @@ export const CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID =
  *    stats (pi_user_settings had a 512 kB index for 2 rows).
  *
  * All statements are idempotent. VACUUM/REINDEX are intentionally not included
- * (they cannot run inside a transaction) — see scripts/maintain-chat-mirror.ts.
+ * (they cannot run inside a transaction); the lowered autovacuum thresholds
+ * replace the retired `chat:maintain` script (NEON-011).
  */
 export const CHAT_POSTGRES_OPTIMIZATION_2_SQL = `
 -- 1. Drop the never-scanned index on the write-only audit table
