@@ -45,6 +45,10 @@ jobs:
         id: creds
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+              echo "::error::Production deploy failed: CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured"
+              exit 1
+            fi
             echo "::warning::Deploy skipped: no Cloudflare credentials"
             echo "⚠️ Deploy skipped: no Cloudflare credentials (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured)." >> "$GITHUB_STEP_SUMMARY"
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -96,7 +100,7 @@ jobs:
       - name: Deploy production
         if: steps.creds.outputs.ready == 'true' && github.event_name != 'pull_request'
         working-directory: apps/web
-        run: pnpm exec wrangler deploy
+        run: pnpm exec wrangler deploy --message "${GITHUB_SHA::7}"
 
       - name: Validate preview database isolation
         if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
