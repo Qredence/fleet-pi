@@ -911,3 +911,109 @@ describe("destroyUserSandbox", () => {
     expect(getCachedUserSandbox("user123")).toBeUndefined()
   })
 })
+
+describe("HYG-009: bounded in-process sandbox map", () => {
+  const MAX_LOCAL_SANDBOXES = 32
+
+  function setupPerUserSandboxes() {
+    const client = makeMockClient()
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockImplementation(async (_client, name) => ({
+      id: `vol-${name}`,
+      name,
+    }))
+    mockedCreateSandbox.mockImplementation(async (_client, input) =>
+      makeMockSandbox({
+        id: `sandbox-${input?.name}`,
+        name: input?.name,
+        labels: input?.labels,
+      })
+    )
+    return client
+  }
+
+  it("evicts the oldest entry once the cap is exceeded", async () => {
+    setupPerUserSandboxes()
+    let now = 1_000_000
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    try {
+      const total = MAX_LOCAL_SANDBOXES + 1
+      for (let index = 0; index < total; index += 1) {
+        now += 1
+        await getUserSandbox({ userId: `cap-user-${index}` })
+      }
+
+      const cached = Array.from({ length: total }, (_, index) =>
+        getCachedUserSandbox(`cap-user-${index}`)
+      ).filter(Boolean)
+      expect(cached).toHaveLength(MAX_LOCAL_SANDBOXES)
+      expect(getCachedUserSandbox("cap-user-0")).toBeUndefined()
+      expect(getCachedUserSandbox("cap-user-1")).toBeDefined()
+      expect(getCachedUserSandbox(`cap-user-${total - 1}`)).toBeDefined()
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it("drops idle entries when a new sandbox is remembered", async () => {
+    setupPerUserSandboxes()
+    let now = 1_000_000
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    try {
+      await getUserSandbox({ userId: "idle-user" })
+      expect(getCachedUserSandbox("idle-user")).toBeDefined()
+
+      now += 15 * 60 * 1000 + 1
+      await getUserSandbox({ userId: "fresh-user" })
+
+      expect(getCachedUserSandbox("idle-user")).toBeUndefined()
+      expect(getCachedUserSandbox("fresh-user")).toBeDefined()
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it("hosted path reattaches an existing sandbox by name/volume label when the map is empty", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    const client = makeMockClient()
+    const existing = makeMockSandbox({
+      id: "sandbox-hosted",
+      name: "fleet-pi-user-hosted-user",
+      state: "started",
+      labels: {
+        managedBy: "fleet-pi",
+        userId: "hosted-user",
+        volumeName: "fleet-pi-ws-hosted-user",
+      },
+      volumes: [
+        { volumeId: "vol-hosted", mountPath: "/home/daytona/agent-workspace" },
+      ],
+    } as unknown as Partial<Sandbox>)
+    vi.mocked(client.get).mockResolvedValue(existing)
+    mockedCreateClient.mockReturnValue(client)
+    mockedGetOrCreateVolume.mockResolvedValue({
+      id: "vol-hosted",
+      name: "fleet-pi-ws-hosted-user",
+    })
+
+    clearSandboxCache()
+    expect(getCachedUserSandbox("hosted-user")).toBeUndefined()
+
+    const handle = await getUserSandbox({
+      userId: "hosted-user",
+      apiKey: "byok-test",
+    })
+
+    expect(client.get).toHaveBeenCalledWith("fleet-pi-user-hosted-user")
+    expect(mockedGetOrCreateVolume).toHaveBeenCalledWith(
+      client,
+      "fleet-pi-ws-hosted-user"
+    )
+    expect(mockedCreateSandbox).not.toHaveBeenCalled()
+    expect(mockedDeleteSandbox).not.toHaveBeenCalled()
+    expect(handle.sandboxId).toBe("sandbox-hosted")
+    expect(handle.volumeId).toBe("vol-hosted")
+    expect(handle.volumeName).toBe("fleet-pi-ws-hosted-user")
+    expect(getCachedUserSandbox("hosted-user")).toBe(handle)
+  })
+})
