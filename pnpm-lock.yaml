@@ -6,52 +6,20 @@ settings:
 
 overrides:
   '@anthropic-ai/sdk': '>=0.91.1'
-  handlebars: '>=4.7.9'
-  flatted: '>=3.4.2'
-  lodash: '>=4.18.0'
   undici: '>=8.9.0'
-  h3: '>=2.0.1-rc.17'
-  '@tanstack/start-server-core>h3': '>=2.0.1-rc.17'
   fast-uri: ^4.1.5
   uuid: '>=11.1.1'
-  ip-address: ^10.7.1
-  hono: ^4.13.7
   better-auth: '>=1.7.0'
-  qs: ^6.16.0
-  mermaid: ^11.16.1
-  shell-quote: ^1.11.0
-  '@grpc/grpc-js': ^1.14.5
-  form-data: '>=4.0.6'
-  dompurify: ^3.4.13
   esbuild: '>=0.28.1'
   '@opentelemetry/core': '>=2.8.0'
-  tar: '>=7.5.21'
-  '@google/genai>protobufjs': '>=8.6.6'
-  '@opentelemetry/otlp-transformer>protobufjs': '>=8.6.6'
-  '@grpc/proto-loader>protobufjs': '>=8.6.6'
   protobufjs: '>=8.6.6'
-  axios: ^1.20.0
-  brace-expansion: ^5.0.10
-  postcss: '>=8.5.18'
-  body-parser: '>=2.3.0'
   '@hono/node-server': '>=2.0.10'
   '@opentelemetry/propagator-jaeger': '>=2.9.0'
-  ws@>=8.0.0 <8.21.0: '>=8.21.0'
-  vite: '>=8.0.16'
   tslib: '>=2.8.1'
   js-yaml: ^5.4.1
   '@babel/core': '>=7.29.6 <7.29.7'
-  browserslist: ^4.28.7
-  baseline-browser-mapping: ^2.11.0
-  smol-toml: ^1.7.1
-  nanoid@<3.3.18: ^3.3.18
-  fflate@>=0.4.5 <0.4.9: ^0.4.9
-  postcss-selector-parser@>=7.1.0 <7.1.3: ^7.1.3
-  proxy-addr: ^2.0.8
-  source-map-js: ^1.2.2
-  fast-copy: ^4.1.0
   katex: ^0.18.2
-  '@modelcontextprotocol/sdk': ^1.31.0
+  diff@>=5.0.0 <5.2.2: ^5.2.2
 
 importers:
 
@@ -279,7 +247,7 @@ importers:
         specifier: ^8.59.3
         version: 8.59.3(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3)
       vite:
-        specifier: '>=8.0.16'
+        specifier: ^8.0.16
         version: 8.1.3(@types/node@25.8.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.5)(yaml@2.9.0)
       vitest:
         specifier: ^4.1.11
@@ -1019,7 +987,7 @@ packages:
     resolution: {integrity: sha512-6EtAoRqWryl43bYiCl7yvCBHi3R+L/fM11zu8zRyvBMe0Yk63NseyrhA19nO5Y1yrrk6dD+Su7NBZhDuUbjh0g==}
     hasBin: true
     peerDependencies:
-      vite: '>=8.0.16'
+      vite: ^6.1.0 || ^7.0.0 || ^8.0.0
       wrangler: ^4.149.0
 
   '@cloudflare/vitest-plugin@1.4.1':
@@ -1419,7 +1387,7 @@ packages:
     resolution: {integrity: sha512-+PDtco2/Z0ONdzCGekCoCT+O1VJS9xJQNN4XzQpXG/t3El/SWWMkCWlFRO1KmivOHPa4Q0VjUYu1HBKCZ/v33Q==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
-      '@modelcontextprotocol/sdk': ^1.31.0
+      '@modelcontextprotocol/sdk': ^1.25.2
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
@@ -1449,7 +1417,7 @@ packages:
     resolution: {integrity: sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4.13.7
+      hono: ^4
 
   '@hookform/resolvers@5.4.0':
     resolution: {integrity: sha512-EIsqr/t/qbinPIhGjMdtvutIN1Kk4uwbROE9/UQ93CAVGR7GkA7Y92+fX80OzXi/OB67jVFYwKGO1WzkxmkFZw==}
@@ -2038,7 +2006,7 @@ packages:
   '@openuidev/lang-core@0.2.7':
     resolution: {integrity: sha512-hCAQ9YCK3D6E0mGcggEgOOyxifen785h0Rd1vqfwlDUChLdzXT4EvK/IQl9SwgNneokHZoPQOt/7RZkIzVTHFg==}
     peerDependencies:
-      '@modelcontextprotocol/sdk': ^1.31.0
+      '@modelcontextprotocol/sdk': '>=1.0.0'
       zod: ^3.25.0 || ^4.0.0
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
@@ -2047,7 +2015,7 @@ packages:
   '@openuidev/react-lang@0.2.8':
     resolution: {integrity: sha512-SsbZes76oIviuZH3RW/VL+pZZjx6cOGjhkaeiSwuEnV24jWBgT9qswL4bDaQXpFG2e6sZKWjH/f0fRyqWQzhDA==}
     peerDependencies:
-      '@modelcontextprotocol/sdk': ^1.31.0
+      '@modelcontextprotocol/sdk': '>=1.0.0'
       react: ^18.3.1 || ^19.0.0
       zod: ^3.25.0 || ^4.0.0
     peerDependenciesMeta:
@@ -3724,7 +3692,7 @@ packages:
   '@tailwindcss/vite@4.3.2':
     resolution: {integrity: sha512-eHpMeX4JXfVNJDEcsouTeCBubJBTcTLigeaw/NTUW6PB5ATKKXdyonnXgTBX2VuRbjz1hjfz6C5XAhr52ImQXA==}
     peerDependencies:
-      vite: '>=8.0.16'
+      vite: ^5.2.0 || ^6 || ^7 || ^8
 
   '@tanstack/eslint-config@0.4.0':
     resolution: {integrity: sha512-V+Cd81W/f65dqKJKpytbwTGx9R+IwxKAHsG/uJ3nSLYEh36hlAr54lRpstUhggQB8nf/cP733cIw8DuD2dzQUg==}
@@ -3790,7 +3758,7 @@ packages:
       '@vitejs/plugin-rsc': '*'
       react: '>=18.0.0 || >=19.0.0'
       react-dom: '>=18.0.0 || >=19.0.0'
-      vite: '>=8.0.16'
+      vite: '>=7.0.0'
     peerDependenciesMeta:
       '@rsbuild/core':
         optional: true
@@ -3819,7 +3787,7 @@ packages:
     peerDependencies:
       '@rsbuild/core': '>=1.0.2 || ^2.0.0'
       '@tanstack/react-router': ^1.170.41
-      vite: '>=8.0.16'
+      vite: '>=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0'
       vite-plugin-solid: ^2.11.10 || ^3.0.0-0
       webpack: '>=5.92.0'
     peerDependenciesMeta:
@@ -3851,7 +3819,7 @@ packages:
     engines: {node: '>=22.12.0'}
     peerDependencies:
       '@rsbuild/core': ^2.0.0
-      vite: '>=8.0.16'
+      vite: '>=7.0.0'
     peerDependenciesMeta:
       '@rsbuild/core':
         optional: true
@@ -4309,7 +4277,7 @@ packages:
     peerDependencies:
       '@rolldown/plugin-babel': ^0.1.7 || ^0.2.0
       babel-plugin-react-compiler: ^1.0.0
-      vite: '>=8.0.16'
+      vite: ^8.0.0
     peerDependenciesMeta:
       '@rolldown/plugin-babel':
         optional: true
@@ -4332,7 +4300,7 @@ packages:
     resolution: {integrity: sha512-2XJVD55d1o5AZous5CCGKS74g/riOj9odEt2bQpCVZeblHyHdnMeFl4jl0XjU21stf4mbjUkew2eXQZt65g5CQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: '>=8.0.16'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       msw:
         optional: true
@@ -5171,8 +5139,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  diff@5.2.0:
-    resolution: {integrity: sha512-uIFDxqpRZGZ6ThOk84hEfqWoHx2devRFvpTZcTHur85vImfaxUbTW9Ryh4CpCuDnToOP1CEtXKIgytHBPVff5A==}
+  diff@5.2.2:
+    resolution: {integrity: sha512-vtcDfH3TOjP8UekytvnHH1o1P4FcUdt4eQ1Y+Abap1tk/OB2MWQvcwS2ClCd1zuIhc3JKOx6p3kod8Vfys3E+A==}
     engines: {node: '>=0.3.1'}
 
   diff@8.0.4:
@@ -6098,7 +6066,7 @@ packages:
   isomorphic-ws@5.0.0:
     resolution: {integrity: sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==}
     peerDependencies:
-      ws: '>=8.21.0'
+      ws: '*'
 
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
@@ -6791,7 +6759,7 @@ packages:
       giget: '*'
       jiti: ^2.6.1
       rollup: ^4.60.2
-      vite: '>=8.0.16'
+      vite: ^7 || ^8
       xml2js: ^0.6.2
       zephyr-agent: ^0.2.0
     peerDependenciesMeta:
@@ -7956,7 +7924,7 @@ packages:
       '@babel/core': '>=7.29.6 <7.29.7'
       next: ^13 || ^14 || ^15 || ^16
       react: ^18 || ^19
-      vite: '>=8.0.16'
+      vite: ^5 || ^6 || ^7 || ^8
     peerDependenciesMeta:
       '@babel/core':
         optional: true
@@ -8161,7 +8129,7 @@ packages:
       rolldown: '*'
       rollup: '*'
       unloader: '*'
-      vite: '>=8.0.16'
+      vite: '*'
       webpack: '*'
     peerDependenciesMeta:
       '@farmfe/core':
@@ -8266,7 +8234,7 @@ packages:
     resolution: {integrity: sha512-t8wonIOdQyOjtPd2VktlBu6QjTVTks6v8bSi7kd0r2Vll8TK1JYDZtRRdbmCHOAMphkZgrzK+L+vXK4pyZ8t4A==}
     hasBin: true
     peerDependencies:
-      browserslist: ^4.28.7
+      browserslist: '>= 4.21.0'
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
@@ -8336,7 +8304,7 @@ packages:
   vite-tsconfig-paths@6.1.1:
     resolution: {integrity: sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg==}
     peerDependencies:
-      vite: '>=8.0.16'
+      vite: '*'
 
   vite@8.1.3:
     resolution: {integrity: sha512-Ds+gBRbj0lwRO2Y5hwnUBdxSwlAve9LeRyU4sNnAr0ewW0gWF0n5bgXgUzbgZ49MV9BVUAQUFYVcDUcilUExMA==}
@@ -8384,7 +8352,7 @@ packages:
   vitefu@1.1.3:
     resolution: {integrity: sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg==}
     peerDependencies:
-      vite: '>=8.0.16'
+      vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       vite:
         optional: true
@@ -8405,7 +8373,7 @@ packages:
       '@vitest/ui': 4.1.11
       happy-dom: '*'
       jsdom: '*'
-      vite: '>=8.0.16'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -9708,10 +9676,10 @@ snapshots:
       dotenv: 17.4.2
       eciesjs: 0.4.18
       execa: 5.1.1
-      fdir: 6.5.0(picomatch@4.0.4)
+      fdir: 6.5.0(picomatch@4.0.7)
       ignore: 5.3.2
       object-treeify: 1.1.33
-      picomatch: 4.0.4
+      picomatch: 4.0.7
       which: 4.0.0
       yocto-spinner: 1.2.0
 
@@ -11937,7 +11905,7 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.9
       estree-walker: 2.0.2
-      picomatch: 4.0.4
+      picomatch: 4.0.7
 
   '@sec-ant/readable-stream@0.4.1': {}
 
@@ -13677,7 +13645,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  diff@5.2.0: {}
+  diff@5.2.2: {}
 
   diff@8.0.4: {}
 
@@ -14127,6 +14095,10 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  fdir@6.5.0(picomatch@4.0.7):
+    optionalDependencies:
+      picomatch: 4.0.7
 
   fetch-blob@3.2.0:
     dependencies:
@@ -15528,7 +15500,7 @@ snapshots:
       chokidar: 5.0.0
       cli-table: 0.3.11
       cliui: 8.0.1
-      diff: 5.2.0
+      diff: 5.2.2
       fflate: 0.8.3
       neon-init: 0.20.2
       open: 10.2.0
@@ -16940,7 +16912,7 @@ snapshots:
 
   ts-declaration-location@1.0.7(typescript@6.0.3):
     dependencies:
-      picomatch: 4.0.4
+      picomatch: 4.0.7
       typescript: 6.0.3
 
   ts-dedent@2.2.0: {}
@@ -17208,8 +17180,8 @@ snapshots:
 
   vite@8.1.3(@types/node@25.8.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.5)(yaml@2.9.0):
     dependencies:
-      lightningcss: 1.32.0
-      picomatch: 4.0.4
+      lightningcss: 1.33.0
+      picomatch: 4.0.7
       postcss: 8.5.23
       rolldown: 1.1.4
       tinyglobby: 0.2.17

@@ -5,56 +5,40 @@ packages:
 # Security and compatibility floors. Review on 2027-01-14.
 # Drop a line once every direct dependency already satisfies it.
 overrides:
+  # Every override below was re-checked for DEP-010 (2026-10-16) by removing it
+  # and re-resolving the lockfile. Each one stays because removal would resolve
+  # a lower/vulnerable version, an unwanted major bump, or break the build.
+  # Security floor (fda0c49). Removal re-resolves 0.109 -> 0.129, an untested SDK bump; drop with a deliberate upgrade. Review 2027-01-16.
   '@anthropic-ai/sdk': '>=0.91.1'
-  handlebars: '>=4.7.9'
-  flatted: '>=3.4.2'
-  lodash: '>=4.18.0'
+  # Security floor (bbfbd6a). Removal pulls undici 7.29/7.30 back in transitively. Review 2027-01-16.
   undici: '>=8.9.0'
-  h3: '>=2.0.1-rc.17'
-  '@tanstack/start-server-core>h3': '>=2.0.1-rc.17'
+  # Security floor (#117). Removal resolves fast-uri 3.1.8. Review 2027-01-16.
   fast-uri: '^4.1.5'
+  # Security floor (fda0c49). Removal resolves uuid 11.1.1 alongside 14.x. Review 2027-01-16.
   uuid: '>=11.1.1'
-  ip-address: '^10.7.1'
-  hono: '^4.13.7'
-  # Direct dependency is ^1.7.0. Floor stays so a transitive pin cannot slip back. Review 2027-01-14.
+  # Direct dependency is ^1.7.0; removal lets a transitive range resolve better-auth 1.4.18. Review 2027-01-16.
   better-auth: '>=1.7.0'
-  qs: '^6.16.0'
-  mermaid: '^11.16.1'
-  shell-quote: '^1.11.0'
-  '@grpc/grpc-js': '^1.14.5'
-  form-data: '>=4.0.6'
-  dompurify: '^3.4.13'
+  # Dependabot floor (47f8ce9). Keeps a single esbuild; removal adds a second copy (0.28.2). Review 2027-01-16.
   esbuild: '>=0.28.1'
+  # Dependabot floor (47f8ce9). Keeps OpenTelemetry 2.x deduped; removal adds 2.9.0/2.10.0 copies. Review 2027-01-16.
   '@opentelemetry/core': '>=2.8.0'
-  tar: '>=7.5.21'
-  '@google/genai>protobufjs': '>=8.6.6'
-  '@opentelemetry/otlp-transformer>protobufjs': '>=8.6.6'
-  '@grpc/proto-loader>protobufjs': '>=8.6.6'
+  # Security floor (a72a02f). Global floor covers @google/genai, @grpc/proto-loader and
+  # @opentelemetry/otlp-transformer; removal resolves protobufjs 7.6.6. Review 2027-01-16.
   protobufjs: '>=8.6.6'
-  axios: '^1.20.0'
-  brace-expansion: '^5.0.10'
-  postcss: '>=8.5.18'
-  body-parser: '>=2.3.0'
+  # Security floor (a72a02f). Removal resolves @hono/node-server 2.0.4. Review 2027-01-16.
   '@hono/node-server': '>=2.0.10'
+  # Security floor (a72a02f). Removal resolves propagator-jaeger 2.8.0. Review 2027-01-16.
   '@opentelemetry/propagator-jaeger': '>=2.9.0'
-  'ws@>=8.0.0 <8.21.0': '>=8.21.0'
-  vite: '>=8.0.16'
-  # @daytona/sdk ESM needs tslib@2 `__esDecorate`; Neon Auth passkey pulls tslib@1.
+  # @daytona/sdk ESM needs tslib@2 `__esDecorate`; Neon Auth passkey pulls tslib@1 (removal resolves 1.14.1). Review 2027-01-16.
   tslib: '>=2.8.1'
+  # Security floor (#117). Removal resolves js-yaml 4.3.2. Review 2027-01-16.
   js-yaml: '^5.4.1'
+  # Pinned below 7.29.7 (47f8ce9); removal pulls 7.29.7 in. Re-test the build before lifting. Review 2027-01-16.
   '@babel/core': '>=7.29.6 <7.29.7'
-  # Security floors for transitive deps flagged by Dependabot (2026-10).
-  browserslist: '^4.28.7'
-  baseline-browser-mapping: '^2.11.0'
-  smol-toml: '^1.7.1'
-  'nanoid@<3.3.18': '^3.3.18'
-  'fflate@>=0.4.5 <0.4.9': '^0.4.9'
-  'postcss-selector-parser@>=7.1.0 <7.1.3': '^7.1.3'
-  proxy-addr: '^2.0.8'
-  source-map-js: '^1.2.2'
-  fast-copy: '^4.1.0'
+  # Security floor (#133). Removal resolves katex 0.16.47. Review 2027-01-16.
   katex: '^0.18.2'
-  '@modelcontextprotocol/sdk': '^1.31.0'
+  # GHSA-73rr-hh4g-fpgx (low): neon CLI (devDependency) pins diff 5.2.0. Review 2027-01-16.
+  'diff@>=5.0.0 <5.2.2': '^5.2.2'
 allowBuilds:
   '@google/genai': true
   better-sqlite3: true
