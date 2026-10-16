@@ -43,7 +43,12 @@ export const logger = pino({
   },
   transport: isDev()
     ? {
-        target: "pino-pretty",
+        // Absolute path: pino 10.4 resolves bare targets from its caller
+        // stack, which fails under Vite's SSR module runner in dev.
+        target: process
+          .getBuiltinModule("node:module")
+          .createRequire(import.meta.url)
+          .resolve("pino-pretty"),
         options: {
           colorize: true,
           translateTime: "HH:MM:ss Z",
