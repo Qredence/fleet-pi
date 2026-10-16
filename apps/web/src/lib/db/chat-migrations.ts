@@ -74,7 +74,9 @@ import {
   CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
   CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
 } from "./chat-postgres-jwt-user-policies"
+import { DEFAULT_APP_ROLE, withAppRole } from "./app-role"
 import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
+import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "./chat-postgres-user-id-uuid"
 import {
   CHAT_POSTGRES_MIGRATION_ID,
   CHAT_POSTGRES_SCHEMA_SQL,
@@ -129,9 +131,15 @@ async function applyMigrationIfNeeded(
 }
 
 export async function runChatMigrations(
-  client: ChatMigrationClient,
-  log: (message: string) => void = console.log
+  rawClient: ChatMigrationClient,
+  log: (message: string) => void = console.log,
+  { appRole = DEFAULT_APP_ROLE }: { appRole?: string } = {}
 ) {
+  // Every statement's grants/policies target `appRole` (default fleet_pi_app).
+  const client: ChatMigrationClient = {
+    query: (text, params) =>
+      rawClient.query(withAppRole(text, appRole), params),
+  }
   await client.query(CHAT_POSTGRES_SCHEMA_SQL)
   await recordMigration(client, CHAT_POSTGRES_MIGRATION_ID)
   log(`Applied chat migration: ${CHAT_POSTGRES_MIGRATION_ID}`)
@@ -242,15 +250,25 @@ export async function runChatMigrations(
     log
   )
 
-  // Not ledger-gated: the base schema above re-creates
-  // fleet_pi_check_session_owner WITHOUT the tombstone check on every run
-  // (the tombstones migration that adds it is ledger-skipped after its first
-  // run), so re-assert the tombstone-aware definition after all migrations.
+  // Not ledger-gated, self-guarding: converts pi_* user columns to UUID with
+  // an FK to neon_auth."user" (quarantining orphans) and is a no-op once done.
+  await client.query(CHAT_POSTGRES_USER_ID_UUID_SQL)
+  log("Reconciled pi_* user_id columns (uuid + neon_auth FK)")
+
+  // Not ledger-gated: the base schema must not define this function (an
+  // older copy omitted the tombstone branch, and the tombstones migration
+  // that adds it is ledger-skipped after its first run). Re-assert the
+  // tombstone-aware definition after all migrations.
   await client.query(CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL)
   log("Reconciled fleet_pi_check_session_owner (tombstone-aware)")
+
+  // Not ledger-gated: a branch can record 20260723_pi_force_row_level_security
+  // and still have FORCE off if the table was altered after that row.
+  await client.query(CHAT_POSTGRES_FORCE_RLS_SQL)
+  log("Reconciled FORCE ROW LEVEL SECURITY on pi_* tables")
 
   // Not ledger-gated: re-assert fleet_pi_app grants every run so a role
   // created after the migrations were recorded still gets its privileges.
   await client.query(CHAT_POSTGRES_APP_ROLE_GRANTS_SQL)
-  log("Reconciled fleet_pi_app grants")
+  log(`Reconciled ${appRole} grants`)
 }

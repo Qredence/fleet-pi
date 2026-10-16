@@ -19,7 +19,9 @@ import type {
 import type { ChatMessagePart } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatRequest,
+  ChatRunStopReason,
   ChatStreamEvent,
+  ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { PlanModeState } from "./plan-state"
 
@@ -32,11 +34,16 @@ type BufferedTurnEvent = Extract<
 
 export type TurnStartContext = {
   diagnostics: Array<string>
+  workspace?: ChatWorkspaceStatus
   firstStartPending: boolean
   pendingEvents: Array<BufferedTurnEvent>
   send: (event: ChatStreamEvent) => void
   session: ChatRuntimeSession
   sessionReset: boolean
+  /** Error held back until we know Pi will not retry/compact it away. */
+  pendingError?: string
+  /** Set from agent_settled.aborted or an assistant stopReason "aborted". */
+  aborted?: boolean
 }
 
 export type AssistantTurnState = {
@@ -136,6 +143,10 @@ export function handleSessionEvent(
   }
 
   if (event.type === "compaction_end") {
+    if (event.willRetry) {
+      startContext.pendingError = undefined
+      if (activeTurn) activeTurn.hadError = false
+    }
     emitBufferedTurnEvent(
       {
         type: "compaction",
@@ -152,6 +163,9 @@ export function handleSessionEvent(
   }
 
   if (event.type === "auto_retry_start") {
+    // The retry frame carries the error; a recovered run never shows `error`.
+    startContext.pendingError = undefined
+    if (activeTurn) activeTurn.hadError = false
     emitBufferedTurnEvent(
       {
         type: "retry",
@@ -183,6 +197,16 @@ export function handleSessionEvent(
   }
 
   if (event.type === "agent_settled") {
+    if (event.aborted) startContext.aborted = true
+    if (startContext.pendingError !== undefined) {
+      if (!activeTurn) activeTurn = beginAssistantTurn(startContext)
+      send({
+        type: "error",
+        message: startContext.pendingError,
+        runId: activeTurn.runId,
+      })
+      startContext.pendingError = undefined
+    }
     emitBufferedTurnEvent(
       {
         type: "state",
@@ -205,15 +229,20 @@ export function handleSessionEvent(
     )
   }
 
+  if (
+    event.type === "message_end" &&
+    isAssistantAbortedMessage(event.message)
+  ) {
+    startContext.aborted = true
+  }
+
   if (event.type === "message_end" && isAssistantErrorMessage(event.message)) {
     if (!activeTurn) {
       activeTurn = beginAssistantTurn(startContext)
     }
-    send({
-      type: "error",
-      message: event.message.errorMessage,
-      runId: activeTurn.runId,
-    })
+    // Held until agent_settled: an auto-retry or overflow compaction may
+    // still recover the run, in which case the client only sees `retry`.
+    startContext.pendingError = event.message.errorMessage
     return {
       ...activeTurn,
       hadError: true,
@@ -232,9 +261,11 @@ export function createTurnStartContext({
   send,
   session,
   sessionReset,
+  workspace,
 }: Omit<TurnStartContext, "firstStartPending" | "pendingEvents">) {
   return {
     diagnostics,
+    workspace,
     firstStartPending: true,
     pendingEvents: [],
     send,
@@ -250,6 +281,8 @@ export function finalizeAssistantTurn({
   send,
   session,
   sessionReset,
+  stopReason,
+  force = false,
 }: {
   activeTurn: AssistantTurnState
   body: ChatRequest
@@ -257,8 +290,11 @@ export function finalizeAssistantTurn({
   send: (event: ChatStreamEvent) => void
   session: ChatRuntimeSession
   sessionReset: boolean
+  stopReason?: ChatRunStopReason
+  /** Send `done` even without content (terminal frame for the request). */
+  force?: boolean
 }) {
-  if (!hasTurnContent(activeTurn)) {
+  if (!force && !hasTurnContent(activeTurn)) {
     return undefined
   }
 
@@ -293,9 +329,38 @@ export function finalizeAssistantTurn({
     sessionFile: session.sessionFile,
     sessionId: session.sessionId,
     sessionReset,
+    ...(stopReason && { stopReason }),
   })
 
   return undefined
+}
+
+/**
+ * Terminal frame for a request whose turn is not finalized normally: sends
+ * `start` first if nothing was sent yet, then `done` with `stopReason`.
+ */
+export function sendTerminalFrame({
+  activeTurn,
+  startContext,
+  stopReason,
+  ...rest
+}: {
+  activeTurn: AssistantTurnState | undefined
+  startContext: TurnStartContext
+  body: ChatRequest
+  runtime: AgentSessionRuntime
+  send: (event: ChatStreamEvent) => void
+  session: ChatRuntimeSession
+  sessionReset: boolean
+  stopReason?: ChatRunStopReason
+}) {
+  const turn = activeTurn ?? beginAssistantTurn(startContext)
+  return finalizeAssistantTurn({
+    ...rest,
+    activeTurn: turn,
+    stopReason,
+    force: true,
+  })
 }
 
 export function completeAssistantTurn({
@@ -305,6 +370,7 @@ export function completeAssistantTurn({
   send,
   session,
   sessionReset,
+  startContext,
 }: {
   activeTurn: AssistantTurnState | undefined
   body: ChatRequest
@@ -312,7 +378,38 @@ export function completeAssistantTurn({
   send: (event: ChatStreamEvent) => void
   session: ChatRuntimeSession
   sessionReset: boolean
+  startContext?: TurnStartContext
 }) {
+  if (startContext) {
+    const stopReason: ChatRunStopReason | undefined = startContext.aborted
+      ? "aborted"
+      : activeTurn?.hadError
+        ? "error"
+        : undefined
+    if (stopReason || !activeTurn || !hasTurnContent(activeTurn)) {
+      // Every request ends with a terminal frame, even with no content.
+      if (startContext.pendingError !== undefined) {
+        const turn = activeTurn ?? beginAssistantTurn(startContext)
+        send({
+          type: "error",
+          message: startContext.pendingError,
+          runId: turn.runId,
+        })
+        startContext.pendingError = undefined
+        activeTurn = turn
+      }
+      return sendTerminalFrame({
+        activeTurn,
+        startContext,
+        body,
+        runtime,
+        send,
+        session,
+        sessionReset,
+        stopReason: stopReason ?? (activeTurn?.hadError ? "error" : undefined),
+      })
+    }
+  }
   if (!activeTurn || !hasTurnContent(activeTurn)) {
     return undefined
   }
@@ -340,6 +437,9 @@ export function beginAssistantTurn(startContext: TurnStartContext) {
         : undefined,
       sessionReset: startContext.firstStartPending
         ? startContext.sessionReset
+        : undefined,
+      workspace: startContext.firstStartPending
+        ? startContext.workspace
         : undefined,
     })
   )
@@ -412,6 +512,7 @@ function createStartEvent(
   options?: {
     diagnostics?: Array<string>
     sessionReset?: boolean
+    workspace?: ChatWorkspaceStatus
   }
 ): ChatStreamEvent {
   return {
@@ -422,7 +523,19 @@ function createStartEvent(
     sessionId: session.sessionId,
     sessionReset: options?.sessionReset,
     diagnostics: options?.diagnostics,
+    ...(options?.workspace && { workspace: options.workspace }),
   }
+}
+
+function isAssistantAbortedMessage(message: unknown) {
+  return (
+    message !== null &&
+    typeof message === "object" &&
+    "role" in message &&
+    message.role === "assistant" &&
+    "stopReason" in message &&
+    message.stopReason === "aborted"
+  )
 }
 
 function isAssistantErrorMessage(

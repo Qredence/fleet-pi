@@ -57,7 +57,7 @@ const services = await createAgentSessionServices({
 
 Services include:
 
-- **`modelRegistry`** — discovers available Bedrock models.
+- **`modelRuntime`** — discovers available models and holds per-session runtime API keys.
 - **`settingsManager`** — reads `.pi/settings.json`, project-scoped overrides, and environment variables.
 - **`resourceLoader`** — loads skills, prompts, extensions, themes, and AGENTS.md files from the configured resource paths.
 - **`diagnostics`** — array of startup warnings (missing credentials, misconfigured resources, etc.).
@@ -98,10 +98,12 @@ flowchart TD
 
 The factory is invoked by `pi-coding-agent` with `cwd`, `agentDir`, `sessionManager`, and `sessionStartEvent`. Inside:
 
-1. Creates a fresh `AgentSessionServices` with the plan mode extension included:
+1. `createSessionServices()` builds `AgentSessionServices` with the plan mode extension included:
    ```ts
    resourceLoaderOptions: {
-     extensionFactories: [createPlanModeExtension()],
+     extensionFactories: [
+       { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
+     ],
    }
    ```
 2. Resolves the model and thinking level via `resolveModelSelection()`.
@@ -163,7 +165,7 @@ If the requested `sessionFile`/`sessionId` does not resolve to a usable file, a 
 
 ### loadChatModels
 
-- Reads models from `services.modelRegistry.getAvailable()`.
+- Reads models from `services.modelRuntime.getAvailable()`.
 - Maps to `ChatModelInfo` (key, provider, id, name, reasoning, contextWindow, etc.).
 - Resolves the default provider/model from `settingsManager`.
 - Returns `ChatModelsResponse` including `selectedModelKey`.
@@ -200,13 +202,14 @@ Diagnostics from all sources are merged and deduplicated before being returned.
 
 Extensions hook into Pi's event bus via the `ExtensionAPI`. The web app registers extensions at session service creation time:
 
-| Extension         | File                                                             | Purpose                                                                      |
-| ----------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Plan mode         | `apps/web/src/lib/pi/plan-mode.ts` → `createPlanModeExtension()` | Tool filtering, bash policy, mode context injection                          |
-| project_inventory | `.pi/extensions/project-inventory.ts`                            | Read-only project inventory tool                                             |
-| workspace_index   | `.pi/extensions/workspace-index.ts`                              | Read-only workspace index tool                                               |
-| filechanges       | `.pi/extensions/vendor/filechanges/`                             | `/filechanges`, `/filechanges-accept`, `/filechanges-decline` slash commands |
-| subagents         | `.pi/extensions/vendor/subagents/`                               | `subagent` tool                                                              |
+| Extension         | File                                                             | Purpose                                                                       |
+| ----------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Plan mode         | `apps/web/src/lib/pi/plan-mode.ts` → `createPlanModeExtension()` | Tool filtering, bash policy, mode context injection                           |
+| project_inventory | `.pi/extensions/project-inventory.ts`                            | Read-only project inventory tool                                              |
+| workspace_index   | `.pi/extensions/workspace-index.ts`                              | Read-only workspace index tool                                                |
+| trust-handler     | `.pi/extensions/trust-handler.ts`                                | `project_trust` handling; mode-aware auto-approval for workspace-native paths |
+| filechanges       | `.pi/extensions/vendor/filechanges/`                             | `/filechanges`, `/filechanges-accept`, `/filechanges-decline` slash commands  |
+| subagents         | `.pi/extensions/vendor/subagents/`                               | `subagent` tool                                                               |
 
 The plan mode extension is the only one injected programmatically via `extensionFactories`. The others are loaded from disk by the resource loader.
 
@@ -238,7 +241,7 @@ On reload, `hydrateChatSession()` reads the JSONL file, converts entries to mess
 
 **Directory:** `apps/web/src/lib/daytona/`
 
-When `isDaytonaEnabled(userId, resolvedKey)` returns true (BYOK Daytona key on Vercel; env fallback locally), `createPiRuntime()`:
+When `isDaytonaEnabled(userId, resolvedKey)` returns true (BYOK Daytona key on Cloudflare; env fallback locally), `createPiRuntime()`:
 
 1. Calls `resolveUserSandboxContext` to acquire or create a Daytona sandbox (eager warm-up into the per-user cache).
 2. Sets `context.workspaceFS` to a sandbox-backed filesystem.
@@ -264,3 +267,27 @@ See [Daytona sandbox](../../features/daytona-sandbox.md) for the full feature de
 - `updateImpact` — whether a new session is recommended or a resource reload is required after the update.
 
 `PUT /api/chat/settings` (via `updateChatSettings`) applies a partial `ChatPiSettingsUpdate` to `.pi/settings.json`. Provider credentials are never stored here; they belong in environment/Pi auth configuration.
+
+- **Base defaults.** `.pi/settings.json` may be `{}` locally. Fleet base packages (`npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, `npm:pi-web-access`) merge from `fleet-default-project-settings.ts`. Vendored extensions under `.pi/extensions/` auto-load without being listed.
+- **Workers.** `.pi/settings.json` is not writable on Cloudflare. Per-user overrides live in Neon `pi_user_settings` (JSONB) and hydrate into the live `SettingsManager`.
+- **Portable paths.** Resource option values ignore Pi provenance sources (`auto`, `local`, …) and persist through `toSettingsResourcePath` (`extensions/…`, `../agent-workspace/…`), never absolute machine paths.
+- **Hot reload.** Settings saves hot-reload every in-memory runtime in the deployment, because settings are project-scoped (on Workers, only the signed-in user's sessions). BYOK credential saves reload only that user's runtimes (`hotReloadActiveRuntimesForUser`).
+
+---
+
+## Providers and models
+
+- **Ids.** Provider credential ids live in `@workspace/pi-protocol/provider-catalog.ts`; Settings metadata lives in `fleet-pi/pi/config-panel/shared/provider-metadata.ts`. The canonical Google id is `google` (`GEMINI_API_KEY`). `GOOGLE_CLIENT_*` are Better Auth OAuth credentials only. BYOK keys go through `services.modelRuntime` (`setRuntimeApiKey` / `getRuntimeApiKey`). Bedrock reads standard AWS environment/profile config; `AWS_REGION` defaults to `us-east-1`.
+- **OpenAI Chat Completions (OCC).** BYOK needs `OPENAI_CHAT_COMPLETIONS_{API_KEY,BASE_URL,MODEL}` in one atomic providers POST. It registers only the configured model id; never ingest a remote `/models` catalog such as OpenCode Zen's. `/chat/completions` base URLs normalize to the API root. Without OCC BYOK, authenticated deploys back the slot with Neon AI Gateway (`qwen35-122b-a10b`, `gpt-oss-120b`; the gateway rejects `max_tokens` above 25,000).
+- **Picker.** `/api/chat/models` without `scope=all` lists only models the user added: the OCC model id (or the Gateway defaults), custom-provider model ids, and the configured default. `scope=all` returns the full catalog for Settings. `model-catalog.ts` must select an available enabled model, rematching a stale `openai` default onto `openai-chat-completions` when that provider holds the model. AutoContext may still default to provider id `openai` with OCC model ids; that mismatch is intentional.
+- **Custom providers.** Each instance is `{ displayName, apiKey, baseUrl, api, modelIds }`, where `api` is `openai-completions`, `openai-responses`, `anthropic-messages`, or `google-genai` (mapped to Pi's `google-generative-ai`). General instances get id `custom+<slug>`; legacy named OCC instances keep `openai-chat-completions+<slug>`. Both register through `registerCustomProviders` (`custom-provider-registry.ts`) as native Pi providers (`<instanceId>/<modelId>`). The `max_tokens` cap is 25k plus gateway compat on `*.neon.tech` OCC endpoints, otherwise 32k. The reserved `openai-chat-completions` id stays the env-backed default and Gateway slot.
+- **Custom provider storage.** DB-backed accounts (`userId` plus `FLEET_PI_CHAT_DATABASE_URL`) use `pi_user_providers`: `provider_id` is the slug, `encrypted_key` holds the API key, and the encrypted `encrypted_payload` holds `{displayName, baseUrl, api, modelIds}`. Legacy payloads with `modelId` normalize on read, and no migration is needed. Otherwise a gitignored plaintext file store (atomic temp-file plus rename) is used: `.fleet/providers.anonymous.json` for anonymous chat, `.fleet/providers.user-<hash>.json` for local accounts. `occ-instances.ts` is the persistence layer, `local-provider-instances.ts` the file store, and `useLocalProviderStore` picks the backend. Create instances with `POST /api/chat/providers` and `createOccInstance: true`, or pass an existing `…+<slug>` id. OCC-family instances may use loopback `http://localhost` in local dev; everything else is https-only. Daytona credential sync covers only the reserved OCC slot.
+- **Org keys.** On Cloudflare, org LLM keys (`GEMINI_API_KEY`, `HF_TOKEN`, `OPENROUTER_API_KEY`, …) never back chat and are scrubbed from the process.
+
+## Runtime notes
+
+- **Versions.** The coding-agent path uses `@earendil-works/pi-coding-agent` 1.2. Hosted Cloudflare turns run `@earendil-works/pi-durable` 1.2 inside `UserPiDurable`, with hosted tools selected as Pi Durable extensions on the conversation.
+- **Extension context.** Coding-agent extensions can read `ctx.mode` (tui/rpc/json/print) and `ctx.getSystemPromptOptions()`.
+- **Queues.** Coding-agent follow-up queues wait for `agent_settled`; hosted steer and follow-up use Pi Durable `submit({ whenBusy })`. The chat client sets `status` to `ready` on each NDJSON `done` event while the stream may stay open for queued follow-ups. Abort clears the follow-up queue and is available in both `submitted` and `streaming`.
+- **Tool parts.** Tool events normalize into agent-elements parts (`tool-Read`, `tool-Write`, `tool-Edit`, `tool-Bash`).
+- **Dev env.** Dev loads `.env` then `.env.local` (override). Vite ignores both in `server.watch` so credential saves do not restart mid-request. PostHog lives in `apps/web/src/lib/analytics/posthog.ts`.

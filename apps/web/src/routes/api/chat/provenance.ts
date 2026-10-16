@@ -8,13 +8,13 @@ import {
 } from "../../../lib/pi/provenance-query"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
-import { isVercelDeployment } from "@/lib/deployment"
+import { isHostedDeployment } from "@/lib/deployment"
 
 export async function chatProvenanceHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()
   const url = new URL(request.url)
   const allowedSessionIds =
-    isVercelDeployment() && userId
+    isHostedDeployment() && userId
       ? new Set(await fetchUserSessionIds(userId))
       : undefined
 

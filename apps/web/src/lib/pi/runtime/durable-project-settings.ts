@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises"
 import { applyProjectSettingsToServices } from "./apply-project-settings"
 import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
+import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
 import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { serializeProjectSettingsPreservingFormat } from "./project-settings-format"
 import { mergeProjectSettingsRecords } from "./project-settings-merge"
@@ -10,6 +11,7 @@ import {
   readRawProjectSettingsFile,
 } from "./project-settings-file"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
@@ -24,14 +26,20 @@ export async function loadPersistedProjectSettingsOverrides(
   if (usesDatabaseBackedProjectSettings()) {
     const stored = await loadUserProjectSettings(options.userId)
     const overrides = stored ? sanitizePortableResourcePaths(stored) : {}
-    return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
+    return migrateLegacyGatewayProjectOverrides(
+      migrateLegacyAzureProviderOverrides(overrides),
+      options.userId
+    )
   }
 
   if (!options.projectRoot) return {}
   const overrides = sanitizePortableResourcePaths(
     await readProjectSettingsFile(options.projectRoot)
   )
-  return migrateLegacyGatewayProjectOverrides(overrides, options.userId)
+  return migrateLegacyGatewayProjectOverrides(
+    migrateLegacyAzureProviderOverrides(overrides),
+    options.userId
+  )
 }
 
 export async function resolveProjectSettings(
@@ -41,7 +49,7 @@ export async function resolveProjectSettings(
   return mergeProjectSettingsRecords(getFleetBaseProjectSettings(), overrides)
 }
 
-/** Drop absolute machine paths that cannot work on Vercel. */
+/** Drop absolute machine paths that cannot work on Cloudflare. */
 export function sanitizePortableResourcePaths(
   settings: Record<string, unknown>
 ): Record<string, unknown> {
@@ -75,6 +83,14 @@ export async function hydrateSessionServicesSettings(
   services: AgentSessionServices,
   options: ResolveProjectSettingsOptions = {}
 ) {
+  if (usesDatabaseBackedProjectSettings()) {
+    await replaceIsolatedProjectSettings(
+      services.settingsManager,
+      await resolveProjectSettings(options)
+    )
+    await services.resourceLoader.reload()
+    return
+  }
   const rawBefore = options.projectRoot
     ? await readRawProjectSettingsFile(options.projectRoot)
     : undefined

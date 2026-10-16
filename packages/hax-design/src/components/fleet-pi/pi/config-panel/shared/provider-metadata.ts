@@ -1,4 +1,10 @@
 import {
+  CREDENTIAL_UI_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isCustomProviderId,
+  isNamedOccInstanceId,
+} from "@workspace/pi-protocol/provider-catalog"
+import {
   Bot,
   Brain,
   Cpu,
@@ -120,6 +126,40 @@ export const PROVIDER_METADATA: Record<string, PiProviderUiMetadata> = {
   custom: {
     icon: Plug,
     placeholder: "sk-... / provider key",
-    help: "Register any OpenAI-, Anthropic-, or Google-compatible endpoint through Pi's native custom-provider mechanism. Requires a name, API key, https base URL, API family, and at least one model id. Deployed accounts only.",
+    help: "Register any OpenAI-, Anthropic-, or Google-compatible endpoint through Pi's native custom-provider mechanism. Requires a name, API key, https base URL, and API family. Model ids are optional — leave them blank and discover models from the base URL in LLM Models.",
   },
+}
+
+const credentialProviderIds = new Set(
+  CREDENTIAL_UI_PROVIDERS.map((provider) => provider.id)
+)
+
+/** Configured catalog providers plus user-added custom and named OCC instances. */
+export function collectConfiguredModelProviderIds(
+  providers: ReadonlyArray<{ id: string; isConfigured: boolean }>
+): Set<string> {
+  const ids = new Set<string>()
+  for (const provider of providers) {
+    if (!provider.isConfigured) continue
+    if (
+      credentialProviderIds.has(provider.id) ||
+      isCustomProviderId(provider.id) ||
+      isNamedOccInstanceId(provider.id)
+    ) {
+      ids.add(provider.id)
+    }
+  }
+  return ids
+}
+
+/**
+ * Providers whose Add models refresh calls `GET {baseUrl}/models`.
+ * Built-in catalogs (Google, Anthropic, …) already come from the registry.
+ */
+export function shouldRefreshProviderModels(providerId: string): boolean {
+  return (
+    providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID ||
+    isCustomProviderId(providerId) ||
+    isNamedOccInstanceId(providerId)
+  )
 }

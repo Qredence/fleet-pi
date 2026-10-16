@@ -145,12 +145,16 @@ export function AccountMenu({
 export function SessionControls({
   activeSessionId,
   activeSessionLabel,
+  forkDisabled = false,
+  onForkSession,
   onNewSession,
   onResumeSession,
   sessions,
 }: {
   activeSessionId?: string
   activeSessionLabel: string
+  forkDisabled?: boolean
+  onForkSession?: () => void
   onNewSession: () => void
   onResumeSession: (metadata: ChatSessionMetadata) => void
   sessions: Array<ChatSessionInfo>
@@ -187,22 +191,37 @@ export function SessionControls({
               session.name || session.firstMessage || session.id.slice(0, 8)
             const active = session.id === activeSessionId
             return (
-              <button
+              <div
                 key={session.id}
-                type="button"
-                onClick={() =>
-                  onResumeSession({
-                    sessionFile: session.path,
-                    sessionId: session.id,
-                  })
-                }
-                className={`flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label leading-4 transition-colors hover:bg-foreground/6 ${
+                className={`flex w-full min-w-0 items-center gap-1 rounded-sm px-2 py-1.5 text-label leading-4 ${
                   active ? "bg-foreground/6 text-foreground" : "text-foreground"
                 }`}
               >
-                <History className="size-3 shrink-0 text-foreground/45" />
-                <span className="min-w-0 flex-1 truncate">{label}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onResumeSession({
+                      sessionFile: session.path,
+                      sessionId: session.id,
+                    })
+                  }
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left transition-colors hover:text-foreground"
+                >
+                  <History className="size-3 shrink-0 text-foreground/45" />
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                </button>
+                {active && onForkSession ? (
+                  <button
+                    type="button"
+                    aria-label="Fork conversation"
+                    disabled={forkDisabled}
+                    onClick={onForkSession}
+                    className="shrink-0 cursor-pointer rounded-sm px-1.5 py-0.5 text-label text-foreground/70 transition-colors hover:bg-foreground/6 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Fork
+                  </button>
+                ) : null}
+              </div>
             )
           })
         )}

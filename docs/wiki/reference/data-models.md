@@ -4,7 +4,7 @@ This page documents the key TypeScript types used in the chat protocol and the N
 
 All chat protocol types are in [`packages/pi-protocol/src/chat-protocol.ts`](../../../packages/pi-protocol/src/chat-protocol.ts), with runtime validation in [`packages/pi-protocol/src/chat-protocol.zod.ts`](../../../packages/pi-protocol/src/chat-protocol.zod.ts). UI message types are re-exported by [`packages/hax-design/src/components/agent-elements/chat-types.ts`](../../../packages/hax-design/src/components/agent-elements/chat-types.ts). The Neon schema is in [`apps/web/src/lib/db/chat-postgres-schema.ts`](../../../apps/web/src/lib/db/chat-postgres-schema.ts).
 
-A **Pi session** is the canonical persisted JSONL transcript. The Neon tables below are derived mirror/projection data used for owner-scoped querying, provenance, and authenticated recovery of an ephemeral transcript copy after a Vercel cold start; they are not a second canonical transcript store.
+A **Pi session** is the canonical persisted JSONL transcript. The Neon tables below are derived mirror/projection data used for owner-scoped querying, provenance, and authenticated recovery of an ephemeral transcript copy after a Worker isolate restart; they are not a second canonical transcript store.
 
 ---
 

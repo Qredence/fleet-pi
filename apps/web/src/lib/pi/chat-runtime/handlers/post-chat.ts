@@ -10,9 +10,14 @@ import {
 } from "@/lib/auth/chat-api-auth"
 import { createRequestLogger } from "@/lib/logger"
 import { handleChatTurn } from "@/lib/pi/handle-chat-turn"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { streamHostedAgentTurn } from "@/lib/pi/durable/hosted-agent-turn"
+import { isLegacyChatSession } from "@/lib/pi/durable/durable-session"
 import {
   encodeEvent,
   getErrorMessage,
+  hasLiveSessionRuntime,
+  notLiveSessionResponse,
   queuePromptOnActiveSession,
 } from "@/lib/pi/server"
 import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
@@ -55,7 +60,25 @@ export async function postChatHandler(request: Request) {
         return new Response("Missing message", { status: 400 })
       }
 
+      if (isCloudflareDeployment() && !isLegacyChatSession(body)) {
+        if (!body.userId) {
+          return Response.json({ message: "Unauthorized" }, { status: 401 })
+        }
+        return streamHostedAgentTurn({
+          userId: body.userId,
+          prompt,
+          sessionId: body.sessionId,
+          model: body.model,
+          mode: body.mode,
+          whenBusy: body.streamingBehavior,
+          signal: request.signal,
+        })
+      }
+
       if (body.streamingBehavior) {
+        if (isCloudflareDeployment() && !hasLiveSessionRuntime(body)) {
+          return notLiveSessionResponse()
+        }
         const queued = await queuePromptOnActiveSession(
           body,
           prompt,

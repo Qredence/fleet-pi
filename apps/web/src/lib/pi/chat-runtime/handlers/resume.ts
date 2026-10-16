@@ -6,6 +6,9 @@ import {
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { hydrateChatSession } from "@/lib/pi/server"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
+import { readHostedDurableSession } from "@/lib/pi/durable/hosted-agent-turn"
 
 export async function resumeChatHandler(request: Request) {
   return wrapApiHandler(async () =>
@@ -18,6 +21,25 @@ export async function resumeChatHandler(request: Request) {
       })
       if (!ownership.ok) {
         return ownership.response
+      }
+
+      if (
+        isCloudflareDeployment() &&
+        userId &&
+        isDurableSessionId(metadata.sessionId) &&
+        !metadata.sessionFile
+      ) {
+        const durable = await readHostedDurableSession(
+          userId,
+          metadata.sessionId
+        )
+        if (!durable) {
+          return Response.json(
+            { message: "Session not found" },
+            { status: 404 }
+          )
+        }
+        return Response.json(durable)
       }
 
       return Response.json(

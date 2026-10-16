@@ -1,6 +1,7 @@
 import { sanitizePortableResourcePaths } from "./durable-project-settings"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
+import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
 import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
 import { compactProjectSettingsForPersist } from "./project-settings-merge"
 import {
@@ -36,7 +37,7 @@ type MigratedProjectSettingsResult = {
 
 /**
  * Apply the legacy Gateway OCC migration to save-time overrides. On DB-backed
- * (Vercel) surfaces, when the migration changed the stored overrides and the
+ * (Cloudflare) surfaces, when the migration changed the stored overrides and the
  * current stored row is absent or already migrated, flush the compacted record
  * so the caller's persist is a single upsert. Returns `persisted` so the caller
  * can skip its own write when the flush already wrote the identical record.
@@ -45,7 +46,10 @@ export async function prepareProjectSettingsOverridesForPersist(
   overrides: Record<string, unknown>,
   userId: string | undefined
 ): Promise<MigratedProjectSettingsResult> {
-  const migrated = await migrateLegacyGatewayProjectOverrides(overrides, userId)
+  const migrated = await migrateLegacyGatewayProjectOverrides(
+    migrateLegacyAzureProviderOverrides(overrides),
+    userId
+  )
   if (
     !userId ||
     !usesDatabaseBackedProjectSettings() ||

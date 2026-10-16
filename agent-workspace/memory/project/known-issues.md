@@ -29,6 +29,15 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: Record repeated friction manually in `known-issues.md` or `plans/backlog.md` with source evidence.
 - Follow-up: Add self-improvement candidate extraction and eval-run artifacts.
 
+## Worker code still imports from `.pi/`
+
+- Issue: AGENTS.md says Cloudflare Worker builds must not import from `.pi/`, but three Worker-bundled modules import `classifyToolPath` / `evaluateWorkspaceWrite` from `.pi/extensions/lib/mutation-tier.ts`.
+- Affected area: `apps/web/src/lib/pi/command-policy.ts`, `apps/web/src/lib/pi/plan-mode.ts`, `apps/web/src/lib/pi/durable/spike-harness.ts` (hosted Durable Object path).
+- Symptoms: None today; Vite bundles the relative import. The risk is a future `.pi/` change pulling Node-only code into the Worker bundle, and no guard catches it (`worker-bundle-guards.test.ts` has no `.pi/` rule).
+- Current status: Open. Found while reviewing the hosted Durable Object cutover (2026-10-15).
+- Workaround: Keep `mutation-tier.ts` and its `project-trust` dependency free of Node-only APIs.
+- Follow-up: Move `mutation-tier` under `apps/web/src/lib/pi/`, re-export it from `.pi/extensions/lib/`, then add a `.pi/` import rule to `worker-bundle-guards.test.ts`.
+
 ## Resource manager does not yet cover full Pi package lifecycle
 
 - Issue: `resource_install` supports workspace skills, prompts, single-file extensions, and local directory packages, but not full npm/git package installation, pinning, updating, filtering, or trust metadata.
@@ -43,7 +52,7 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Issue: Fleet Pi exposes model and thinking level, but richer Pi reasoning/session settings are not yet surfaced as first-class UI/API controls.
 - Affected area: settings schema, Configurations panel, Pi runtime creation, and run provenance.
 - Symptoms: Mode/task-specific reasoning presets and branch/compaction summary controls require code/config changes instead of UI-driven management.
-- Current status: **Partially resolved!** The Configurations panel / Settings Dialog (`settings-dialog.tsx`) now fully exposes and edits provider, model, thinking, retry, compaction, and transport settings inside `.pi/settings.json`, with live hot-reload support.
+- Current status: The Settings Agent loop pane round-trips compaction `enabled`, `reserveTokens`, `keepRecentTokens`, and `backgroundTokens`, plus retry, thinking level, and steering/follow-up. Those values persist in `pi_user_settings` and apply on the next hosted turn. Model-override and provider-retry knobs stay out until Pi Durable exposes them on harness settings.
 - Workaround: Adjust supported `.pi/settings.json` fields manually, via the Configurations tab/Settings Dialog, or through existing configuration controls.
 - Follow-up: Extend the settings schema to support fine-grained thinking budgets and reasoning profiles.
 

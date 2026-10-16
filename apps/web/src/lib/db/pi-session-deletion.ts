@@ -37,7 +37,7 @@ function finalizeLocalSessionCleanup(input: {
     try {
       unlinkSync(session.session_file_path)
     } catch {
-      // Ephemeral Vercel JSONL may already be gone.
+      // Ephemeral hosted JSONL may already be gone.
     }
     evictPiRuntimeForDeletedSession({
       sessionId: session.id,

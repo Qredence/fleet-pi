@@ -37,6 +37,10 @@ import {
   setActiveSessionRecord,
 } from "./runtime/active-sessions"
 import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
+import {
+  resolveChatWorkspaceStatus,
+  withoutWorkspaceTools,
+} from "./runtime/fleet-pi-core-extensions"
 import { applyRuntimeAuth } from "./runtime/session-factory"
 import { createSessionManager, isUsableSessionFile } from "./server-sessions"
 import type { ActiveSessionRecord } from "./runtime/active-sessions"
@@ -51,8 +55,10 @@ import type {
   ChatQuestionAnswerRequest,
   ChatQuestionAnswerResponse,
   ChatSessionMetadata,
+  ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   getCachedUserSandbox,
   isDaytonaEnabled,
@@ -139,6 +145,21 @@ export function retainPiRuntime(runtime: AgentSessionRuntime, userId?: string) {
   return () => {
     scheduleRuntimeDisposal(record)
   }
+}
+
+export function hasLiveSessionRuntime(metadata: ChatRuntimeMetadata) {
+  return Boolean(findRuntimeRecord(metadata))
+}
+
+export function notLiveSessionResponse() {
+  return Response.json(
+    {
+      error: "not-live",
+      aborted: false,
+      message: "This isolate has no live session for that chat.",
+    },
+    { status: 409 }
+  )
 }
 
 export async function abortActiveSession(metadata: ChatRuntimeMetadata) {
@@ -246,9 +267,14 @@ export async function createPiRuntime(
   }
 
   const daytona = await resolveDaytonaWorkspaceForUser(context, metadata)
+  const workspace = resolveChatWorkspaceStatus({
+    daytonaEnabled: daytona.enabled,
+    hostedDeployment: isHostedDeployment(),
+  })
 
   const services = await createSessionServices(context, undefined, {
     userId: metadata.userId,
+    workspace,
   })
   const requestDiagnostics = collectDiagnostics(services)
   const sessionDir = getSessionDir(context.projectRoot, services, {
@@ -346,10 +372,13 @@ export async function createPiRuntime(
   })
   trackRuntime(runtime, metadata.userId)
   reconcileRuntimeOccModel(runtime, metadata.userId)
+  runtimeWorkspaceStatus.set(runtime, workspace)
   applyPlanMode(runtime, metadata.mode, metadata.planAction)
+  applyWorkspaceToolRestriction(runtime)
 
   return {
     runtime,
+    workspace,
     diagnostics: collectDiagnostics(
       runtime.services,
       runtime.modelFallbackMessage
@@ -419,12 +448,14 @@ async function tryReuseRuntime(
   try {
     await applyModelSelection(record.runtime, modelSelection, metadata.userId)
     applyPlanMode(record.runtime, metadata.mode, metadata.planAction)
+    applyWorkspaceToolRestriction(record.runtime)
   } catch (error) {
     scheduleRuntimeDisposal(record)
     throw error
   }
   return {
     runtime: record.runtime,
+    workspace: runtimeWorkspaceStatus.get(record.runtime),
     sessionReset: false,
     diagnostics: mergeDiagnostics(
       requestDiagnostics,
@@ -434,6 +465,26 @@ async function tryReuseRuntime(
       )
     ),
   }
+}
+
+// Workspace tool availability per live runtime (set when it is created).
+const runtimeWorkspaceStatus = new WeakMap<
+  AgentSessionRuntime,
+  ChatWorkspaceStatus
+>()
+
+/**
+ * Without a workspace (hosted deploy, no Daytona key) drop file/shell/search
+ * tools from the active set; plan mode re-applies tool sets every request, so
+ * this runs after each applyPlanMode.
+ */
+export function applyWorkspaceToolRestriction(runtime: AgentSessionRuntime) {
+  const status = runtimeWorkspaceStatus.get(runtime)
+  if (!status || status.toolsAvailable) return
+  const session = runtime.session
+  session.setActiveToolsByName(
+    withoutWorkspaceTools(session.getActiveToolNames())
+  )
 }
 
 function mergeDiagnostics(...diagnosticLists: Array<Array<string>>) {

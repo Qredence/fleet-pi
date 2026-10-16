@@ -81,7 +81,7 @@ describe("getChatAuthBearerToken", () => {
   it("mints JWT via authClient.token() with credentials include", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://fleet-pi-web.vercel.app/api/auth"
+      "https://fleet-pi-web.workers.dev/api/auth"
     )
     token.mockResolvedValue({ data: { token: makeJwt(600) }, error: null })
 
@@ -98,7 +98,7 @@ describe("getChatAuthBearerToken", () => {
   it("coalesces concurrent mint calls and caches the bearer", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://fleet-pi-web.vercel.app/api/auth"
+      "https://fleet-pi-web.workers.dev/api/auth"
     )
     let resolveToken:
       ((value: { data: { token: string }; error: null }) => void) | undefined
@@ -126,7 +126,7 @@ describe("getChatAuthBearerToken", () => {
   it("retries once when the first mint fails", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://fleet-pi-web.vercel.app/api/auth"
+      "https://fleet-pi-web.workers.dev/api/auth"
     )
     token
       .mockResolvedValueOnce({
@@ -143,7 +143,7 @@ describe("getChatAuthBearerToken", () => {
   it("returns null on authClient.token() failure instead of throwing", async () => {
     isNeonManagedAuthClientEnabled.mockReturnValue(true)
     resolveClientNeonAuthUrl.mockReturnValue(
-      "https://fleet-pi-web.vercel.app/api/auth"
+      "https://fleet-pi-web.workers.dev/api/auth"
     )
     token.mockResolvedValue({
       data: null,

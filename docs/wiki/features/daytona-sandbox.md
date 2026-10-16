@@ -1,6 +1,6 @@
 # Daytona sandbox
 
-Fleet Pi can proxy Pi tool calls into an isolated container rather than running them on the host. Each logged-in user gets one sandbox in **their** Daytona account via BYOK (`daytona` provider secret). On Vercel, org `DAYTONA_API_KEY` alone does not enable Daytona.
+Fleet Pi can proxy Pi tool calls into an isolated container rather than running them on the host. Each logged-in user gets one sandbox in **their** Daytona account via BYOK (`daytona` provider secret). On Cloudflare, org `DAYTONA_API_KEY` alone does not enable Daytona.
 
 ## What a sandbox provides
 
@@ -22,7 +22,7 @@ FLEET_PI_REPOSITORY_URL  Optional — HTTPS URL to sparse-seed agent-workspace
 DAYTONA_WEBHOOK_SECRET     Required for sandbox event webhooks to take effect
 ```
 
-`isDaytonaEnabled(userId, resolvedKey)` returns true when `userId` is set and a resolved API key is present. On Vercel, env `DAYTONA_API_KEY` alone is not enough.
+`isDaytonaEnabled(userId, resolvedKey)` returns true when `userId` is set and a resolved API key is present. On Cloudflare, env `DAYTONA_API_KEY` alone is not enough.
 
 ## Sandbox lifecycle
 

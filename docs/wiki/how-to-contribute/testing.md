@@ -111,6 +111,24 @@ pnpm --filter web e2e -- --headed
 
 The CI `e2e` job is defined in `.github/workflows/ci.yml` and depends on the `build` job completing successfully.
 
+## Manual Chat Checks
+
+Run these in a local browser session before a release that touches chat:
+
+- Ask `read package.json` and verify a Read tool card appears.
+- Ask to create a small temp file under the repo; verify Write renders and the file lands inside the repo.
+- Ask to edit that file; verify Edit renders a diff.
+- Ask `run pnpm --version`; verify Bash renders the command and output.
+- Refresh the page; the visible transcript hydrates from stored Pi session metadata.
+- Set localStorage `sessionFile` to `/etc/hosts`; the app silently starts a fresh repo-scoped session instead of showing an error.
+- While streaming, send another prompt; a follow-up queue status appears.
+- In Plan mode, ask for a plan; the assistant produces a numbered `Plan:` with no edit/write tool use.
+- In Plan mode, ask something ambiguous; the InputBar Question bar appears, and answering continues the same Pi turn.
+- After a plan, choose Execute; the app switches to Agent mode with full tools, and `[DONE:n]` progress updates the plan status.
+- Open the Pi resources browser. Starter skills, npm package resources, vendored extensions, `project-inventory.ts`, and `workspace-index.ts` appear. The canvas docks right and resizes; on mobile it opens as an overlay.
+- In the Workspace tab, `agent-workspace` and seeded files appear, and clicking a Markdown file renders its preview.
+- Open Settings. Pi settings load, provider and model controls can become dirty and save, and the Light/Dark/System theme stays local. If project-local and global `agent-elements` skills are both installed, the resources diagnostics may show that expected name collision.
+
 ## CI Pipeline Summary
 
 The CI workflow (`.github/workflows/ci.yml`) runs on every pull request and push to `main`. Jobs:

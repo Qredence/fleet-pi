@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { toast } from "sonner"
 import { createTextMessage } from "./chat-message-helpers"
 import { applyChatStreamEvent } from "./chat-stream-state"
+import { hostedWhenBusy } from "./hosted-busy-delivery"
 import { tryRecoverForbiddenSession } from "./use-pi-chat-forbidden-session"
 import type { MutableRefObject } from "react"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
@@ -44,17 +45,20 @@ type PiChatMessagingSetters = {
 export type UsePiChatMessagingOptions = PiChatMessagingRefs &
   PiChatMessagingSetters & {
     client: ChatClient
+    hostedAgentOnly?: boolean
     mode: ChatMode
     model: ChatModelSelection | undefined
     recoverFromForbiddenSession: () => Promise<void>
     refreshSessions: () => Promise<void>
     status: ChatStatus
+    steeringMode?: string
   }
 
 export function usePiChatMessaging({
   abortRef,
   activityLabelRef,
   client,
+  hostedAgentOnly = false,
   messagesRef,
   mode,
   model,
@@ -71,6 +75,7 @@ export function usePiChatMessaging({
   setSessionMetadataSynced,
   setStatus,
   status,
+  steeringMode,
 }: UsePiChatMessagingOptions) {
   const handleStreamEvent = useCallback(
     (event: ChatStreamEvent, assistantIdRef: { current: string | null }) => {
@@ -125,7 +130,11 @@ export function usePiChatMessaging({
   )
 
   const queueFollowUp = useCallback(
-    async (trimmed: string, requestMode: ChatMode) => {
+    async (
+      trimmed: string,
+      requestMode: ChatMode,
+      behavior: "steer" | "followUp"
+    ) => {
       const userMessage = createTextMessage("user", trimmed)
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
@@ -137,7 +146,7 @@ export function usePiChatMessaging({
           mode: requestMode,
           sessionFile: sessionMetadataRef.current.sessionFile,
           sessionId: sessionMetadataRef.current.sessionId,
-          streamingBehavior: "followUp",
+          streamingBehavior: behavior,
         },
         (event) => {
           if (event.type === "queue") {
@@ -145,7 +154,9 @@ export function usePiChatMessaging({
               steering: event.steering,
               followUp: event.followUp,
             })
-            setActivityLabelSynced("Follow-up queued")
+            setActivityLabelSynced(
+              behavior === "steer" ? "Steering the turn" : "Follow-up queued"
+            )
           }
           if (event.type === "error") {
             throw new Error(event.message)
@@ -172,7 +183,11 @@ export function usePiChatMessaging({
 
       if (status === "streaming") {
         try {
-          await queueFollowUp(trimmed, requestMode)
+          await queueFollowUp(
+            trimmed,
+            requestMode,
+            hostedWhenBusy({ hostedAgentOnly, steeringMode })
+          )
         } catch (err) {
           const nextError = err instanceof Error ? err : new Error(String(err))
           setError(nextError)
@@ -242,6 +257,7 @@ export function usePiChatMessaging({
       abortRef,
       client,
       handleStreamEvent,
+      hostedAgentOnly,
       messagesRef,
       mode,
       model,
@@ -253,6 +269,7 @@ export function usePiChatMessaging({
       setMessagesSynced,
       setStatus,
       status,
+      steeringMode,
     ]
   )
 

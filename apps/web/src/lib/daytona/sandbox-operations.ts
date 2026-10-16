@@ -1,5 +1,6 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import { downloadFile, executeCommand, listFiles, uploadFile } from "./client"
+import { resourceCachePathToSandbox } from "./resource-cache-path"
 import type { Sandbox } from "@daytona/sdk"
 import type {
   BashOperations,
@@ -28,9 +29,11 @@ export function assertPathWithinWorkspaceBound(
 }
 
 function guardPath(absolutePath: string, boundRoot?: string) {
+  const path = resourceCachePathToSandbox(absolutePath)
   if (boundRoot) {
-    assertPathWithinWorkspaceBound(absolutePath, boundRoot)
+    assertPathWithinWorkspaceBound(path, boundRoot)
   }
+  return path
 }
 
 export function createSandboxBashOperations(
@@ -39,7 +42,7 @@ export function createSandboxBashOperations(
 ): BashOperations {
   return {
     exec: async (command, cwd, { onData, timeout }) => {
-      guardPath(cwd, boundRoot)
+      cwd = guardPath(cwd, boundRoot)
       const result = await executeCommand(
         sandbox,
         command,
@@ -61,11 +64,11 @@ export function createSandboxReadOperations(
 ): ReadOperations {
   return {
     readFile: (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       return downloadFile(sandbox, absolutePath)
     },
     access: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       const entries = await listFiles(sandbox, dir)
@@ -82,11 +85,11 @@ export function createSandboxWriteOperations(
 ): WriteOperations {
   return {
     writeFile: async (absolutePath, content) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       await uploadFile(sandbox, content, absolutePath)
     },
     mkdir: async (dir) => {
-      guardPath(dir, boundRoot)
+      dir = guardPath(dir, boundRoot)
       const result = await executeCommand(
         sandbox,
         `mkdir -p ${shellEscape(dir)}`
@@ -106,15 +109,15 @@ export function createSandboxEditOperations(
 ): EditOperations {
   return {
     readFile: (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       return downloadFile(sandbox, absolutePath)
     },
     writeFile: async (absolutePath, content) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       await uploadFile(sandbox, content, absolutePath)
     },
     access: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       const entries = await listFiles(sandbox, dir)
@@ -131,7 +134,7 @@ export function createSandboxGrepOperations(
 ): GrepOperations {
   return {
     isDirectory: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       try {
         const entries = await listFiles(sandbox, dirname(absolutePath))
         const name = absolutePath.slice(dirname(absolutePath).length + 1)
@@ -142,7 +145,7 @@ export function createSandboxGrepOperations(
       }
     },
     readFile: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       const buf = await downloadFile(sandbox, absolutePath)
       return buf.toString("utf-8")
     },
@@ -155,7 +158,7 @@ export function createSandboxFindOperations(
 ): FindOperations {
   return {
     exists: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       try {
         const dir = dirname(absolutePath)
         const name = absolutePath.slice(dir.length + 1)
@@ -170,7 +173,7 @@ export function createSandboxFindOperations(
       }
     },
     glob: async (pattern, cwd, { ignore, limit }) => {
-      guardPath(cwd, boundRoot)
+      cwd = guardPath(cwd, boundRoot)
       const ignoreArgs = ignore
         .map((p) => `-not -path ${shellEscape(p)}`)
         .join(" ")
@@ -193,7 +196,7 @@ export function createSandboxLsOperations(
 ): LsOperations {
   return {
     exists: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       try {
         await listFiles(sandbox, absolutePath)
         return true
@@ -209,7 +212,7 @@ export function createSandboxLsOperations(
       }
     },
     stat: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       const dir = dirname(absolutePath)
       const name = absolutePath.slice(dir.length + 1)
       if (!name) {
@@ -221,7 +224,7 @@ export function createSandboxLsOperations(
       return { isDirectory: () => entry.isDir }
     },
     readdir: async (absolutePath) => {
-      guardPath(absolutePath, boundRoot)
+      absolutePath = guardPath(absolutePath, boundRoot)
       const entries = await listFiles(sandbox, absolutePath)
       return entries.map((e) => e.name)
     },

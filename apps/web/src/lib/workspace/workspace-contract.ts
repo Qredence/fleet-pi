@@ -165,6 +165,7 @@ export const workspaceManifestSchema = z.object({
   scratch: z.object({
     path: z.string(),
     temporary: z.literal(true),
+    ttlDays: z.literal(7).default(7),
     protectionPaths: z.array(z.string()),
   }),
   projection: z.object({
@@ -192,6 +193,7 @@ export function createDefaultWorkspaceManifest(): WorkspaceManifest {
     scratch: {
       path: toWorkspaceProjectPath("scratch"),
       temporary: true,
+      ttlDays: 7,
       protectionPaths: WORKSPACE_SCRATCH_PROTECTION_PATHS.map(
         toWorkspaceProjectPath
       ),

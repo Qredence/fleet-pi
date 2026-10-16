@@ -1,10 +1,12 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { Type } from "typebox"
-import {
-  installWorkspaceResource,
-  type ResourceInstallKind,
-  type ResourceInstallSourceType,
-} from "./lib/resource-install"
+import { resolveHarnessWriteTarget } from "./lib/harness-write"
+import { installWorkspaceResource } from "./lib/resource-install"
+import type { HarnessSandboxWriter } from "./lib/harness-write"
+import type { ResourceInstallParams } from "./lib/resource-install"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 export default function resourceInstallExtension(pi: ExtensionAPI) {
   pi.registerTool({
@@ -43,17 +45,38 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       try {
-        const result = await installWorkspaceResource(
-          ctx.sessionManager.getCwd(),
-          {
-            activate: params.activate,
-            kind: params.kind as ResourceInstallKind,
-            name: params.name,
-            source: params.source,
-            sourceType: params.sourceType as ResourceInstallSourceType,
-          },
-          signal
-        )
+        const cwd = ctx.sessionManager.getCwd()
+        const target = await resolveHarnessWriteTarget({
+          cwd,
+          sessionId: ctx.sessionManager.getSessionId(),
+          sessionFile: ctx.sessionManager.getSessionFile(),
+        })
+        if (target.kind === "unavailable") {
+          return {
+            content: [
+              { type: "text" as const, text: `Error: ${target.message}` },
+            ],
+            details: undefined,
+            isError: true,
+          }
+        }
+
+        const installParams = {
+          activate: params.activate,
+          kind: params.kind,
+          name: params.name,
+          source: params.source,
+          sourceType: params.sourceType,
+        }
+        const result =
+          target.kind === "sandbox"
+            ? await installOntoSandbox(
+                cwd,
+                target.sandbox,
+                installParams,
+                signal
+              )
+            : await installWorkspaceResource(cwd, installParams, signal)
 
         return {
           content: [
@@ -82,4 +105,38 @@ export default function resourceInstallExtension(pi: ExtensionAPI) {
       }
     },
   })
+}
+
+async function installOntoSandbox(
+  cwd: string,
+  sandbox: HarnessSandboxWriter,
+  params: ResourceInstallParams,
+  signal: AbortSignal | undefined
+) {
+  const writeRoot = await mkdtemp(join(tmpdir(), "fleet-pi-install-"))
+  try {
+    const result = await installWorkspaceResource(cwd, params, signal, {
+      writeRoot,
+    })
+    await sandbox.uploadWorkspace(writeRoot)
+    const settings = await readInstallSettings(writeRoot)
+    if (settings) await sandbox.persistSettings(settings)
+    return result
+  } finally {
+    await rm(writeRoot, { force: true, recursive: true })
+  }
+}
+
+async function readInstallSettings(root: string) {
+  try {
+    const parsed = JSON.parse(
+      await readFile(join(root, ".pi/settings.json"), "utf8")
+    ) as unknown
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
 }

@@ -2,13 +2,13 @@ import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import type { PostgresQueryClient } from "./pi-session-mirror"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export type ProviderAuthType = "apiKey" | "oauth"
 
 export class ChatPostgresUnavailableError extends Error {
   constructor(
-    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Vercel."
+    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Cloudflare."
   ) {
     super(message)
     this.name = "ChatPostgresUnavailableError"
@@ -22,8 +22,8 @@ type ProviderRow = {
   encrypted_payload: string | null
 }
 
-function requireChatDatabaseOnVercel() {
-  if (isVercelDeployment() && !isChatDatabaseConfigured()) {
+function requireChatDatabaseOnHost() {
+  if (isHostedDeployment() && !isChatDatabaseConfigured()) {
     throw new ChatPostgresUnavailableError()
   }
 }
@@ -41,7 +41,7 @@ async function withUserProvidersTransaction(
   userId: string,
   operation: (client: PostgresQueryClient) => Promise<void>
 ) {
-  requireChatDatabaseOnVercel()
+  requireChatDatabaseOnHost()
   await withChatPostgresTransaction(async (client) => {
     await operation(client)
   }, userId)

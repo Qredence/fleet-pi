@@ -39,7 +39,7 @@ async function upsertUserProjectSettingsWithClient(
 
 /**
  * Atomically remove provider credentials and optionally replace Pi settings
- * overrides for the same user (Vercel / Neon path).
+ * overrides for the same user (Cloudflare / Neon path).
  */
 export async function removeProviderCredentialsAndSettings(
   userId: string,

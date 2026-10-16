@@ -2,6 +2,7 @@ import path from "node:path"
 import dotenv from "dotenv"
 import { Pool } from "@neondatabase/serverless"
 import { runChatMigrations } from "../src/lib/db/chat-migrations"
+import { resolveAppRole } from "../src/lib/db/app-role"
 
 const cwd = process.cwd()
 const preservedMigrationDatabaseUrl =
@@ -30,7 +31,9 @@ async function main() {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    await runChatMigrations(client)
+    const appRole = resolveAppRole()
+    console.log(`Granting runtime privileges to role: ${appRole}`)
+    await runChatMigrations(client, console.log, { appRole })
     await client.query("COMMIT")
   } catch (error) {
     await client.query("ROLLBACK")

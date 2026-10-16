@@ -4,6 +4,7 @@ import {
   clearUserSandboxCache,
   getCachedUserSandbox,
 } from "@/lib/daytona/user-sandbox"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 interface DaytonaWebhookPayload {
   event?: string
@@ -17,20 +18,36 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
   try {
     const signature = request.headers.get("x-daytona-signature")
     const rawBody = await request.text()
+    const secret = process.env.DAYTONA_WEBHOOK_SECRET
+
+    if (!secret) {
+      if (isHostedDeployment()) {
+        console.error("DAYTONA_WEBHOOK_SECRET is unset on a hosted deployment")
+        return Response.json(
+          { error: "webhook secret is not configured" },
+          { status: 503 }
+        )
+      }
+      console.warn(
+        "Ignoring Daytona webhook side effects: DAYTONA_WEBHOOK_SECRET is not set"
+      )
+      return Response.json({ received: true })
+    }
+
+    if (!isValidWebhookSignature(signature, rawBody, secret)) {
+      return Response.json({ error: "invalid signature" }, { status: 401 })
+    }
+
     const payload = JSON.parse(rawBody) as DaytonaWebhookPayload
 
     console.log("Daytona webhook received:", {
-      signature: signature ? "present" : "absent",
+      signature: "present",
       event: payload.event,
       sandboxId: payload.sandboxId,
       state: payload.state,
     })
 
-    if (
-      payload.event &&
-      payload.sandboxName &&
-      isVerifiedWebhook(signature, rawBody)
-    ) {
+    if (payload.event && payload.sandboxName) {
       handleSandboxEvent(payload)
     }
 
@@ -44,14 +61,11 @@ export async function daytonaWebhookHandler({ request }: { request: Request }) {
   }
 }
 
-function isVerifiedWebhook(signature: string | null, rawBody: string): boolean {
-  const secret = process.env.DAYTONA_WEBHOOK_SECRET
-  if (!secret) {
-    console.warn(
-      "Ignoring Daytona webhook side effects: DAYTONA_WEBHOOK_SECRET is not set"
-    )
-    return false
-  }
+function isValidWebhookSignature(
+  signature: string | null,
+  rawBody: string,
+  secret: string
+): boolean {
   if (!signature) return false
 
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest()

@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { runWithChatAuthSurface } from "../../../auth/chat-auth-surface"
 import {
   FLEET_PI_SHARED_PROJECT_SETTINGS,
   getFleetBaseProjectSettings,
+  omitRemoteInstallPackages,
 } from "../fleet-default-project-settings"
 import { prepareProjectSettingsForPersist } from "../project-settings-persist"
 
@@ -18,6 +19,38 @@ describe("getFleetBaseProjectSettings", () => {
       expect(settings.extensions).toEqual([
         "../agent-workspace/pi/extensions/enabled",
       ])
+    })
+  })
+
+  it("drops remote package installs from the loader view on Cloudflare", () => {
+    vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
+    expect(
+      omitRemoteInstallPackages({
+        packages: [
+          "npm:pi-web-access",
+          { source: "git:github.com/example/pack" },
+          "github:example/pack",
+          "../agent-workspace/pi/packages/bundle",
+        ],
+        skills: ["../agent-workspace/pi/skills"],
+      })
+    ).toEqual({
+      packages: ["../agent-workspace/pi/packages/bundle"],
+      skills: ["../agent-workspace/pi/skills"],
+    })
+    vi.unstubAllEnvs()
+  })
+
+  it("keeps remote package installs in the loader view off the hosted runtime", () => {
+    expect(
+      omitRemoteInstallPackages({
+        packages: [
+          "npm:pi-web-access",
+          "../agent-workspace/pi/packages/bundle",
+        ],
+      })
+    ).toEqual({
+      packages: ["npm:pi-web-access", "../agent-workspace/pi/packages/bundle"],
     })
   })
 

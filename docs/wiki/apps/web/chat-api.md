@@ -53,7 +53,7 @@ flowchart TD
 
 ### Authentication
 
-When chat auth is required (`isChatAuthRequired` in `apps/web/src/lib/auth/chat-api-auth.ts`), the session is resolved via Neon Managed Auth (cookies + optional Bearer JWT) or legacy Better Auth. `userId` is attached to the request before `handleChatTurn` runs. Local anonymous chat applies only when no Neon Auth URL is set and `VERCEL` is unset.
+When chat auth is required (`isChatAuthRequired` in `apps/web/src/lib/auth/chat-api-auth.ts`), the session is resolved via Neon Managed Auth (cookies + optional Bearer JWT) or legacy Better Auth. `userId` is attached to the request before `handleChatTurn` runs. Local anonymous chat applies only when no Neon Auth URL is set and `FLEET_PI_DEPLOYMENT` is unset.
 
 ---
 

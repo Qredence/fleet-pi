@@ -17,7 +17,7 @@
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@types/node": "^25.8.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.5.0",
+    "eslint": "^10.6.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
@@ -28,6 +28,7 @@
     "./chat-protocol.zod": "./src/chat-protocol.zod.ts",
     "./model-patterns": "./src/model-patterns.ts",
     "./provider-catalog": "./src/provider-catalog.ts",
-    "./openui-prompt": "./src/openui-prompt.ts"
+    "./openui-prompt": "./src/openui-prompt.ts",
+    "./hosted-resources": "./src/hosted-resources.ts"
   }
 }

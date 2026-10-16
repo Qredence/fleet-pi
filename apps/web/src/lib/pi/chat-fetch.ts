@@ -68,9 +68,10 @@ async function withChatRequestHeaders(init?: RequestInit) {
 
 export async function fetchJson<T>(
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  scope?: ChatSessionMetadata
 ): Promise<T> {
-  const resolvedUrl = resolveChatApiUrl(url)
+  const resolvedUrl = resolveChatApiUrl(url, scope)
 
   const attempt = async (allowRetry: boolean): Promise<T> => {
     const headers = await withChatRequestHeaders(init)

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { RESOURCE_CACHE_PREFIX } from "../../daytona/resource-cache-path"
 import {
   applyModelSelection,
   loadChatModels,
@@ -184,6 +185,30 @@ function createServices({
 }
 
 describe("server catalog", () => {
+  it("returns portable workspace paths for sandbox resources", async () => {
+    const services = createServices({ all: [], available: [] })
+    services.resourceLoader.getSkills.mockReturnValue({
+      skills: [
+        {
+          name: "private-skill",
+          description: "Private",
+          filePath: `${RESOURCE_CACHE_PREFIX}ABC123/pi/skills/private/SKILL.md`,
+          sourceInfo: { source: "local" },
+        },
+      ],
+    })
+    mocks.createSessionServices.mockResolvedValue(services)
+    const response = await loadChatResources(
+      { projectRoot: "/repo" } as never,
+      { userId: "a" }
+    )
+    expect(response.skills[0]).toMatchObject({
+      path: "agent-workspace/pi/skills/private/SKILL.md",
+      workspacePath: "agent-workspace/pi/skills/private/SKILL.md",
+      source: "workspace",
+      installedInWorkspace: true,
+    })
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.resolveDefaultModelSelection.mockReturnValue({

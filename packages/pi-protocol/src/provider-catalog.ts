@@ -316,7 +316,7 @@ export const KNOWN_PROVIDERS: Array<PiProviderCredentialEntry> =
     authType,
   }))
 
-/** Pi LLM providers whose env vars are scrubbed on Vercel (excludes infra). */
+/** Pi LLM providers whose env vars are scrubbed on Cloudflare (excludes infra). */
 export const LLM_PROVIDER_ENV_SCRUB_IDS = KNOWN_PROVIDERS.filter(
   (provider) =>
     !INFRA_PROVIDER_IDS.includes(
@@ -326,7 +326,7 @@ export const LLM_PROVIDER_ENV_SCRUB_IDS = KNOWN_PROVIDERS.filter(
 
 /**
  * Full Pi provider ids that can pick up org env / auth.json credentials.
- * On Vercel, `applyRuntimeAuth` clears these unless the user has BYOK.
+ * On Cloudflare, `applyRuntimeAuth` clears these unless the user has BYOK.
  *
  * Authoritative sync source: `@earendil-works/pi-ai`
  * `packages/ai/src/env-api-keys.ts` (`envMap` / `getApiKeyEnvVars`); mirrored by
@@ -339,7 +339,7 @@ export const PI_LLM_RUNTIME_PROVIDER_IDS = [
   "anthropic",
   "ant-ling",
   "openai",
-  "azure-openai-responses",
+  "azure",
   "nvidia",
   "deepseek",
   "google",
@@ -386,7 +386,7 @@ export const CREDENTIAL_UI_PROVIDERS = KNOWN_PROVIDERS.filter(
 )
 
 /**
- * Env vars scrubbed on Vercel so org keys never back chat or bash/tools.
+ * Env vars scrubbed on Cloudflare so org keys never back chat or bash/tools.
  * Includes Fleet catalog vars plus the rest of Pi's provider env map
  * (e.g. `HF_TOKEN` for Hugging Face — not in CREDENTIAL_UI_PROVIDERS).
  */
@@ -432,11 +432,11 @@ export const PROVIDER_ENV_SCRUB_VAR_NAMES = Array.from(
     "AWS_BEARER_TOKEN_BEDROCK",
     "AWS_PROFILE",
     "AWS_ACCESS_KEY_ID",
-    // Org Daytona must not be readable by chat tools or Pi on Vercel
+    // Org Daytona must not be readable by chat tools or Pi on Cloudflare
     "DAYTONA_API_KEY",
     "ORG_DAYTONA_API_KEY",
     // Org Daytona target/region config (not a secret, but org infra config that
-    // must not be user-readable on Vercel, matching DAYTONA_API_KEY above).
+    // must not be user-readable on Cloudflare, matching DAYTONA_API_KEY above).
     "DAYTONA_TARGET",
   ])
 )

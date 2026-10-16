@@ -6,6 +6,7 @@ import {
   isOccFamilyApi,
 } from "@workspace/pi-protocol/provider-catalog"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
+import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
 import {
   assertCustomProviderBaseUrl,
   isGatewayHost,
@@ -64,7 +65,7 @@ type RegisteredCustomProvider = {
 export type CustomProviderSkipReason = {
   id: string
   displayName: string
-  reason: "api-key-unreadable" | "invalid-base-url" | "no-models"
+  reason: "api-key-unreadable" | "invalid-base-url"
 }
 
 /**
@@ -125,7 +126,7 @@ export function buildCustomModelEntry(
  * (`custom+<slug>`). The reserved default slot stays with
  * `registerOpenAiChatCompletionsProvider`.
  */
-async function listCustomProviderRegistrations(
+export async function listCustomProviderRegistrations(
   userId: string | undefined
 ): Promise<{
   registrations: Array<RegisteredCustomProvider>
@@ -162,6 +163,8 @@ async function listCustomProviderRegistrations(
     const api: PiCustomProviderApi = instance.api ?? "openai-completions"
     // Legacy single-model rows carry `modelId` only; normalized rows carry
     // `modelIds`. Fall back so both shapes register.
+    // Empty stored ids are valid. Discovery fills the catalog from the base
+    // URL, and explicitly enabled ids are attached at registration time.
     const modelIds = (
       instance.modelIds?.length
         ? instance.modelIds
@@ -169,14 +172,6 @@ async function listCustomProviderRegistrations(
           ? [instance.modelId]
           : []
     ).filter((id) => id.trim())
-    if (modelIds.length === 0) {
-      skipped.push({
-        id: instance.id,
-        displayName: instance.displayName,
-        reason: "no-models",
-      })
-      continue
-    }
     let apiKey: string | undefined
     if (useLocalStore) {
       try {
@@ -233,7 +228,6 @@ const SKIP_REASON_MESSAGE: Record<CustomProviderSkipReason["reason"], string> =
       "stored API key could not be read (secret rotation or corruption)",
     "invalid-base-url":
       "base URL failed validation (https + allowed host required)",
-    "no-models": "no models are configured for this provider",
   }
 
 /**
@@ -278,8 +272,14 @@ export async function registerCustomProviders(
     })
   }
 
+  const enabledPatterns = services.settingsManager.getEnabledModels()
   for (const registration of registrations) {
-    const models: RegisteredModels = registration.modelIds.map((modelId) =>
+    const modelIds = modelIdsForRegistration(
+      registration.modelIds,
+      enabledPatterns,
+      registration.id
+    )
+    const models: RegisteredModels = modelIds.map((modelId) =>
       buildCustomModelEntry(modelId, registration.api, registration.usesGateway)
     )
     modelRuntime.registerProvider(registration.id, {

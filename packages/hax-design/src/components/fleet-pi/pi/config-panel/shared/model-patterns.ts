@@ -24,6 +24,24 @@ export function isModelEnabled(
   )
 }
 
+/**
+ * A model already offered in chat.
+ * An explicit `enabledModels` list is the source of truth. When that list
+ * has never been saved, only models already in the chat picker count —
+ * a discovered chat-completions catalog is not already selected.
+ */
+export function isChatListModel(
+  model: ConfigModelInfo,
+  patterns: Array<string> | undefined,
+  chatModels: ReadonlyArray<{ provider: string; modelId: string }>
+) {
+  if (patterns !== undefined) return isModelEnabled(model, patterns)
+  return chatModels.some(
+    (entry) =>
+      entry.provider === model.provider && entry.modelId === model.modelId
+  )
+}
+
 export function nextEnabledModelPatterns({
   currentPatterns,
   enabled,
@@ -35,8 +53,6 @@ export function nextEnabledModelPatterns({
   model: ConfigModelInfo
   models: Array<ConfigModelInfo>
 }) {
-  if (currentPatterns === undefined && enabled) return undefined
-
   const current = currentPatterns ?? []
   const knownModelPatterns = new Set(
     models.map((item) => modelPatternFor(item))

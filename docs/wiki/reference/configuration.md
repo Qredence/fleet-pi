@@ -33,6 +33,7 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 | `PI_AGENT_DIR`            | —                 | Override the Pi agent resource directory. Leave unset to use the Pi default.                                                                                                                                                                                                                                         |
 | `FLEET_PI_REPO_ROOT`      | `process.cwd()`   | Absolute path to the repository root. Pi sessions, workspace files, and tool calls are scoped to this directory. On the Neon Function runtime this defaults to an ephemeral per-instance `/tmp` root: session JSONL there is volatile (lost on instance recycle), so the Postgres `pi_*` mirror is the durable copy. |
 | `FLEET_PI_RUNTIME_TTL_MS` | `600000` (10 min) | How long a Pi `AgentSessionRuntime` is kept alive in memory between chat turns before being released.                                                                                                                                                                                                                |
+| `FLEET_PI_DURABLE_SPIKE`  | unset             | Set to `1` to serve the scripted `POST /api/chat/durable-spike` harness route on a Worker. Leave unset in production: the route reopens the user's Durable Object harness.                                                                                                                                           |
 
 ### Logging
 
@@ -60,16 +61,17 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ### Chat Session Mirror (Neon Postgres)
 
-| Variable                               | Default | Description                                                                                                                                                                                                                                                |
-| -------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FLEET_PI_CHAT_DATABASE_URL`           | —       | Neon Postgres connection string (DML role only). When set, Pi session entries, run events, tool executions, and file mutations are mirrored to Neon asynchronously. Pi JSONL files remain the source of truth; mirror failures do not interrupt streaming. |
-| `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` | —       | Neon Postgres connection string with full DDL privileges. Required only when running `pnpm chat:migrate`.                                                                                                                                                  |
+| Variable                               | Default        | Description                                                                                                                                                                                                                                                |
+| -------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FLEET_PI_CHAT_DATABASE_URL`           | —              | Neon Postgres connection string (DML role only). When set, Pi session entries, run events, tool executions, and file mutations are mirrored to Neon asynchronously. Pi JSONL files remain the source of truth; mirror failures do not interrupt streaming. |
+| `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` | —              | Neon Postgres connection string with full DDL privileges. Required only when running `pnpm chat:migrate`.                                                                                                                                                  |
+| `FLEET_PI_APP_ROLE`                    | `fleet_pi_app` | Runtime role that `pnpm chat:migrate` and `pnpm auth:migrate` grant to. Lower-case identifier only; see [DB role rotation](../../runbooks/db-role-rotation.md).                                                                                            |
 
 ### Daytona Sandboxes (optional)
 
 | Variable                  | Default                                    | Description                                                                                                                                                             |
 | ------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DAYTONA_API_KEY`         | —                                          | Local/dev Daytona API key fallback. On Vercel, each user must BYOK a `daytona` provider secret in `pi_user_providers` — env alone does not enable Daytona.              |
+| `DAYTONA_API_KEY`         | —                                          | Local/dev Daytona API key fallback. On Cloudflare, each user must BYOK a `daytona` provider secret in `pi_user_providers` — env alone does not enable Daytona.          |
 | `DAYTONA_API_URL`         | `https://app.daytona.io/api`               | Daytona API base URL. The SDK default is used when unset.                                                                                                               |
 | `DAYTONA_TARGET`          | —                                          | Daytona target (region/runner). Leave unset to use the Daytona default.                                                                                                 |
 | `DAYTONA_WEBHOOK_SECRET`  | —                                          | Shared secret expected in the `x-daytona-signature` header for incoming Daytona webhooks. When unset, webhook side effects are skipped but requests are still accepted. |
@@ -79,7 +81,7 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ## `.pi/settings.json`
 
-Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file includes stable resource paths (packages, skills, extensions, prompts); model defaults are merged from code at runtime (`fleet-default-project-settings.ts`). User-specific overrides and model curation still apply on top. On Vercel, per-user overrides live in Neon `pi_user_settings` instead.
+Project-local Pi settings are stored in `.pi/settings.json` at the repo root. The committed file includes stable resource paths (packages, skills, extensions, prompts); model defaults are merged from code at runtime (`fleet-default-project-settings.ts`). User-specific overrides and model curation still apply on top. On Cloudflare, per-user overrides live in Neon `pi_user_settings` instead.
 
 Edit overrides through the Settings dialog or `PATCH /api/chat/settings`. Saves compact values that differ from Fleet base defaults (auto-discovered `.pi/skills` and `.pi/extensions` paths are not re-written).
 

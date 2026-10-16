@@ -7,7 +7,8 @@ import type { PiCustomProviderApi } from "./provider-metadata"
 const OPENAI_CHAT_BASE_URL_PLACEHOLDER = "https://opencode.ai/zen/v1"
 const OPENAI_CHAT_MODEL_PLACEHOLDER = "qwen35-122b-a10b"
 const OPENAI_CHAT_NAME_PLACEHOLDER = "e.g. OpenCode Zen, Nebius, Groq…"
-const CUSTOM_MODELS_PLACEHOLDER = "model-a, model-b (comma-separated)"
+const CUSTOM_MODELS_PLACEHOLDER =
+  "Optional. Leave blank to discover models from the base URL"
 
 export const CUSTOM_PROVIDER_API_OPTIONS: Array<{
   value: PiCustomProviderApi
@@ -116,6 +117,7 @@ export function ProviderCredentialFields({
           icon={Layers}
           label="Model ids"
           placeholder={CUSTOM_MODELS_PLACEHOLDER}
+          required={false}
           value={models ?? ""}
           onChange={onModelsChange}
         />

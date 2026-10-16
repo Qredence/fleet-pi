@@ -73,7 +73,7 @@ function asPackageSources(value: unknown): Array<PackageSource> | undefined {
 /**
  * Pi merges project settings over global. Durable Neon/Fleet overrides must
  * land in project scope, or a shipped `.pi/settings.json` (e.g. a single OCC
- * model) permanently masks hydrated `enabledModels` / defaults on Vercel.
+ * model) permanently masks hydrated `enabledModels` / defaults on Cloudflare.
  */
 function assignProjectSetting(
   manager: SettingsManager,
@@ -162,7 +162,7 @@ export function applyProjectSettingsToServices(
     }
   }
 
-  // On deployed/Neon surfaces (Vercel + Daytona-backed Neon chat), Fleet
+  // On deployed/Neon surfaces (Cloudflare + Daytona-backed Neon chat), Fleet
   // settings (Neon `pi_user_settings`) own the default provider/model. Write the
   // value into project scope — or delete the project key when unset so a Pi
   // global-layer default (`~/.pi/agent/settings.json`, env, Daytona sandbox
@@ -255,6 +255,9 @@ function buildRuntimeSettingsOverrides(settings: Record<string, unknown>): {
     }
     if (typeof settings.retry.baseDelayMs === "number") {
       retry.baseDelayMs = settings.retry.baseDelayMs
+    }
+    if (typeof settings.retry.maxAgentDelayMs === "number") {
+      retry.maxAgentDelayMs = settings.retry.maxAgentDelayMs
     }
     if (Object.keys(retry).length > 0) {
       overrides.retry = retry

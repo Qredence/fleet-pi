@@ -1,17 +1,67 @@
 # Changelog
 
 All notable changes to Fleet Pi are documented here. This file follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); tagged releases are
-also published as `RELEASE_NOTES_v*.md` at the repo root.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Historical notes for
+0.5.x live under `docs/releases/`.
 
-## [Unreleased] — `feat/chat-protocol-hardening`
+## [Unreleased]
+
+Hosted Agent turns on Cloudflare stream from the signed-in user's Pi Durable
+object (`@earendil-works/pi-durable` 1.2.0 on `@earendil-works/pi-coding-agent`
+1.1). That object's SQLite storage is the transcript. Neon keeps auth, settings,
+and an optional projection. The Daytona volume holds the harness and artifacts.
+
+### Added
+
+- **Hosted transcript is the Durable Object** — new Cloudflare `/api/chat`
+  sessions address `USER_PI_DURABLE`. Legacy JSONL sessions can still use the
+  Neon Function. Session JSONL is no longer copied to object storage.
+
+### Fixed
+
+- **Account erasure reaches hosted transcripts** — `DELETE /api/chat/account`
+  now clears the user's Durable Object storage as well as the Neon projection.
+  Deleting a single hosted session still only hides it; Pi Durable 1.2 has no
+  per-conversation delete.
+- **Hosted model changes apply to resumed conversations** — each turn sets the
+  conversation's model, so switching models no longer fails on an existing
+  session. A changed API key, base URL, or API reopens the harness.
+- **Forks keep their parent's model** — a fork inherits the parent agent
+  instead of the harness default, and no longer reopens the harness mid-turn.
+- **Spike route is opt-in** — `POST /api/chat/durable-spike` is served only
+  with `FLEET_PI_DURABLE_SPIKE=1`.
+
+### Removed
+
+- **Session blob client** — `object-storage.ts` and `session-blob-store.ts` are
+  gone, along with `@aws-sdk/client-s3`. `neon.ts` declares no buckets.
+  `wrangler.jsonc` has no R2 binding.
+
+## [Unreleased — prior notes]
 
 Hardens the chat wire contract, BYOK provider credential scrubbing, and hot-path
 performance in `@workspace/pi-protocol` and the web chat runtime, with a
 maintainability refactor of the Zod schema surface. Public API is unchanged.
 
+Adds one SQLite Durable Object per signed-in user as the Pi Durable storage
+owner, and opens a Pi Durable harness on that storage.
+
 ### Added
 
+- **One SQLite Durable Object per user (CF-002)** — `apps/web` binds
+  `UserPiDurable` as `USER_PI_DURABLE` and opens that user's Pi Durable SQLite
+  storage with `openDurableObjectSqliteStorage` (`@earendil-works/pi-durable`
+  1.2.0). The same user id resolves to one object id. The object does not
+  construct an `AgentSession`. The namespace is provisioned on the next
+  production deploy.
+- **Pi Durable harness on that object (DURABLE-001, DURABLE-002, DURABLE-003,
+  DURABLE-004)** — the object calls `Harness.open` on the storage it already
+  opened. Read and search are replay-safe; write, edit, and bash omit replay.
+  A scripted bash echo survives a second open of the same storage, a killed
+  read runs again once, and a killed bash stays interrupted. Protected
+  workspace paths stay blocked. `POST /api/chat/durable-spike` addresses the
+  signed-in user's object. Without sandbox tools the same route still accepts
+  a model-only reply. New hosted `/api/chat` turns use the same object.
 - **`userId` / `userEmail` on `ChatRequestSchema`** — the Zod schema now matches
   the server-injected `ChatRequest` type, and both fields surface in the
   regenerated `apps/web/openapi.json`.
@@ -26,9 +76,9 @@ maintainability refactor of the Zod schema surface. Public API is unchanged.
 
 ### Changed
 
-- **Pi SDK 0.82.1** — aligned `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-agent-core`, and
-  `pi-tui` to `^0.82.1` in the root workspace and `apps/web` (no runtime code changes;
-  Fleet Pi already uses `services.modelRuntime` for BYOK).
+- **Deployment split (CF-015)** — `docs/wiki/deployment.md` labels the Neon
+  Function chat stream interim. The spike turn stays on `UserPiDurable`, not
+  on a longer Worker request.
 - **Split `chat-protocol.zod.ts` into `schemas/` modules** (`shared`, `settings`,
   `chat`, `catalog`, `misc`, `z`) re-exported through the existing entry point.
   A single patched zod instance (`schemas/z.ts`) is threaded through all
@@ -68,3 +118,8 @@ maintainability refactor of the Zod schema surface. Public API is unchanged.
 
 - Workspace typecheck across 3 packages, `pi-protocol` tests 8/8, web tests
   561/561, OpenAPI regenerated and diff-reviewed.
+- Phase C: `pnpm --filter web typecheck`, `pnpm knip`, node and Workers
+  tests for the same root id, read replay, interrupted bash, scripted echo,
+  and model-only tool list, and `pnpm build:cloudflare` (the built worker
+  exports `UserPiDurable`). Production `/api/chat` still uses
+  `createAgentSessionServices`.

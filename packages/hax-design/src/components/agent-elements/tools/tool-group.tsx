@@ -103,6 +103,7 @@ export const ToolGroup = memo(function ToolGroup({
   const hasNestedTools = nestedTools.length > 0
   const streamKey = part.toolCallId ?? part.id ?? ""
   const outputDuration =
+    part.durationMs ||
     part.output?.totalDurationMs ||
     part.output?.duration ||
     part.output?.duration_ms

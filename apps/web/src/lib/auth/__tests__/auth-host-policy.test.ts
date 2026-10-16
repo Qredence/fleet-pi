@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest"
 import {
-  VERCEL_AUTH_HOSTS,
+  HOSTED_AUTH_HOSTS,
+  resolveHostedAllowedHosts,
   resolveTrustedOriginsForDeployment,
-  resolveVercelAllowedHosts,
 } from "../auth-host-policy"
 
 describe("auth-host-policy", () => {
-  it("does not include a wildcard vercel.app host", () => {
-    expect(VERCEL_AUTH_HOSTS).not.toContain("*.vercel.app")
-    expect(resolveVercelAllowedHosts("https://preview.example")).not.toContain(
-      "*.vercel.app"
+  it("does not include a wildcard host", () => {
+    expect(HOSTED_AUTH_HOSTS).not.toContain("*.workers.dev")
+    expect(resolveHostedAllowedHosts("https://preview.example")).not.toContain(
+      "*.workers.dev"
     )
   })
 
-  it("locks preview trusted origins to BETTER_AUTH_URL when unset", () => {
+  it("locks preview trusted origins to BETTER_AUTH_URL", () => {
     expect(
       resolveTrustedOriginsForDeployment({
-        isVercel: true,
+        isHosted: true,
         isPreview: true,
         configuredOrigins: [],
         betterAuthUrl: "https://preview.example",
@@ -24,30 +24,16 @@ describe("auth-host-policy", () => {
     ).toEqual(["https://preview.example"])
   })
 
-  it("falls back to VERCEL_URL for preview trusted origins", () => {
+  it("includes the configured base URL host in allowed hosts", () => {
     expect(
-      resolveTrustedOriginsForDeployment({
-        isVercel: true,
-        isPreview: true,
-        configuredOrigins: [],
-        vercelUrl: "fleet-pi-web-git-branch-qredence.vercel.app",
-      })
-    ).toEqual(["https://fleet-pi-web-git-branch-qredence.vercel.app"])
-  })
-
-  it("includes VERCEL_URL host in allowed preview hosts", () => {
-    expect(
-      resolveVercelAllowedHosts(
-        undefined,
-        "fleet-pi-web-git-branch-qredence.vercel.app"
-      )
-    ).toContain("fleet-pi-web-git-branch-qredence.vercel.app")
+      resolveHostedAllowedHosts("https://fleet-pi-web.example.workers.dev")
+    ).toContain("fleet-pi-web.example.workers.dev")
   })
 
   it("requires preview BETTER_AUTH_URL when trusted origins are unset", () => {
     expect(() =>
       resolveTrustedOriginsForDeployment({
-        isVercel: true,
+        isHosted: true,
         isPreview: true,
         configuredOrigins: [],
       })

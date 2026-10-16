@@ -20,6 +20,17 @@ cross-user effects.
 - Structured logs record non-content deletion events (`sessionId`, `userId`).
 - The endpoint name is historical; it does **not** delete Better Auth identity rows.
 
+### Hosted transcripts (2026-10-15)
+
+Hosted Agent transcripts now live in the user's `UserPiDurable` Durable
+Object, and the Neon tables are a projection.
+
+- `DELETE /api/chat/account` also calls the object's `DELETE /data`, which
+  aborts any in-flight turn and runs `ctx.storage.deleteAll()`.
+- Deleting one hosted session records a tombstone. Reads and listings hide the
+  conversation, but its entries stay in the object's SQLite storage until
+  account erasure, because Pi Durable 1.2 has no per-conversation delete.
+
 ## Consequences
 
 - Account erasure removes mirror data but does not automatically delete Better

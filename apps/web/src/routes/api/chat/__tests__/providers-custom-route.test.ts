@@ -73,11 +73,11 @@ vi.mock("@/lib/auth/chat-api-auth", () => ({
 }))
 
 vi.mock("@/lib/deployment/environment", () => ({
-  isVercelDeployment: () => false,
+  isHostedDeployment: () => false,
 }))
 
 // The loopback http policy and instance-usable checks branch on the deployed
-// surface; pin it to local dev so the tests don't flip if VERCEL is set.
+// surface; pin it to local dev so the tests don't flip if FLEET_PI_DEPLOYMENT=cloudflare.
 vi.mock("@/lib/pi/runtime/deployed-chat-runtime", () => ({
   isDeployedChatRuntimeSurface: () => false,
 }))
@@ -278,6 +278,48 @@ describe("POST /api/chat/providers with createOccInstance", () => {
       }),
       "sk-test"
     )
+  })
+
+  it("creates a local custom provider without model ids", async () => {
+    const response = await handlers.POST({
+      request: postRequest({
+        providerId: "custom",
+        apiKey: "sk-test",
+        baseUrl: "https://api.example.com/v1",
+        displayName: "Discover Later",
+        createOccInstance: true,
+        api: "anthropic-messages",
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(createLocalProviderInstanceMock).toHaveBeenCalledWith(
+      undefined,
+      {
+        displayName: "Discover Later",
+        baseUrl: "https://api.example.com/v1",
+        api: "anthropic-messages",
+        modelIds: [],
+      },
+      expect.any(Function),
+      "sk-test"
+    )
+  })
+
+  it("still requires a model id for a named OpenAI Chat Completions instance", async () => {
+    const response = await handlers.POST({
+      request: postRequest({
+        providerId: "openai-chat-completions",
+        apiKey: "sk-test",
+        baseUrl: "https://api.example.com/v1",
+        displayName: "Named OCC",
+        createOccInstance: true,
+        api: "openai-completions",
+      }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(createLocalProviderInstanceMock).not.toHaveBeenCalled()
   })
 
   it("updates an existing local instance in place (no new id allocation)", async () => {

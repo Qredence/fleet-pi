@@ -2,83 +2,83 @@ import { describe, expect, it } from "vitest"
 
 type ChatRouteAuthExpectation = {
   route: string
-  vercelAuthRequired: boolean
+  hostedAuthRequired: boolean
   ownershipWhenSessionPresent: boolean
 }
 
 const CHAT_ROUTE_AUTH_MATRIX: Array<ChatRouteAuthExpectation> = [
   {
     route: "POST /api/chat",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/session",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "POST /api/chat/resume",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/sessions",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: false,
   },
   {
     route: "POST /api/chat/new",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: false,
   },
   {
     route: "POST /api/chat/abort",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "POST /api/chat/question",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/runs",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/run",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "GET /api/chat/provenance",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "DELETE /api/chat/session",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: true,
   },
   {
     route: "DELETE /api/chat/account",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: false,
   },
   {
     route: "PATCH /api/chat/settings",
-    vercelAuthRequired: true,
+    hostedAuthRequired: true,
     ownershipWhenSessionPresent: false,
   },
 ]
 
 describe("chat route auth matrix", () => {
   it.each(CHAT_ROUTE_AUTH_MATRIX)(
-    "$route requires Vercel auth=$vercelAuthRequired",
-    ({ vercelAuthRequired }) => {
-      expect(vercelAuthRequired).toBe(true)
+    "$route requires hosted auth=$hostedAuthRequired",
+    ({ hostedAuthRequired }) => {
+      expect(hostedAuthRequired).toBe(true)
     }
   )
 })

@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import {
   loadPersistedProjectSettingsOverrides,
   sanitizePortableResourcePaths,
@@ -32,7 +33,7 @@ import type {
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { upsertUserProjectSettings } from "@/lib/db/user-settings"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export {
   hydrateSessionServicesSettings,
@@ -104,7 +105,7 @@ export async function updateChatSettings(
         parsedUpdate,
         context.projectRoot
       )
-    } else if (!isVercelDeployment()) {
+    } else if (!isHostedDeployment()) {
       await hotReloadActiveRuntimes(parsedUpdate, context.projectRoot)
     }
   }
@@ -141,11 +142,9 @@ async function persistCompactProjectSettings(
   userId?: string,
   persisted?: Record<string, unknown>
 ) {
-  if (isVercelDeployment()) {
+  if (usesDatabaseBackedProjectSettings()) {
     if (!userId) {
-      throw new Error(
-        "Authentication is required to save Pi settings on Vercel."
-      )
+      throw new Error("Authentication is required to save Pi settings.")
     }
     // Migration flush already wrote this exact compacted record — one upsert.
     if (persisted && projectSettingsOverridesEqual(persisted, toPersist)) {
@@ -250,6 +249,7 @@ function toEffectiveSettings(
       enabled: compaction.enabled,
       reserveTokens: compaction.reserveTokens,
       keepRecentTokens: compaction.keepRecentTokens,
+      ...backgroundTokensFrom(projectOverrides.compaction),
     },
     defaultModel:
       typeof projectOverrides.defaultModel === "string"
@@ -276,6 +276,9 @@ function toEffectiveSettings(
       enabled: retry.enabled,
       maxRetries: retry.maxRetries,
       baseDelayMs: retry.baseDelayMs,
+      ...(typeof retry.maxAgentDelayMs === "number"
+        ? { maxAgentDelayMs: retry.maxAgentDelayMs }
+        : {}),
     },
     skills: settingsManager.getSkillPaths(),
     steeringMode: settingsManager.getSteeringMode(),
@@ -315,6 +318,7 @@ function toEditableProjectSettings(
     copyBoolean(settings.compaction, compaction, "enabled")
     copyNumber(settings.compaction, compaction, "reserveTokens")
     copyNumber(settings.compaction, compaction, "keepRecentTokens")
+    copyNumber(settings.compaction, compaction, "backgroundTokens")
     project.compaction = compaction
   }
   if (isRecord(settings.retry)) {
@@ -322,6 +326,7 @@ function toEditableProjectSettings(
     copyBoolean(settings.retry, retry, "enabled")
     copyNumber(settings.retry, retry, "maxRetries")
     copyNumber(settings.retry, retry, "baseDelayMs")
+    copyNumber(settings.retry, retry, "maxAgentDelayMs")
     project.retry = retry
   }
 
@@ -395,6 +400,13 @@ function copyNumber<T extends Record<string, unknown>>(
   if (typeof source[key] === "number") {
     target[key] = source[key] as T[keyof T & string]
   }
+}
+
+function backgroundTokensFrom(value: unknown) {
+  if (!isRecord(value) || typeof value.backgroundTokens !== "number") {
+    return {}
+  }
+  return { backgroundTokens: value.backgroundTokens }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

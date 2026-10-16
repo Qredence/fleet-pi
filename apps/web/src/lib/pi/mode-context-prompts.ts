@@ -2,77 +2,54 @@ import { buildOpenUIPrompt } from "@workspace/pi-protocol/openui-prompt"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 import type { PlanModeState } from "./plan-state"
 
-const PROJECT_RESOURCE_TOOLS = [
-  "project_inventory",
-  "workspace_index",
-  "workspace_improver",
+type LocalToolMode = "agent" | "plan" | "harness"
+
+/** One catalog entry per local tool. Mode lists are filters, not copied arrays. */
+const MODE_TOOL_CATALOG: Array<{
+  name: string
+  modes: ReadonlyArray<LocalToolMode>
+}> = [
+  { name: "read", modes: ["agent", "plan", "harness"] },
+  { name: "bash", modes: ["agent", "plan", "harness"] },
+  { name: "edit", modes: ["agent"] },
+  { name: "write", modes: ["agent"] },
+  { name: "grep", modes: ["plan", "harness"] },
+  { name: "find", modes: ["plan", "harness"] },
+  { name: "ls", modes: ["plan", "harness"] },
+  { name: "workspace_write", modes: ["agent", "harness"] },
+  { name: "resource_install", modes: ["agent", "harness"] },
+  { name: "questionnaire", modes: ["agent", "plan", "harness"] },
+  { name: "web_fetch", modes: ["agent", "harness"] },
+  { name: "project_inventory", modes: ["agent", "plan", "harness"] },
+  { name: "workspace_index", modes: ["agent", "plan", "harness"] },
+  { name: "workspace_improver", modes: ["agent", "plan", "harness"] },
+  { name: "autocontext_judge", modes: ["agent"] },
+  { name: "autocontext_improve", modes: ["agent"] },
+  { name: "autocontext_status", modes: ["agent", "plan", "harness"] },
+  { name: "autocontext_scenarios", modes: ["agent", "plan", "harness"] },
+  { name: "autocontext_runtime_snapshot", modes: ["agent", "plan", "harness"] },
+  { name: "autocontext_queue", modes: ["agent"] },
+  { name: "init_experiment", modes: ["agent"] },
+  { name: "run_experiment", modes: ["agent"] },
+  { name: "log_experiment", modes: ["agent"] },
+  { name: "subagent", modes: ["agent"] },
+  { name: "daytona_get_status", modes: ["agent", "harness"] },
+  { name: "preview_url", modes: ["agent", "harness"] },
+  { name: "web_search", modes: ["agent", "plan", "harness"] },
+  { name: "code_search", modes: ["agent", "plan", "harness"] },
+  { name: "get_search_content", modes: ["agent", "plan", "harness"] },
+  { name: "fetch_content", modes: ["agent", "harness"] },
 ]
-const AUTOCONTEXT_STATUS_TOOLS = [
-  "autocontext_status",
-  "autocontext_scenarios",
-  "autocontext_runtime_snapshot",
-]
-const AUTOCONTEXT_AGENT_TOOLS = [
-  "autocontext_judge",
-  "autocontext_improve",
-  ...AUTOCONTEXT_STATUS_TOOLS,
-  "autocontext_queue",
-]
-const AUTORESEARCH_AGENT_TOOLS = [
-  "init_experiment",
-  "run_experiment",
-  "log_experiment",
-]
-const SUBAGENT_AGENT_TOOLS = ["subagent"]
-const DAYTONA_SANDBOX_TOOLS = ["daytona_get_status", "preview_url"]
-const WEB_ACCESS_READ_TOOLS = [
-  "web_search",
-  "code_search",
-  "get_search_content",
-]
-const WEB_ACCESS_AGENT_TOOLS = [...WEB_ACCESS_READ_TOOLS, "fetch_content"]
-export const PLAN_MODE_TOOLS = [
-  "read",
-  "bash",
-  "grep",
-  "find",
-  "ls",
-  "questionnaire",
-  ...PROJECT_RESOURCE_TOOLS,
-  ...AUTOCONTEXT_STATUS_TOOLS,
-  ...WEB_ACCESS_READ_TOOLS,
-]
-export const HARNESS_MODE_TOOLS = [
-  "read",
-  "bash",
-  "grep",
-  "find",
-  "ls",
-  "workspace_write",
-  "resource_install",
-  "questionnaire",
-  "web_fetch",
-  ...PROJECT_RESOURCE_TOOLS,
-  ...AUTOCONTEXT_STATUS_TOOLS,
-  ...DAYTONA_SANDBOX_TOOLS,
-  ...WEB_ACCESS_AGENT_TOOLS,
-]
-export const NORMAL_MODE_TOOLS = [
-  "read",
-  "bash",
-  "edit",
-  "write",
-  "workspace_write",
-  "resource_install",
-  "questionnaire",
-  "web_fetch",
-  ...PROJECT_RESOURCE_TOOLS,
-  ...AUTOCONTEXT_AGENT_TOOLS,
-  ...AUTORESEARCH_AGENT_TOOLS,
-  ...SUBAGENT_AGENT_TOOLS,
-  ...DAYTONA_SANDBOX_TOOLS,
-  ...WEB_ACCESS_AGENT_TOOLS,
-]
+
+function toolNamesForMode(mode: LocalToolMode): Array<string> {
+  return MODE_TOOL_CATALOG.filter((tool) => tool.modes.includes(mode)).map(
+    (tool) => tool.name
+  )
+}
+
+export const PLAN_MODE_TOOLS = toolNamesForMode("plan")
+export const HARNESS_MODE_TOOLS = toolNamesForMode("harness")
+export const NORMAL_MODE_TOOLS = toolNamesForMode("agent")
 
 export const AGENT_MODE_CONTEXT_CUSTOM_TYPE = "agent-mode-context"
 export const PLAN_MODE_CONTEXT_CUSTOM_TYPE = "plan-mode-context"
@@ -165,7 +142,7 @@ Restrictions:
   return {
     customType: AGENT_MODE_CONTEXT_CUSTOM_TYPE,
     content: `[AGENT MODE ACTIVE]
-Follow the operating constraints from agent-workspace/AGENTS.md (injected in workspace context).
+Follow the workspace boot section. Read system/constraints.md before changing the workspace.
 Use agent-workspace/ as context when it helps the coding task. Do not redesign or manage the agent-workspace/ architecture from Agent mode unless the user explicitly asks to switch to Harness mode.
 
 ${openUiPrompt}`,

@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { SessionManager } from "@earendil-works/pi-coding-agent"
 import { recoverOwnedSessionFile } from "../pi-session-recovery"
 
 import { resolveOwnedMirrorSession } from "../pi-session-ownership-db"
@@ -179,5 +180,88 @@ describe("recoverOwnedSessionFile", () => {
     expect(result.recovered).toBe(true)
     expect(result.sessionFile).toBe(join(sessionDir, "session-1.jsonl"))
     expect(existsSync(join(evilDir, "hijack.jsonl"))).toBe(false)
+  })
+})
+
+describe("recoverOwnedSessionFile with Pi 1.x context_edit entries", () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "fleet-pi-recovery-edit-"))
+    vi.mocked(resolveOwnedMirrorSession).mockReset()
+  })
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it("replays context_edit verbatim so Pi omits the target from model context", async () => {
+    vi.mocked(resolveOwnedMirrorSession).mockResolvedValue({
+      id: "session-edit",
+      user_id: "user-1",
+      session_file_path: join(dir, "edited.jsonl"),
+      cwd: "/repo",
+      version: 3,
+      parent_session_file_path: null,
+      name: null,
+    })
+
+    const row = (raw: Record<string, unknown>) => ({
+      entry_id: raw.id,
+      parent_entry_id: raw.parentId,
+      raw_entry: raw,
+      entry_timestamp: raw.timestamp,
+    })
+    poolQuery.mockResolvedValueOnce({
+      rows: [
+        row({
+          type: "message",
+          id: "m1",
+          parentId: null,
+          timestamp: "2026-10-11T00:00:00.000Z",
+          message: {
+            role: "user",
+            content: [{ type: "text", text: "secret draft" }],
+            timestamp: 1,
+          },
+        }),
+        row({
+          type: "message",
+          id: "m2",
+          parentId: "m1",
+          timestamp: "2026-10-11T00:00:01.000Z",
+          message: {
+            role: "user",
+            content: [{ type: "text", text: "keep me" }],
+            timestamp: 2,
+          },
+        }),
+        row({
+          type: "context_edit",
+          id: "e1",
+          parentId: "m2",
+          timestamp: "2026-10-11T00:00:02.000Z",
+          targetId: "m1",
+          replacement: null,
+        }),
+      ],
+    })
+
+    const result = await recoverOwnedSessionFile({
+      sessionId: "session-edit",
+      userId: "user-1",
+      sessionDir: dir,
+    })
+    expect(result.recovered).toBe(true)
+
+    const manager = SessionManager.open(result.sessionFile!, dir)
+    expect(manager.getEntries().map((entry) => entry.type)).toEqual([
+      "message",
+      "message",
+      "context_edit",
+    ])
+    const contextText = JSON.stringify(manager.buildSessionContext().messages)
+    expect(contextText).toContain("keep me")
+    expect(contextText).not.toContain("secret draft")
   })
 })

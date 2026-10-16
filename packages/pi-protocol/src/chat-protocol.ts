@@ -23,6 +23,8 @@ export type ChatPiSettings = {
     enabled: boolean
     reserveTokens: number
     keepRecentTokens: number
+    /** Tokens below the blocking threshold where background compaction starts. `0` disables it. */
+    backgroundTokens?: number
   }
   defaultModel?: string
   defaultProvider?: string
@@ -37,11 +39,23 @@ export type ChatPiSettings = {
     enabled: boolean
     maxRetries: number
     baseDelayMs: number
+    maxAgentDelayMs?: number
   }
   skills: Array<string>
   steeringMode: ChatDeliveryMode
   themes: Array<string>
   transport: ChatTransport
+  /** Hosted code mode. Off unless the user turns it on. */
+  codemode?: {
+    enabled: boolean
+    inlineBudget?: number
+  }
+  /** HTTPS MCP servers. Stdio is not accepted on hosted chat. */
+  mcpServers?: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }
 
 export type ChatPiSettingsUpdate = Partial<{
@@ -60,6 +74,12 @@ export type ChatPiSettingsUpdate = Partial<{
   steeringMode: ChatDeliveryMode
   themes: Array<string>
   transport: ChatTransport
+  codemode: { enabled: boolean; inlineBudget?: number }
+  mcpServers: Array<{
+    name: string
+    url: string
+    headers?: Record<string, string>
+  }>
 }>
 
 export type ChatSettingsUpdateRequest = {
@@ -148,6 +168,24 @@ export type ChatPlanState = {
   message?: string
 }
 
+/**
+ * Workspace tool availability for this chat runtime, sent on the first
+ * `start` frame of a request. `toolsAvailable: false` means the model was
+ * given no file/shell/search/workspace tools (hosted deploy, no Daytona key);
+ * the UI should show the "add a Daytona key" message for
+ * `reason: "daytona_credential_required"`, or `daytona_sandbox_not_ready` when a
+ * key is configured but the sandbox is still warming.
+ */
+export type ChatWorkspaceStatus =
+  | { toolsAvailable: true }
+  | {
+      toolsAvailable: false
+      reason: "daytona_credential_required" | "daytona_sandbox_not_ready"
+    }
+
+/** Non-normal terminal reason on a `done` frame. */
+export type ChatRunStopReason = "aborted" | "error"
+
 type ChatStartEvent = {
   type: "start"
   id: string
@@ -156,6 +194,8 @@ type ChatStartEvent = {
   sessionId: string
   sessionReset?: boolean
   diagnostics?: Array<string>
+  workspace?: ChatWorkspaceStatus
+  thinkingLevel?: ChatThinkingLevel
 }
 
 /**
@@ -213,6 +253,13 @@ export type ChatStreamEvent =
       sessionFile?: string
       sessionId: string
       sessionReset?: boolean
+      /**
+       * Why the run ended. Absent means it completed normally (older servers
+       * and saved streams never set it). `"aborted"`: the user stopped it;
+       * `message` holds whatever streamed before the abort. `"error"`: the
+       * run failed; an `error` frame precedes this `done`.
+       */
+      stopReason?: ChatRunStopReason
     }
   | { type: "error"; message: string; runId?: string }
 

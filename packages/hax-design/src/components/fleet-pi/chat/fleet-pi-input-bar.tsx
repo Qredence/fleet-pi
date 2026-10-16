@@ -40,6 +40,7 @@ export type FleetPiInputBarProps = Omit<
   "leftActions" | "rightActions" | "status"
 > & {
   mode: ChatMode
+  modes?: ReadonlyArray<(typeof CHAT_MODES)[number]>
   modelKey: string | undefined
   models: Array<ModelOption>
   status: ChatStatus
@@ -63,6 +64,7 @@ export type FleetPiInputBarProps = Omit<
 
 export function FleetPiInputBar({
   mode,
+  modes = CHAT_MODES,
   modelKey,
   models,
   status,
@@ -118,7 +120,7 @@ export function FleetPiInputBar({
       leftActions={
         <>
           <ModeSelector
-            modes={CHAT_MODES}
+            modes={[...modes]}
             value={mode}
             onChange={(modeId) => onModeChange(modeId as ChatMode)}
           />

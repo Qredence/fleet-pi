@@ -1,12 +1,10 @@
 import { logger } from "../logger"
-import { isVercelDeployment } from "./environment"
+import { isCloudflareDeployment } from "./environment"
 import { validateDeploymentReadiness } from "./readiness"
 import { resolveDeploymentTrustZone } from "./trust-zone"
 
-function isVercelServerlessRuntime() {
-  return Boolean(
-    process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_REGION
-  )
+function isCloudflareWorkerRuntime() {
+  return isCloudflareDeployment() && typeof globalThis.caches !== "undefined"
 }
 
 export function formatReadinessFailure(
@@ -16,12 +14,12 @@ export function formatReadinessFailure(
 }
 
 /**
- * Fail closed during Vercel cold starts when required auth/chat env is missing.
+ * Fail closed during hosted serverless cold starts when required auth/chat env is missing.
  * Migration verification remains an operator/CI concern via
  * `pnpm verify-deployment-readiness` with owner migration URLs.
  */
 export function assertDeploymentReadyOnBoot() {
-  if (!isVercelDeployment() || !isVercelServerlessRuntime()) {
+  if (!isCloudflareWorkerRuntime()) {
     return
   }
 

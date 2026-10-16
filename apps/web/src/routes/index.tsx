@@ -7,6 +7,7 @@ import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/la
 import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
 import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
 import {
+  CHAT_MODES,
   queueLabel,
   toModelOption,
 } from "@workspace/hax-design/lib/pi/chat-helpers"
@@ -26,6 +27,8 @@ import {
   useSendWhenModelReady,
 } from "@/lib/pi/use-send-when-model-ready"
 import { useOptionalUser } from "@/lib/auth/use-auth"
+import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import {
   useChatCommands,
@@ -51,7 +54,10 @@ import {
 import { usePendingQuestionBar } from "@/lib/pi/use-pending-question-bar"
 import { loadWorkspaceFile } from "@/lib/workspace/client"
 
-export const Route = createFileRoute("/")({ component: Chat })
+export const Route = createFileRoute("/")({
+  loader: () => ({ hostedAgentOnly: isCloudflareDeployment() }),
+  component: Chat,
+})
 
 function resolveSavedModelKey(
   models: Array<ChatModelOption>,
@@ -112,6 +118,8 @@ function ChatWorkspaceShell() {
     setSelectedWorkspacePath,
     themePreference,
   } = useChatShellState(modelsData)
+  const { hostedAgentOnly } = Route.useLoaderData()
+  const chatModes = CHAT_MODES
 
   const {
     data: resourcesData,
@@ -164,6 +172,8 @@ function ChatWorkspaceShell() {
     error,
     messages,
     planLabel,
+    forkSession,
+    forking,
     queue,
     resumeSession,
     sendMessage,
@@ -176,6 +186,8 @@ function ChatWorkspaceShell() {
     initialSessionMetadata,
     onModeChange: handleModeChange,
     persistSession,
+    hostedAgentOnly,
+    steeringMode: settingsData?.effective.steeringMode,
   })
   const sendWhenModelReady = useSendWhenModelReady(
     sendMessage,
@@ -307,6 +319,10 @@ function ChatWorkspaceShell() {
     activeSessionId: sessionMetadata.sessionId,
     activeSessionLabel,
     sessions,
+    forkDisabled: forking || status === "streaming" || status === "submitted",
+    onForkSession: isDurableSessionId(sessionMetadata.sessionId)
+      ? () => void forkSession()
+      : undefined,
     onNewSession: () => void startNewSession(),
     onResumeSession: (metadata) => void resumeSession(metadata),
     onOpenSettings: () => openSettings(),
@@ -361,6 +377,7 @@ function ChatWorkspaceShell() {
             suppressQuestionTool={!!pendingQuestionBar}
             inputBar={{
               mode,
+              modes: chatModes,
               modelKey,
               models,
               infoDescription,

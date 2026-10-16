@@ -1,6 +1,6 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import { fetchPublicHttpsUrl } from "./lib/url-security"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 const DEFAULT_MAX_BYTES = 100_000
 const FETCH_TIMEOUT_MS = 15_000

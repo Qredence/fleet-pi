@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createAgentSessionServices } from "@earendil-works/pi-coding-agent"
+import {
+  SettingsManager,
+  createAgentSessionServices,
+} from "@earendil-works/pi-coding-agent"
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
@@ -68,7 +71,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-local")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, undefined)
 
     expect(useLocalProviderStoreMock).toHaveBeenCalledWith(undefined)
@@ -87,6 +93,69 @@ describe("registerCustomProviders with the local file store", () => {
     expect(model?.maxTokens).toBe(32_000)
   })
 
+  it("registers a custom provider that has no stored model ids, then the ids the user enables", async () => {
+    const localId = `${CUSTOM_PROVIDER_ID_PREFIX}discover`
+    listLocalProviderInstancesMock.mockResolvedValue([
+      {
+        id: localId,
+        displayName: "Discover Later",
+        baseUrl: "https://api.example.com/v1",
+        modelId: "",
+        api: "anthropic-messages",
+        modelIds: [],
+      },
+    ])
+    loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-discover")
+
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
+    services.settingsManager.setEnabledModels([`${localId}/claude-haiku-5-5`])
+    await registerCustomProviders(services, undefined)
+
+    expect(services.modelRuntime.getProvider(localId)).toBeDefined()
+    expect(
+      services.modelRuntime.getModel(localId, "claude-haiku-5-5")
+    ).toBeDefined()
+  })
+
+  it("registers models the user enabled later, including ids that contain slashes", async () => {
+    const localId = `${CUSTOM_PROVIDER_ID_PREFIX}command-code`
+    listLocalProviderInstancesMock.mockResolvedValue([
+      {
+        id: localId,
+        displayName: "Command Code",
+        baseUrl: "https://api.commandcode.ai/provider/v1",
+        modelId: "deepseek/deepseek-v4-flash",
+        api: "openai-completions",
+        modelIds: ["deepseek/deepseek-v4-flash"],
+      },
+    ])
+    loadLocalProviderInstanceApiKeyMock.mockResolvedValue("cmd-key")
+
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
+    services.settingsManager.setEnabledModels([
+      `${localId}/gpt-5.5`,
+      `${localId}/moonshotai/Kimi-K2.6`,
+      `${localId}/*`,
+      "google/gemini-2.5-flash",
+    ])
+    await registerCustomProviders(services, undefined)
+
+    expect(
+      services.modelRuntime.getModel(localId, "deepseek/deepseek-v4-flash")
+    ).toBeDefined()
+    expect(services.modelRuntime.getModel(localId, "gpt-5.5")).toBeDefined()
+    expect(
+      services.modelRuntime.getModel(localId, "moonshotai/Kimi-K2.6")
+    ).toBeDefined()
+    expect(services.modelRuntime.getModel(localId, "*")).toBeUndefined()
+  })
+
   it("registers a local named OCC instance in the occ namespace", async () => {
     const occId = `${OCC_INSTANCE_ID_PREFIX}local-occ`
     listLocalProviderInstancesMock.mockResolvedValue([
@@ -101,7 +170,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-occ")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, undefined)
 
     const model = services.modelRuntime.getModel(occId, "kimi-k2.6")
@@ -123,7 +195,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("gw-key")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, undefined)
 
     const model = services.modelRuntime.getModel(localId, "qwen35-122b-a10b")
@@ -146,7 +221,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-local")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     await registerCustomProviders(services, undefined)
 
     const model = services.modelRuntime.getModel(localId, "llama-3.2")
@@ -167,7 +245,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const diagnosticsBefore = services.diagnostics.length
     await registerCustomProviders(services, undefined)
 
@@ -187,7 +268,10 @@ describe("registerCustomProviders with the local file store", () => {
       )
     )
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const diagnosticsBefore = services.diagnostics.length
     await expect(
       registerCustomProviders(services, undefined)
@@ -217,7 +301,10 @@ describe("registerCustomProviders with the local file store", () => {
       )
     )
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const diagnosticsBefore = services.diagnostics.length
     await expect(
       registerCustomProviders(services, undefined)
@@ -245,7 +332,10 @@ describe("registerCustomProviders with the local file store", () => {
     ])
     loadLocalProviderInstanceApiKeyMock.mockResolvedValue("sk-stale")
 
-    const services = await createAgentSessionServices({ cwd: process.cwd() })
+    const services = await createAgentSessionServices({
+      cwd: process.cwd(),
+      settingsManager: SettingsManager.inMemory(),
+    })
     const unregisterSpy = vi.spyOn(services.modelRuntime, "unregisterProvider")
     await registerCustomProviders(services, undefined)
     expect(

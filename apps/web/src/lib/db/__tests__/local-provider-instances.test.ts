@@ -32,7 +32,7 @@ import type { OccInstance } from "../occ-instances"
 import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const originalChatUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
 
 let tempRoot: string
@@ -40,7 +40,7 @@ let tempRoot: string
 beforeEach(() => {
   tempRoot = mkdtempSync(join(tmpdir(), "fleet-providers-"))
   process.env.FLEET_PI_REPO_ROOT = tempRoot
-  delete process.env.VERCEL
+  delete process.env.FLEET_PI_DEPLOYMENT
   delete process.env.FLEET_PI_CHAT_DATABASE_URL
 })
 
@@ -51,10 +51,10 @@ afterEach(() => {
   } else {
     process.env.FLEET_PI_REPO_ROOT = originalRepoRoot
   }
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   if (originalChatUrl === undefined) {
     delete process.env.FLEET_PI_CHAT_DATABASE_URL
@@ -73,7 +73,7 @@ const sampleInstance: OccInstance = {
 }
 
 describe("useLocalProviderStore", () => {
-  it("returns true for anonymous local chat (no Vercel, no chat DB)", () => {
+  it("returns true for anonymous local chat (no Cloudflare, no chat DB)", () => {
     expect(useLocalProviderStore(undefined)).toBe(true)
   })
 
@@ -81,8 +81,8 @@ describe("useLocalProviderStore", () => {
     expect(useLocalProviderStore("user-1")).toBe(true)
   })
 
-  it("returns false on Vercel even without a chat DB", () => {
-    process.env.VERCEL = "1"
+  it("returns false on Cloudflare even without a chat DB", () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     expect(useLocalProviderStore(undefined)).toBe(false)
   })
 
@@ -162,31 +162,36 @@ describe("local provider instance store", () => {
     })
   })
 
-  it("rejects writes with no model ids instead of corrupting the store", async () => {
-    await upsertLocalProviderInstance(undefined, sampleInstance, "sk-test")
+  it("stores a custom provider with no model ids so discovery can fill them", async () => {
+    await upsertLocalProviderInstance(
+      undefined,
+      { ...sampleInstance, modelId: undefined, modelIds: [] },
+      "sk-test"
+    )
+    const createdId = await createLocalProviderInstance(
+      undefined,
+      {
+        displayName: "No Models",
+        baseUrl: "https://api.example.com/v1",
+        modelIds: [],
+      },
+      toCustomProviderId,
+      "sk-created"
+    )
 
-    await expect(
-      upsertLocalProviderInstance(
-        undefined,
-        { ...sampleInstance, modelId: undefined, modelIds: [] },
-        "sk-bad"
-      )
-    ).rejects.toThrow(/no models configured/)
-    await expect(
-      createLocalProviderInstance(
-        undefined,
-        {
-          displayName: "No Models",
-          baseUrl: "https://api.example.com/v1",
-          modelIds: [],
-        },
-        toCustomProviderId,
-        "sk-bad"
-      )
-    ).rejects.toThrow(/no models configured/)
-
-    // The store stays readable and unchanged after the rejected writes.
-    expect(await listLocalProviderInstances()).toEqual([sampleInstance])
+    const instances = await listLocalProviderInstances()
+    expect(instances).toEqual([
+      expect.objectContaining({
+        id: sampleInstance.id,
+        modelId: "",
+        modelIds: [],
+      }),
+      expect.objectContaining({
+        id: createdId,
+        modelId: "",
+        modelIds: [],
+      }),
+    ])
   })
 
   it("accepts a stored row without modelIds (legacy/hand-edited store)", async () => {

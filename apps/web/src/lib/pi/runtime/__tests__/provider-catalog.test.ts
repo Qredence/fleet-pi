@@ -15,19 +15,19 @@ vi.mock("@/lib/db/pi-session-mirror", () => ({
 }))
 
 describe("runtime provider catalog", () => {
-  const originalVercel = process.env.VERCEL
+  const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   afterEach(() => {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
     vi.resetModules()
   })
 
-  it("marks Vercel providers configured from pi_user_providers rows", async () => {
-    process.env.VERCEL = "1"
+  it("marks hosted providers configured from pi_user_providers rows", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
     mocks.isEnvVarConfigured.mockReturnValue(false)
     mocks.withChatPostgresTransaction.mockImplementation(
@@ -49,8 +49,8 @@ describe("runtime provider catalog", () => {
     ).toBe(false)
   })
 
-  it("does not mark Vercel providers configured from org env alone", async () => {
-    process.env.VERCEL = "1"
+  it("does not mark hosted providers configured from org env alone", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
     mocks.isEnvVarConfigured.mockImplementation(
       (key?: string) => key === "GEMINI_API_KEY"
@@ -71,7 +71,7 @@ describe("runtime provider catalog", () => {
   })
 
   it("marks local providers configured from modelRuntime auth", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     mocks.isEnvVarConfigured.mockReturnValue(false)
 
     const providers = await getProviderConfigStatus({
@@ -91,7 +91,7 @@ describe("runtime provider catalog", () => {
   })
 
   it("marks local DB-backed OCC provider configured from stored BYOK rows", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://test"
     mocks.isEnvVarConfigured.mockReturnValue(false)
     mocks.withChatPostgresTransaction.mockImplementation(
@@ -120,7 +120,7 @@ describe("runtime provider catalog", () => {
   })
 
   it("requires key, base URL, and model ID for OpenAI Chat Completions", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     mocks.isEnvVarConfigured.mockImplementation((key?: string) =>
       key === "OPENAI_CHAT_COMPLETIONS_API_KEY" ? true : false
     )

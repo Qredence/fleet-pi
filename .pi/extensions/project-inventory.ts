@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 type ExtensionMode = "tui" | "rpc" | "json" | "print"
 

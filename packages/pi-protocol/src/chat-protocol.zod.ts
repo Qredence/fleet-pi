@@ -34,6 +34,7 @@ export {
   ChatMessageSchema,
   ChatStateEventSchema,
   ChatStartEventSchema,
+  ChatWorkspaceStatusSchema,
   ChatDeltaEventSchema,
   ChatToolEventSchema,
   ChatPlanEventSchema,

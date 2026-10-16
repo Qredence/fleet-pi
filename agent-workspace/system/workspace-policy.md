@@ -35,6 +35,12 @@ Durable changes should include a short rationale in the edited file, a linked
 plan, or the surrounding task summary so future agents can understand why the
 change was made.
 
+## Scratch
+
+`scratch/` is temporary. Prepare deletes files under `scratch/` that are older
+than 7 days (`ttlDays` in `manifest.json`) and keeps `scratch/tmp/.gitkeep`.
+Memory, skills, and plans are not part of that sweep.
+
 ## Agent Home
 
 Fleet Pi's repo-local agent surface lives in `agent-workspace/`. Use it as the

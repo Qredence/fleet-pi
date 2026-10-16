@@ -1,19 +1,34 @@
+import { join } from "node:path"
 import {
+  SettingsManager,
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
 import { PROVIDER_ENV_SCRUB_VAR_NAMES } from "@workspace/pi-protocol/provider-catalog"
+import { isHostedDeployment } from "../../deployment/environment"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
+import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
+import { AGENT_WORKSPACE_DIRECTORY } from "../../workspace/workspace-contract"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
-import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
+import { createPlanModeExtension } from "../plan-mode"
+import { resolveLoaderProjectTrust } from "./project-trust"
+import {
+  isDeployedChatRuntimeSurface,
+  usesDatabaseBackedProjectSettings,
+} from "./deployed-chat-runtime"
+import { createIsolatedProjectSettings } from "./isolated-project-settings"
+import { settingsManagerForLoader } from "./fleet-default-project-settings"
+import { createSandboxResourceSettings } from "./sandbox-resource-settings"
+import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
 import type { ApplyRuntimeAuthOptions } from "./types"
+import type { ChatWorkspaceStatus } from "@workspace/pi-protocol/chat-protocol"
 
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {
   workspaceBootstrap?: WorkspaceHealthResponse
@@ -67,8 +82,13 @@ function getBootstrapCacheState(projectRoot: string): BootstrapRetryState {
 export async function createSessionServices(
   context: AppRuntimeContext,
   overrides?: Parameters<typeof createAgentSessionServices>[0],
-  options?: { userId?: string; projectRoot?: string }
+  options?: {
+    userId?: string
+    projectRoot?: string
+    workspace?: ChatWorkspaceStatus
+  }
 ) {
+  installHarnessWriteResolver()
   if (isDeployedChatRuntimeSurface()) {
     // Capture platform Gateway creds in memory, then scrub org LLM + Gateway
     // env so bash/tools cannot read them. Chat uses BYOK rows + captured Gateway.
@@ -79,13 +99,50 @@ export async function createSessionServices(
   }
 
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
+  const databaseBacked = usesDatabaseBackedProjectSettings()
+  const { hydrateSessionServicesSettings, resolveProjectSettings } =
+    await import("./durable-project-settings")
+  // Seed private settings before Pi's first resource reload. Deployed callers
+  // cannot substitute a manager that reads or writes the shared checkout.
+  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
+  const settingsManager = databaseBacked
+    ? createIsolatedProjectSettings(
+        await resolveProjectSettings({ userId: options?.userId })
+      )
+    : (overrides?.settingsManager ??
+      (options?.userId
+        ? SettingsManager.create(
+            context.projectRoot,
+            overrides?.agentDir ?? agentDir
+          )
+        : undefined))
+  const sandboxResources =
+    settingsManager && options?.userId
+      ? createSandboxResourceSettings(settingsManager, options.userId)
+      : undefined
+  await sandboxResources?.prepare()
   const userResourceOptions = overrides?.resourceLoaderOptions
   const services = await createAgentSessionServices({
     cwd: context.projectRoot,
-    agentDir: process.env.PI_AGENT_DIR ?? getAgentDir(),
+    agentDir,
     ...overrides,
+    settingsManager: settingsManager
+      ? settingsManagerForLoader(
+          sandboxResources?.loaderSettings ?? settingsManager
+        )
+      : undefined,
     resourceLoaderOptions: {
       ...userResourceOptions,
+      // Server-owned extensions: the Fleet Pi identity always, plus the
+      // workspace-free extensions when `.pi/extensions` is not discoverable.
+      extensionFactories: [
+        ...buildFleetPiInlineExtensions({
+          projectRoot: context.projectRoot,
+          workspace: options?.workspace ?? { toolsAvailable: true },
+        }),
+        { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
+        ...(userResourceOptions?.extensionFactories ?? []),
+      ],
       extensionsOverride: (base) => {
         const withoutStock = excludeStockDaytonaPiExtension(base)
         return userResourceOptions?.extensionsOverride
@@ -93,19 +150,28 @@ export async function createSessionServices(
           : withoutStock
       },
     },
+    resourceLoaderReloadOptions: {
+      resolveProjectTrust: ({ extensionsResult }) =>
+        resolveLoaderProjectTrust({
+          extensionsResult,
+          cwd: context.projectRoot,
+          mode: "print",
+        }),
+    },
   })
+  sandboxResources?.attach(services)
 
   const servicesWithBootstrap = attachWorkspaceBootstrap(
     services,
     workspaceBootstrap
   )
 
-  const { hydrateSessionServicesSettings } =
-    await import("./durable-project-settings")
-  await hydrateSessionServicesSettings(servicesWithBootstrap, {
-    userId: options?.userId,
-    projectRoot: context.projectRoot,
-  })
+  if (!databaseBacked) {
+    await hydrateSessionServicesSettings(servicesWithBootstrap, {
+      userId: options?.userId,
+      projectRoot: context.projectRoot,
+    })
+  }
 
   const { registerOpenAiChatCompletionsProvider } =
     await import("./openai-chat-completions-provider")
@@ -130,15 +196,18 @@ export async function applyRuntimeAuth(
   const { modelRuntime } = services
 
   // Reconcile ONLY the providers the user actually configured (BYOK rows on
-  // Vercel, env keys locally). Do NOT sweep the whole Pi provider catalog:
+  // Cloudflare, env keys locally). Do NOT sweep the whole Pi provider catalog:
   // every key mutation triggers a Pi availability refresh, and with network
   // model refresh enabled that scan walks every provider and can hang (e.g.
-  // amazon-bedrock without AWS credentials). `allowNetwork: false` keeps each
-  // per-key refresh offline and bounded.
+  // amazon-bedrock without AWS credentials).
+  //
+  // Pi 1.x: setRuntimeApiKey takes AuthOperationOptions (signal only) and its
+  // credential sync always refreshes just this provider with
+  // `allowNetwork: false`, so each per-key refresh stays offline and bounded.
+  // A network refresh would need an explicit `modelRuntime.refresh({ providers })`,
+  // which we deliberately never call here.
   for (const [providerId, apiKey] of configured) {
-    await modelRuntime.setRuntimeApiKey(providerId, apiKey, {
-      allowNetwork: false,
-    })
+    await modelRuntime.setRuntimeApiKey(providerId, apiKey)
   }
 
   // Clear only runtime keys Fleet set on this session that the user no longer
@@ -165,6 +234,10 @@ export async function applyRuntimeAuth(
 async function loadBestEffortWorkspaceHealth(
   context: AppRuntimeContext
 ): Promise<WorkspaceHealthResponse> {
+  if (isHostedGitWorkspace(context)) {
+    return hostedGitWorkspaceHealth(context)
+  }
+
   const now = Date.now()
   const projectRoot = context.projectRoot
   const state = getBootstrapCacheState(projectRoot)
@@ -210,6 +283,24 @@ async function loadBestEffortWorkspaceHealth(
 
   state.promise = promise
   return promise
+}
+
+function isHostedGitWorkspace(context: AppRuntimeContext) {
+  if (!isHostedDeployment() || context.workspaceFS) return false
+  return (
+    context.workspaceRoot ===
+    join(context.projectRoot, AGENT_WORKSPACE_DIRECTORY)
+  )
+}
+
+function hostedGitWorkspaceHealth(
+  context: AppRuntimeContext
+): WorkspaceHealthResponse {
+  const health = createWorkspaceHealthFailure(
+    context,
+    new Error("hosted-workspace-pending")
+  )
+  return { ...health, warnings: [], diagnostics: [] }
 }
 
 function attachWorkspaceBootstrap(

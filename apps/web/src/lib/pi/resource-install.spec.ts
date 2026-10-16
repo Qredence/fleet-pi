@@ -69,6 +69,39 @@ describe("resource_install workspace installer", () => {
     ).resolves.toContain("../agent-workspace/pi/skills")
   })
 
+  it("writes installed files under writeRoot and leaves the source project settings untouched", async () => {
+    const sourceRoot = await createTempProject()
+    const writeRoot = await createTempProject()
+
+    const result = await installWorkspaceResource(
+      sourceRoot,
+      {
+        kind: "skill",
+        name: "Sandbox Skill",
+        source: "---\nname: sandbox-skill\n---\n# Sandbox Skill\n",
+        sourceType: "content",
+      },
+      undefined,
+      { writeRoot }
+    )
+
+    expect(result.installedPath).toBe(
+      "agent-workspace/pi/skills/sandbox-skill/SKILL.md"
+    )
+    await expect(
+      readFile(
+        join(writeRoot, "agent-workspace/pi/skills/sandbox-skill/SKILL.md"),
+        "utf8"
+      )
+    ).resolves.toContain("Sandbox Skill")
+    await expect(
+      readFile(join(sourceRoot, ".pi/settings.json"), "utf8")
+    ).resolves.not.toContain("agent-workspace/pi/skills")
+    await expect(
+      readFile(join(writeRoot, ".pi/settings.json"), "utf8")
+    ).resolves.toContain("../agent-workspace/pi/skills")
+  })
+
   it("fetches URL sources for prompts", async () => {
     const root = await createTempProject()
     lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }])

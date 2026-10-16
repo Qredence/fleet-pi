@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 import { createMockSettingsManager } from "./mock-settings-manager"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type * as PiCodingAgent from "@earendil-works/pi-coding-agent"
 
 const mocks = vi.hoisted(() => ({
   createAgentSessionServices: vi.fn(),
@@ -11,10 +12,14 @@ const mocks = vi.hoisted(() => ({
   decryptString: vi.fn(),
 }))
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
-  createAgentSessionServices: mocks.createAgentSessionServices,
-  getAgentDir: mocks.getAgentDir,
-}))
+vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
+  const { SettingsManager } = await importOriginal<typeof PiCodingAgent>()
+  return {
+    SettingsManager,
+    createAgentSessionServices: mocks.createAgentSessionServices,
+    getAgentDir: mocks.getAgentDir,
+  }
+})
 
 vi.mock("../../../workspace/bootstrap-agent-workspace", () => ({
   bootstrapAgentWorkspace: mocks.bootstrapAgentWorkspace,
@@ -41,7 +46,7 @@ vi.mock("@/lib/db/local-provider-instances", () => ({
 }))
 
 describe("session factory", () => {
-  const originalVercel = process.env.VERCEL
+  const originalHosted = process.env.FLEET_PI_DEPLOYMENT
   const originalGeminiKey = process.env.GEMINI_API_KEY
   const originalAuthSecret = process.env.BETTER_AUTH_SECRET
   const originalChatDb = process.env.FLEET_PI_CHAT_DATABASE_URL
@@ -81,7 +86,7 @@ describe("session factory", () => {
   })
 
   afterEach(() => {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
     process.env.GEMINI_API_KEY = originalGeminiKey
     process.env.BETTER_AUTH_SECRET = originalAuthSecret
     process.env.FLEET_PI_CHAT_DATABASE_URL = originalChatDb
@@ -91,8 +96,8 @@ describe("session factory", () => {
     vi.resetModules()
   })
 
-  it("injects BYOK runtime keys for Vercel users", async () => {
-    process.env.VERCEL = "1"
+  it("injects BYOK runtime keys for Cloudflare users", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
     const { applyRuntimeAuth } = await import("../session-factory")
@@ -106,20 +111,20 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, { userId: "user-1" })
     expect(mocks.withChatPostgresTransaction).toHaveBeenCalled()
     expect(services.modelRuntime.setRuntimeApiKey).toHaveBeenCalledWith(
       "google",
-      "decrypted-key",
-      { allowNetwork: false }
+      "decrypted-key"
     )
     // Fresh runtimes hold no Fleet-set runtime keys, so nothing is cleared.
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
   it("syncs local env vars into runtime auth storage", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     process.env.GEMINI_API_KEY = "local-gemini-key"
     const { applyRuntimeAuth } = await import("../session-factory")
     const setRuntimeApiKey = vi.fn()
@@ -133,21 +138,16 @@ describe("session factory", () => {
         getRegisteredProviderIds: vi.fn(() => []),
         getProviderAuthStatus: vi.fn(() => ({ configured: false })),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     expect(mocks.withChatPostgresTransaction).not.toHaveBeenCalled()
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(removeRuntimeApiKey).not.toHaveBeenCalled()
   })
 
   it("only touches configured providers and clears stale runtime keys", async () => {
-    delete process.env.VERCEL
+    delete process.env.FLEET_PI_DEPLOYMENT
     process.env.GEMINI_API_KEY = "local-gemini-key"
     const { applyRuntimeAuth } = await import("../session-factory")
     const setRuntimeApiKey = vi.fn()
@@ -169,17 +169,12 @@ describe("session factory", () => {
             : { configured: false }
         ),
       },
+      settingsManager: createMockSettingsManager(),
     }
     await applyRuntimeAuth(services as never, {})
     // Only env-configured providers get runtime keys — never a sweep of the
     // full Pi provider catalog.
-    expect(setRuntimeApiKey).toHaveBeenCalledWith(
-      "google",
-      "local-gemini-key",
-      {
-        allowNetwork: false,
-      }
-    )
+    expect(setRuntimeApiKey).toHaveBeenCalledWith("google", "local-gemini-key")
     expect(setRuntimeApiKey).not.toHaveBeenCalledWith(
       "huggingface",
       expect.anything()
@@ -198,8 +193,8 @@ describe("session factory", () => {
     expect(removeRuntimeApiKey).toHaveBeenCalledWith("amazon-bedrock")
   })
 
-  it("scrubs Pi LLM provider env vars including Hugging Face on Vercel", async () => {
-    process.env.VERCEL = "1"
+  it("scrubs Pi LLM provider env vars including Hugging Face on Cloudflare", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.GEMINI_API_KEY = "secret"
     process.env.HF_TOKEN = "hf-org-token"
     process.env.OPENROUTER_API_KEY = "or-secret"
@@ -211,13 +206,13 @@ describe("session factory", () => {
     expect(process.env.GEMINI_API_KEY).toBeUndefined()
     expect(process.env.HF_TOKEN).toBeUndefined()
     expect(process.env.OPENROUTER_API_KEY).toBeUndefined()
-    // Daytona org keys are scrubbed on Vercel; user BYOK is loaded separately.
+    // Daytona org keys are scrubbed on Cloudflare; user BYOK is loaded separately.
     expect(process.env.DAYTONA_API_KEY).toBeUndefined()
     expect(mocks.createAgentSessionServices).toHaveBeenCalled()
   })
 
-  it("scrubs NEON_AI_GATEWAY env on Vercel after capturing credentials", async () => {
-    process.env.VERCEL = "1"
+  it("scrubs NEON_AI_GATEWAY env on Cloudflare after capturing credentials", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.NEON_AI_GATEWAY_TOKEN = "nt_live_gateway"
     process.env.NEON_AI_GATEWAY_BASE_URL = TEST_NEON_AI_GATEWAY_BASE_URL
     process.env.GEMINI_API_KEY = "secret"
@@ -235,8 +230,8 @@ describe("session factory", () => {
     resetCapturedNeonAiGatewayCredentialsForTests()
   })
 
-  it("does not fall back to org env LLM keys on Vercel when BYOK is empty", async () => {
-    process.env.VERCEL = "1"
+  it("does not fall back to org env LLM keys on Cloudflare when BYOK is empty", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     process.env.GEMINI_API_KEY = "org-gemini-key"
     process.env.BETTER_AUTH_SECRET = "auth-secret"
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://chat.test/fleet"
@@ -264,6 +259,7 @@ describe("session factory", () => {
           getRegisteredProviderIds: vi.fn(() => []),
           getProviderAuthStatus: vi.fn(() => ({ configured: false })),
         },
+        settingsManager: createMockSettingsManager(),
       } as never,
       { userId: "user-1" }
     )
@@ -482,6 +478,16 @@ describe("session factory", () => {
     dateSpy.mockRestore()
   })
 
+  it("does not bootstrap the git workspace for hosted chat", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({
+      projectRoot: "/repo",
+      workspaceRoot: "/repo/agent-workspace",
+    })
+    expect(mocks.bootstrapAgentWorkspace).not.toHaveBeenCalled()
+  })
+
   it("keeps independent caches for distinct projectRoots", async () => {
     mocks.bootstrapAgentWorkspace.mockResolvedValue({
       status: "ok",
@@ -497,5 +503,51 @@ describe("session factory", () => {
     await createSessionServices({ projectRoot: "/root-a" } as AppRuntimeContext)
 
     expect(mocks.bootstrapAgentWorkspace).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("session factory plan mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.createAgentSessionServices.mockResolvedValue({
+      modelRuntime: {
+        setRuntimeApiKey: vi.fn(),
+        removeRuntimeApiKey: vi.fn(),
+        unregisterProvider: vi.fn(),
+        registerProvider: vi.fn(),
+        getRegisteredProviderIds: vi.fn(() => []),
+        getProviderAuthStatus: vi.fn(() => ({ configured: false })),
+      },
+      settingsManager: createMockSettingsManager(),
+      resourceLoader: { reload: vi.fn(() => Promise.resolve()) },
+      diagnostics: [],
+    })
+    mocks.bootstrapAgentWorkspace.mockResolvedValue({
+      status: "ok",
+      workspace: { available: true },
+      warnings: [],
+      diagnostics: [],
+    })
+  })
+
+  it("registers the plan-mode extension on every session", async () => {
+    delete process.env.FLEET_PI_DEPLOYMENT
+    // This file reloads session-factory after vi.resetModules(). A top-level
+    // import would keep the first module instance and shadow those reloads.
+    const { createSessionServices } = await import("../session-factory")
+    await createSessionServices({ projectRoot: "/repo" } as AppRuntimeContext)
+    const options = mocks.createAgentSessionServices.mock.calls[0]?.[0] as {
+      resourceLoaderOptions?: {
+        extensionFactories?: Array<{ name?: string; factory?: unknown }>
+      }
+    }
+    expect(options.resourceLoaderOptions?.extensionFactories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "fleet-pi-plan-mode",
+          factory: expect.any(Function),
+        }),
+      ])
+    )
   })
 })

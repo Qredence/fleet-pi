@@ -205,7 +205,6 @@ export function useProviderCredentialsController({
     if (isCustomEditor) {
       const modelList = parseCustomProviderModels(models)
       if (!apiKey.trim() || !baseUrl.trim() || !displayName.trim()) return
-      if (modelList.length === 0) return
 
       try {
         await onUpdateProvider({
@@ -286,7 +285,6 @@ export function useProviderCredentialsController({
       isCustomProviderId(editingProvider)
     ) {
       if (baseUrl.trim().length === 0) return false
-      if (parseCustomProviderModels(models).length === 0) return false
       return displayName.trim().length > 0
     }
     if (!isOccProviderId(editingProvider)) return true
@@ -300,7 +298,6 @@ export function useProviderCredentialsController({
     apiKey,
     baseUrl,
     modelId,
-    models,
     displayName,
     editingProvider,
     editingIsNewOccInstance,

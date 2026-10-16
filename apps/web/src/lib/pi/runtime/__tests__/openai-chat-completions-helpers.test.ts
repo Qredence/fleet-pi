@@ -66,7 +66,7 @@ describe("openai chat completions credential helpers", () => {
       assertSafeOpenAiCompatibleBaseUrl("https://[fc12:ab::1]/v1")
     ).toThrow(/not allowed/i)
 
-    // Loopback is allowed off-Vercel (local dev only) and is parsed as IPv6, not
+    // Loopback is allowed in local dev (local dev only) and is parsed as IPv6, not
     // mistaken for a public/private-block edge.
     expect(assertSafeOpenAiCompatibleBaseUrl("https://[::1]/v1")).toBe(
       "https://[::1]/v1"

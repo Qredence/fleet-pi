@@ -2,6 +2,7 @@ import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
 } from "./openai-chat-completions-url"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 import { logger } from "@/lib/logger"
 
@@ -141,6 +142,14 @@ export function captureAndScrubNeonAiGatewayEnv() {
     isEnvVarConfigured("NEON_AI_GATEWAY_TOKEN") ||
     isEnvVarConfigured("NEON_AI_GATEWAY_BASE_URL")
   ) {
+    if (isHostedDeployment()) {
+      for (const envVarName of NEON_AI_GATEWAY_ENV_VAR_NAMES) {
+        delete process.env[envVarName]
+      }
+      throw new Error(
+        "Neon AI Gateway configuration is invalid. Refusing to leave NEON_AI_GATEWAY_TOKEN in the process environment."
+      )
+    }
     logger.warn(
       "[neon-ai-gateway] gateway env present but invalid; leaving env vars for retry"
     )

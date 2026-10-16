@@ -1,0 +1,520 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const createAgentSessionFromServices = vi.fn()
+const createAgentSessionRuntime = vi.fn()
+const createAgentSessionServices = vi.fn()
+const getAgentDir = vi.fn(() => "/tmp/pi-agent")
+const releaseUserSandbox = vi.fn(() => Promise.resolve())
+
+vi.mock("@earendil-works/pi-coding-agent", () => ({
+  createAgentSessionFromServices,
+  createAgentSessionRuntime,
+  createAgentSessionServices,
+  getAgentDir,
+}))
+
+vi.mock("@/lib/daytona/user-sandbox", () => ({
+  getCachedUserSandbox: vi.fn(() => undefined),
+  getUserSandbox: vi.fn(),
+  isDaytonaEnabled: vi.fn(() => false),
+  releaseUserSandbox,
+}))
+
+describe("answerChatQuestion", () => {
+  let root = ""
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "fleet-pi-server-runtime-"))
+    createAgentSessionFromServices.mockReset()
+    createAgentSessionRuntime.mockReset()
+    createAgentSessionServices.mockReset()
+    releaseUserSandbox.mockClear()
+    getAgentDir.mockClear()
+  })
+
+  afterEach(() => {
+    vi.resetModules()
+    rmSync(root, { force: true, recursive: true })
+  })
+
+  it("rejects stale plan decision tool call ids", async () => {
+    const sessionFile = createSessionFile(root, "session-a.jsonl")
+    const { answerChatQuestion, retainPiRuntime } =
+      await import("../server-runtime")
+    const { applyPlanMode, finalizePlanTurn, getPlanState } =
+      await import("../plan-mode")
+    const runtime = createMockRuntime("session-a", sessionFile)
+
+    retainPiRuntime(runtime)
+    addAssistantMessage(
+      runtime,
+      "assistant-plan",
+      `Plan:\n1. Inspect the runtime\n2. Verify the queue`
+    )
+    applyPlanMode(runtime, "plan")
+    const planTurn = finalizePlanTurn({
+      runtime,
+      assistantId: "assistant-plan",
+      assistantText: `Plan:\n1. Inspect the runtime\n2. Verify the queue`,
+      mode: "plan",
+    })
+
+    const result = answerChatQuestion({
+      sessionId: "session-a",
+      toolCallId: "plan-mode-decision-stale",
+      answer: { kind: "single", selectedIds: ["execute"] },
+    })
+
+    expect(planTurn?.planPart?.toolCallId).toBe(
+      "plan-mode-decision-assistant-plan"
+    )
+    expect(result).toEqual({
+      ok: false,
+      message: "Plan question is no longer active.",
+    })
+    expect(getPlanState(runtime).pendingDecision).toBe(true)
+  })
+
+  it("accepts the active plan decision token for the same session", async () => {
+    const sessionFile = createSessionFile(root, "session-b.jsonl")
+    const { answerChatQuestion, retainPiRuntime } =
+      await import("../server-runtime")
+    const { applyPlanMode, finalizePlanTurn, getPlanState } =
+      await import("../plan-mode")
+    const runtime = createMockRuntime("session-b", sessionFile)
+
+    retainPiRuntime(runtime)
+    addAssistantMessage(
+      runtime,
+      "assistant-active",
+      `Plan:\n1. Confirm the fix`
+    )
+    applyPlanMode(runtime, "plan")
+    const planTurn = finalizePlanTurn({
+      runtime,
+      assistantId: "assistant-active",
+      assistantText: `Plan:\n1. Confirm the fix`,
+      mode: "plan",
+    })
+    const toolCallId = planTurn?.planPart?.toolCallId
+
+    const result = answerChatQuestion({
+      sessionId: "session-b",
+      toolCallId,
+      answer: { kind: "single", selectedIds: ["execute"] },
+    })
+
+    expect(toolCallId).toBe("plan-mode-decision-assistant-active")
+    expect(result).toMatchObject({
+      ok: true,
+      mode: "agent",
+      planAction: "execute",
+    })
+    expect(getPlanState(runtime).pendingDecision).toBe(false)
+    expect(getPlanState(runtime).executing).toBe(true)
+  })
+
+  it("rejects stale non-plan questionnaire answers", async () => {
+    const { answerChatQuestion } = await import("../server-runtime")
+
+    expect(
+      answerChatQuestion({
+        toolCallId: "questionnaire-missing",
+        answer: { kind: "skip" },
+      })
+    ).toEqual({
+      ok: false,
+      message: "Question is no longer active.",
+    })
+  })
+
+  it("does not reuse a conflicting sessionId when sessionFile points elsewhere", async () => {
+    const sessionFile = createSessionFile(root, "session-c.jsonl")
+    const conflictingFile = createSessionFile(root, "session-other.jsonl")
+    const { answerChatQuestion, retainPiRuntime } =
+      await import("../server-runtime")
+    const { applyPlanMode, finalizePlanTurn } = await import("../plan-mode")
+    const runtime = createMockRuntime("session-c", sessionFile)
+
+    retainPiRuntime(runtime)
+    addAssistantMessage(
+      runtime,
+      "assistant-conflict",
+      `Plan:\n1. Keep session safe`
+    )
+    applyPlanMode(runtime, "plan")
+    const planTurn = finalizePlanTurn({
+      runtime,
+      assistantId: "assistant-conflict",
+      assistantText: `Plan:\n1. Keep session safe`,
+      mode: "plan",
+    })
+
+    const result = answerChatQuestion({
+      sessionFile: conflictingFile,
+      sessionId: "session-c",
+      toolCallId: planTurn?.planPart?.toolCallId,
+      answer: { kind: "single", selectedIds: ["execute"] },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "Plan session is no longer active. Send a new message to continue.",
+    })
+  })
+
+  it("matches queued follow-ups on a fresh session before the session file exists", async () => {
+    const sessionFile = join(
+      root,
+      ".fleet",
+      "sessions",
+      "pending-session.jsonl"
+    )
+    const { queuePromptOnActiveSession, retainPiRuntime } =
+      await import("../server-runtime")
+    const runtime = createMockRuntime("session-queue", sessionFile)
+    runtime.session.isStreaming = true
+
+    retainPiRuntime(runtime)
+
+    const queued = await queuePromptOnActiveSession(
+      {
+        sessionFile,
+        sessionId: "session-queue",
+      },
+      "queued prompt",
+      "followUp"
+    )
+
+    expect(runtime.session.prompt).toHaveBeenCalledWith("queued prompt", {
+      expandPromptTemplates: true,
+      streamingBehavior: "followUp",
+    })
+    expect(queued).toEqual({
+      steering: [],
+      followUp: [],
+    })
+  })
+
+  it("aborts only active streaming sessions", async () => {
+    const sessionFile = createSessionFile(root, "session-abort.jsonl")
+    const { abortActiveSession, retainPiRuntime } =
+      await import("../server-runtime")
+    const runtime = createMockRuntime("session-abort", sessionFile)
+
+    retainPiRuntime(runtime)
+
+    await expect(
+      abortActiveSession({
+        sessionFile,
+        sessionId: "session-abort",
+      })
+    ).resolves.toBe(false)
+    expect(runtime.session.abort).not.toHaveBeenCalled()
+
+    runtime.session.isStreaming = true
+
+    await expect(
+      abortActiveSession({
+        sessionFile,
+        sessionId: "session-abort",
+      })
+    ).resolves.toBe(true)
+    expect(runtime.session.abortBash).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abortRetry).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abortCompaction).toHaveBeenCalledTimes(1)
+    expect(runtime.session.abort).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns not-live when the runtime map has no session", async () => {
+    const { hasLiveSessionRuntime, notLiveSessionResponse } =
+      await import("../server-runtime")
+
+    expect(hasLiveSessionRuntime({ sessionId: "missing-session" })).toBe(false)
+    const response = notLiveSessionResponse()
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error: "not-live",
+      aborted: false,
+      message: "This isolate has no live session for that chat.",
+    })
+  })
+
+  it("does not queue prompts or aborts when no matching runtime is active", async () => {
+    const sessionFile = createSessionFile(root, "session-idle.jsonl")
+    const { abortActiveSession, queuePromptOnActiveSession, retainPiRuntime } =
+      await import("../server-runtime")
+    const runtime = createMockRuntime("session-idle", sessionFile)
+
+    retainPiRuntime(runtime)
+
+    await expect(
+      queuePromptOnActiveSession(
+        {
+          sessionFile,
+          sessionId: "session-idle",
+        },
+        "queued prompt",
+        "followUp"
+      )
+    ).resolves.toBeUndefined()
+    expect(runtime.session.prompt).not.toHaveBeenCalled()
+
+    await expect(
+      abortActiveSession({
+        sessionId: "missing-session",
+      })
+    ).resolves.toBe(false)
+  })
+
+  it("clears a pending disposal timer when retaining the same runtime again", async () => {
+    vi.useFakeTimers()
+    const sessionFile = createSessionFile(root, "session-retain.jsonl")
+    const runtime = createMockRuntime("session-retain", sessionFile)
+
+    try {
+      const { retainPiRuntime } = await import("../server-runtime")
+      const releaseRuntime = retainPiRuntime(runtime)
+
+      releaseRuntime()
+      retainPiRuntime(runtime)
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(runtime.dispose).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not queue a follow-up onto another user's active runtime", async () => {
+    const sessionFile = join(root, ".fleet", "sessions", "shared-session.jsonl")
+    const { queuePromptOnActiveSession, retainPiRuntime } =
+      await import("../server-runtime")
+    const runtime = createMockRuntime("session-shared", sessionFile)
+    runtime.session.isStreaming = true
+
+    retainPiRuntime(runtime, "user-a")
+
+    const queued = await queuePromptOnActiveSession(
+      {
+        sessionFile,
+        sessionId: "session-shared",
+        userId: "user-b",
+      },
+      "queued prompt",
+      "followUp"
+    )
+
+    expect(queued).toBeUndefined()
+    expect(runtime.session.prompt).not.toHaveBeenCalled()
+  })
+
+  it("limits active tools in harness mode to workspace architecture tools", async () => {
+    const sessionFile = createSessionFile(root, "session-harness.jsonl")
+    const { applyPlanMode, getChatMode } = await import("../plan-mode")
+    const runtime = createMockRuntime("session-harness", sessionFile)
+
+    applyPlanMode(runtime, "harness")
+
+    const activeTools =
+      runtime.session.setActiveToolsByName.mock.calls.at(-1)?.[0]
+    expect(getChatMode(runtime)).toBe("harness")
+    expect(activeTools).toContain("workspace_write")
+    expect(activeTools).toContain("resource_install")
+    expect(activeTools).toContain("project_inventory")
+    expect(activeTools).not.toContain("edit")
+    expect(activeTools).not.toContain("write")
+  })
+
+  it("clears cached chat mode when a runtime is disposed", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const sessionFile = createSessionFile(root, "session-disposal.jsonl")
+    const runtime = createMockRuntime("session-disposal", sessionFile)
+
+    try {
+      const { retainPiRuntime } = await import("../server-runtime")
+      const { applyPlanMode, getChatMode } = await import("../plan-mode")
+      const releaseRuntime = retainPiRuntime(runtime)
+      applyPlanMode(runtime, "harness")
+
+      expect(getChatMode(runtime)).toBe("harness")
+
+      releaseRuntime()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(runtime.dispose).toHaveBeenCalledTimes(1)
+      expect(getChatMode(runtime)).toBe("agent")
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps a user's sandbox alive while another runtime for that user is active", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const firstRuntime = createMockRuntime(
+      "session-disposal-a",
+      createSessionFile(root, "session-disposal-a.jsonl")
+    )
+    const secondRuntime = createMockRuntime(
+      "session-disposal-b",
+      createSessionFile(root, "session-disposal-b.jsonl")
+    )
+
+    try {
+      const { retainPiRuntime } = await import("../server-runtime")
+      const releaseFirst = retainPiRuntime(firstRuntime, "user-1")
+      const releaseSecond = retainPiRuntime(secondRuntime, "user-1")
+
+      releaseFirst()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(firstRuntime.dispose).toHaveBeenCalledTimes(1)
+      expect(releaseUserSandbox).not.toHaveBeenCalled()
+
+      releaseSecond()
+      await vi.advanceTimersToNextTimerAsync()
+
+      expect(secondRuntime.dispose).toHaveBeenCalledTimes(1)
+      expect(releaseUserSandbox).toHaveBeenCalledWith("user-1")
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
+
+  it("disposes the replaced runtime when two runtimes are tracked for the same session", async () => {
+    const sessionFile = createSessionFile(root, "session-sequential.jsonl")
+    const { retainPiRuntime } = await import("../server-runtime")
+    const first = createMockRuntime("session-sequential", sessionFile)
+    const second = createMockRuntime("session-sequential", sessionFile)
+
+    retainPiRuntime(first)
+    retainPiRuntime(second)
+
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(second.dispose).not.toHaveBeenCalled()
+  })
+
+  it("a stale scheduled disposal never disposes a newer runtime", async () => {
+    vi.useFakeTimers()
+    const previousTtl = process.env.FLEET_PI_RUNTIME_TTL_MS
+    process.env.FLEET_PI_RUNTIME_TTL_MS = "0"
+    const sessionFile = createSessionFile(root, "session-stale.jsonl")
+    try {
+      const { retainPiRuntime } = await import("../server-runtime")
+      const first = createMockRuntime("session-stale", sessionFile)
+      const releaseFirst = retainPiRuntime(first)
+      // Schedule disposal targeting the first runtime.
+      releaseFirst()
+
+      // Tracking a newer runtime for the same session replaces the first.
+      const second = createMockRuntime("session-stale", sessionFile)
+      retainPiRuntime(second)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      // The replaced runtime is disposed once; the stale timer (if it survived)
+      // must never dispose the newer runtime.
+      expect(first.dispose).toHaveBeenCalledTimes(1)
+      expect(second.dispose).not.toHaveBeenCalled()
+    } finally {
+      process.env.FLEET_PI_RUNTIME_TTL_MS = previousTtl
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not evict the same-session record at the concurrency cap", async () => {
+    const { retainPiRuntime } = await import("../server-runtime")
+    const sessionFile = createSessionFile(root, "session-cap.jsonl")
+    const first = createMockRuntime("cap-session", sessionFile)
+    retainPiRuntime(first)
+
+    // Fill up to MAX_CONCURRENT_RUNTIMES (50) with distinct sessions so that
+    // `first` is the oldest idle record.
+    for (let i = 1; i < 50; i++) {
+      retainPiRuntime(
+        createMockRuntime(
+          `cap-other-${i}`,
+          createSessionFile(root, `cap-other-${i}.jsonl`)
+        )
+      )
+    }
+
+    // Tracking a replacement for the oldest session must not evict its record;
+    // the old runtime is disposed by the replacement, the new one stays alive.
+    const replacement = createMockRuntime("cap-session", sessionFile)
+    retainPiRuntime(replacement)
+
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(replacement.dispose).not.toHaveBeenCalled()
+  })
+})
+
+function createSessionFile(root: string, name: string) {
+  const sessionsDir = join(root, ".fleet", "sessions")
+  mkdirSync(sessionsDir, { recursive: true })
+  const file = join(sessionsDir, name)
+  writeFileSync(file, "")
+  return file
+}
+
+function createMockRuntime(sessionId: string, sessionFile: string) {
+  const entries: Array<Record<string, unknown>> = []
+
+  return {
+    dispose: vi.fn(() => Promise.resolve()),
+    session: {
+      abort: vi.fn(() => Promise.resolve()),
+      abortBash: vi.fn(),
+      abortCompaction: vi.fn(),
+      abortRetry: vi.fn(),
+      getFollowUpMessages: vi.fn(() => []),
+      getSteeringMessages: vi.fn(() => []),
+      isStreaming: false,
+      prompt: vi.fn(() => Promise.resolve()),
+      sessionFile,
+      sessionId,
+      setActiveToolsByName: vi.fn(),
+      sessionManager: {
+        appendCustomEntry(customType: string, data: unknown) {
+          entries.push({
+            type: "custom",
+            customType,
+            data,
+          })
+        },
+        getBranch() {
+          return entries
+        },
+        getEntries() {
+          return entries
+        },
+      },
+    },
+  } as any
+}
+
+function addAssistantMessage(
+  runtime: ReturnType<typeof createMockRuntime>,
+  messageId: string,
+  text: string
+) {
+  runtime.session.sessionManager.getBranch().push({
+    type: "message",
+    id: messageId,
+    message: {
+      role: "assistant",
+      timestamp: Date.now(),
+      content: [{ type: "text", text }],
+    },
+  })
+}

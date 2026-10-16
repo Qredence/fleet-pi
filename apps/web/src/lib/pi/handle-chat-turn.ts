@@ -1,3 +1,4 @@
+import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
 import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import type {
   AssistantTurnState,
@@ -9,7 +10,6 @@ import type {
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
-import { scheduleSessionBlobPersist } from "@/lib/pi/server-sessions"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
 import { assertProviderCredentialsUsable } from "@/lib/pi/runtime/provider-preflight"
 import {
@@ -23,6 +23,7 @@ import {
   createTurnStartContext,
   finalizeAssistantTurn,
   handleSessionEvent,
+  sendTerminalFrame,
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
@@ -113,6 +114,8 @@ async function runChatTurn({
   let removeAbortListener: (() => void) | undefined
   let activeTurn: AssistantTurnState | undefined
   let turnStartContext: TurnStartContext | undefined
+  let terminalRuntime: AgentSessionRuntime | undefined
+  let terminalSent = false
   let queuedPromptCount = 0
 
   log.info(
@@ -122,6 +125,7 @@ async function runChatTurn({
 
   try {
     const result = await createPiRuntime(runtimeContext, body, body.model)
+    terminalRuntime = result.runtime
     const currentSession = result.runtime.session
     releaseRuntime = retainPiRuntime(result.runtime, body.userId)
 
@@ -139,6 +143,7 @@ async function runChatTurn({
       send,
       session: currentSession,
       sessionReset: result.sessionReset,
+      workspace: result.workspace,
     })
 
     unsubscribe = currentSession.subscribe((event) => {
@@ -174,6 +179,10 @@ async function runChatTurn({
     })
     await currentSession.waitForIdle()
 
+    await syncPiSessionMirrorSafely(result.runtime.session.sessionManager, {
+      userId: body.userId,
+    })
+
     activeTurn = completeAssistantTurn({
       activeTurn,
       body,
@@ -181,15 +190,9 @@ async function runChatTurn({
       send,
       session: currentSession,
       sessionReset: result.sessionReset,
+      startContext: turnStartContext,
     })
-
-    void syncPiSessionMirrorSafely(result.runtime.session.sessionManager, {
-      userId: body.userId,
-    })
-    scheduleSessionBlobPersist({
-      userId: body.userId,
-      sessionManager: result.runtime.session.sessionManager,
-    })
+    terminalSent = true
   } catch (error) {
     log.error(
       { error: getErrorMessage(error), aborted: signal.aborted },
@@ -203,8 +206,27 @@ async function runChatTurn({
           message: getErrorMessage(error),
           runId: errorTurn.runId,
         })
+        activeTurn = errorTurn
       } else {
         send({ type: "error", message: getErrorMessage(error) })
+      }
+    }
+    // Every request ends with a terminal frame (best effort: the client may
+    // already be gone on abort).
+    if (turnStartContext && terminalRuntime && !terminalSent) {
+      try {
+        sendTerminalFrame({
+          activeTurn,
+          startContext: turnStartContext,
+          body,
+          runtime: terminalRuntime,
+          send,
+          session: terminalRuntime.session,
+          sessionReset: turnStartContext.sessionReset,
+          stopReason: signal.aborted ? "aborted" : "error",
+        })
+      } catch {
+        // Stream already closed.
       }
     }
   } finally {

@@ -31,6 +31,9 @@ describe("chat postgres schema ordering", () => {
       "auth_type TEXT NOT NULL DEFAULT 'apiKey'"
     )
     expect(CHAT_POSTGRES_SCHEMA_SQL).toContain("encrypted_payload TEXT NULL")
+    expect(CHAT_POSTGRES_SCHEMA_SQL).not.toContain(
+      "CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner"
+    )
     expectCreateBeforeReference(
       "pi_session_entries",
       "ALTER TABLE IF EXISTS pi_session_entries ENABLE ROW LEVEL SECURITY;"

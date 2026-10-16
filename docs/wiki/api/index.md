@@ -53,9 +53,9 @@ Endpoints under `/api/workspace` expose `agent-workspace/` as a read/write file 
 
 Auth policy follows the deployment trust zone:
 
-- **Local** (no `NEON_AUTH_BASE_URL` / `NEON_AUTH_URL`, not Vercel): chat and
+- **Local** (no `NEON_AUTH_BASE_URL` / `NEON_AUTH_URL`, not Cloudflare): chat and
   workspace endpoints allow anonymous access so the app works without login.
-- **Vercel**, **Neon Managed Auth**, or **Neon Function** chat runtime: session
+- **Cloudflare**, **Neon Managed Auth**, or **Neon Function** chat runtime: session
   and workspace APIs require authentication (`withAuthenticatedChatRequest`).
   Catalog endpoints (`/api/chat/models`, `/resources`, `/commands`,
   `/models/discover`) use the same gate. Neon Auth clients mint JWTs via

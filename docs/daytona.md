@@ -9,14 +9,14 @@ Fleet Pi provisions one Daytona sandbox per authenticated user, using **that use
 ```
 Authenticated user → POST /api/chat (with session cookie)
   → Better Auth extracts userId
-  → resolveDaytonaRuntimeApiKey(userId) → user BYOK key (Vercel) or env fallback (local)
+  → resolveDaytonaRuntimeApiKey(userId) → user BYOK key (Cloudflare) or env fallback (local)
   → isDaytonaEnabled(userId, key) → true
   → getUserSandbox(userId) → provisions or resumes per-user sandbox
   → Fleet adapter registers sandbox-backed bash/read/write/edit/ls/find/grep
   → agent-workspace volume persists across sandbox restarts
 ```
 
-**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Vercel, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
+**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
 
 **CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` **outside this repo** — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter. The Pi CLI does **not** apply that filter, so keep stock `@daytona/pi` out of `~/.pi/agent/settings.json` while developing in `fleet-pi`.
 
@@ -47,14 +47,18 @@ Hint: Start without extensions using "pi -ne".
 
 **Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an`. Do not delete the workspace volume unless intentionally resetting that user.
 
-**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Do not auto-delete volumes.
+**Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Sandboxes stuck in `error` (for example after a failed volume mount) are also recreated on warm-up with the same volume. Do not auto-delete volumes.
+
+**Cold start:** Authenticated chat must never block the stream on cold sandbox creation. Use the cached sandbox or a background warm-up (`server-runtime.ts`).
+
+**Worker bundle:** Cloudflare Workers output must pin `tslib@2` beside the traced `@daytona/*` packages, because `tslib@1` (pulled in by Neon Auth passkey) lacks `__esDecorate`.
 
 Labels on sandboxes: `{ managedBy: "fleet-pi", userId, email, createdAt }`
 
 ## Environment
 
 ```bash
-# Local/dev fallback only (ignored as sole key source on Vercel)
+# Local/dev fallback only (ignored as sole key source on Cloudflare)
 DAYTONA_API_KEY=...          # Optional local fallback
 BETTER_AUTH_SECRET=...       # Required for user authentication
 
@@ -66,7 +70,7 @@ FLEET_PI_REPOSITORY_URL=...  # HTTPS repo used to sparse-seed agent-workspace
 AWS_REGION=us-east-1         # For Bedrock (LLM provider)
 ```
 
-On Vercel, each logged-in user must store their Daytona API key as the `daytona` provider secret.
+On Cloudflare, each logged-in user must store their Daytona API key as the `daytona` provider secret.
 
 ## Sandbox paths
 

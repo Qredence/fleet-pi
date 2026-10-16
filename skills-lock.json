@@ -7,35 +7,29 @@
       "skillPath": "skills/agent-elements/SKILL.md",
       "computedHash": "899ff281733653460fc7c0864daaa602fb9d32b176f3653178791fae657d9277"
     },
-    "claimable-postgres": {
-      "source": "neondatabase/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/claimable-postgres/SKILL.md",
-      "computedHash": "1ad33258166b0d2edb02cd6134c7cac66d6e04207fb0767255dcc521a795e0a4"
-    },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
-      "computedHash": "6d9d51d8caa01633fd00cf87089c5618c982321f942ac69f62565dc001c6b22f"
+      "computedHash": "b2888e4f4e8c0af3bfd557575a64b905c44e6248c3101d72077816882b3a92b9"
     },
     "daytona": {
       "source": "daytona/skills",
       "sourceType": "github",
       "skillPath": "skills/daytona/SKILL.md",
-      "computedHash": "8556115a79a165c93866959e0872a23cef76515784973e5f1b3f35255c9cb3a9"
+      "computedHash": "d8dd2ff2edb38d2db403b9d342449753be6815e4d99f39a043634f997abdeb98"
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
-      "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
+      "computedHash": "b3eb40152b81f0c98fd2095a023c019452dbdce56f7540cc67fece2972db8369"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "5e539d6bfd03da45238437d38eff5986720c2935ad624fe7ccc9ab55b6c922ca"
+      "computedHash": "4f1c9edac4c110984200216ed05a2f0b5ced6aa871f5094a7cc4445eacf5477f"
     },
     "improve-ui": {
       "source": "ibelick/ui-skills",
@@ -47,49 +41,43 @@
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon/SKILL.md",
-      "computedHash": "34714c04b6ab06adc728df602131f8c23fcbf79bf6a54c4b82e9021ad138cb72"
+      "computedHash": "72813af523242dc39715b225fb3b37d255e3dbf4ea276e7f01ef6064b53b47af"
     },
     "neon-ai-gateway": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-ai-gateway/SKILL.md",
-      "computedHash": "3c0263aa4a8a13e2cce7297edd5b2e12060cbfb8bc74e8d8fe839d7049cfb286"
+      "computedHash": "0edcef859ae35a6f0b1063395f56afb385b9e43999dcd1816f4075055858790a"
     },
     "neon-functions": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-functions/SKILL.md",
-      "computedHash": "6db834c9570b02759f19368931aad5e4f0f1b7d21c8b158dbc5f261a40fb9ee4"
+      "computedHash": "6b25c06345fbea79c0880b4345697b5eecc2f699eb3950434712d1305f059761"
     },
     "neon-object-storage": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-object-storage/SKILL.md",
-      "computedHash": "5201503865f470de38c5ddbd991b906c51f0a2beb53add04c666364864946c54"
+      "computedHash": "be0c3d0c362e51dadc4146e04e1067db30c81cd21c45517b511523a14e6ed19a"
     },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres/SKILL.md",
-      "computedHash": "7985b983f8ae5e36d88b82bcc2f3353726d22ced9be97d438681b308afed509e"
+      "computedHash": "b9763d379a3c5039e5555540a1333b1c529e2365d4f0b8fe2998ba41509814c5"
     },
     "neon-postgres-branches": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres-branches/SKILL.md",
-      "computedHash": "3a97ec5cbcbb4c28e60bbb03197feb735bda7a35b44069a6a1144357511235f2"
+      "computedHash": "d6b7ecfc52508c57bd3c8572a7cd0c582c256e36731124eb8598e8b24780ab1d"
     },
     "neon-postgres-egress-optimizer": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/neon-postgres-egress-optimizer/SKILL.md",
-      "computedHash": "d29f70fac40d2fa59ef1abfd9d944485a8388661c834eaeaf823cd9bdbcb8a76"
-    },
-    "openui": {
-      "source": "thesysdev/openui",
-      "sourceType": "github",
-      "skillPath": "skills/openui/SKILL.md",
-      "computedHash": "4a05017536a7b2517918b23fb322db0ae4e0f0f882a42238e89226ea0655a5fe"
+      "computedHash": "9f991d785e63e9ae33e1a09db18ab8d559083861c70aebc6a740df01ca5bf214"
     },
     "ui-skills-root": {
       "source": "ibelick/ui-skills",

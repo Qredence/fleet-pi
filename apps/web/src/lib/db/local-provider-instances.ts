@@ -59,7 +59,7 @@ function resolveStorePath(userId?: string): string {
  * Local dev fallback: instances are stored outside Postgres when the chat
  * database is not configured for the account (anonymous local chat, or a
  * local Better Auth sign-in without `FLEET_PI_CHAT_DATABASE_URL`). Never true
- * on Vercel or the Neon Function surface, where the filesystem is ephemeral
+ * on Cloudflare or the Neon Function surface, where the filesystem is ephemeral
  * and `pi_user_providers` is the only durable store.
  *
  * @param userId - The signed-in user's id, or `undefined` for anonymous chat
@@ -196,7 +196,7 @@ export async function upsertLocalProviderInstance(
     const storePath = resolveStorePath(userId)
     const store = await readStore(storePath)
     const normalized = normalizeCustomProviderInstance(instance)
-    const modelId = requireFirstModelId(normalized.modelIds, instance.id)
+    const modelId = normalized.modelIds[0] ?? ""
     const row: LocalProviderInstance = {
       id: instance.id,
       displayName: instance.displayName,
@@ -250,7 +250,7 @@ export async function createLocalProviderInstance(
       toId
     )
     const normalized = normalizeCustomProviderInstance(input)
-    const modelId = requireFirstModelId(normalized.modelIds, id)
+    const modelId = normalized.modelIds[0] ?? ""
     store.instances.push({
       id,
       displayName: input.displayName,
@@ -313,22 +313,6 @@ export async function allocateLocalInstanceId(
     )
     return allocateProviderId(baseSlug, existing, toId)
   })
-}
-
-/**
- * Rejects a write that carries no model ids. `OccInstance.modelId` is a
- * required string; persisting `modelIds[0]` of an empty list would write
- * `modelId: undefined`, which `JSON.stringify` drops, permanently failing
- * {@link isLocalProviderInstance} on every later read of the store.
- */
-function requireFirstModelId(modelIds: Array<string>, id: string): string {
-  const modelId = modelIds[0]
-  if (!modelId) {
-    throw new Error(
-      `Custom provider instance "${id}" has no models configured; at least one model id is required`
-    )
-  }
-  return modelId
 }
 
 async function writeStore(storePath: string, store: ProviderStoreFile) {

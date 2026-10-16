@@ -1,4 +1,5 @@
 import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
+import { enforceNamedEdgeRateLimit } from "@/lib/deployment/edge-rate-limit"
 import { abortChatHandler } from "@/lib/pi/chat-runtime/handlers/abort"
 import { newChatHandler } from "@/lib/pi/chat-runtime/handlers/new"
 import { postChatHandler } from "@/lib/pi/chat-runtime/handlers/post-chat"
@@ -61,6 +62,12 @@ function applyCors(request: Request, response: Response) {
 }
 
 function preflightResponse(request: Request) {
+  if (readAllowedOrigins().length === 0) {
+    return new Response(JSON.stringify({ error: "CORS allowlist is empty" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    })
+  }
   return applyCors(
     request,
     new Response(null, {
@@ -115,7 +122,16 @@ async function dispatchChatRuntimeRequest(request: Request) {
 }
 
 export async function handleChatRuntimeRequest(request: Request) {
-  // Neon Functions are not Vercel (`VERCEL=1`); force auth for this surface.
+  // The Function has no Cloudflare rate-limit binding. The in-process bucket
+  // still rejects a burst on this isolate before a mirror or Gateway call.
+  // Isolates do not share the counter; Worker requests keep FLEET_PI_CHAT_START.
+  const limited = await enforceNamedEdgeRateLimit({
+    request,
+    allowMemoryLimit: true,
+  })
+  if (limited) return applyCors(request, limited)
+
+  // The Neon Function surface always requires auth.
   const response = await runWithChatAuthSurface("neon-function", () =>
     dispatchChatRuntimeRequest(request)
   )

@@ -1,8 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import {
-  isNeonManagedAuthConfigured,
-  resolveNeonAuthBaseUrl,
-} from "@/lib/auth/auth-mode"
+import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
 
 export type VerifiedNeonAuthToken = {
   sub: string
@@ -13,30 +10,11 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
 let jwksUrl: string | null = null
 
 function resolveJwksUrl(env: NodeJS.ProcessEnv = process.env) {
-  const explicit =
-    env.NEON_AUTH_JWKS_URL?.trim() || env.NEON_AUTH_JWKS?.trim() || ""
-  if (explicit) return explicit
-
-  const base = resolveNeonAuthBaseUrl(env)
-  if (!base) return ""
-
-  return `${base.replace(/\/+$/, "")}/.well-known/jwks.json`
+  return env.NEON_AUTH_JWKS_URL?.trim() || env.NEON_AUTH_JWKS?.trim() || ""
 }
 
 function resolveNeonAuthIssuer(env: NodeJS.ProcessEnv = process.env) {
-  const explicit = env.NEON_AUTH_ISSUER?.trim() || ""
-  if (explicit) return explicit
-
-  // Neon docs: JWT `iss` is the origin of the Managed Auth URL
-  // (e.g. https://ep-xx.neonauth…aws.neon.tech), not the `/neondb/auth` path.
-  const base = resolveNeonAuthBaseUrl(env)
-  if (!base) return ""
-
-  try {
-    return new URL(base).origin
-  } catch {
-    return ""
-  }
+  return env.NEON_AUTH_ISSUER?.trim() || ""
 }
 
 function getJwks(env: NodeJS.ProcessEnv = process.env) {

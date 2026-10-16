@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
-import type { LookupFunction } from "node:net"
 import { Agent } from "undici"
+import type { LookupFunction } from "node:net"
 
 const MAX_DISPATCHERS = 100
 const dispatcherCache = new Map<string, Agent>()
@@ -55,7 +55,7 @@ export async function fetchPublicHttpsUrl(
   }
 
   const pinnedLookup: LookupFunction = (_hostname, _options, callback) =>
-    callback(null, address, isIP(address) as 4 | 6)
+    callback(null, address, isIP(address))
 
   let dispatcher = dispatcherCache.get(address)
   if (!dispatcher) {

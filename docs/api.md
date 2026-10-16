@@ -40,7 +40,8 @@ Send a chat message and receive a streaming response
     "sessionFile": <string>,
     "sessionId": <string> (required),
     "sessionReset": <boolean>,
-    "diagnostics": <array>
+    "diagnostics": <array>,
+    "workspace": — Workspace tool availability for the chat runtime
   }
   ```
   ```json
@@ -131,7 +132,8 @@ Send a chat message and receive a streaming response
     "message": <object> (required) — Chat message,
     "sessionFile": <string>,
     "sessionId": <string> (required),
-    "sessionReset": <boolean>
+    "sessionReset": <boolean>,
+    "stopReason": <string>
   }
   ```
   ```json
@@ -768,8 +770,11 @@ Read a file inside agent-workspace
   ```json
   {
     "path": <string> (required),
+    "name": <string> (required),
     "content": <string> (required),
-    "mimeType": <string>
+    "mediaType": <string> (required),
+    "size": <number>,
+    "status": <string>
   }
   ```
 - **401** — Unauthorized

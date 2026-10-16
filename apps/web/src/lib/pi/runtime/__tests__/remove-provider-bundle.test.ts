@@ -54,8 +54,8 @@ describe("removeProviderBundle", () => {
     })
   })
 
-  it("removes credentials and settings atomically on Vercel when settings change", async () => {
-    vi.stubEnv("VERCEL", "1")
+  it("removes credentials and settings atomically on Cloudflare when settings change", async () => {
+    vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
 
     await removeProviderBundle({
       context: { projectRoot: "/repo" } as never,

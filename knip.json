@@ -22,6 +22,7 @@
       ]
     },
     "apps/web": {
+      "ignore": ["src/lib/pi/durable/cloudflare-workers-node-stub.ts"],
       "entry": [
         "scripts/**/*.ts",
         "src/router.tsx",
@@ -29,11 +30,15 @@
         "src/routes/**/*.tsx",
         "src/routes/api/**/*.ts",
         "src/lib/pi/chat-runtime/router.ts",
+        "src/lib/pi/durable/user-pi-durable.worker.ts",
         "src/lib/**/*.test.ts",
+        "src/lib/**/__tests__/**/*.ts",
+        "src/lib/**/*.workers.test.ts",
         "src/lib/**/*.spec.ts"
       ],
       "ignoreDependencies": [
         "nitro",
+        "cloudflare",
         "@tanstack/router-plugin",
         "tailwindcss",
         "pino-pretty",
@@ -42,6 +47,10 @@
     },
     "packages/hax-design": {
       "entry": ["src/**/*.tsx", "src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/pi-protocol": {
+      "entry": ["src/**/*.ts", "src/**/__tests__/**/*.ts"],
+      "project": ["src/**/*.ts"]
     }
   }
 }

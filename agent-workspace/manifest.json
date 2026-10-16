@@ -75,6 +75,7 @@
   "scratch": {
     "path": "agent-workspace/scratch",
     "temporary": true,
+    "ttlDays": 7,
     "protectionPaths": ["agent-workspace/scratch/tmp/.gitkeep"]
   },
   "projection": {

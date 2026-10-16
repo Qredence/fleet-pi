@@ -10,6 +10,11 @@ import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../src/lib/db/chat
 import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../src/lib/db/chat-postgres-session-tombstones"
 import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../src/lib/db/chat-postgres-provider-auth"
 import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../src/lib/db/chat-postgres-user-settings"
+import {
+  CHAT_RUNTIME_ROLE_SQL,
+  chatRuntimeRoleBypassesRls,
+  chatRuntimeRoleLabel,
+} from "../src/lib/db/chat-postgres-session-owner-fn"
 import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke"
 import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../src/lib/db/chat-postgres-data-api-revoke-again"
 import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../src/lib/db/chat-postgres-force-rls"
@@ -142,16 +147,17 @@ async function queryChatDatabaseState(connectionString: string) {
       `
     )
 
-    const probe = await pool.query<{ proname: string }>(
+    const probe = await pool.query<{ def: string }>(
       `
-        SELECT proname
-        FROM pg_proc
-        JOIN pg_namespace ON pg_namespace.oid = pg_proc.pronamespace
-        WHERE pg_namespace.nspname = 'public'
-          AND proname = 'fleet_pi_check_session_owner'
+        SELECT pg_get_functiondef(p.oid) AS def
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+          AND p.proname = 'fleet_pi_check_session_owner'
         LIMIT 1
       `
     )
+    const ownerFunctionDef = probe.rows[0]?.def ?? ""
 
     const dataApiGrants = await pool.query<{
       table_name: string
@@ -173,11 +179,28 @@ async function queryChatDatabaseState(connectionString: string) {
       `
     )
 
+    const executeProbe = await pool.query<{ grantee: string }>(`
+      SELECT r.rolname AS grantee
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      JOIN pg_roles AS r ON r.rolname IN ('authenticated', 'anonymous')
+      WHERE n.nspname = 'public'
+        AND p.proname IN (
+          'fleet_pi_check_session_owner',
+          'fleet_pi_lookup_session_id_by_file'
+        )
+        AND has_function_privilege(r.oid, p.oid, 'EXECUTE')
+    `)
+
     return {
       chatMigrationsApplied: migrations.rows.map((row) => row.id),
       piSessionsRlsEnabled: rls.rows[0]?.rls_enabled === true,
       piSessionsForceRls: rls.rows[0]?.force_rls === true,
       ownershipProbePresent: probe.rows.length > 0,
+      ownershipProbeDataApiExecute: executeProbe.rows.map((row) => row.grantee),
+      ownershipProbeRecognizesDeleted:
+        ownerFunctionDef.includes("'deleted'") &&
+        ownerFunctionDef.includes("pi_session_tombstones"),
       dataApiPiPrivileges: dataApiGrants.rows.map((row) => ({
         tableName: row.table_name,
         grantee: row.grantee,
@@ -186,6 +209,34 @@ async function queryChatDatabaseState(connectionString: string) {
     }
   } finally {
     await pool.end()
+  }
+}
+
+async function queryChatRuntimeRole(connectionString: string) {
+  const pool = new Pool({ connectionString })
+  try {
+    const result = await pool.query<{
+      rolname: string
+      rolbypassrls: boolean
+      rolsuper: boolean
+    }>(CHAT_RUNTIME_ROLE_SQL)
+    const row = result.rows[0]
+    return {
+      chatRuntimeBypassesRls: chatRuntimeRoleBypassesRls(row),
+      chatRuntimeRoleName: chatRuntimeRoleLabel(row),
+    }
+  } finally {
+    await pool.end()
+  }
+}
+
+function isSyntheticCiChatDatabaseUrl(connectionString: string) {
+  try {
+    const host = new URL(connectionString.replace(/^postgres(ql)?:/i, "http:"))
+      .hostname
+    return host === "ci-chat" || host === "preview-neon-host"
+  } catch {
+    return false
   }
 }
 
@@ -204,7 +255,22 @@ async function main() {
   }
 
   const chatRuntimeUrl = process.env.FLEET_PI_CHAT_DATABASE_URL?.trim()
-  if (chatRuntimeUrl && chatMigrationUrl && trustZone !== "local") {
+  const skipLiveProbes =
+    process.env.FLEET_PI_READINESS_SKIP_LIVE_PROBES === "1" ||
+    (chatRuntimeUrl ? isSyntheticCiChatDatabaseUrl(chatRuntimeUrl) : false)
+
+  if (chatRuntimeUrl && trustZone !== "local" && !skipLiveProbes) {
+    Object.assign(input, await queryChatRuntimeRole(chatRuntimeUrl))
+  } else if (chatRuntimeUrl && trustZone !== "local" && skipLiveProbes) {
+    console.log("WARN chat-runtime-role: skipped synthetic CI database URL")
+  }
+
+  if (
+    chatRuntimeUrl &&
+    chatMigrationUrl &&
+    trustZone !== "local" &&
+    !skipLiveProbes
+  ) {
     const smoke = await runChatRlsSmokeTest(chatRuntimeUrl)
     const prefix = smoke.ok ? "OK" : "FAIL"
     console.log(`${prefix} chat-rls-smoke: ${smoke.message}`)
@@ -212,6 +278,13 @@ async function main() {
       process.exitCode = 1
       return
     }
+  } else if (
+    chatRuntimeUrl &&
+    chatMigrationUrl &&
+    trustZone !== "local" &&
+    skipLiveProbes
+  ) {
+    console.log("WARN chat-rls-smoke: skipped synthetic CI database URL")
   }
 
   const result = validateDeploymentReadiness(input)
@@ -227,15 +300,25 @@ async function main() {
   }
 
   if (!chatMigrationUrl) {
-    console.log(
-      "WARN migration-db: Set FLEET_PI_CHAT_MIGRATION_DATABASE_URL to verify chat migrations in CI/deploy."
-    )
+    const message =
+      "Set FLEET_PI_CHAT_MIGRATION_DATABASE_URL to verify chat migrations in CI/deploy."
+    if (process.env.FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES === "1") {
+      console.log(`FAIL migration-db: ${message}`)
+      process.exitCode = 1
+      return
+    }
+    console.log(`WARN migration-db: ${message}`)
   }
 
   if (!authMigrationUrl) {
-    console.log(
-      "WARN migration-db: Set FLEET_PI_AUTH_MIGRATION_DATABASE_URL to verify auth grants in CI/deploy."
-    )
+    const message =
+      "Set FLEET_PI_AUTH_MIGRATION_DATABASE_URL to verify auth grants in CI/deploy."
+    if (process.env.FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES === "1") {
+      console.log(`FAIL migration-db: ${message}`)
+      process.exitCode = 1
+      return
+    }
+    console.log(`WARN migration-db: ${message}`)
   }
 
   if (!CHAT_POSTGRES_SCHEMA_SQL.includes("fleet_pi_chat_migrations")) {

@@ -1,6 +1,6 @@
 import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
 import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
-import { isVercelDeployment } from "@/lib/deployment/environment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   parseBearerToken,
   verifyNeonAuthAccessToken,
@@ -11,6 +11,7 @@ import {
   verifyRunOwnership,
   verifySessionOwnership,
 } from "@/lib/db/pi-session-ownership-db"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 
 export type ChatAuthSession = Awaited<ReturnType<typeof getChatAuthSession>>
 
@@ -22,7 +23,7 @@ export type AuthenticatedChatContext = {
 /**
  * Single chat-auth policy:
  * - Neon Function surface always requires auth
- * - Vercel deployments require auth
+ * - Cloudflare deployments require auth
  * - Neon Managed Auth configured (web) requires auth
  * - Optional `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1` for explicit gates
  */
@@ -31,7 +32,7 @@ export function isChatAuthRequired(env: NodeJS.ProcessEnv = process.env) {
     return true
   }
   return (
-    isVercelDeployment() ||
+    isHostedDeployment() ||
     isNeonManagedAuthConfigured(env) ||
     env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1"
   )
@@ -76,7 +77,7 @@ export function forbiddenSessionResponse() {
   )
 }
 
-export async function requireVercelChatAuth(request: Request) {
+export async function requireHostedChatAuth(request: Request) {
   const authSession = await getChatAuthSession(request)
   if (isChatAuthRequired() && !authSession?.user.id) {
     return { ok: false as const, response: unauthorizedChatResponse() }
@@ -88,7 +89,7 @@ export async function withAuthenticatedChatRequest(
   request: Request,
   handler: (ctx: AuthenticatedChatContext) => Promise<Response>
 ): Promise<Response> {
-  const authGate = await requireVercelChatAuth(request)
+  const authGate = await requireHostedChatAuth(request)
   if (!authGate.ok) {
     return authGate.response
   }
@@ -111,6 +112,10 @@ export async function enforceChatSessionOwnership(input: {
 
   if (isChatAuthRequired() && !input.userId) {
     return { ok: false as const, response: unauthorizedChatResponse() }
+  }
+
+  if (isDurableSessionId(input.sessionId) && !input.sessionFile) {
+    return { ok: true as const }
   }
 
   if (!input.userId) {

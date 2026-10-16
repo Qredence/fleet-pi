@@ -20,13 +20,9 @@ import type {
 } from "@workspace/pi-protocol/chat-protocol"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
-import {
-  hydrateSessionFileFromObjectStorage,
-  inferSessionIdFromFile,
-  persistSessionFileToObjectStorage,
-} from "@/lib/storage/session-blob-store"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import {
   fetchUserSessionSummaries,
   syncPiSessionMirrorSafely,
@@ -35,23 +31,6 @@ import {
 export type SessionManagerResult = {
   sessionManager: SessionManager
   sessionReset: boolean
-}
-
-export function scheduleSessionBlobPersist(input: {
-  userId?: string
-  sessionManager: SessionManager
-}) {
-  const sessionFile = input.sessionManager.getSessionFile()
-  const sessionId = input.sessionManager.getSessionId()
-  if (!input.userId || !sessionFile || !sessionId) {
-    return
-  }
-
-  void persistSessionFileToObjectStorage({
-    userId: input.userId,
-    sessionId,
-    sessionFile,
-  })
 }
 
 export async function createNewChatSession(
@@ -79,6 +58,9 @@ export async function hydrateChatSession(
   metadata: ChatSessionMetadata,
   options: { userId?: string } = {}
 ): Promise<ChatSessionResponse> {
+  if (isDurableSessionId(metadata.sessionId) && !metadata.sessionFile) {
+    throw new Error("Durable sessions are not JSONL transcripts")
+  }
   const services = await createSessionServices(context, undefined, {
     userId: options.userId,
   })
@@ -98,7 +80,7 @@ export async function hydrateChatSession(
       context.projectRoot,
       sessionDir
     )
-    void syncPiSessionMirrorSafely(sessionManager, options)
+    await syncPiSessionMirrorSafely(sessionManager, options)
     return {
       session: toSessionMetadata(sessionManager),
       messages: [],
@@ -113,7 +95,7 @@ export async function hydrateChatSession(
   )
   if (!sessionManager) {
     const fresh = SessionManager.create(context.projectRoot, sessionDir)
-    void syncPiSessionMirrorSafely(fresh, options)
+    await syncPiSessionMirrorSafely(fresh, options)
     return {
       session: toSessionMetadata(fresh),
       messages: [],
@@ -121,8 +103,7 @@ export async function hydrateChatSession(
     }
   }
 
-  void syncPiSessionMirrorSafely(sessionManager, options)
-  scheduleSessionBlobPersist({ userId: options.userId, sessionManager })
+  await syncPiSessionMirrorSafely(sessionManager, options)
 
   return {
     session: toSessionMetadata(sessionManager),
@@ -160,7 +141,7 @@ export async function listChatSessions(
   }
 
   // Neon is the source of truth for which sessions a user owns: local JSONL is
-  // only a working copy (ephemeral on Vercel / Neon Functions). Opening a
+  // only a working copy (ephemeral on Cloudflare / Neon Functions). Opening a
   // mirror-only entry goes through resolveSessionFileWithRecovery, which
   // rebuilds the JSONL from pi_session_entries.
   const mirrored = await fetchUserSessionSummaries(options.userId)
@@ -264,48 +245,6 @@ export async function resolveSessionFile(
   return match.path
 }
 
-async function tryHydrateSessionFromObjectStorage(input: {
-  metadata: ChatSessionMetadata
-  repoRoot: string
-  sessionDir: string
-  userId: string
-}) {
-  const rawSessionId =
-    input.metadata.sessionId ??
-    (input.metadata.sessionFile
-      ? inferSessionIdFromFile(input.metadata.sessionFile)
-      : undefined)
-  const candidateSessionId =
-    rawSessionId && /^[A-Za-z0-9._-]+$/.test(rawSessionId)
-      ? rawSessionId
-      : undefined
-  // Never trust client sessionFile as a download destination — only write
-  // under the resolved sessionDir.
-  if (!candidateSessionId) {
-    return undefined
-  }
-
-  const candidateSessionFile = resolve(
-    input.sessionDir,
-    `${candidateSessionId}.jsonl`
-  )
-  await hydrateSessionFileFromObjectStorage({
-    userId: input.userId,
-    sessionId: candidateSessionId,
-    sessionFile: candidateSessionFile,
-  })
-
-  return resolveSessionFile(
-    {
-      ...input.metadata,
-      sessionFile: candidateSessionFile,
-      sessionId: candidateSessionId,
-    },
-    input.repoRoot,
-    input.sessionDir
-  )
-}
-
 export async function resolveSessionFileWithRecovery(
   metadata: ChatSessionMetadata,
   repoRoot: string,
@@ -321,8 +260,6 @@ export async function resolveSessionFileWithRecovery(
     return undefined
   }
 
-  // Prefer Neon mirror recovery before object-storage hydrate so a stale/empty
-  // blob cannot short-circuit a populated mirror.
   const recovery = await recoverOwnedSessionFile({
     sessionId: metadata.sessionId,
     sessionFile: metadata.sessionFile,
@@ -334,12 +271,7 @@ export async function resolveSessionFileWithRecovery(
     return recovery.sessionFile
   }
 
-  return tryHydrateSessionFromObjectStorage({
-    metadata,
-    repoRoot,
-    sessionDir,
-    userId: options.userId,
-  })
+  return undefined
 }
 
 function didRequestedSessionReset(

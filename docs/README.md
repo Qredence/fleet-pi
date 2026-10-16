@@ -18,7 +18,12 @@ Start here if you want the human-facing documentation for Fleet Pi.
 
 ## Operating and Extending
 
+- [Deployment](wiki/deployment.md) — Cloudflare Workers is the primary host.
+  Hosted transcripts live in the user's Durable Object. The Daytona volume
+  holds harness files and artifacts.
 - [Runbooks](runbooks.md) — runtime troubleshooting and incident response
+- [DB role rotation](runbooks/db-role-rotation.md) — zero-downtime rotation of
+  the `fleet_pi_app` Neon role and the Worker database URLs
 - [Runtime SDK Integration Seams](runtime-sdk-integration.md) — current runtime
   integration boundaries for deeper platform work
 - [Daytona Stateful Sandbox](daytona.md) — run Fleet Pi in Daytona with

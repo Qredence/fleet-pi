@@ -4,6 +4,7 @@ import {
   getChatPostgresPool,
   getPoolHealthMetrics,
   isUserScopedEphemeralSessionFile,
+  resetChatRuntimeRoleCheckForTests,
   verifyRunOwnership,
   verifySessionOwnership,
 } from "../pi-session-ownership-db"
@@ -37,15 +38,15 @@ vi.mock("@neondatabase/serverless", () => ({
   },
 }))
 
-const originalVercel = process.env.VERCEL
+const originalHosted = process.env.FLEET_PI_DEPLOYMENT
 const originalChatUrl = process.env.FLEET_PI_CHAT_DATABASE_URL
 
 afterEach(() => {
   vi.clearAllMocks()
-  if (originalVercel === undefined) {
-    delete process.env.VERCEL
+  if (originalHosted === undefined) {
+    delete process.env.FLEET_PI_DEPLOYMENT
   } else {
-    process.env.VERCEL = originalVercel
+    process.env.FLEET_PI_DEPLOYMENT = originalHosted
   }
   if (originalChatUrl === undefined) {
     delete process.env.FLEET_PI_CHAT_DATABASE_URL
@@ -57,34 +58,74 @@ afterEach(() => {
 describe("pi-session-ownership-db", () => {
   beforeEach(() => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://example"
+    resetChatRuntimeRoleCheckForTests()
     poolQuery.mockReset()
     poolConnect.mockClear()
     clientRelease.mockClear()
     existsSync.mockReset()
     existsSync.mockReturnValue(false)
+    poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("rolbypassrls")) {
+        return {
+          rows: [
+            {
+              rolname: "fleet_pi_app",
+              rolbypassrls: false,
+              rolsuper: false,
+            },
+          ],
+        }
+      }
+      return { rows: [] }
+    })
   })
 
   it("verifyRunOwnership returns true when mirror row exists under RLS", async () => {
-    poolQuery
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: "run-1" }] })
-      .mockResolvedValueOnce({ rows: [] })
+    poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("rolbypassrls")) {
+        return {
+          rows: [
+            {
+              rolname: "fleet_pi_app",
+              rolbypassrls: false,
+              rolsuper: false,
+            },
+          ],
+        }
+      }
+      if (sql.includes("FROM pi_runs")) {
+        return { rows: [{ id: "run-1" }] }
+      }
+      return { rows: [] }
+    })
 
     await expect(verifyRunOwnership("run-1", "user-1")).resolves.toBe(true)
     expect(poolConnect).toHaveBeenCalled()
   })
 
-  it("verifyRunOwnership fails closed on Vercel when lookup fails", async () => {
-    process.env.VERCEL = "1"
+  it("verifyRunOwnership fails closed on Cloudflare when lookup fails", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     poolConnect.mockRejectedValueOnce(new Error("db down"))
 
     await expect(verifyRunOwnership("run-1", "user-1")).resolves.toBe(false)
   })
 
   it("verifySessionOwnership denies missing mirror rows without user-scoped JSONL", async () => {
-    process.env.VERCEL = "1"
-    poolQuery.mockResolvedValueOnce({ rows: [{ status: "missing" }] })
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("rolbypassrls")) {
+        return {
+          rows: [
+            {
+              rolname: "fleet_pi_app",
+              rolbypassrls: false,
+              rolsuper: false,
+            },
+          ],
+        }
+      }
+      return { rows: [{ status: "missing" }] }
+    })
 
     await expect(
       verifySessionOwnership("session-1", "user-1", {
@@ -94,9 +135,22 @@ describe("pi-session-ownership-db", () => {
   })
 
   it("verifySessionOwnership allows missing mirror rows when user-scoped JSONL exists", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     existsSync.mockReturnValue(true)
-    poolQuery.mockResolvedValueOnce({ rows: [{ status: "missing" }] })
+    poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("rolbypassrls")) {
+        return {
+          rows: [
+            {
+              rolname: "fleet_pi_app",
+              rolbypassrls: false,
+              rolsuper: false,
+            },
+          ],
+        }
+      }
+      return { rows: [{ status: "missing" }] }
+    })
 
     await expect(
       verifySessionOwnership("session-1", "user-1", {
@@ -106,9 +160,22 @@ describe("pi-session-ownership-db", () => {
   })
 
   it("verifySessionOwnership denies deleted mirror rows even when JSONL exists", async () => {
-    process.env.VERCEL = "1"
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     existsSync.mockReturnValue(true)
-    poolQuery.mockResolvedValueOnce({ rows: [{ status: "deleted" }] })
+    poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("rolbypassrls")) {
+        return {
+          rows: [
+            {
+              rolname: "fleet_pi_app",
+              rolbypassrls: false,
+              rolsuper: false,
+            },
+          ],
+        }
+      }
+      return { rows: [{ status: "deleted" }] }
+    })
 
     await expect(
       verifySessionOwnership("session-1", "user-1", {
