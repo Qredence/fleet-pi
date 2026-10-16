@@ -70,3 +70,7 @@ matches production. See `.github/workflows/cloudflare.yml` and
   on production.
 - Neon Managed Auth signup is open, so keep the deployment closed-beta until
   restricted signups exist.
+
+## Related
+
+- [Worker Postgres connection budget](./worker-postgres-connections.md)
