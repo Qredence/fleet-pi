@@ -2,7 +2,7 @@ import {
   agentWorkspaceBashBlock,
   agentWorkspaceMutationBlock,
 } from "../command-policy"
-import { classifyToolPath } from "../../../../../../.pi/extensions/lib/mutation-tier"
+import { classifyToolPath } from "../mutation-tier"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 
 function hostedModes(name: string): ReadonlyArray<ChatMode> | undefined {

@@ -1,4 +1,4 @@
-import { classifyToolPath } from "../../../../../.pi/extensions/lib/mutation-tier"
+import { classifyToolPath } from "./mutation-tier"
 
 export type CommandPolicyResult = {
   allowed: boolean

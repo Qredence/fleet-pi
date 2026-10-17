@@ -10,9 +10,9 @@
  *   0 - all documented commands are valid
  *   1 - one or more documented commands are broken
  */
-const fs = require("fs")
-const path = require("path")
-const { execSync } = require("child_process")
+import fs from "node:fs"
+import path from "node:path"
+import { execSync } from "node:child_process"
 
 const AGENTS_MD = path.resolve("AGENTS.md")
 const PACKAGE_JSON = path.resolve("package.json")

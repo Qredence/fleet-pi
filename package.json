@@ -2,6 +2,7 @@
   "name": "fleet-pi",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "description": "A browser-based coding-agent workspace with Pi-backed chat, plan mode, and a durable agent-workspace.",
   "homepage": "https://github.com/Qredence/fleet-pi#readme",
   "bugs": {

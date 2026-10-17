@@ -16,10 +16,12 @@
  *   0 - no violations found
  *   1 - one or more violations detected
  */
-const fs = require("fs")
-const path = require("path")
-const { execFileSync } = require("child_process")
+import fs from "node:fs"
+import path from "node:path"
+import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, "..")
 const HAX_SRC = path.join(ROOT, "packages/hax-design/src")
 const FLEET_PI_DIR = path.join(HAX_SRC, "components/fleet-pi")

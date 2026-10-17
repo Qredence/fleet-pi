@@ -1,5 +1,5 @@
 import { isHostedDeployment } from "../../deployment/environment"
-import { isInsideUserVolume } from "../../../../../../.pi/extensions/lib/project-trust"
+import { isInsideUserVolume } from "../mutation-tier"
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
 import type {
   LoadExtensionsResult,

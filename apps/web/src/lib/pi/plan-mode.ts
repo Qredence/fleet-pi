@@ -1,7 +1,4 @@
-import {
-  classifyToolPath,
-  rawWorkspaceMutationBlock,
-} from "../../../../../.pi/extensions/lib/mutation-tier"
+import { classifyToolPath, rawWorkspaceMutationBlock } from "./mutation-tier"
 import {
   bashEvasionTargetsProtectedWorkspace,
   evaluatePlanCommand,

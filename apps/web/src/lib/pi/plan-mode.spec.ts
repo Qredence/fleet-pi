@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { evaluateWorkspaceWrite } from "../../../../../.pi/extensions/lib/mutation-tier"
+import { evaluateWorkspaceWrite } from "./mutation-tier"
 import {
   applyPlanMode,
   cleanStepText,

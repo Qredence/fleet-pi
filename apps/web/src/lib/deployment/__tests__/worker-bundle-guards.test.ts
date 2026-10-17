@@ -60,4 +60,20 @@ describe("Cloudflare worker bundle guards", () => {
     expect(migrations).not.toContain('from "./chat-postgres-data-api-auth"')
     expect(migrations).toContain("chat-postgres-data-api-auth")
   })
+
+  it("does not import .pi/ from hosted durable or policy modules", () => {
+    const durableDir = join(WEB_SRC, "lib/pi/durable")
+    const guarded = [
+      ...productionSources(durableDir),
+      join(WEB_SRC, "lib/pi/plan-mode.ts"),
+      join(WEB_SRC, "lib/pi/command-policy.ts"),
+      join(WEB_SRC, "lib/pi/mutation-tier.ts"),
+      join(WEB_SRC, "lib/pi/runtime/project-trust.ts"),
+    ]
+    const offenders = guarded.filter((path) => {
+      const source = readFileSync(path, "utf8")
+      return /from\s+["'][^"']*\.pi\//.test(source)
+    })
+    expect(offenders).toEqual([])
+  })
 })
