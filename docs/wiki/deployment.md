@@ -84,8 +84,11 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   `NEON_AI_GATEWAY_*` on the Worker). Required repo secrets for labeled PR
   previews include `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`,
   `FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL`, `NEON_API_KEY`, `vars.NEON_PROJECT_ID`,
-  `PREVIEW_VITE_NEON_AUTH_URL`, `PREVIEW_NEON_AUTH_*`, `PREVIEW_BETTER_AUTH_SECRET`,
-  and `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
+  `PREVIEW_NEON_AUTH_COOKIE_SECRET`, `PREVIEW_BETTER_AUTH_SECRET`, and
+  `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
+  Preview Neon Auth base/JWKS/issuer (and the Vite build URL) are derived from
+  the PR branch Postgres endpoint unless `PREVIEW_NEON_AUTH_*` overrides are set.
+  Set `vars.FLEET_PI_APP_ROLE` when the runtime role is not `fleet_pi_app`.
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
   `isHostedDeployment()` true: sessions live in `/tmp` only for the
   request and Neon (`pi_sessions` read-back) is the source of truth.

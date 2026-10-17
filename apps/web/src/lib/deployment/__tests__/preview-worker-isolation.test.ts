@@ -9,6 +9,8 @@ import {
   assertPreviewSecretAllowlist,
   buildPreviewWorkerSecrets,
   findDisallowedPreviewSecretNames,
+  neonAuthUrlsFromPostgresConnectionUrl,
+  neonAuthUrlsFromPostgresHostname,
   postgresConnectionIdentitiesEqual,
 } from "../preview-worker-isolation"
 import type { ChatMigrationClient } from "../../db/chat-migrations"
@@ -225,4 +227,27 @@ describe("preview-worker-isolation", () => {
     )
     expect(previewRows.rows).toHaveLength(0)
   }, 15_000)
+
+  it("derives Neon Auth URLs from pooler Postgres hosts", () => {
+    expect(
+      neonAuthUrlsFromPostgresHostname(
+        "ep-preview-pooler.c-6.us-east-2.aws.neon.tech"
+      )
+    ).toEqual({
+      baseUrl:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth",
+      jwksUrl:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json",
+      issuer:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth",
+    })
+
+    expect(
+      neonAuthUrlsFromPostgresConnectionUrl(
+        "postgresql://fleet_pi_app_v2:x@ep-preview-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+      )?.baseUrl
+    ).toBe(
+      "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth"
+    )
+  })
 })

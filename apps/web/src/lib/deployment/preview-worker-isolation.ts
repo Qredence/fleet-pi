@@ -68,6 +68,45 @@ export function previewDatabaseMarkerFromConnectionUrl(
   return identity?.host ?? ""
 }
 
+export type NeonAuthUrlBundle = {
+  baseUrl: string
+  jwksUrl: string
+  issuer: string
+}
+
+/**
+ * Derive Neon Managed Auth URLs from a Postgres endpoint hostname.
+ * `ep-….c-N.region.aws.neon.tech` → `https://ep-….neonauth.c-N.region.aws.neon.tech/<db>/auth`.
+ */
+export function neonAuthUrlsFromPostgresHostname(
+  hostname: string,
+  databaseName = "neondb"
+): NeonAuthUrlBundle | undefined {
+  const host = normalizeNeonPostgresHostname(hostname)
+  if (!host || !host.includes(".neon.tech")) return undefined
+  const authHost = host.replace(/^([^.]+)\./, "$1.neonauth.")
+  if (authHost === host) return undefined
+  const db = databaseName.trim() || "neondb"
+  const baseUrl = `https://${authHost}/${db}/auth`
+  return {
+    baseUrl,
+    jwksUrl: `${baseUrl}/.well-known/jwks.json`,
+    issuer: baseUrl,
+  }
+}
+
+export function neonAuthUrlsFromPostgresConnectionUrl(
+  connectionString: string,
+  databaseName = "neondb"
+): NeonAuthUrlBundle | undefined {
+  const identity = parsePostgresConnectionIdentity(connectionString)
+  if (!identity?.host) return undefined
+  return neonAuthUrlsFromPostgresHostname(
+    identity.host,
+    databaseName || identity.database || "neondb"
+  )
+}
+
 export function parsePostgresConnectionIdentity(
   connectionString: string
 ): PostgresConnectionIdentity | undefined {
