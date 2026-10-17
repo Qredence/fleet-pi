@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+log_step() {
+  local label="$1"
+  shift
+  local start_ns end_ns elapsed_ms
+  start_ns="$(date +%s%N)"
+  printf '==> %s\n' "$label"
+  "$@"
+  end_ns="$(date +%s%N)"
+  elapsed_ms=$(( (end_ns - start_ns) / 1000000 ))
+  printf '<== %s (%d.%03ds)\n' "$label" $(( elapsed_ms / 1000 )) $(( elapsed_ms % 1000 ))
+}
+
+ensure_system_packages() {
+  local missing=()
+  command -v git >/dev/null 2>&1 || missing+=(git)
+  command -v curl >/dev/null 2>&1 || missing+=(curl ca-certificates)
+  command -v jq >/dev/null 2>&1 || missing+=(jq)
+  command -v rg >/dev/null 2>&1 || missing+=(ripgrep)
+  command -v python3 >/dev/null 2>&1 || missing+=(python3)
+  if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
+    missing+=(imagemagick)
+  fi
+
+  if (( ${#missing[@]} > 0 )); then
+    sudo apt-get update
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+  fi
+}
+
+ensure_toolchain() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Error: node is required (>=22.19) but not found on PATH" >&2
+    exit 1
+  fi
+
+  local expected_pnpm
+  expected_pnpm="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).packageManager.replace(/^pnpm@/, '')")"
+  local current_pnpm=""
+  if command -v pnpm >/dev/null 2>&1; then
+    current_pnpm="$(pnpm --version 2>/dev/null || true)"
+  fi
+
+  if [[ "$current_pnpm" != "$expected_pnpm" ]]; then
+    corepack enable
+    corepack prepare "pnpm@${expected_pnpm}" --activate
+  fi
+
+  printf 'node %s, pnpm %s\n' "$(node --version)" "$(pnpm --version)"
+}
+
+install_dependencies() {
+  pnpm install --frozen-lockfile
+}
+
+install_playwright_browsers() {
+  pnpm --filter web exec playwright install chromium
+}
+
+configure_environment() {
+  if [[ -f .env.example ]]; then
+    [[ -f .env ]] || cp -- .env.example .env
+    [[ -f .env.local ]] || cp -- .env.example .env.local
+  fi
+  if [[ -d .husky ]]; then
+    git config core.hooksPath .husky
+  fi
+}
+
+log_step "Check system packages" ensure_system_packages
+log_step "Verify Node.js and pnpm toolchain" ensure_toolchain
+log_step "Install workspace dependencies" install_dependencies
+log_step "Install Playwright Chromium browser" install_playwright_browsers
+log_step "Configure local environment and Git hooks" configure_environment

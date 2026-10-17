@@ -82,3 +82,8 @@ codex-security/
 # Cloudflare Workers local secrets
 .dev.vars*
 .wrangler/
+
+# Amp orb runtime artifacts
+.amp/portals/*
+.amp/in/
+

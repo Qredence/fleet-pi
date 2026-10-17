@@ -1,0 +1,9 @@
+services:
+  web:
+    command: pnpm --filter web exec vite dev --host 0.0.0.0 --port "$PORT"
+    port: 3000
+    health: /api/health
+    portal:
+      url: /
+      title: Fleet Pi
+      description: Fleet Pi web workspace

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if [[ -f .env.example ]]; then
+  [[ -f .env ]] || cp -- .env.example .env
+  [[ -f .env.local ]] || cp -- .env.example .env.local
+fi
+
+if [[ -d .husky ]] && [[ "$(git config --get core.hooksPath 2>/dev/null || true)" != ".husky" ]]; then
+  git config core.hooksPath .husky
+fi
