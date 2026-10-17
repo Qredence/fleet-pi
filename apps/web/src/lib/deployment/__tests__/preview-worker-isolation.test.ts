@@ -11,6 +11,8 @@ import {
   findDisallowedPreviewSecretNames,
   neonAuthUrlsFromPostgresConnectionUrl,
   neonAuthUrlsFromPostgresHostname,
+  parsePreviewDeployJson,
+  parseWranglerJsonOutput,
   postgresConnectionIdentitiesEqual,
 } from "../preview-worker-isolation"
 import type { ChatMigrationClient } from "../../db/chat-migrations"
@@ -248,6 +250,26 @@ describe("preview-worker-isolation", () => {
       )?.baseUrl
     ).toBe(
       "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth"
+    )
+  })
+
+  it("parses wrangler --json output that includes progress text", () => {
+    const noisy = [
+      "Using redirected Wrangler configuration.",
+      '- Configuration being used: "dist/server/wrangler.json"',
+      JSON.stringify({
+        preview: {
+          urls: ["https://pr-178-fleet-pi-web.example.workers.dev"],
+        },
+        deployment: {
+          urls: ["https://abcd-fleet-pi-web.example.workers.dev"],
+        },
+      }),
+    ].join("\n")
+
+    const payload = parseWranglerJsonOutput(noisy)
+    expect(parsePreviewDeployJson(payload)).toBe(
+      "https://pr-178-fleet-pi-web.example.workers.dev"
     )
   })
 })

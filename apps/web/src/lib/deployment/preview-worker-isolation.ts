@@ -338,6 +338,43 @@ export function assertPreviewSecretAllowlist(secretNames: Array<string>) {
   }
 }
 
+/**
+ * Wrangler `--json` may print progress lines before the JSON object
+ * ("Using redirected Wrangler configuration…"). Extract the first parseable
+ * object that carries a preview/deployment URL.
+ */
+export function parseWranglerJsonOutput(raw: string): unknown {
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    throw new PreviewWorkerIsolationError(
+      "wrangler --json output was empty; expected a preview deploy payload."
+    )
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown
+  } catch {
+    // Fall through and scan for embedded JSON.
+  }
+
+  let index = 0
+  while (index < trimmed.length) {
+    const start = trimmed.indexOf("{", index)
+    if (start < 0) break
+    try {
+      const payload = JSON.parse(trimmed.slice(start)) as unknown
+      if (parsePreviewDeployJson(payload)) return payload
+    } catch {
+      // Try the next object start.
+    }
+    index = start + 1
+  }
+
+  throw new PreviewWorkerIsolationError(
+    "Could not parse wrangler preview --json output (progress text before JSON)."
+  )
+}
+
 export function parsePreviewDeployJson(payload: unknown): string | undefined {
   if (!payload || typeof payload !== "object") return undefined
   const record = payload as Record<string, unknown>

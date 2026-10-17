@@ -13,6 +13,7 @@ import {
   findDisallowedPreviewSecretNames,
   neonAuthUrlsFromPostgresConnectionUrl,
   parsePreviewDeployJson,
+  parseWranglerJsonOutput,
   previewNeonBranchName,
   previewWorkerName
 } from "../../src/lib/deployment/preview-worker-isolation"
@@ -293,7 +294,7 @@ function printPreviewOrigin(deployJsonPath: string) {
     )
   }
   const raw = readFileSync(deployJsonPath, "utf8")
-  const payload = JSON.parse(raw) as unknown
+  const payload = parseWranglerJsonOutput(raw)
   const origin = parsePreviewDeployJson(payload)
   if (!origin) {
     throw new PreviewWorkerIsolationError(
