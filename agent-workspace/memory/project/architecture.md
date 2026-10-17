@@ -75,10 +75,13 @@ The retrieval engine utilizes the following TypeScript domain models located in 
 
 - `apps/web/src/lib/pi/server-runtime.ts`
 - `apps/web/src/lib/pi/server-shared.ts`
-- `apps/web/src/lib/pi/server-settings.ts`
+- `apps/web/src/lib/pi/runtime/settings-bridge.ts`
+- `apps/web/src/lib/pi/durable/user-pi-durable.ts`
+- `apps/web/src/lib/pi/durable/hosted-agent-turn.ts`
 - `apps/web/src/lib/pi/server.ts`
 - `apps/web/src/routes/api/chat.ts`
 - `apps/web/src/lib/pi/plan-mode.ts`
+- `apps/web/src/lib/pi/mutation-tier.ts`
 - `apps/web/src/lib/workspace/server.ts`
 - `apps/web/src/lib/daytona/sandbox-operations.ts`
 - `apps/web/src/lib/db/pi-session-mirror.ts`

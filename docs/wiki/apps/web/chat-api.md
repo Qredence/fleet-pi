@@ -191,12 +191,12 @@ Returns loaded skills, prompts, extensions, themes, and diagnostics from Pi's `R
 **File:** `apps/web/src/routes/api/chat/resources.ts`
 **Logic:** `apps/web/src/lib/pi/runtime/resource-catalog.ts` → `loadChatResources()`
 
-### GET /api/chat/settings (+ PUT)
+### GET /api/chat/settings (+ PATCH)
 
-GET returns current effective Pi settings (from `.pi/settings.json`) and project-level overrides. PUT applies a partial update to `.pi/settings.json`.
+GET returns current effective Pi settings (from `.pi/settings.json` or `pi_user_settings`) and project-level overrides. PATCH applies a partial update to `.pi/settings.json` or `pi_user_settings`.
 
 **File:** `apps/web/src/routes/api/chat/settings.ts`
-**Logic:** `apps/web/src/lib/pi/server-settings.ts`
+**Logic:** `apps/web/src/lib/pi/runtime/settings-bridge.ts`
 
 ### GET /api/chat/provenance (run.ts, runs.ts)
 

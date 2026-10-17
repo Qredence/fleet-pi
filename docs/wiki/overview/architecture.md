@@ -85,27 +85,29 @@ sequenceDiagram
 
 ## Data stores
 
-| Store                         | Purpose                                                           | When active                                |
-| ----------------------------- | ----------------------------------------------------------------- | ------------------------------------------ |
-| Pi JSONL session files        | Canonical transcript for conversations                            | Always                                     |
-| `agent-workspace/` files      | Canonical adaptive state                                          | Always                                     |
-| SQLite (`.fleet/auth.sqlite`) | Better Auth user/session tables                                   | When `FLEET_PI_AUTH_DATABASE_URL` is unset |
-| Neon Postgres                 | Auth plus derived session mirror, workspace index, and provenance | When `FLEET_PI_CHAT_DATABASE_URL` is set   |
-| Daytona                       | Per-user isolated code-execution sandbox workspace                | When Daytona is enabled                    |
+| Store                         | Purpose                                                         | When active                                |
+| ----------------------------- | --------------------------------------------------------------- | ------------------------------------------ |
+| `UserPiDurable` SQLite DO     | Canonical transcript for hosted Cloudflare conversations        | On Cloudflare Workers (`durable:*` IDs)    |
+| Pi JSONL session files        | Canonical transcript for local and legacy conversations         | Local dev and legacy sessions              |
+| `agent-workspace/` files      | Canonical adaptive state                                        | Always                                     |
+| SQLite (`.fleet/auth.sqlite`) | Better Auth user/session tables                                 | When `FLEET_PI_AUTH_DATABASE_URL` is unset |
+| Neon Postgres                 | Auth plus derived session mirror, user settings, and provenance | When `FLEET_PI_CHAT_DATABASE_URL` is set   |
+| Daytona                       | Per-user isolated code-execution sandbox workspace              | When Daytona is enabled                    |
 
 ## Key dependencies
 
-| Dependency                        | Role                                                      |
-| --------------------------------- | --------------------------------------------------------- |
-| `@earendil-works/pi-coding-agent` | Pi agent runtime, session management, built-in tools      |
-| `@earendil-works/pi-ai`           | Pi model/provider abstraction                             |
-| `@workspace/pi-protocol`          | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |
-| `@workspace/hax-design`           | Fleet Pi UI shell, agent-elements, and OpenUI renderer    |
-| `@tanstack/react-start`           | Full-stack React framework with file-based routing        |
-| `better-auth`                     | Authentication and auth sessions                          |
-| `@daytonaio/sdk`                  | Daytona sandbox provisioning and operations               |
-| `@neondatabase/serverless`        | Neon Postgres client                                      |
-| `@openuidev/react-lang`           | OpenUI language support                                   |
+| Dependency                           | Role                                                               |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| `@earendil-works/pi-coding-agent`    | Pi agent runtime, session management, built-in tools               |
+| `@earendil-works/pi-durable`         | Durable conversation, task, and document runtime (`UserPiDurable`) |
+| `@earendil-works/pi-ai`              | Pi model/provider abstraction                                      |
+| `@workspace/pi-protocol`             | Chat wire types, Zod schemas, provider IDs, OpenUI prompt          |
+| `@workspace/hax-design`              | Fleet Pi UI shell, agent-elements, and OpenUI renderer             |
+| `@tanstack/react-start`              | Full-stack React framework with file-based routing                 |
+| `@neondatabase/auth` / `better-auth` | Authentication and auth sessions                                   |
+| `@daytona/sdk`                       | Daytona sandbox provisioning and operations                        |
+| `@neondatabase/serverless`           | Neon Postgres client                                               |
+| `@openuidev/react-lang`              | OpenUI language support                                            |
 
 Google Gemini and Amazon Bedrock remain supported BYOK providers. Authenticated
 deploys default to Neon AI Gateway (`qwen35-122b-a10b`, `gpt-oss-120b`) through

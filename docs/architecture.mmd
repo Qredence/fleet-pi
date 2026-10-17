@@ -8,15 +8,18 @@ graph TD
         RightPanels[Resources and Workspace Panels]
     end
 
-    subgraph WebApp["apps/web — TanStack Start"]
-        Vite[Vite Dev Server]
+    subgraph WebApp["apps/web — TanStack Start + Cloudflare Workers"]
+        Vite[Vite / Worker Entry]
         API[API Routes]
         ChatRoute[/api/chat]
         HandleChatTurn[handleChatTurn]
+        HostedTurn[streamHostedAgentTurn]
+        UserPiDurable[UserPiDurable Durable Object]
         HealthRoute[/api/health]
         ModelsRoute[/api/chat/models]
         ResourcesRoute[/api/chat/resources]
         SessionRoute[/api/chat/session]
+        ForkRoute[/api/chat/fork]
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
         SandboxContext[resolveUserSandboxContext]
@@ -78,8 +81,12 @@ graph TD
     API --> ModelsRoute
     API --> ResourcesRoute
     API --> SessionRoute
+    API --> ForkRoute
     API --> WorkspaceRoutes
     ChatRoute --> HandleChatTurn
+    ChatRoute --> HostedTurn
+    HostedTurn --> UserPiDurable
+    UserPiDurable --> Daytona
     HandleChatTurn --> PiServer
     ChatRoute --> Sanitizer
     ChatRoute --> Logger

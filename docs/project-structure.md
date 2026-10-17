@@ -10,14 +10,17 @@ Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) i
 fleet-pi/
 ├── .pi/                      # Committed Pi config, skills, and built-in extensions
 ├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs
-├── apps/web/                 # TanStack Start application
+├── apps/web/                 # TanStack Start application (Cloudflare Workers + local dev)
 │   ├── src/routes/           # File-based API and page routes
 │   ├── src/lib/pi/           # Pi runtime (handleChatTurn, server-runtime, plan-mode)
+│   │   ├── runtime/          # Session factory, settings bridge, model/provider catalogs
+│   │   └── durable/          # Hosted UserPiDurable (@earendil-works/pi-durable)
 │   ├── src/lib/daytona/      # resolveUserSandboxContext and sandbox adapters
 │   ├── src/lib/workspace/    # agent-workspace tree and file helpers
 │   ├── src/lib/pii/          # PII sanitization module
 │   ├── src/lib/logger.ts     # Pino logger with redaction
 │   └── (routes compose hax-design only — no app-local components)
+├── functions/                # Legacy Neon Function chat runtime router entry
 ├── packages/hax-design/      # Shared React UI (fleet-pi, agent-elements, openui)
 │   └── src/components/
 │       ├── fleet-pi/         # Product shell, panels, Settings
@@ -30,19 +33,20 @@ fleet-pi/
 
 ## Key Dependencies
 
-| Package                                   | Purpose                                                   |
-| ----------------------------------------- | --------------------------------------------------------- |
-| @tanstack/react-start                     | Full-stack React framework                                |
-| @earendil-works/pi-coding-agent           | Pi coding-agent runtime                                   |
-| @earendil-works/pi-ai                     | Pi AI primitives                                          |
-| @workspace/pi-protocol                    | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |
-| @workspace/hax-design                     | Fleet Pi UI shell, agent-elements, openui renderer        |
-| Neon AI Gateway (openai-chat-completions) | Authenticated default: qwen35-122b-a10b + gpt-oss-120b    |
-| pino + pino-pretty                        | Structured logging                                        |
-| opossum                                   | Circuit breaker pattern                                   |
-| zod + @asteasolutions/zod-to-openapi      | Schema validation & OpenAPI generation                    |
-| vitest + @playwright/test                 | Testing frameworks                                        |
-| husky + lint-staged                       | Pre-commit hooks                                          |
+| Package                                   | Purpose                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| @tanstack/react-start                     | Full-stack React framework                                                |
+| @earendil-works/pi-coding-agent           | Pi coding-agent runtime                                                   |
+| @earendil-works/pi-durable                | Durable conversation, task, and document runtime for hosted UserPiDurable |
+| @earendil-works/pi-ai                     | Pi AI primitives                                                          |
+| @workspace/pi-protocol                    | Chat wire types, Zod schemas, provider IDs, OpenUI prompt                 |
+| @workspace/hax-design                     | Fleet Pi UI shell, agent-elements, openui renderer                        |
+| Neon AI Gateway (openai-chat-completions) | Authenticated default: qwen35-122b-a10b + gpt-oss-120b                    |
+| pino + pino-pretty                        | Structured logging                                                        |
+| opossum                                   | Circuit breaker pattern                                                   |
+| zod + @asteasolutions/zod-to-openapi      | Schema validation & OpenAPI generation                                    |
+| vitest + @playwright/test                 | Testing frameworks                                                        |
+| husky + lint-staged                       | Pre-commit hooks                                                          |
 
 ## Data Flow
 

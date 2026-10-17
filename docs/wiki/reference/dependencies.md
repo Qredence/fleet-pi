@@ -11,6 +11,7 @@ The core AI engine powering Fleet Pi.
 | Package                           | Description                                                                                                             |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `@earendil-works/pi-coding-agent` | High-level coding agent with session management, tool routing, plan mode, and Pi resource loading.                      |
+| `@earendil-works/pi-durable`      | Durable conversation, task, and document runtime backing `UserPiDurable` on Cloudflare Workers.                         |
 | `@earendil-works/pi-ai`           | Core Pi AI abstractions, `ModelRegistry`, provider adapters (including `amazon-bedrock`), and streaming infrastructure. |
 | `@earendil-works/pi-agent-core`   | Shared runtime primitives used by both `pi-ai` and `pi-coding-agent`.                                                   |
 
@@ -64,9 +65,9 @@ These packages are proprietary to the Earendil Works ecosystem and are published
 
 ## Sandbox (Daytona)
 
-| Package          | Description                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `@daytonaio/sdk` | Daytona TypeScript SDK. Used to provision and manage per-user sandbox workspaces when `DAYTONA_API_KEY` is configured. |
+| Package        | Description                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `@daytona/sdk` | Daytona TypeScript SDK. Used to provision and manage per-user sandbox workspaces when `DAYTONA_API_KEY` is configured. |
 
 ---
 

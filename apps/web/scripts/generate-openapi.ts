@@ -228,10 +228,11 @@ registry.registerPath({
 
 const ChatAccountDeleteResponseSchema = z.object({
   ok: z.literal(true),
-  scope: z.literal("pi-mirror"),
+  scope: z.enum(["pi-mirror", "pi-mirror+hosted"]),
   message: z.string(),
   erasedSessions: z.number(),
   erasedProviders: z.number(),
+  erasedHostedTranscripts: z.boolean().optional(),
 })
 
 registry.registerPath({
@@ -301,15 +302,75 @@ registry.registerPath({
   description: "Create a new chat session",
   responses: {
     200: {
-      description: "New session metadata",
+      description: "New session metadata and empty messages list",
+      content: {
+        "application/json": {
+          schema: ChatSessionResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: "Server error",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/chat/fork",
+  description: "Fork an existing hosted Durable Object conversation",
+  request: {
+    body: {
       content: {
         "application/json": {
           schema: ChatSessionMetadataSchema,
         },
       },
     },
-    500: {
-      description: "Server error",
+  },
+  responses: {
+    200: {
+      description: "Forked conversation identifiers",
+      content: {
+        "application/json": {
+          schema: z.object({
+            sessionId: z.string(),
+            conversationId: z.string(),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Only a hosted conversation can be forked",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Session not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: "An agent turn is already in progress",
       content: {
         "application/json": {
           schema: ErrorResponseSchema,
@@ -769,6 +830,213 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
+  path: "/api/workspace/items",
+  description: "List indexed workspace projection items",
+  responses: {
+    200: {
+      description: "Workspace items list",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(true),
+            total: z.number(),
+            items: z.array(z.record(z.string(), z.unknown())),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/item",
+  description: "Fetch a single indexed workspace item by id",
+  request: {
+    query: z.object({
+      id: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Workspace item detail",
+      content: {
+        "application/json": {
+          schema: z.record(z.string(), z.unknown()),
+        },
+      },
+    },
+    400: {
+      description: "Missing workspace item id",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: "Workspace item not found",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/search",
+  description: "Search indexed workspace items and semantic records",
+  request: {
+    query: z.object({
+      q: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Search results",
+      content: {
+        "application/json": {
+          schema: z.object({
+            ok: z.literal(true),
+            query: z.string(),
+            total: z.number(),
+            hits: z.array(z.record(z.string(), z.unknown())),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Missing workspace search query",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/workspace/reindex",
+  description: "Issue a CSRF token for POST /api/workspace/reindex",
+  responses: {
+    200: {
+      description: "CSRF token issued",
+      content: {
+        "application/json": {
+          schema: z.object({ csrfToken: z.string() }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/workspace/reindex",
+  description: "Reindex canonical agent-workspace files into the projection",
+  responses: {
+    200: {
+      description: "Reindex outcome",
+      content: {
+        "application/json": {
+          schema: z.record(z.string(), z.unknown()),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: "Forbidden or invalid CSRF token",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    429: {
+      description: "Rate limit exceeded",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/sandbox/settings",
+  description: "Read Daytona sandbox configuration and readiness status",
+  responses: {
+    200: {
+      description: "Sandbox status",
+      content: {
+        "application/json": {
+          schema: z.object({
+            daytonaApiKeyConfigured: z.boolean(),
+            daytonaTargetConfigured: z.boolean(),
+            daytonaTarget: z.string(),
+            sandboxReady: z.boolean().optional(),
+            volumeName: z.string().optional(),
+            csrfToken: z.string().optional(),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "post",
+  path: "/api/sandbox/settings",
+  description: "Update local Daytona sandbox environment configuration",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            daytonaApiKey: z.string().optional(),
+            daytonaTarget: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Sandbox configuration saved",
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            daytonaApiKeyConfigured: z.boolean(),
+            daytonaTargetConfigured: z.boolean(),
+            daytonaTarget: z.string(),
+          }),
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: "Invalid CSRF protection",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
   path: "/api/sandbox/preview",
   description: "Preview URL for a Daytona sandbox port",
   responses: {
@@ -776,7 +1044,11 @@ registry.registerPath({
       description: "Preview link",
       content: {
         "application/json": {
-          schema: z.object({ url: z.string().url().optional() }),
+          schema: z.object({
+            url: z.string().url().optional(),
+            token: z.string().optional(),
+            port: z.number().optional(),
+          }),
         },
       },
     },
@@ -796,7 +1068,31 @@ registry.registerPath({
       description: "Acknowledged",
       content: {
         "application/json": {
-          schema: z.object({ ok: z.boolean() }),
+          schema: z.object({ received: z.boolean() }),
+        },
+      },
+    },
+    401: {
+      description: "Invalid webhook signature",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: "Webhook secret is not configured on hosted deployment",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
+  },
+})
+
+registry.registerPath({
+  method: "get",
+  path: "/api/auth/session",
+  description: "Fetch the active authentication session",
+  responses: {
+    200: {
+      description: "Session state",
+      content: {
+        "application/json": {
+          schema: z.record(z.string(), z.unknown()).nullable(),
         },
       },
     },

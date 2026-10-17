@@ -111,15 +111,18 @@ graph TD
         RightPanels[Resources and Workspace Panels]
     end
 
-    subgraph WebApp["apps/web — TanStack Start"]
-        Vite[Vite Dev Server]
+    subgraph WebApp["apps/web — TanStack Start + Cloudflare Workers"]
+        Vite[Vite / Worker Entry]
         API[API Routes]
         ChatRoute[/api/chat]
         HandleChatTurn[handleChatTurn]
+        HostedTurn[streamHostedAgentTurn]
+        UserPiDurable[UserPiDurable Durable Object]
         HealthRoute[/api/health]
         ModelsRoute[/api/chat/models]
         ResourcesRoute[/api/chat/resources]
         SessionRoute[/api/chat/session]
+        ForkRoute[/api/chat/fork]
         WorkspaceRoutes[/api/workspace/*]
         PiServer[Pi Server Module]
         SandboxContext[resolveUserSandboxContext]
@@ -181,8 +184,12 @@ graph TD
     API --> ModelsRoute
     API --> ResourcesRoute
     API --> SessionRoute
+    API --> ForkRoute
     API --> WorkspaceRoutes
     ChatRoute --> HandleChatTurn
+    ChatRoute --> HostedTurn
+    HostedTurn --> UserPiDurable
+    UserPiDurable --> Daytona
     HandleChatTurn --> PiServer
     ChatRoute --> Sanitizer
     ChatRoute --> Logger
@@ -241,14 +248,17 @@ structMd += "\`\`\`text\n"
 structMd += `fleet-pi/\n`
 structMd += `├── .pi/                      # Committed Pi config, skills, and built-in extensions\n`
 structMd += `├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs\n`
-structMd += `├── apps/web/                 # TanStack Start application\n`
+structMd += `├── apps/web/                 # TanStack Start application (Cloudflare Workers + local dev)\n`
 structMd += `│   ├── src/routes/           # File-based API and page routes\n`
 structMd += `│   ├── src/lib/pi/           # Pi runtime (handleChatTurn, server-runtime, plan-mode)\n`
+structMd += `│   │   ├── runtime/          # Session factory, settings bridge, model/provider catalogs\n`
+structMd += `│   │   └── durable/          # Hosted UserPiDurable (@earendil-works/pi-durable)\n`
 structMd += `│   ├── src/lib/daytona/      # resolveUserSandboxContext and sandbox adapters\n`
 structMd += `│   ├── src/lib/workspace/    # agent-workspace tree and file helpers\n`
 structMd += `│   ├── src/lib/pii/          # PII sanitization module\n`
 structMd += `│   ├── src/lib/logger.ts     # Pino logger with redaction\n`
 structMd += `│   └── (routes compose hax-design only — no app-local components)\n`
+structMd += `├── functions/                # Legacy Neon Function chat runtime router entry\n`
 structMd += `├── packages/hax-design/      # Shared React UI (fleet-pi, agent-elements, openui)\n`
 structMd += `│   └── src/components/\n`
 structMd += `│       ├── fleet-pi/         # Product shell, panels, Settings\n`
@@ -264,6 +274,7 @@ structMd += `| Package | Purpose |\n`
 structMd += `|---------|---------|\n`
 structMd += `| @tanstack/react-start | Full-stack React framework |\n`
 structMd += `| @earendil-works/pi-coding-agent | Pi coding-agent runtime |\n`
+structMd += `| @earendil-works/pi-durable | Durable conversation, task, and document runtime for hosted UserPiDurable |\n`
 structMd += `| @earendil-works/pi-ai | Pi AI primitives |\n`
 structMd += `| @workspace/pi-protocol | Chat wire types, Zod schemas, provider IDs, OpenUI prompt |\n`
 structMd += `| @workspace/hax-design | Fleet Pi UI shell, agent-elements, openui renderer |\n`

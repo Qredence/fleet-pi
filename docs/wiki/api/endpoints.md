@@ -143,7 +143,65 @@ Abort an active streaming run for a session.
 
 **Request body:** `ChatSessionMetadata`
 
-**Response:** `{ ok: boolean }`
+**Response:** `{ aborted: boolean }`
+
+---
+
+### `POST /api/chat/fork`
+
+Fork an existing hosted `UserPiDurable` conversation (`durable:<id>`).
+
+**Source:** `apps/web/src/routes/api/chat/fork.ts`
+
+**Request body:** `ChatSessionMetadata`
+
+**Response:** `{ sessionId: string; conversationId: string }`
+
+---
+
+### `DELETE /api/chat/session`
+
+Delete an owned mirrored Pi session or tombstone a hosted `UserPiDurable` conversation.
+
+**Source:** `apps/web/src/routes/api/chat/session.ts`
+
+**Query params:** `sessionFile`, `sessionId`
+
+**Response:** `{ ok: true; sessionId?: string; sessionFile?: string }`
+
+---
+
+### `DELETE /api/chat/account`
+
+Erase mirrored Pi sessions, BYOK provider credentials, and hosted `UserPiDurable` storage for the signed-in user.
+
+**Source:** `apps/web/src/routes/api/chat/account.ts`
+
+**Response:** `{ ok: true; scope: "pi-mirror" | "pi-mirror+hosted"; message: string; erasedSessions: number; erasedProviders: number; erasedHostedTranscripts: boolean }`
+
+---
+
+### `GET /api/chat/providers` / `POST /api/chat/providers` / `DELETE /api/chat/providers`
+
+List, upsert, or remove provider credentials and custom provider instances (`custom+<slug>` / `openai-chat-completions+<slug>`).
+
+**Source:** `apps/web/src/routes/api/chat/providers.ts`
+
+---
+
+### `POST /api/chat/models/discover`
+
+Discover available models from a configured provider (`GET {baseUrl}/models` for custom providers, or catalog entries for built-in providers).
+
+**Source:** `apps/web/src/routes/api/chat/models.discover.ts`
+
+---
+
+### `GET /api/chat/commands`
+
+List slash commands for the InputBar (`builtin`, `extension`, `prompt`, and `skill`).
+
+**Source:** `apps/web/src/routes/api/chat/commands.ts`
 
 ---
 
@@ -379,59 +437,45 @@ type WorkspaceFileResponse = {
 
 ### `GET /api/workspace/item`
 
-Fetch a single workspace item by key.
+Fetch a single indexed workspace projection item by ID.
 
 **Source:** `apps/web/src/routes/api/workspace/item.ts`
 
-**Query params:** `key`
+**Query params:** `id`
 
-**Response:** `{ item: WorkspaceItem | null }`
-
----
-
-### `POST /api/workspace/item`
-
-Create or update a workspace item.
-
-**Source:** `apps/web/src/routes/api/workspace/item.ts`
-
-**Request body:** `{ key: string; value: unknown }`
-
-**Response:** `{ ok: boolean }`
+**Response:** `WorkspaceItemDetailResponse`
 
 ---
 
 ### `GET /api/workspace/items`
 
-List workspace items, optionally filtered by prefix.
+List indexed workspace projection items.
 
 **Source:** `apps/web/src/routes/api/workspace/items.ts`
 
-**Query params:** `prefix` (optional)
-
-**Response:** `{ items: WorkspaceItem[] }`
+**Response:** `WorkspaceItemsResponse` (`{ ok: true; total: number; items: WorkspaceItemSummary[] }`)
 
 ---
 
-### `POST /api/workspace/reindex`
+### `GET /api/workspace/reindex` & `POST /api/workspace/reindex`
 
-Trigger a reindex of the workspace, rebuilding the search index.
+`GET` issues a CSRF token; `POST` triggers an explicit reindex of canonical `agent-workspace/` files into the workspace projection.
 
 **Source:** `apps/web/src/routes/api/workspace/reindex.ts`
 
-**Response:** `{ ok: boolean }`
+**Response:** `WorkspaceReindexResponse`
 
 ---
 
 ### `GET /api/workspace/search`
 
-Search workspace contents.
+Search indexed workspace items and semantic records.
 
 **Source:** `apps/web/src/routes/api/workspace/search.ts`
 
 **Query params:** `q` — search query string
 
-**Response:** `{ results: WorkspaceSearchResult[] }`
+**Response:** `WorkspaceSearchResponse` (`{ ok: true; query: string; total: number; hits: ... }`)
 
 ---
 
@@ -441,7 +485,7 @@ Workspace health check. Returns the status of workspace subsystems.
 
 **Source:** `apps/web/src/routes/api/workspace/health.ts`
 
-**Response:** `{ status: "ok" | "degraded"; details: Record<string, unknown> }`
+**Response:** `{ status: "ok" | "degraded"; workspaceAvailable: boolean; bootstrapComplete: boolean; projectionStatus: "ok" | "degraded" }`
 
 ---
 
@@ -454,6 +498,14 @@ Application-level health check.
 **Source:** `apps/web/src/routes/api/health.ts`
 
 **Response:** `{ status: "ok" }`
+
+---
+
+### `GET /api/sandbox/settings` & `POST /api/sandbox/settings`
+
+Read or update Daytona sandbox configuration and readiness status.
+
+**Source:** `apps/web/src/routes/api/sandbox/settings.ts`
 
 ---
 
@@ -473,7 +525,7 @@ Proxy a Daytona sandbox preview URL for the authenticated user.
 
 ### `POST /api/webhooks/daytona`
 
-Receive Daytona sandbox lifecycle events. Verifies the `x-daytona-signature` header against `DAYTONA_WEBHOOK_SECRET` using timing-safe comparison before processing side effects. Signature verification failure silently skips side effects but still returns `{ received: true }`.
+Receive Daytona sandbox lifecycle events. Verifies the `x-daytona-signature` header against `DAYTONA_WEBHOOK_SECRET` using timing-safe comparison before processing side effects. Returns `401` on invalid signature and `503` when `DAYTONA_WEBHOOK_SECRET` is unset on a hosted deployment.
 
 **Source:** `apps/web/src/routes/api/webhooks/daytona.ts`
 

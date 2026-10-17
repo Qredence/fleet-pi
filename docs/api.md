@@ -41,7 +41,8 @@ Send a chat message and receive a streaming response
     "sessionId": <string> (required),
     "sessionReset": <boolean>,
     "diagnostics": <array>,
-    "workspace": — Workspace tool availability for the chat runtime
+    "workspace": — Workspace tool availability for the chat runtime,
+    "thinkingLevel": <string> — Thinking level
   }
   ```
   ```json
@@ -308,7 +309,8 @@ Erase mirrored Pi sessions and BYOK provider credentials for the signed-in user
     "scope": <string> (required),
     "message": <string> (required),
     "erasedSessions": <number> (required),
-    "erasedProviders": <number> (required)
+    "erasedProviders": <number> (required),
+    "erasedHostedTranscripts": <boolean>
   }
   ```
 - **401** — Unauthorized
@@ -355,14 +357,64 @@ Create a new chat session
 
 ### Responses
 
-- **200** — New session metadata
+- **200** — New session metadata and empty messages list
   ```json
   {
-    "sessionFile": <string> — Session file path,
-    "sessionId": <string> — Session ID
+    "session": <object> (required) — Chat session metadata,
+    "messages": <array> (required),
+    "sessionReset": <boolean>
   }
   ```
 - **500** — Server error
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/chat/fork
+
+Fork an existing hosted Durable Object conversation
+
+### Request Body
+
+```json
+{
+  "sessionFile": <string> — Session file path,
+  "sessionId": <string> — Session ID
+}
+```
+
+### Responses
+
+- **200** — Forked conversation identifiers
+  ```json
+  {
+    "sessionId": <string> (required),
+    "conversationId": <string> (required)
+  }
+  ```
+- **400** — Only a hosted conversation can be forked
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **404** — Session not found
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **409** — An agent turn is already in progress
   ```json
   {
     "message": <string> (required)
@@ -803,6 +855,215 @@ Workspace bootstrap health
 
 ---
 
+## GET /api/workspace/items
+
+List indexed workspace projection items
+
+### Responses
+
+- **200** — Workspace items list
+  ```json
+  {
+    "ok": <boolean> (required),
+    "total": <number> (required),
+    "items": <array> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/item
+
+Fetch a single indexed workspace item by id
+
+### Parameters
+
+| Name | In    | Required | Description |
+| ---- | ----- | -------- | ----------- |
+| `id` | query | Yes      |             |
+
+### Responses
+
+- **200** — Workspace item detail
+  Type: `object`
+- **400** — Missing workspace item id
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **404** — Workspace item not found
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/search
+
+Search indexed workspace items and semantic records
+
+### Parameters
+
+| Name | In    | Required | Description |
+| ---- | ----- | -------- | ----------- |
+| `q`  | query | Yes      |             |
+
+### Responses
+
+- **200** — Search results
+  ```json
+  {
+    "ok": <boolean> (required),
+    "query": <string> (required),
+    "total": <number> (required),
+    "hits": <array> (required)
+  }
+  ```
+- **400** — Missing workspace search query
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/workspace/reindex
+
+Issue a CSRF token for POST /api/workspace/reindex
+
+### Responses
+
+- **200** — CSRF token issued
+  ```json
+  {
+    "csrfToken": <string> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/workspace/reindex
+
+Reindex canonical agent-workspace files into the projection
+
+### Responses
+
+- **200** — Reindex outcome
+  Type: `object`
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **403** — Forbidden or invalid CSRF token
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **429** — Rate limit exceeded
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/sandbox/settings
+
+Read Daytona sandbox configuration and readiness status
+
+### Responses
+
+- **200** — Sandbox status
+  ```json
+  {
+    "daytonaApiKeyConfigured": <boolean> (required),
+    "daytonaTargetConfigured": <boolean> (required),
+    "daytonaTarget": <string> (required),
+    "sandboxReady": <boolean>,
+    "volumeName": <string>,
+    "csrfToken": <string>
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## POST /api/sandbox/settings
+
+Update local Daytona sandbox environment configuration
+
+### Request Body
+
+```json
+{
+  "daytonaApiKey": <string>,
+  "daytonaTarget": <string>
+}
+```
+
+### Responses
+
+- **200** — Sandbox configuration saved
+  ```json
+  {
+    "success": <boolean> (required),
+    "daytonaApiKeyConfigured": <boolean> (required),
+    "daytonaTargetConfigured": <boolean> (required),
+    "daytonaTarget": <string> (required)
+  }
+  ```
+- **401** — Unauthorized
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **403** — Invalid CSRF protection
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
 ## GET /api/sandbox/preview
 
 Preview URL for a Daytona sandbox port
@@ -812,7 +1073,9 @@ Preview URL for a Daytona sandbox port
 - **200** — Preview link
   ```json
   {
-    "url": <string>
+    "url": <string>,
+    "token": <string>,
+    "port": <number>
   }
   ```
 - **401** — Unauthorized
@@ -833,9 +1096,32 @@ Daytona webhook receiver
 - **200** — Acknowledged
   ```json
   {
-    "ok": <boolean> (required)
+    "received": <boolean> (required)
   }
   ```
+- **401** — Invalid webhook signature
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+- **503** — Webhook secret is not configured on hosted deployment
+  ```json
+  {
+    "message": <string> (required)
+  }
+  ```
+
+---
+
+## GET /api/auth/session
+
+Fetch the active authentication session
+
+### Responses
+
+- **200** — Session state
+  Type: `object,null`
 
 ---
 

@@ -155,13 +155,29 @@
                                 },
                                 "reason": {
                                   "type": "string",
-                                  "enum": ["daytona_credential_required"]
+                                  "enum": [
+                                    "daytona_credential_required",
+                                    "daytona_sandbox_not_ready"
+                                  ]
                                 }
                               },
                               "required": ["toolsAvailable", "reason"]
                             }
                           ],
                           "description": "Workspace tool availability for the chat runtime"
+                        },
+                        "thinkingLevel": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "minimal",
+                            "low",
+                            "medium",
+                            "high",
+                            "xhigh",
+                            "max"
+                          ],
+                          "description": "Thinking level"
                         }
                       },
                       "required": ["type", "id", "runId", "sessionId"],
@@ -1409,7 +1425,7 @@
                     },
                     "scope": {
                       "type": "string",
-                      "enum": ["pi-mirror"]
+                      "enum": ["pi-mirror", "pi-mirror+hosted"]
                     },
                     "message": {
                       "type": "string"
@@ -1419,6 +1435,9 @@
                     },
                     "erasedProviders": {
                       "type": "number"
+                    },
+                    "erasedHostedTranscripts": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -1560,28 +1579,257 @@
         "description": "Create a new chat session",
         "responses": {
           "200": {
-            "description": "New session metadata",
+            "description": "New session metadata and empty messages list",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "sessionFile": {
-                      "type": "string",
-                      "description": "Session file path"
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "sessionFile": {
+                          "type": "string",
+                          "description": "Session file path"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "description": "Session ID"
+                        }
+                      },
+                      "description": "Chat session metadata"
                     },
-                    "sessionId": {
-                      "type": "string",
-                      "description": "Session ID"
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": ["user", "assistant"]
+                          },
+                          "parts": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["text"]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "text"],
+                                  "description": "Text message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["error"]
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["type", "message"],
+                                  "description": "Error message part"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "toolCallId": {
+                                      "type": "string"
+                                    },
+                                    "state": {
+                                      "type": "string"
+                                    },
+                                    "input": {},
+                                    "output": {},
+                                    "result": {}
+                                  },
+                                  "required": ["type"],
+                                  "additionalProperties": {},
+                                  "description": "Tool message part"
+                                }
+                              ],
+                              "description": "Message part"
+                            }
+                          },
+                          "createdAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "experimental_attachments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "contentType": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": ["id", "role", "parts"],
+                        "additionalProperties": {},
+                        "description": "Chat message"
+                      }
+                    },
+                    "sessionReset": {
+                      "type": "boolean"
                     }
                   },
-                  "description": "Chat session metadata"
+                  "required": ["session", "messages"],
+                  "description": "Chat session response"
                 }
               }
             }
           },
           "500": {
             "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/fork": {
+      "post": {
+        "description": "Fork an existing hosted Durable Object conversation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionFile": {
+                    "type": "string",
+                    "description": "Session file path"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Session ID"
+                  }
+                },
+                "description": "Chat session metadata"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Forked conversation identifiers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "conversationId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["sessionId", "conversationId"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Only a hosted conversation can be forked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An agent turn is already in progress",
             "content": {
               "application/json": {
                 "schema": {
@@ -1995,6 +2243,10 @@
                             "keepRecentTokens": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "backgroundTokens": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           },
                           "required": [
@@ -2079,6 +2331,10 @@
                             "baseDelayMs": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "maxAgentDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           },
                           "required": ["enabled", "maxRetries", "baseDelayMs"]
@@ -2106,6 +2362,42 @@
                           "type": "string",
                           "enum": ["auto", "sse", "websocket"],
                           "description": "Preferred provider transport"
+                        },
+                        "codemode": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "inlineBudget": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["enabled"]
+                        },
+                        "mcpServers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "headers": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": ["name", "url"]
+                          }
                         }
                       },
                       "required": [
@@ -2139,6 +2431,10 @@
                             "keepRecentTokens": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "backgroundTokens": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           }
                         },
@@ -2218,6 +2514,10 @@
                             "baseDelayMs": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "maxAgentDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           }
                         },
@@ -2244,6 +2544,42 @@
                           "type": "string",
                           "enum": ["auto", "sse", "websocket"],
                           "description": "Preferred provider transport"
+                        },
+                        "codemode": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "inlineBudget": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["enabled"]
+                        },
+                        "mcpServers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "headers": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": ["name", "url"]
+                          }
                         }
                       },
                       "additionalProperties": false,
@@ -2323,6 +2659,10 @@
                           "keepRecentTokens": {
                             "type": "integer",
                             "minimum": 1
+                          },
+                          "backgroundTokens": {
+                            "type": "integer",
+                            "minimum": 0
                           }
                         }
                       },
@@ -2402,6 +2742,10 @@
                           "baseDelayMs": {
                             "type": "integer",
                             "minimum": 0
+                          },
+                          "maxAgentDelayMs": {
+                            "type": "integer",
+                            "minimum": 0
                           }
                         }
                       },
@@ -2428,6 +2772,42 @@
                         "type": "string",
                         "enum": ["auto", "sse", "websocket"],
                         "description": "Preferred provider transport"
+                      },
+                      "codemode": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "inlineBudget": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": ["enabled"]
+                      },
+                      "mcpServers": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "url": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": ["name", "url"]
+                        }
                       }
                     },
                     "additionalProperties": false,
@@ -2470,6 +2850,10 @@
                             "keepRecentTokens": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "backgroundTokens": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           },
                           "required": [
@@ -2554,6 +2938,10 @@
                             "baseDelayMs": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "maxAgentDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           },
                           "required": ["enabled", "maxRetries", "baseDelayMs"]
@@ -2581,6 +2969,42 @@
                           "type": "string",
                           "enum": ["auto", "sse", "websocket"],
                           "description": "Preferred provider transport"
+                        },
+                        "codemode": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "inlineBudget": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["enabled"]
+                        },
+                        "mcpServers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "headers": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": ["name", "url"]
+                          }
                         }
                       },
                       "required": [
@@ -2614,6 +3038,10 @@
                             "keepRecentTokens": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "backgroundTokens": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           }
                         },
@@ -2693,6 +3121,10 @@
                             "baseDelayMs": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "maxAgentDelayMs": {
+                              "type": "integer",
+                              "minimum": 0
                             }
                           }
                         },
@@ -2719,6 +3151,42 @@
                           "type": "string",
                           "enum": ["auto", "sse", "websocket"],
                           "description": "Preferred provider transport"
+                        },
+                        "codemode": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "inlineBudget": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["enabled"]
+                        },
+                        "mcpServers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "url": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "headers": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": ["name", "url"]
+                          }
                         }
                       },
                       "additionalProperties": false,
@@ -3605,6 +4073,469 @@
         }
       }
     },
+    "/api/workspace/items": {
+      "get": {
+        "description": "List indexed workspace projection items",
+        "responses": {
+          "200": {
+            "description": "Workspace items list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": ["ok", "total", "items"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/item": {
+      "get": {
+        "description": "Fetch a single indexed workspace item by id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace item detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing workspace item id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/search": {
+      "get": {
+        "description": "Search indexed workspace items and semantic records",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "hits": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": ["ok", "query", "total", "hits"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing workspace search query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/reindex": {
+      "get": {
+        "description": "Issue a CSRF token for POST /api/workspace/reindex",
+        "responses": {
+          "200": {
+            "description": "CSRF token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "csrfToken": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["csrfToken"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Reindex canonical agent-workspace files into the projection",
+        "responses": {
+          "200": {
+            "description": "Reindex outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or invalid CSRF token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sandbox/settings": {
+      "get": {
+        "description": "Read Daytona sandbox configuration and readiness status",
+        "responses": {
+          "200": {
+            "description": "Sandbox status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "daytonaApiKeyConfigured": {
+                      "type": "boolean"
+                    },
+                    "daytonaTargetConfigured": {
+                      "type": "boolean"
+                    },
+                    "daytonaTarget": {
+                      "type": "string"
+                    },
+                    "sandboxReady": {
+                      "type": "boolean"
+                    },
+                    "volumeName": {
+                      "type": "string"
+                    },
+                    "csrfToken": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "daytonaApiKeyConfigured",
+                    "daytonaTargetConfigured",
+                    "daytonaTarget"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Update local Daytona sandbox environment configuration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "daytonaApiKey": {
+                    "type": "string"
+                  },
+                  "daytonaTarget": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sandbox configuration saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "daytonaApiKeyConfigured": {
+                      "type": "boolean"
+                    },
+                    "daytonaTargetConfigured": {
+                      "type": "boolean"
+                    },
+                    "daytonaTarget": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "daytonaApiKeyConfigured",
+                    "daytonaTargetConfigured",
+                    "daytonaTarget"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid CSRF protection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/sandbox/preview": {
       "get": {
         "description": "Preview URL for a Daytona sandbox port",
@@ -3619,6 +4550,12 @@
                     "url": {
                       "type": "string",
                       "format": "uri"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
                     }
                   }
                 }
@@ -3656,11 +4593,63 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": {
+                    "received": {
                       "type": "boolean"
                     }
                   },
-                  "required": ["ok"]
+                  "required": ["received"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid webhook signature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Webhook secret is not configured on hosted deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "description": "Error response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "description": "Fetch the active authentication session",
+        "responses": {
+          "200": {
+            "description": "Session state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": ["object", "null"],
+                  "additionalProperties": {}
                 }
               }
             }

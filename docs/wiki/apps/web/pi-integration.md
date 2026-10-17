@@ -256,17 +256,17 @@ See [Daytona sandbox](../../features/daytona-sandbox.md) for the full feature de
 
 ## Settings persistence
 
-**File:** `apps/web/src/lib/pi/server-settings.ts`
+**File:** `apps/web/src/lib/pi/runtime/settings-bridge.ts`
 
 `GET /api/chat/settings` returns:
 
 - `effective` — merged settings (defaults + global Pi config + project `.pi/settings.json`).
 - `project` — the project-scoped overrides only.
-- `projectPath` — absolute path of `.pi/settings.json`.
+- `projectPath` — relative path of `.pi/settings.json`.
 - `diagnostics` — any settings-load warnings.
 - `updateImpact` — whether a new session is recommended or a resource reload is required after the update.
 
-`PUT /api/chat/settings` (via `updateChatSettings`) applies a partial `ChatPiSettingsUpdate` to `.pi/settings.json`. Provider credentials are never stored here; they belong in environment/Pi auth configuration.
+`PATCH /api/chat/settings` (via `updateChatSettings`) applies a partial `ChatPiSettingsUpdate` to `.pi/settings.json` (or Neon `pi_user_settings` on deployed surfaces). Provider credentials are never stored here; they belong in environment/Pi auth configuration.
 
 - **Base defaults.** `.pi/settings.json` may be `{}` locally. Fleet base packages (`npm:pi-autoresearch`, `npm:pi-skill-palette`, `npm:pi-autocontext`, `npm:pi-web-access`) merge from `fleet-default-project-settings.ts`. Vendored extensions under `.pi/extensions/` auto-load without being listed.
 - **Workers.** `.pi/settings.json` is not writable on Cloudflare. Per-user overrides live in Neon `pi_user_settings` (JSONB) and hydrate into the live `SettingsManager`.

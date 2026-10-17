@@ -29,14 +29,11 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: Record repeated friction manually in `known-issues.md` or `plans/backlog.md` with source evidence.
 - Follow-up: Add self-improvement candidate extraction and eval-run artifacts.
 
-## Worker code still imports from `.pi/`
+## Worker code still imports from `.pi/` (Resolved)
 
-- Issue: AGENTS.md says Cloudflare Worker builds must not import from `.pi/`, but three Worker-bundled modules import `classifyToolPath` / `evaluateWorkspaceWrite` from `.pi/extensions/lib/mutation-tier.ts`.
-- Affected area: `apps/web/src/lib/pi/command-policy.ts`, `apps/web/src/lib/pi/plan-mode.ts`, `apps/web/src/lib/pi/durable/spike-harness.ts` (hosted Durable Object path).
-- Symptoms: None today; Vite bundles the relative import. The risk is a future `.pi/` change pulling Node-only code into the Worker bundle, and no guard catches it (`worker-bundle-guards.test.ts` has no `.pi/` rule).
-- Current status: Open. Found while reviewing the hosted Durable Object cutover (2026-10-15).
-- Workaround: Keep `mutation-tier.ts` and its `project-trust` dependency free of Node-only APIs.
-- Follow-up: Move `mutation-tier` under `apps/web/src/lib/pi/`, re-export it from `.pi/extensions/lib/`, then add a `.pi/` import rule to `worker-bundle-guards.test.ts`.
+- Issue: AGENTS.md says Cloudflare Worker builds must not import from `.pi/`, but three Worker-bundled modules imported `classifyToolPath` / `evaluateWorkspaceWrite` from `.pi/extensions/lib/mutation-tier.ts`.
+- Affected area: `apps/web/src/lib/pi/command-policy.ts`, `apps/web/src/lib/pi/plan-mode.ts`, `apps/web/src/lib/pi/durable/hosted-tool-registry.ts`, `apps/web/src/lib/pi/runtime/project-trust.ts`.
+- Current status: **Resolved.** Moved `mutation-tier` and project-trust path helpers to `apps/web/src/lib/pi/mutation-tier.ts`, re-exported them from `.pi/extensions/lib/`, and added a `.pi/` import guard in `worker-bundle-guards.test.ts`.
 
 ## Resource manager does not yet cover full Pi package lifecycle
 
