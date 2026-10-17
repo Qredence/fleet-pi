@@ -76,6 +76,18 @@ export function isPortableSettingsResourcePath(path: string) {
   return true
 }
 
+async function reloadResourceLoaderSafely(services: AgentSessionServices) {
+  try {
+    await services.resourceLoader.reload()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    services.diagnostics.push({
+      type: "warning",
+      message: `[Pi resources] Package reload degraded: ${message}`,
+    })
+  }
+}
+
 /**
  * Apply merged Fleet base + overrides onto a live session.
  */
@@ -88,7 +100,7 @@ export async function hydrateSessionServicesSettings(
       services.settingsManager,
       await resolveProjectSettings(options)
     )
-    await services.resourceLoader.reload()
+    await reloadResourceLoaderSafely(services)
     return
   }
   const rawBefore = options.projectRoot
@@ -101,7 +113,7 @@ export async function hydrateSessionServicesSettings(
     options.projectRoot,
     rawBefore
   )
-  await services.resourceLoader.reload()
+  await reloadResourceLoaderSafely(services)
 }
 
 /**

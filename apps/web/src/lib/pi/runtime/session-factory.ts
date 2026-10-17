@@ -48,6 +48,27 @@ interface BootstrapRetryState {
 // once and awaited by all concurrent callers; once settled it is cleared and
 // the result is served through `lastResult` + exponential backoff.
 const bootstrapCache = new Map<string, BootstrapRetryState>()
+const projectServicesLocks = new Map<string, Promise<unknown>>()
+
+async function withProjectServicesLock<T>(
+  projectRoot: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  const previous = projectServicesLocks.get(projectRoot) ?? Promise.resolve()
+  const run = previous.catch(() => undefined).then(operation)
+  const settled = run.then(
+    () => undefined,
+    () => undefined
+  )
+  projectServicesLocks.set(projectRoot, settled)
+  try {
+    return await run
+  } finally {
+    if (projectServicesLocks.get(projectRoot) === settled) {
+      projectServicesLocks.delete(projectRoot)
+    }
+  }
+}
 
 // Bound the cache so long-running servers serving many project roots do not
 // accumulate bootstrap state indefinitely. Map iteration order is insertion
@@ -99,91 +120,94 @@ export async function createSessionServices(
   }
 
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
-  const databaseBacked = usesDatabaseBackedProjectSettings()
-  const { hydrateSessionServicesSettings, resolveProjectSettings } =
-    await import("./durable-project-settings")
-  // Seed private settings before Pi's first resource reload. Deployed callers
-  // cannot substitute a manager that reads or writes the shared checkout.
-  const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
-  const settingsManager = databaseBacked
-    ? createIsolatedProjectSettings(
-        await resolveProjectSettings({ userId: options?.userId })
-      )
-    : (overrides?.settingsManager ??
-      (options?.userId
-        ? SettingsManager.create(
-            context.projectRoot,
-            overrides?.agentDir ?? agentDir
-          )
-        : undefined))
-  const sandboxResources =
-    settingsManager && options?.userId
-      ? createSandboxResourceSettings(settingsManager, options.userId)
-      : undefined
-  await sandboxResources?.prepare()
-  const userResourceOptions = overrides?.resourceLoaderOptions
-  const services = await createAgentSessionServices({
-    cwd: context.projectRoot,
-    agentDir,
-    ...overrides,
-    settingsManager: settingsManager
-      ? settingsManagerForLoader(
-          sandboxResources?.loaderSettings ?? settingsManager
+  return withProjectServicesLock(context.projectRoot, async () => {
+    const databaseBacked = usesDatabaseBackedProjectSettings()
+    const { hydrateSessionServicesSettings, resolveProjectSettings } =
+      await import("./durable-project-settings")
+    // Seed private settings before Pi's first resource reload. Deployed callers
+    // cannot substitute a manager that reads or writes the shared checkout.
+    const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
+    const settingsManager = databaseBacked
+      ? createIsolatedProjectSettings(
+          await resolveProjectSettings({ userId: options?.userId })
         )
-      : undefined,
-    resourceLoaderOptions: {
-      ...userResourceOptions,
-      // Server-owned extensions: the Fleet Pi identity always, plus the
-      // workspace-free extensions when `.pi/extensions` is not discoverable.
-      extensionFactories: [
-        ...buildFleetPiInlineExtensions({
-          projectRoot: context.projectRoot,
-          workspace: options?.workspace ?? { toolsAvailable: true },
-        }),
-        { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
-        ...(userResourceOptions?.extensionFactories ?? []),
-      ],
-      extensionsOverride: (base) => {
-        const withoutStock = excludeStockDaytonaPiExtension(base)
-        return userResourceOptions?.extensionsOverride
-          ? userResourceOptions.extensionsOverride(withoutStock)
-          : withoutStock
+      : (overrides?.settingsManager ??
+        (options?.userId
+          ? SettingsManager.create(
+              context.projectRoot,
+              overrides?.agentDir ?? agentDir
+            )
+          : undefined))
+    const sandboxResources =
+      settingsManager && options?.userId
+        ? createSandboxResourceSettings(settingsManager, options.userId)
+        : undefined
+    await sandboxResources?.prepare()
+    const userResourceOptions = overrides?.resourceLoaderOptions
+    const services = await createAgentSessionServices({
+      cwd: context.projectRoot,
+      agentDir,
+      ...overrides,
+      settingsManager: settingsManager
+        ? settingsManagerForLoader(
+            sandboxResources?.loaderSettings ?? settingsManager
+          )
+        : undefined,
+      resourceLoaderOptions: {
+        ...userResourceOptions,
+        // Server-owned extensions: the Fleet Pi identity always, plus the
+        // workspace-free extensions when `.pi/extensions` is not discoverable.
+        extensionFactories: [
+          ...buildFleetPiInlineExtensions({
+            projectRoot: context.projectRoot,
+            workspace: options?.workspace ?? { toolsAvailable: true },
+          }),
+          { name: "fleet-pi-plan-mode", factory: createPlanModeExtension() },
+          ...(userResourceOptions?.extensionFactories ?? []),
+        ],
+        extensionsOverride: (base) => {
+          const withoutStock = excludeStockDaytonaPiExtension(base)
+          return userResourceOptions?.extensionsOverride
+            ? userResourceOptions.extensionsOverride(withoutStock)
+            : withoutStock
+        },
       },
-    },
-    resourceLoaderReloadOptions: {
-      resolveProjectTrust: ({ extensionsResult }) =>
-        resolveLoaderProjectTrust({
-          extensionsResult,
-          cwd: context.projectRoot,
-          mode: "print",
-        }),
-    },
-  })
-  sandboxResources?.attach(services)
-
-  const servicesWithBootstrap = attachWorkspaceBootstrap(
-    services,
-    workspaceBootstrap
-  )
-
-  if (!databaseBacked) {
-    await hydrateSessionServicesSettings(servicesWithBootstrap, {
-      userId: options?.userId,
-      projectRoot: context.projectRoot,
+      resourceLoaderReloadOptions: {
+        resolveProjectTrust: ({ extensionsResult }) =>
+          resolveLoaderProjectTrust({
+            extensionsResult,
+            cwd: context.projectRoot,
+            mode: "print",
+          }),
+      },
     })
-  }
+    sandboxResources?.attach(services)
 
-  const { registerOpenAiChatCompletionsProvider } =
-    await import("./openai-chat-completions-provider")
-  await registerOpenAiChatCompletionsProvider(
-    servicesWithBootstrap,
-    options?.userId
-  )
+    const servicesWithBootstrap = attachWorkspaceBootstrap(
+      services,
+      workspaceBootstrap
+    )
 
-  const { registerCustomProviders } = await import("./custom-provider-registry")
-  await registerCustomProviders(servicesWithBootstrap, options?.userId)
+    if (!databaseBacked) {
+      await hydrateSessionServicesSettings(servicesWithBootstrap, {
+        userId: options?.userId,
+        projectRoot: context.projectRoot,
+      })
+    }
 
-  return servicesWithBootstrap
+    const { registerOpenAiChatCompletionsProvider } =
+      await import("./openai-chat-completions-provider")
+    await registerOpenAiChatCompletionsProvider(
+      servicesWithBootstrap,
+      options?.userId
+    )
+
+    const { registerCustomProviders } =
+      await import("./custom-provider-registry")
+    await registerCustomProviders(servicesWithBootstrap, options?.userId)
+
+    return servicesWithBootstrap
+  })
 }
 
 export async function applyRuntimeAuth(

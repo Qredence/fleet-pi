@@ -9,16 +9,50 @@ import {
   resolveOccChatModelSelection,
 } from "../runtime/chat-model-rematch"
 import { resolveOpenAiChatCompletionsConfig } from "../runtime/openai-chat-completions-provider"
+import { resolveUserProviderSecret } from "../runtime/user-provider-secrets"
 import type { ChatModelSelection } from "@workspace/pi-protocol/chat-protocol"
 import type { DurableAgentModelConfig, DurableModelApi } from "./durable-model"
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
+
+const BUILTIN_DURABLE_PROVIDER_ENDPOINTS: Readonly<
+  Record<string, { baseUrl: string; api: DurableModelApi } | undefined>
+> = {
+  anthropic: {
+    baseUrl: "https://api.anthropic.com",
+    api: "anthropic-messages",
+  },
+  google: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    api: "google-generative-ai",
+  },
+  groq: {
+    baseUrl: "https://api.groq.com/openai/v1",
+    api: "openai-completions",
+  },
+  mistral: {
+    baseUrl: "https://api.mistral.ai/v1",
+    api: "openai-completions",
+  },
+  openai: {
+    baseUrl: "https://api.openai.com/v1",
+    api: "openai-responses",
+  },
+  openrouter: {
+    baseUrl: "https://openrouter.ai/api/v1",
+    api: "openai-completions",
+  },
+  "vercel-ai-gateway": {
+    baseUrl: "https://ai-gateway.vercel.sh/v1",
+    api: "openai-completions",
+  },
+}
 
 export async function resolveDurableAgentModel(
   userId: string | undefined,
   model: ChatModelSelection | undefined
 ): Promise<DurableAgentModelConfig | undefined> {
-  const selection = parseSelection(model)
   const settings = userId ? await loadUserProjectSettings(userId) : null
+  const selection = parseSelection(model) ?? parseDefaultSelection(settings)
   const enabledPatterns = readEnabledModels(settings)
 
   const custom = await listCustomProviderRegistrations(userId)
@@ -35,6 +69,30 @@ export async function resolveDurableAgentModel(
         return undefined
       }
       return config
+    }
+
+    const builtinEndpoint =
+      BUILTIN_DURABLE_PROVIDER_ENDPOINTS[selection.provider]
+    if (builtinEndpoint) {
+      const apiKey = await resolveUserProviderSecret(userId, selection.provider)
+      if (apiKey) {
+        if (
+          !isEnabledChatModelSelection(
+            selection.provider,
+            selection.id,
+            enabledPatterns
+          )
+        ) {
+          return undefined
+        }
+        return {
+          provider: selection.provider,
+          modelId: selection.id,
+          apiKey,
+          baseUrl: builtinEndpoint.baseUrl,
+          api: builtinEndpoint.api,
+        }
+      }
     }
   }
 
@@ -139,4 +197,20 @@ function parseSelection(
   }
   if (!model.provider || !model.id) return undefined
   return { provider: model.provider, id: model.id }
+}
+
+function parseDefaultSelection(
+  settings: Record<string, unknown> | null
+): { provider: string; id: string } | undefined {
+  if (!settings) return undefined
+  const provider =
+    typeof settings.defaultProvider === "string"
+      ? settings.defaultProvider.trim()
+      : ""
+  const id =
+    typeof settings.defaultModel === "string"
+      ? settings.defaultModel.trim()
+      : ""
+  if (!provider || !id) return undefined
+  return { provider, id }
 }

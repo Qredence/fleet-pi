@@ -5,6 +5,7 @@ import { NEON_AI_GATEWAY_DEFAULT_MODEL } from "../../runtime/neon-ai-gateway"
 const mocks = vi.hoisted(() => ({
   listCustomProviderRegistrations: vi.fn(),
   resolveOpenAiChatCompletionsConfig: vi.fn(),
+  resolveUserProviderSecret: vi.fn(),
   loadUserProjectSettings: vi.fn(),
 }))
 
@@ -17,6 +18,10 @@ vi.mock("../../runtime/openai-chat-completions-provider", () => ({
   resolveOpenAiChatCompletionsConfig: mocks.resolveOpenAiChatCompletionsConfig,
 }))
 
+vi.mock("../../runtime/user-provider-secrets", () => ({
+  resolveUserProviderSecret: mocks.resolveUserProviderSecret,
+}))
+
 vi.mock("@/lib/db/user-settings", () => ({
   loadUserProjectSettings: mocks.loadUserProjectSettings,
 }))
@@ -27,6 +32,7 @@ describe("resolveDurableAgentModel", () => {
     mocks.listCustomProviderRegistrations.mockResolvedValue({
       registrations: [],
     })
+    mocks.resolveUserProviderSecret.mockResolvedValue(undefined)
     mocks.loadUserProjectSettings.mockResolvedValue(null)
   })
 
@@ -121,5 +127,27 @@ describe("resolveDurableAgentModel", () => {
         id: "qwen35-122b-a10b",
       })
     ).resolves.toBeUndefined()
+  })
+
+  it("resolves a configured built-in BYOK provider such as google or anthropic", async () => {
+    mocks.resolveUserProviderSecret.mockImplementation(
+      (_userId: string | undefined, providerId: string) =>
+        Promise.resolve(providerId === "google" ? "gemini-byok-key" : undefined)
+    )
+
+    const { resolveDurableAgentModel } =
+      await import("../durable-model-resolve")
+    await expect(
+      resolveDurableAgentModel("user-1", {
+        provider: "google",
+        id: "gemini-2.5-flash",
+      })
+    ).resolves.toEqual({
+      provider: "google",
+      modelId: "gemini-2.5-flash",
+      apiKey: "gemini-byok-key",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      api: "google-generative-ai",
+    })
   })
 })

@@ -215,4 +215,44 @@ describe("settings bridge", () => {
       {}
     )
   })
+
+  it("round-trips codemode and mcpServers through updateChatSettings and loadChatSettings", async () => {
+    const projectRoot = createProjectRoot()
+    mkdirSync(join(projectRoot, ".pi"), { recursive: true })
+    writeFileSync(join(projectRoot, ".pi/settings.json"), "{}\n")
+
+    const response = await updateChatSettings({ projectRoot } as never, {
+      codemode: { enabled: true, inlineBudget: 4500 },
+      mcpServers: [
+        {
+          name: "docs",
+          url: "https://example.com/mcp",
+          headers: { Authorization: "Bearer test" },
+        },
+      ],
+    })
+
+    expect(response.effective.codemode).toEqual({
+      enabled: true,
+      inlineBudget: 4500,
+    })
+    expect(response.effective.mcpServers).toEqual([
+      {
+        name: "docs",
+        url: "https://example.com/mcp",
+        headers: { Authorization: "Bearer test" },
+      },
+    ])
+    expect(response.project.codemode).toEqual({
+      enabled: true,
+      inlineBudget: 4500,
+    })
+    expect(response.project.mcpServers).toEqual([
+      {
+        name: "docs",
+        url: "https://example.com/mcp",
+        headers: { Authorization: "Bearer test" },
+      },
+    ])
+  })
 })

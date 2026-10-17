@@ -461,6 +461,31 @@ describe("server catalog", () => {
     ])
   })
 
+  it("includes explicitly enabled built-in provider models when available", async () => {
+    mocks.resolveDefaultModelSelection.mockReturnValue({
+      defaultProvider: "google",
+      defaultModel: "gemini-2.5-flash",
+    })
+    const services = createServices({
+      all: [
+        createModel("google", "gemini-2.5-flash"),
+        createModel("google", "gemini-2.5-pro"),
+      ],
+      available: [
+        createModel("google", "gemini-2.5-flash"),
+        createModel("google", "gemini-2.5-pro"),
+      ],
+      enabledModels: ["google/gemini-2.5-flash"],
+    })
+    mocks.createSessionServices.mockResolvedValue(services)
+
+    const response = await loadChatModels({ projectRoot: "/repo" } as never)
+
+    expect(response.models.map((model) => model.key)).toEqual([
+      "google/gemini-2.5-flash",
+    ])
+  })
+
   it("lists gateway model ids when the OCC slot is gateway-backed", async () => {
     mocks.resolveDefaultModelSelection.mockReturnValue({
       defaultProvider: "openai-chat-completions",

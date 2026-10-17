@@ -70,4 +70,33 @@ describe("project Pi settings merge", () => {
       packages: ["npm:pi-autocontext"],
     })
   })
+
+  it("patches codemode and mcpServers overrides", () => {
+    const result = patchProjectSettingsOverrides(
+      {
+        codemode: { enabled: false, inlineBudget: 3000 },
+      },
+      {
+        codemode: { enabled: true, inlineBudget: 4096 },
+        mcpServers: [
+          {
+            name: "docs",
+            url: "https://example.com/mcp",
+            headers: { Authorization: "Bearer tok" },
+          },
+        ],
+      }
+    )
+
+    expect(result).toEqual({
+      codemode: { enabled: true, inlineBudget: 4096 },
+      mcpServers: [
+        {
+          name: "docs",
+          url: "https://example.com/mcp",
+          headers: { Authorization: "Bearer tok" },
+        },
+      ],
+    })
+  })
 })

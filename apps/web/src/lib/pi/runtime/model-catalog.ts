@@ -2,7 +2,10 @@ import {
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   isOccProviderId,
 } from "@workspace/pi-protocol/provider-catalog"
-import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
+import {
+  isModelPatternEnabled,
+  stripThinkingLevel,
+} from "@workspace/pi-protocol/model-patterns"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   reconcileOpenAiChatCompletionsModel,
@@ -72,7 +75,8 @@ export async function loadChatModels(
   } else {
     const addedModelKeys = await resolveAppAddedModelKeys(
       services,
-      options?.userId
+      options?.userId,
+      availableKeys
     )
     models = catalog.filter(
       (model) =>
@@ -386,7 +390,8 @@ function modelKeyFromParts(provider: string, id: string) {
  */
 async function resolveAppAddedModelKeys(
   services: AgentSessionServices,
-  userId: string | undefined
+  userId: string | undefined,
+  availableKeys?: ReadonlySet<string>
 ) {
   const addedKeys = new Set<string>()
   for (const model of services.modelRuntime.getModels(
@@ -403,6 +408,21 @@ async function resolveAppAddedModelKeys(
   for (const instance of instances) {
     for (const model of services.modelRuntime.getModels(instance.id)) {
       addedKeys.add(modelKey(model))
+    }
+  }
+  const enabledPatterns = services.settingsManager.getEnabledModels()
+  for (const rawPattern of enabledPatterns ?? []) {
+    const normalized = stripThinkingLevel(rawPattern.trim())
+    if (
+      !normalized ||
+      normalized.includes("*") ||
+      normalized.includes("?") ||
+      !normalized.includes("/")
+    ) {
+      continue
+    }
+    if (!availableKeys || availableKeys.has(normalized)) {
+      addedKeys.add(normalized)
     }
   }
   return addedKeys

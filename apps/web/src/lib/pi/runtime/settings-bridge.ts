@@ -215,6 +215,19 @@ export function patchProjectSettingsOverrides(
       ...update.retry,
     }
   }
+  if (update.codemode) {
+    next.codemode = {
+      ...(isRecord(next.codemode) ? next.codemode : {}),
+      ...update.codemode,
+    }
+  }
+  if (update.mcpServers !== undefined) {
+    next.mcpServers = update.mcpServers.map((server) => ({
+      name: server.name,
+      url: server.url,
+      ...(server.headers ? { headers: { ...server.headers } } : {}),
+    }))
+  }
 
   return next
 }
@@ -243,6 +256,8 @@ function toEffectiveSettings(
         (item): item is string => typeof item === "string"
       )
     : undefined
+  const codemode = parseCodemodeSetting(projectOverrides.codemode)
+  const mcpServers = parseMcpServersSetting(projectOverrides.mcpServers)
 
   return {
     compaction: {
@@ -251,6 +266,7 @@ function toEffectiveSettings(
       keepRecentTokens: compaction.keepRecentTokens,
       ...backgroundTokensFrom(projectOverrides.compaction),
     },
+    ...(codemode ? { codemode } : {}),
     defaultModel:
       typeof projectOverrides.defaultModel === "string"
         ? projectOverrides.defaultModel
@@ -270,6 +286,7 @@ function toEffectiveSettings(
     enabledModels: enabledFromProject ?? enabledFromManager,
     extensions: settingsManager.getExtensionPaths(),
     followUpMode: settingsManager.getFollowUpMode(),
+    ...(mcpServers ? { mcpServers } : {}),
     packages: settingsManager.getPackages(),
     prompts: settingsManager.getPromptTemplatePaths(),
     retry: {
@@ -329,8 +346,55 @@ function toEditableProjectSettings(
     copyNumber(settings.retry, retry, "maxAgentDelayMs")
     project.retry = retry
   }
+  const codemode = parseCodemodeSetting(settings.codemode)
+  if (codemode) {
+    project.codemode = codemode
+  }
+  const mcpServers = parseMcpServersSetting(settings.mcpServers)
+  if (mcpServers) {
+    project.mcpServers = mcpServers
+  }
 
   return project
+}
+
+function parseCodemodeSetting(
+  value: unknown
+): ChatPiSettings["codemode"] | undefined {
+  if (!isRecord(value) || typeof value.enabled !== "boolean") return undefined
+  return {
+    enabled: value.enabled,
+    ...(typeof value.inlineBudget === "number" &&
+    Number.isFinite(value.inlineBudget)
+      ? { inlineBudget: value.inlineBudget }
+      : {}),
+  }
+}
+
+function parseMcpServersSetting(
+  value: unknown
+): ChatPiSettings["mcpServers"] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return []
+    if (typeof item.name !== "string" || typeof item.url !== "string") {
+      return []
+    }
+    const headers = isRecord(item.headers)
+      ? Object.fromEntries(
+          Object.entries(item.headers).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string"
+          )
+        )
+      : undefined
+    return [
+      {
+        name: item.name,
+        url: item.url,
+        ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
+      },
+    ]
+  })
 }
 
 function assignString(
