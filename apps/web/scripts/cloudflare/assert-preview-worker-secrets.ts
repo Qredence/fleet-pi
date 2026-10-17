@@ -1,4 +1,10 @@
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { DEFAULT_APP_ROLE } from "../../src/lib/db/app-role"
@@ -11,18 +17,18 @@ import {
   assertPreviewSecretAllowlist,
   buildPreviewWorkerSecrets,
   findDisallowedPreviewSecretNames,
-  neonAuthUrlsFromPostgresConnectionUrl,
   parsePreviewDeployJson,
   parseWranglerJsonOutput,
   previewNeonBranchName,
-  previewWorkerName
+  previewWorkerName,
+  resolvePreviewNeonAuthUrls
 } from "../../src/lib/deployment/preview-worker-isolation"
 import type {NeonAuthUrlBundle} from "../../src/lib/deployment/preview-worker-isolation";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const webRoot = resolve(scriptDir, "../..")
 
-type Command = "validate" | "write" | "audit" | "origin" | "resolve-auth"
+type Command = "validate" | "write" | "audit" | "origin" | "resolve"
 
 function readEnv(name: string) {
   return process.env[name]?.trim() ?? ""
@@ -41,10 +47,10 @@ function parseArgv(): {
     command !== "write" &&
     command !== "audit" &&
     command !== "origin" &&
-    command !== "resolve-auth"
+    command !== "resolve"
   ) {
     throw new PreviewWorkerIsolationError(
-      "Usage: assert-preview-worker-secrets.ts <validate|write|audit|origin|resolve-auth> --pr <number> [--output <path>] [--deploy-json <path>]"
+      "Usage: assert-preview-worker-secrets.ts <validate|write|audit|origin|resolve> --pr <number> [--output <path>] [--deploy-json <path>]"
     )
   }
 
@@ -119,29 +125,22 @@ async function resolvePreviewChatDatabaseUrl(prNumber: string) {
 function resolvePreviewAuthUrls(
   previewChatDatabaseUrl: string
 ): NeonAuthUrlBundle {
-  const fromEnvBase = readEnv("PREVIEW_NEON_AUTH_BASE_URL")
-  const fromEnvJwks = readEnv("PREVIEW_NEON_AUTH_JWKS_URL")
-  const fromEnvIssuer = readEnv("PREVIEW_NEON_AUTH_ISSUER")
-  if (fromEnvBase && fromEnvJwks && fromEnvIssuer) {
-    return {
-      baseUrl: fromEnvBase,
-      jwksUrl: fromEnvJwks,
-      issuer: fromEnvIssuer,
-    }
-  }
+  return resolvePreviewNeonAuthUrls({
+    previewChatDatabaseUrl,
+    envBaseUrl: readEnv("PREVIEW_NEON_AUTH_BASE_URL"),
+    envJwksUrl: readEnv("PREVIEW_NEON_AUTH_JWKS_URL"),
+    envIssuer: readEnv("PREVIEW_NEON_AUTH_ISSUER"),
+    useOverrides: readEnv("PREVIEW_NEON_AUTH_USE_OVERRIDES") === "1",
+  })
+}
 
-  const derived = neonAuthUrlsFromPostgresConnectionUrl(previewChatDatabaseUrl)
-  if (!derived) {
-    throw new PreviewWorkerIsolationError(
-      "Could not derive preview Neon Auth URLs from the preview database URL. Set PREVIEW_NEON_AUTH_BASE_URL / JWKS / ISSUER."
-    )
-  }
-
-  return {
-    baseUrl: fromEnvBase || derived.baseUrl,
-    jwksUrl: fromEnvJwks || derived.jwksUrl,
-    issuer: fromEnvIssuer || derived.issuer,
-  }
+function writeGithubOutput(values: Record<string, string>) {
+  const githubOutput = process.env.GITHUB_OUTPUT?.trim()
+  if (!githubOutput) return
+  const body = Object.entries(values)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n")
+  appendFileSync(githubOutput, `${body}\n`, "utf8")
 }
 
 function loadSecretsInput(
@@ -330,8 +329,21 @@ async function main() {
   }
   assertPreviewAuthBaseUrl(previewAuth.baseUrl, productionAuthBase)
 
-  if (command === "resolve-auth") {
-    process.stdout.write(`${previewAuth.baseUrl}\n`)
+  if (command === "resolve") {
+    writeGithubOutput({
+      chat_database_url: previewChatUrl,
+      neon_auth_base_url: previewAuth.baseUrl,
+      neon_auth_jwks_url: previewAuth.jwksUrl,
+      neon_auth_issuer: previewAuth.issuer,
+    })
+    process.stdout.write(
+      `${JSON.stringify({
+        chat_database_url: previewChatUrl,
+        neon_auth_base_url: previewAuth.baseUrl,
+        neon_auth_jwks_url: previewAuth.jwksUrl,
+        neon_auth_issuer: previewAuth.issuer,
+      })}\n`
+    )
     return
   }
 

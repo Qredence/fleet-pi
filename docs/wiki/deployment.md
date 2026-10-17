@@ -86,9 +86,16 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   `FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL`, `NEON_API_KEY`, `vars.NEON_PROJECT_ID`,
   `PREVIEW_NEON_AUTH_COOKIE_SECRET`, `PREVIEW_BETTER_AUTH_SECRET`, and
   `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
-  Preview Neon Auth base/JWKS/issuer (and the Vite build URL) are derived from
-  the PR branch Postgres endpoint unless `PREVIEW_NEON_AUTH_*` overrides are set.
-  Set `vars.FLEET_PI_APP_ROLE` when the runtime role is not `fleet_pi_app`.
+  CI runs `assert-preview-worker-secrets resolve` once: it polls the Neon
+  `preview/pr-<number>` branch, derives Neon Auth base/JWKS/issuer from the
+  Postgres endpoint, and writes those values (plus the chat database URL) to
+  step outputs for build/validate/write — no second Neon poll. Do not inject
+  repo secrets `PREVIEW_NEON_AUTH_BASE_URL` / `JWKS` / `ISSUER` into the
+  workflow; they silently override derivation. To force overrides, set all
+  three env vars together and `PREVIEW_NEON_AUTH_USE_OVERRIDES=1` (partial
+  sets fail closed). Auth hostnames must embed the preview endpoint id
+  (`ep-….neonauth.…`). Set `vars.FLEET_PI_APP_ROLE` when the runtime role is
+  not `fleet_pi_app` (soft-art uses `fleet_pi_app_v2`).
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
   `isHostedDeployment()` true: sessions live in `/tmp` only for the
   request and Neon (`pi_sessions` read-back) is the source of truth.

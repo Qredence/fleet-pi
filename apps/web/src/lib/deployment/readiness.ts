@@ -19,7 +19,7 @@ import {
 import {
   normalizeNeonPostgresHostname,
   parsePostgresConnectionIdentity,
-} from "./preview-worker-isolation"
+} from "./neon-postgres"
 import {
   isHostedPreviewTrustZone,
   isHostedProductionTrustZone,

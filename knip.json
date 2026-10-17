@@ -16,12 +16,7 @@
         "functions/**/*.ts",
         "!agent-workspace/pi/**"
       ],
-      "ignoreDependencies": [
-        "zod",
-        "@neondatabase/serverless",
-        "@aws-sdk/s3-presigned-post",
-        "@aws-sdk/s3-request-presigner"
-      ]
+      "ignoreDependencies": ["zod", "@neondatabase/serverless"]
     },
     "apps/web": {
       "ignore": ["src/lib/pi/durable/cloudflare-workers-node-stub.ts"],
