@@ -10,7 +10,6 @@ import { fileURLToPath } from "node:url"
 import { DEFAULT_APP_ROLE } from "../../src/lib/db/app-role"
 import { pollPreviewBranchConnectionUri } from "../../src/lib/deployment/neon-preview-connection"
 import {
-  
   PreviewWorkerIsolationError,
   assertPreviewAuthBaseUrl,
   assertPreviewChatDatabaseUrl,
@@ -21,9 +20,9 @@ import {
   parseWranglerJsonOutput,
   previewNeonBranchName,
   previewWorkerName,
-  resolvePreviewNeonAuthUrls
+  resolvePreviewNeonAuthUrls,
 } from "../../src/lib/deployment/preview-worker-isolation"
-import type {NeonAuthUrlBundle} from "../../src/lib/deployment/preview-worker-isolation";
+import type { NeonAuthUrlBundle } from "../../src/lib/deployment/preview-worker-isolation"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const webRoot = resolve(scriptDir, "../..")
@@ -330,15 +329,30 @@ async function main() {
   assertPreviewAuthBaseUrl(previewAuth.baseUrl, productionAuthBase)
 
   if (command === "resolve") {
+    // Mask the connection string (and password) before any GITHUB_OUTPUT /
+    // stdout so Actions logs never print a usable preview DB credential.
+    if (process.env.GITHUB_ACTIONS === "true") {
+      process.stdout.write(`::add-mask::${previewChatUrl}\n`)
+      try {
+        const password = decodeURIComponent(
+          new URL(previewChatUrl.replace(/^postgres(ql)?:/i, "http:")).password
+        )
+        if (password) {
+          process.stdout.write(`::add-mask::${password}\n`)
+        }
+      } catch {
+        // Ignore URL parse failures; the full URL mask still applies.
+      }
+    }
     writeGithubOutput({
       chat_database_url: previewChatUrl,
       neon_auth_base_url: previewAuth.baseUrl,
       neon_auth_jwks_url: previewAuth.jwksUrl,
       neon_auth_issuer: previewAuth.issuer,
     })
+    // Do not echo chat_database_url — it includes the role password.
     process.stdout.write(
       `${JSON.stringify({
-        chat_database_url: previewChatUrl,
         neon_auth_base_url: previewAuth.baseUrl,
         neon_auth_jwks_url: previewAuth.jwksUrl,
         neon_auth_issuer: previewAuth.issuer,

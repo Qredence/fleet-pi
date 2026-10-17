@@ -85,11 +85,44 @@ async function queryAuthDatabaseState(connectionString: string) {
 
 async function runChatRlsSmokeTest(connectionString: string) {
   const pool = new Pool({ connectionString })
-  // uuid user_id + neon_auth FK: app role cannot insert, so probe via SELECT
-  // under a nonexistent user and assert both counts are 0 (deny isolation).
+  // uuid user_id + neon_auth FK: app role cannot insert a fixture row, so
+  // require FORCE RLS on the tables then SELECT under a nonexistent user and
+  // assert both counts are 0. Zero alone is not enough on empty tables.
   const testUserId = "00000000-0000-4000-8000-000000000001"
   const client = await pool.connect()
   try {
+    const rlsState = await client.query<{
+      relname: string
+      rls_enabled: boolean
+      force_rls: boolean
+    }>(
+      `
+        SELECT c.relname,
+               c.relrowsecurity AS rls_enabled,
+               c.relforcerowsecurity AS force_rls
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind = 'r'
+          AND c.relname IN ('pi_user_providers', 'pi_user_settings')
+      `
+    )
+    const byName = new Map(
+      rlsState.rows.map((row) => [row.relname, row] as const)
+    )
+    for (const tableName of [
+      "pi_user_providers",
+      "pi_user_settings",
+    ] as const) {
+      const state = byName.get(tableName)
+      if (!state?.rls_enabled || !state.force_rls) {
+        return {
+          ok: false as const,
+          message: `RLS isolation failed: ${tableName} must have RLS and FORCE RLS enabled before the deny probe (got rls=${String(state?.rls_enabled)}, force=${String(state?.force_rls)}).`,
+        }
+      }
+    }
+
     await client.query("BEGIN")
     await client.query("SELECT set_config('app.current_user_id', $1, true)", [
       testUserId,
@@ -114,7 +147,7 @@ async function runChatRlsSmokeTest(connectionString: string) {
     return {
       ok: true as const,
       message:
-        "Pooled RLS smoke observed isolation: SELECT under nonexistent app.current_user_id returned 0 rows (rolled back).",
+        "Pooled RLS smoke observed isolation: FORCE RLS on pi_user_* plus SELECT under nonexistent app.current_user_id returned 0 rows (rolled back).",
     }
   } catch (error) {
     try {
