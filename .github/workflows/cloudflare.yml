@@ -8,9 +8,12 @@ name: Cloudflare Workers
 #
 # Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts: Edit),
 # CLOUDFLARE_ACCOUNT_ID, NEON_API_KEY, FLEET_PI_PRODUCTION_CHAT_DATABASE_URL,
-# FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL, PREVIEW_* auth/gateway secrets, and the
-# repo variable NEON_PROJECT_ID (non-production soft-art). Production builds
-# use vars.VITE_NEON_AUTH_URL; preview builds use secrets.PREVIEW_VITE_NEON_AUTH_URL.
+# FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL, PREVIEW_* cookie/better-auth/gateway
+# secrets, and the repo variable NEON_PROJECT_ID (non-production soft-art).
+# Production builds use vars.VITE_NEON_AUTH_URL; preview builds resolve Neon
+# Auth once from the PR branch (assert-preview-worker-secrets resolve). Do not
+# inject PREVIEW_NEON_AUTH_BASE_URL|JWKS|ISSUER repo secrets unless
+# PREVIEW_NEON_AUTH_USE_OVERRIDES=1 is intentional.
 
 on:
   push:
@@ -90,11 +93,26 @@ jobs:
           VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
         run: pnpm build:cloudflare
 
+      - name: Resolve preview context
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
+        id: preview_ctx
+        working-directory: apps/web
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          FLEET_PI_APP_ROLE: ${{ vars.FLEET_PI_APP_ROLE }}
+          FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
+          FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
+        run: >-
+          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          resolve
+          --pr ${{ github.event.pull_request.number }}
+
       - name: Build Worker (preview)
         if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
         working-directory: apps/web
         env:
-          VITE_NEON_AUTH_URL: ${{ secrets.PREVIEW_VITE_NEON_AUTH_URL }}
+          VITE_NEON_AUTH_URL: ${{ steps.preview_ctx.outputs.neon_auth_base_url }}
         run: pnpm build:cloudflare
 
       - name: Deploy production
@@ -106,11 +124,13 @@ jobs:
         if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
         working-directory: apps/web
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          FLEET_PI_PREVIEW_CHAT_DATABASE_URL: ${{ steps.preview_ctx.outputs.chat_database_url }}
           FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
           FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
-          PREVIEW_NEON_AUTH_BASE_URL: ${{ secrets.PREVIEW_NEON_AUTH_BASE_URL }}
+          PREVIEW_NEON_AUTH_BASE_URL: ${{ steps.preview_ctx.outputs.neon_auth_base_url }}
+          PREVIEW_NEON_AUTH_JWKS_URL: ${{ steps.preview_ctx.outputs.neon_auth_jwks_url }}
+          PREVIEW_NEON_AUTH_ISSUER: ${{ steps.preview_ctx.outputs.neon_auth_issuer }}
+          PREVIEW_NEON_AUTH_USE_OVERRIDES: "1"
         run: >-
           pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
           validate
@@ -133,16 +153,16 @@ jobs:
         id: preview_secrets
         working-directory: apps/web
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          FLEET_PI_PREVIEW_CHAT_DATABASE_URL: ${{ steps.preview_ctx.outputs.chat_database_url }}
           FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
           FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
-          PREVIEW_NEON_AUTH_BASE_URL: ${{ secrets.PREVIEW_NEON_AUTH_BASE_URL }}
-          PREVIEW_NEON_AUTH_JWKS_URL: ${{ secrets.PREVIEW_NEON_AUTH_JWKS_URL }}
-          PREVIEW_NEON_AUTH_ISSUER: ${{ secrets.PREVIEW_NEON_AUTH_ISSUER }}
+          PREVIEW_NEON_AUTH_BASE_URL: ${{ steps.preview_ctx.outputs.neon_auth_base_url }}
+          PREVIEW_NEON_AUTH_JWKS_URL: ${{ steps.preview_ctx.outputs.neon_auth_jwks_url }}
+          PREVIEW_NEON_AUTH_ISSUER: ${{ steps.preview_ctx.outputs.neon_auth_issuer }}
+          PREVIEW_NEON_AUTH_USE_OVERRIDES: "1"
           PREVIEW_NEON_AUTH_COOKIE_SECRET: ${{ secrets.PREVIEW_NEON_AUTH_COOKIE_SECRET }}
           PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
-          PREVIEW_VITE_NEON_AUTH_URL: ${{ secrets.PREVIEW_VITE_NEON_AUTH_URL }}
+          PREVIEW_VITE_NEON_AUTH_URL: ${{ steps.preview_ctx.outputs.neon_auth_base_url }}
           PREVIEW_NEON_AI_GATEWAY_TOKEN: ${{ secrets.PREVIEW_NEON_AI_GATEWAY_TOKEN }}
           PREVIEW_NEON_AI_GATEWAY_BASE_URL: ${{ secrets.PREVIEW_NEON_AI_GATEWAY_BASE_URL }}
         run: |

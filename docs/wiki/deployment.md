@@ -26,9 +26,11 @@ pnpm neon:env-pull   # writes NEON_* vars to .env.local
 
 AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 
-`neon.ts` declares no Object Storage buckets. Discard any `AWS_*` Object Storage
-variables that `neon deploy` pulls into `.env`. The `.neon` branch pin is
-gitignored.
+`neon.ts` declares a private proof bucket `fleet-pi-spike` under
+`preview.buckets` only (not for transcripts or Daytona workspace). When that
+bucket is deployed, `neon env pull` injects branch `AWS_*` S3 vars — keep them
+for the spike script; do not treat them as Bedrock credentials. The `.neon`
+branch pin is gitignored.
 
 ## Hosted environment variables (Cloudflare Workers)
 
@@ -82,8 +84,18 @@ Worker `fleet-pi-web` via the official `@cloudflare/vite-plugin` and
   `NEON_AI_GATEWAY_*` on the Worker). Required repo secrets for labeled PR
   previews include `FLEET_PI_PRODUCTION_CHAT_DATABASE_URL`,
   `FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL`, `NEON_API_KEY`, `vars.NEON_PROJECT_ID`,
-  `PREVIEW_VITE_NEON_AUTH_URL`, `PREVIEW_NEON_AUTH_*`, `PREVIEW_BETTER_AUTH_SECRET`,
-  and `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
+  `PREVIEW_NEON_AUTH_COOKIE_SECRET`, `PREVIEW_BETTER_AUTH_SECRET`, and
+  `PREVIEW_NEON_AI_GATEWAY_TOKEN` / `PREVIEW_NEON_AI_GATEWAY_BASE_URL`.
+  CI runs `assert-preview-worker-secrets resolve` once: it polls the Neon
+  `preview/pr-<number>` branch, derives Neon Auth base/JWKS/issuer from the
+  Postgres endpoint, and writes those values (plus the chat database URL) to
+  step outputs for build/validate/write — no second Neon poll. Do not inject
+  repo secrets `PREVIEW_NEON_AUTH_BASE_URL` / `JWKS` / `ISSUER` into the
+  workflow; they silently override derivation. To force overrides, set all
+  three env vars together and `PREVIEW_NEON_AUTH_USE_OVERRIDES=1` (partial
+  sets fail closed). Auth hostnames must embed the preview endpoint id
+  (`ep-….neonauth.…`). Set `vars.FLEET_PI_APP_ROLE` when the runtime role is
+  not `fleet_pi_app` (soft-art uses `fleet_pi_app_v2`).
 - Runtime mode: `FLEET_PI_DEPLOYMENT=cloudflare` (wrangler `vars`) makes
   `isHostedDeployment()` true: sessions live in `/tmp` only for the
   request and Neon (`pi_sessions` read-back) is the source of truth.

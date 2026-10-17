@@ -14,6 +14,10 @@ export default defineConfig({
   dataApi: false,
   preview: {
     aiGateway: true,
+    // Proof-only private bucket; see agent-workspace/scratch/tmp/neon-object-storage-spike.mjs
+    buckets: {
+      "fleet-pi-spike": {},
+    },
     functions: {
       chat: {
         name: "Fleet Pi Chat Runtime",

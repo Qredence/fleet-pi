@@ -5,11 +5,18 @@ import { runChatMigrations } from "../../db/chat-migrations"
 import {
   PreviewWorkerIsolationError,
   assertPreviewAuthBaseUrl,
+  assertPreviewAuthMatchesDatabaseUrl,
   assertPreviewChatDatabaseUrl,
   assertPreviewSecretAllowlist,
   buildPreviewWorkerSecrets,
   findDisallowedPreviewSecretNames,
+  neonAuthUrlsFromPostgresConnectionUrl,
+  neonAuthUrlsFromPostgresHostname,
+  parsePreviewDeployJson,
+  parseWranglerJsonOutput,
   postgresConnectionIdentitiesEqual,
+  previewAuthMatchesDatabaseUrl,
+  resolvePreviewNeonAuthUrls,
 } from "../preview-worker-isolation"
 import type { ChatMigrationClient } from "../../db/chat-migrations"
 
@@ -17,6 +24,10 @@ const PRODUCTION_CHAT_URL =
   "postgresql://fleet_pi_app:prod@ep-prod.aws.neon.tech/neondb?sslmode=require"
 const PREVIEW_CHAT_URL =
   "postgresql://fleet_pi_app:preview@ep-preview.aws.neon.tech/neondb?sslmode=require"
+const PREVIEW_AUTH_BASE =
+  "https://ep-preview.neonauth.aws.neon.tech/neondb/auth"
+const PRODUCTION_AUTH_BASE =
+  "https://ep-prod.neonauth.aws.neon.tech/neondb/auth"
 
 function clientFor(db: PGlite): ChatMigrationClient {
   return {
@@ -125,16 +136,15 @@ describe("preview-worker-isolation", () => {
       buildPreviewWorkerSecrets({
         previewChatDatabaseUrl: PREVIEW_CHAT_URL,
         productionChatDatabaseUrl: PRODUCTION_CHAT_URL,
-        previewNeonAuthBaseUrl: "https://auth.prod.example",
-        productionNeonAuthBaseUrl: "https://auth.prod.example",
-        previewNeonAuthJwksUrl:
-          "https://auth.preview.example/.well-known/jwks.json",
-        previewNeonAuthIssuer: "https://auth.preview.example",
+        previewNeonAuthBaseUrl: PRODUCTION_AUTH_BASE,
+        productionNeonAuthBaseUrl: PRODUCTION_AUTH_BASE,
+        previewNeonAuthJwksUrl: `${PRODUCTION_AUTH_BASE}/.well-known/jwks.json`,
+        previewNeonAuthIssuer: PRODUCTION_AUTH_BASE,
         neonAuthCookieSecret: "x".repeat(32),
         betterAuthSecret: "y".repeat(32),
         betterAuthUrl: "https://fleet-pi-web.example.workers.dev",
         betterAuthTrustedOrigins: "https://fleet-pi-web.example.workers.dev",
-        viteNeonAuthUrl: "https://auth.preview.example",
+        viteNeonAuthUrl: PRODUCTION_AUTH_BASE,
         neonAiGatewayToken: "nt_preview_gateway",
         neonAiGatewayBaseUrl: "https://preview-gateway.neon.tech",
       })
@@ -145,16 +155,15 @@ describe("preview-worker-isolation", () => {
     const secrets = buildPreviewWorkerSecrets({
       previewChatDatabaseUrl: PREVIEW_CHAT_URL,
       productionChatDatabaseUrl: PRODUCTION_CHAT_URL,
-      previewNeonAuthBaseUrl: "https://auth.preview.example",
-      productionNeonAuthBaseUrl: "https://auth.prod.example",
-      previewNeonAuthJwksUrl:
-        "https://auth.preview.example/.well-known/jwks.json",
-      previewNeonAuthIssuer: "https://auth.preview.example",
+      previewNeonAuthBaseUrl: PREVIEW_AUTH_BASE,
+      productionNeonAuthBaseUrl: PRODUCTION_AUTH_BASE,
+      previewNeonAuthJwksUrl: `${PREVIEW_AUTH_BASE}/.well-known/jwks.json`,
+      previewNeonAuthIssuer: PREVIEW_AUTH_BASE,
       neonAuthCookieSecret: "x".repeat(32),
       betterAuthSecret: "y".repeat(32),
       betterAuthUrl: "https://fleet-pi-web.example.workers.dev",
       betterAuthTrustedOrigins: "https://fleet-pi-web.example.workers.dev",
-      viteNeonAuthUrl: "https://auth.preview.example",
+      viteNeonAuthUrl: PREVIEW_AUTH_BASE,
       neonAiGatewayToken: "nt_preview_gateway",
       neonAiGatewayBaseUrl: "https://preview-gateway.neon.tech",
     })
@@ -183,6 +192,80 @@ describe("preview-worker-isolation", () => {
       ].sort()
     )
     assertPreviewSecretAllowlist(Object.keys(secrets))
+  })
+
+  it("refuses auth URLs that do not match the preview database endpoint", () => {
+    expect(
+      previewAuthMatchesDatabaseUrl(PREVIEW_AUTH_BASE, PREVIEW_CHAT_URL)
+    ).toBe(true)
+    expect(
+      previewAuthMatchesDatabaseUrl(PRODUCTION_AUTH_BASE, PREVIEW_CHAT_URL)
+    ).toBe(false)
+    expect(() =>
+      assertPreviewAuthMatchesDatabaseUrl(
+        PRODUCTION_AUTH_BASE,
+        PREVIEW_CHAT_URL
+      )
+    ).toThrow(/must match the preview Postgres endpoint/)
+    expect(() =>
+      buildPreviewWorkerSecrets({
+        previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+        productionChatDatabaseUrl: PRODUCTION_CHAT_URL,
+        previewNeonAuthBaseUrl: PRODUCTION_AUTH_BASE,
+        productionNeonAuthBaseUrl: "https://other.example/auth",
+        previewNeonAuthJwksUrl: `${PRODUCTION_AUTH_BASE}/.well-known/jwks.json`,
+        previewNeonAuthIssuer: PRODUCTION_AUTH_BASE,
+        neonAuthCookieSecret: "x".repeat(32),
+        betterAuthSecret: "y".repeat(32),
+        betterAuthUrl: "https://fleet-pi-web.example.workers.dev",
+        betterAuthTrustedOrigins: "https://fleet-pi-web.example.workers.dev",
+        viteNeonAuthUrl: PRODUCTION_AUTH_BASE,
+        neonAiGatewayToken: "nt_preview_gateway",
+        neonAiGatewayBaseUrl: "https://preview-gateway.neon.tech",
+      })
+    ).toThrow(/must match the preview Postgres endpoint/)
+  })
+
+  it("derives Neon Auth by default and gates overrides behind USE_OVERRIDES", () => {
+    const derived = resolvePreviewNeonAuthUrls({
+      previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+    })
+    expect(derived.baseUrl).toBe(PREVIEW_AUTH_BASE)
+
+    expect(() =>
+      resolvePreviewNeonAuthUrls({
+        previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+        envBaseUrl: PREVIEW_AUTH_BASE,
+      })
+    ).toThrow(/all be set together/)
+
+    expect(() =>
+      resolvePreviewNeonAuthUrls({
+        previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+        envBaseUrl: PREVIEW_AUTH_BASE,
+        envJwksUrl: `${PREVIEW_AUTH_BASE}/.well-known/jwks.json`,
+        envIssuer: PREVIEW_AUTH_BASE,
+      })
+    ).toThrow(/PREVIEW_NEON_AUTH_USE_OVERRIDES/)
+
+    const overridden = resolvePreviewNeonAuthUrls({
+      previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+      envBaseUrl: PREVIEW_AUTH_BASE,
+      envJwksUrl: `${PREVIEW_AUTH_BASE}/.well-known/jwks.json`,
+      envIssuer: PREVIEW_AUTH_BASE,
+      useOverrides: true,
+    })
+    expect(overridden.baseUrl).toBe(PREVIEW_AUTH_BASE)
+
+    expect(() =>
+      resolvePreviewNeonAuthUrls({
+        previewChatDatabaseUrl: PREVIEW_CHAT_URL,
+        envBaseUrl: PRODUCTION_AUTH_BASE,
+        envJwksUrl: `${PRODUCTION_AUTH_BASE}/.well-known/jwks.json`,
+        envIssuer: PRODUCTION_AUTH_BASE,
+        useOverrides: true,
+      })
+    ).toThrow(/must match the preview Postgres endpoint/)
   })
 
   it("does not read production pi_sessions rows from an isolated preview database", async () => {
@@ -225,4 +308,71 @@ describe("preview-worker-isolation", () => {
     )
     expect(previewRows.rows).toHaveLength(0)
   }, 15_000)
+
+  it("derives Neon Auth URLs from pooler Postgres hosts", () => {
+    expect(
+      neonAuthUrlsFromPostgresHostname(
+        "ep-preview-pooler.c-6.us-east-2.aws.neon.tech"
+      )
+    ).toEqual({
+      baseUrl:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth",
+      jwksUrl:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json",
+      issuer:
+        "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth",
+    })
+
+    expect(
+      neonAuthUrlsFromPostgresConnectionUrl(
+        "postgresql://fleet_pi_app_v2:x@ep-preview-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+      )?.baseUrl
+    ).toBe(
+      "https://ep-preview.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth"
+    )
+
+    expect(
+      neonAuthUrlsFromPostgresConnectionUrl(
+        "postgresql://fleet_pi_app:x@ep-preview.aws.neon.tech/customdb"
+      )?.baseUrl
+    ).toBe("https://ep-preview.neonauth.aws.neon.tech/customdb/auth")
+
+    expect(neonAuthUrlsFromPostgresHostname("example.com")).toBeUndefined()
+  })
+
+  it("prefers the last wrangler JSON payload that carries preview.urls", () => {
+    const noisy = [
+      "Using redirected Wrangler configuration.",
+      '- Configuration being used: "dist/server/wrangler.json"',
+      JSON.stringify({
+        url: "https://stale-fleet-pi-web.example.workers.dev",
+      }),
+      JSON.stringify({
+        preview: {
+          urls: ["https://pr-178-fleet-pi-web.example.workers.dev"],
+        },
+        deployment: {
+          urls: ["https://abcd-fleet-pi-web.example.workers.dev"],
+        },
+      }),
+    ].join("\n")
+
+    const payload = parseWranglerJsonOutput(noisy)
+    expect(parsePreviewDeployJson(payload)).toBe(
+      "https://pr-178-fleet-pi-web.example.workers.dev"
+    )
+
+    const twoPreviews = [
+      JSON.stringify({
+        preview: { urls: ["https://first.example.workers.dev"] },
+      }),
+      "progress…",
+      JSON.stringify({
+        preview: { urls: ["https://second.example.workers.dev"] },
+      }),
+    ].join("\n")
+    expect(parsePreviewDeployJson(parseWranglerJsonOutput(twoPreviews))).toBe(
+      "https://second.example.workers.dev"
+    )
+  })
 })

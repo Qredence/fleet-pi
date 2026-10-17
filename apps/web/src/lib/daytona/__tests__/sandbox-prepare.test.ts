@@ -80,9 +80,10 @@ describe("sandbox-prepare seed", () => {
     )
 
     expect(script).toContain(
-      `${FLEET_PI_SEED_REVISION_LABEL} abc123def456 matches; clone skipped`
+      `: # ${FLEET_PI_SEED_REVISION_LABEL} abc123def456 matches; clone skipped`
     )
     expect(script).not.toContain("git clone")
+    execFileSync("bash", ["-lc", script])
   })
 
   it("uses non-clobber copy when seeding", () => {

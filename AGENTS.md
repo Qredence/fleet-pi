@@ -133,8 +133,10 @@ Reference: `docs/wiki/deployment.md`, `docs/adr/0004-user-controlled-transcript-
 
 - Hosted transcripts live in each user's `UserPiDurable` Durable Object. Neon
   holds auth, settings, and an optional projection that must never fail a
-  hosted turn. The Daytona volume holds harness files and artifacts. Never add
-  Neon Object Storage or an R2 binding.
+  hosted turn. The Daytona volume holds harness files and artifacts. Do not add
+  an R2 binding. Neon Object Storage is limited to the private
+  `fleet-pi-spike` proof bucket in `neon.ts` (`preview.buckets`) — not for
+  transcripts or `agent-workspace`. Productizing more buckets needs an ADR.
 - `DELETE /api/chat/account` erases the Durable Object as well as Neon rows.
   Deleting one hosted session is only a tombstone (Pi Durable has no
   per-conversation delete).

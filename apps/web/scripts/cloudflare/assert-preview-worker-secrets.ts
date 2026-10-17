@@ -1,4 +1,10 @@
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { DEFAULT_APP_ROLE } from "../../src/lib/db/app-role"
@@ -11,14 +17,17 @@ import {
   buildPreviewWorkerSecrets,
   findDisallowedPreviewSecretNames,
   parsePreviewDeployJson,
+  parseWranglerJsonOutput,
   previewNeonBranchName,
   previewWorkerName,
+  resolvePreviewNeonAuthUrls,
 } from "../../src/lib/deployment/preview-worker-isolation"
+import type { NeonAuthUrlBundle } from "../../src/lib/deployment/preview-worker-isolation"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const webRoot = resolve(scriptDir, "../..")
 
-type Command = "validate" | "write" | "audit" | "origin"
+type Command = "validate" | "write" | "audit" | "origin" | "resolve"
 
 function readEnv(name: string) {
   return process.env[name]?.trim() ?? ""
@@ -36,10 +45,11 @@ function parseArgv(): {
     command !== "validate" &&
     command !== "write" &&
     command !== "audit" &&
-    command !== "origin"
+    command !== "origin" &&
+    command !== "resolve"
   ) {
     throw new PreviewWorkerIsolationError(
-      "Usage: assert-preview-worker-secrets.ts <validate|write|audit|origin> --pr <number> [--output <path>] [--deploy-json <path>]"
+      "Usage: assert-preview-worker-secrets.ts <validate|write|audit|origin|resolve> --pr <number> [--output <path>] [--deploy-json <path>]"
     )
   }
 
@@ -111,7 +121,31 @@ async function resolvePreviewChatDatabaseUrl(prNumber: string) {
   )
 }
 
-function loadSecretsInput(previewChatDatabaseUrl: string) {
+function resolvePreviewAuthUrls(
+  previewChatDatabaseUrl: string
+): NeonAuthUrlBundle {
+  return resolvePreviewNeonAuthUrls({
+    previewChatDatabaseUrl,
+    envBaseUrl: readEnv("PREVIEW_NEON_AUTH_BASE_URL"),
+    envJwksUrl: readEnv("PREVIEW_NEON_AUTH_JWKS_URL"),
+    envIssuer: readEnv("PREVIEW_NEON_AUTH_ISSUER"),
+    useOverrides: readEnv("PREVIEW_NEON_AUTH_USE_OVERRIDES") === "1",
+  })
+}
+
+function writeGithubOutput(values: Record<string, string>) {
+  const githubOutput = process.env.GITHUB_OUTPUT?.trim()
+  if (!githubOutput) return
+  const body = Object.entries(values)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n")
+  appendFileSync(githubOutput, `${body}\n`, "utf8")
+}
+
+function loadSecretsInput(
+  previewChatDatabaseUrl: string,
+  previewAuth: NeonAuthUrlBundle
+) {
   const workerOrigin = readEnv("PREVIEW_WORKER_ORIGIN")
   const trustedOrigins =
     readEnv("PREVIEW_BETTER_AUTH_TRUSTED_ORIGINS") || workerOrigin
@@ -119,18 +153,20 @@ function loadSecretsInput(previewChatDatabaseUrl: string) {
   return buildPreviewWorkerSecrets({
     previewChatDatabaseUrl,
     productionChatDatabaseUrl: readEnv("FLEET_PI_PRODUCTION_CHAT_DATABASE_URL"),
-    previewNeonAuthBaseUrl: readEnv("PREVIEW_NEON_AUTH_BASE_URL"),
+    previewNeonAuthBaseUrl: previewAuth.baseUrl,
     productionNeonAuthBaseUrl: readEnv(
       "FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL"
     ),
-    previewNeonAuthJwksUrl: readEnv("PREVIEW_NEON_AUTH_JWKS_URL"),
-    previewNeonAuthIssuer: readEnv("PREVIEW_NEON_AUTH_ISSUER"),
+    previewNeonAuthJwksUrl: previewAuth.jwksUrl,
+    previewNeonAuthIssuer: previewAuth.issuer,
     neonAuthCookieSecret: readEnv("PREVIEW_NEON_AUTH_COOKIE_SECRET"),
     betterAuthSecret: readEnv("PREVIEW_BETTER_AUTH_SECRET"),
     betterAuthUrl: workerOrigin,
     betterAuthTrustedOrigins: trustedOrigins,
     viteNeonAuthUrl:
-      readEnv("PREVIEW_VITE_NEON_AUTH_URL") || readEnv("VITE_NEON_AUTH_URL"),
+      readEnv("PREVIEW_VITE_NEON_AUTH_URL") ||
+      readEnv("VITE_NEON_AUTH_URL") ||
+      previewAuth.baseUrl,
     neonAiGatewayToken: readEnv("PREVIEW_NEON_AI_GATEWAY_TOKEN"),
     neonAiGatewayBaseUrl: readEnv("PREVIEW_NEON_AI_GATEWAY_BASE_URL"),
   })
@@ -256,7 +292,7 @@ function printPreviewOrigin(deployJsonPath: string) {
     )
   }
   const raw = readFileSync(deployJsonPath, "utf8")
-  const payload = JSON.parse(raw) as unknown
+  const payload = parseWranglerJsonOutput(raw)
   const origin = parsePreviewDeployJson(payload)
   if (!origin) {
     throw new PreviewWorkerIsolationError(
@@ -283,20 +319,53 @@ async function main() {
   const previewChatUrl = await resolvePreviewChatDatabaseUrl(prNumber)
   assertPreviewChatDatabaseUrl(previewChatUrl, productionChatUrl)
 
-  const previewAuthBase = readEnv("PREVIEW_NEON_AUTH_BASE_URL")
+  const previewAuth = resolvePreviewAuthUrls(previewChatUrl)
   const productionAuthBase = readEnv("FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL")
-  if (!previewAuthBase || !productionAuthBase) {
+  if (!productionAuthBase) {
     throw new PreviewWorkerIsolationError(
-      "PREVIEW_NEON_AUTH_BASE_URL and FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL are required for preview isolation."
+      "FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL is required for preview isolation."
     )
   }
-  assertPreviewAuthBaseUrl(previewAuthBase, productionAuthBase)
+  assertPreviewAuthBaseUrl(previewAuth.baseUrl, productionAuthBase)
+
+  if (command === "resolve") {
+    // Mask the connection string (and password) before any GITHUB_OUTPUT /
+    // stdout so Actions logs never print a usable preview DB credential.
+    if (process.env.GITHUB_ACTIONS === "true") {
+      process.stdout.write(`::add-mask::${previewChatUrl}\n`)
+      try {
+        const password = decodeURIComponent(
+          new URL(previewChatUrl.replace(/^postgres(ql)?:/i, "http:")).password
+        )
+        if (password) {
+          process.stdout.write(`::add-mask::${password}\n`)
+        }
+      } catch {
+        // Ignore URL parse failures; the full URL mask still applies.
+      }
+    }
+    writeGithubOutput({
+      chat_database_url: previewChatUrl,
+      neon_auth_base_url: previewAuth.baseUrl,
+      neon_auth_jwks_url: previewAuth.jwksUrl,
+      neon_auth_issuer: previewAuth.issuer,
+    })
+    // Do not echo chat_database_url — it includes the role password.
+    process.stdout.write(
+      `${JSON.stringify({
+        neon_auth_base_url: previewAuth.baseUrl,
+        neon_auth_jwks_url: previewAuth.jwksUrl,
+        neon_auth_issuer: previewAuth.issuer,
+      })}\n`
+    )
+    return
+  }
 
   if (command === "validate") {
     return
   }
 
-  const secrets = loadSecretsInput(previewChatUrl)
+  const secrets = loadSecretsInput(previewChatUrl, previewAuth)
   writeSecretsFile(outputPath, secrets)
   process.stdout.write(`${outputPath}\n`)
 }

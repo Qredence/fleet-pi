@@ -326,6 +326,37 @@ describe("validateDeploymentReadiness", () => {
     ).toBe(false)
   })
 
+  it("accepts pooler chat URLs against a normalized Neon preview marker", () => {
+    const result = validateDeploymentReadiness({
+      trustZone: "cloudflare-preview",
+      env: {
+        BETTER_AUTH_SECRET: "secret",
+        BETTER_AUTH_URL: "https://preview.example",
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://preview.example",
+        FLEET_PI_DEPLOYMENT_TRUST_ZONE: "preview",
+        FLEET_PI_PREVIEW_DATABASE_MARKER:
+          "ep-preview.c-6.us-east-2.aws.neon.tech",
+        FLEET_PI_PRODUCTION_DATABASE_MARKER:
+          "ep-prod.c-6.us-east-2.aws.neon.tech",
+        FLEET_PI_CHAT_DATABASE_URL:
+          "postgresql://fleet_pi_app_v2:x@ep-preview-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require",
+        NEON_AUTH_BASE_URL: "https://ep-preview.neonauth.example/neondb/auth",
+        NEON_AUTH_JWKS_URL:
+          "https://ep-preview.neonauth.example/neondb/auth/.well-known/jwks.json",
+        NEON_AUTH_ISSUER: "https://ep-preview.neonauth.example/neondb/auth",
+        NEON_AUTH_COOKIE_SECRET: "c".repeat(32),
+        ...testGatewayEnv,
+      },
+    })
+
+    expect(
+      result.checks.find((check) => check.id === "preview:chat-url-marker")?.ok
+    ).toBe(true)
+    expect(
+      result.checks.find((check) => check.id === "preview:auth-url-marker")?.ok
+    ).toBe(true)
+  })
+
   it("fails when preview chat URL matches production companion URL", () => {
     const result = validateDeploymentReadiness({
       trustZone: "cloudflare-preview",

@@ -241,7 +241,9 @@ export function ensureAgentWorkspaceSeedCommand(
 ): string {
   const recorded = seedRevision.trim()
   if (recorded) {
-    return `# ${FLEET_PI_SEED_REVISION_LABEL} ${recorded} matches; clone skipped`
+    // Comment-only scripts exit non-zero under `bash -lc` on some Linux images
+    // (GitHub Actions). Keep a no-op command so the skip path stays success.
+    return `: # ${FLEET_PI_SEED_REVISION_LABEL} ${recorded} matches; clone skipped`
   }
 
   const revFile = `${workspace}/${SEED_REVISION_RELATIVE_PATH}`
