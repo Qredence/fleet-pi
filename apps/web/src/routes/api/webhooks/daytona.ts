@@ -67,9 +67,11 @@ function isValidWebhookSignature(
   secret: string
 ): boolean {
   if (!signature) return false
+  const normalized = signature.trim().replace(/^sha256=/i, "")
+  if (!/^[0-9a-fA-F]{64}$/.test(normalized)) return false
 
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest()
-  const received = Buffer.from(signature, "hex")
+  const received = Buffer.from(normalized, "hex")
   return (
     expected.length === received.length && timingSafeEqual(expected, received)
   )

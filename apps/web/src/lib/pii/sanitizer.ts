@@ -1,7 +1,8 @@
-const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+const EMAIL_PATTERN =
+  /[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]*[a-zA-Z][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}/g
 
 const PHONE_PATTERN =
-  /(?:\+?\d{1,3}[-.\s()]*)?\(?\d{3}\)?[-.\s]*\d{3}[-.\s]*\d{4}|\+\d{1,3}(?:[-.\s]?\d+){2,6}/g
+  /(?:\+?\d{1,3}[-.\s]+)?(?:\(\d{3}\)[-.\s]*|\d{3}[-.\s]+)\d{3}[-.\s]+\d{4}|\+\d{1,3}(?:[-.\s]+\d+){1,6}/g
 
 export function sanitizeEmails(text: string): string {
   return text.replace(EMAIL_PATTERN, "[EMAIL_REDACTED]")

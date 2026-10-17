@@ -27,7 +27,6 @@ import {
   updateEnvVars,
 } from "@/lib/env-manager"
 import {
-  getChatAuthSession,
   isChatAuthRequired,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
@@ -399,10 +398,10 @@ export const providersServerHandlers: {
 } = {
   GET: async ({ request }) => {
     try {
-      const authSession = await getChatAuthSession(request)
-
-      const providers = await getProviderRows(authSession?.user.id)
-      return Response.json({ providers })
+      return await withAuthenticatedChatRequest(request, async ({ userId }) => {
+        const providers = await getProviderRows(userId)
+        return Response.json({ providers })
+      })
     } catch (error) {
       return Response.json(
         { message: getErrorMessage(error) },

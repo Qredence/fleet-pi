@@ -16,7 +16,21 @@ type RateLimitBinding = {
 
 type MemoryBucket = { count: number; resetAt: number }
 
+const MAX_MEMORY_BUCKETS = 2048
 const memoryBuckets = new Map<string, MemoryBucket>()
+
+function pruneMemoryBuckets(now: number) {
+  for (const [key, bucket] of memoryBuckets) {
+    if (now >= bucket.resetAt) {
+      memoryBuckets.delete(key)
+    }
+  }
+  while (memoryBuckets.size >= MAX_MEMORY_BUCKETS) {
+    const oldestKey = memoryBuckets.keys().next().value
+    if (oldestKey === undefined) break
+    memoryBuckets.delete(oldestKey)
+  }
+}
 
 export function rateLimitRuleForRequest(
   request: Request
@@ -92,6 +106,9 @@ function memoryLimit(ruleName: RateLimitRuleName, key: string, now: number) {
   const bucketKey = `${ruleName}:${key}`
   const current = memoryBuckets.get(bucketKey)
   if (!current || now >= current.resetAt) {
+    if (memoryBuckets.size >= MAX_MEMORY_BUCKETS) {
+      pruneMemoryBuckets(now)
+    }
     memoryBuckets.set(bucketKey, {
       count: 1,
       resetAt: now + rule.periodSeconds * 1000,

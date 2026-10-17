@@ -28,7 +28,10 @@ export async function questionChatHandler(request: Request) {
         }
 
         log.info({ toolCallId: body.toolCallId }, "question answer received")
-        const result: ChatQuestionAnswerResponse = answerChatQuestion(body)
+        const result: ChatQuestionAnswerResponse = answerChatQuestion({
+          ...body,
+          userId,
+        })
         log.info({ ok: result.ok }, "question answer processed")
         return Response.json(result, { status: result.ok ? 200 : 404 })
       }),

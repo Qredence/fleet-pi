@@ -31,6 +31,11 @@ describe("sanitizeEmails", () => {
     expect(sanitizeEmails(input)).toBe(input)
   })
 
+  it("does not replace npm package version specifiers", () => {
+    const input = "Install pkg@1.0.beta or @scope/pkg@2.3.alpha"
+    expect(sanitizeEmails(input)).toBe(input)
+  })
+
   it("preserves surrounding text", () => {
     const input = "Before email: support@company.io. After email."
     expect(sanitizeEmails(input)).toBe(
@@ -77,6 +82,11 @@ describe("sanitizePhones", () => {
 
   it("does not replace dates", () => {
     const input = "The meeting is on 2026-04-29"
+    expect(sanitizePhones(input)).toBe(input)
+  })
+
+  it("does not replace bare 10-digit timestamps or numeric IDs", () => {
+    const input = "Check timestamp 1729159200 and request 1234567890"
     expect(sanitizePhones(input)).toBe(input)
   })
 

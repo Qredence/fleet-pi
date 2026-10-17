@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { auth } from "@/lib/auth/server"
+import { getChatAuthSession } from "@/lib/auth/chat-api-auth"
 import {
   getCachedUserSandbox,
   isDaytonaEnabled,
@@ -10,9 +10,7 @@ export const Route = createFileRoute("/api/sandbox/preview")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await auth.api
-          .getSession({ headers: request.headers })
-          .catch(() => null)
+        const session = await getChatAuthSession(request)
 
         const user = session?.user
         if (!user) {

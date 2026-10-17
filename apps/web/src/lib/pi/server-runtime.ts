@@ -64,10 +64,11 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "@/lib/daytona/user-sandbox"
-import { executeCommand } from "@/lib/daytona/client"
 import { SANDBOX_WORKSPACE_ROOT } from "@/lib/daytona/sandbox-prepare"
-import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
-import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
+import {
+  getSandboxWorkspaceFS,
+  resolveUserSandboxContext,
+} from "@/lib/daytona/resolve-user-sandbox-context"
 import {
   resolveDaytonaToolUser,
   trackDaytonaToolSession,
@@ -402,10 +403,7 @@ async function resolveDaytonaWorkspaceForUser(
 
   const cachedSandbox = getCachedUserSandbox(metadata.userId)
   if (cachedSandbox) {
-    context.workspaceFS = createSandboxWorkspaceFS({
-      executeCommand: (cmd, cwd) =>
-        executeCommand(cachedSandbox.sandbox, cmd, cwd),
-    })
+    context.workspaceFS = getSandboxWorkspaceFS(cachedSandbox.sandbox)
     context.workspaceRoot = SANDBOX_WORKSPACE_ROOT
     return { enabled, warmUp: undefined }
   }
@@ -492,7 +490,7 @@ function mergeDiagnostics(...diagnosticLists: Array<Array<string>>) {
 }
 
 export function answerChatQuestion(
-  request: ChatQuestionAnswerRequest
+  request: ChatQuestionAnswerRequest & { userId?: string }
 ): ChatQuestionAnswerResponse {
   if (isPlanDecisionToolCall(request.toolCallId)) {
     const active = findRuntimeRecord(request)
@@ -514,7 +512,28 @@ export function answerChatQuestion(
     return answerPlanDecision(active.runtime, request.answer)
   }
 
-  const ok = resolveQuestionnaireAnswer(request.toolCallId, request.answer)
+  const active =
+    request.sessionId || request.sessionFile
+      ? findRuntimeRecord(request)
+      : undefined
+  if (
+    (request.userId !== undefined ||
+      request.sessionFile !== undefined ||
+      (request.sessionId !== undefined &&
+        runtimeRecords.has(request.sessionId))) &&
+    !active
+  ) {
+    return {
+      ok: false,
+      message: "Question is no longer active.",
+    }
+  }
+  const expectedSessionId = active?.sessionId ?? request.sessionId
+  const ok = resolveQuestionnaireAnswer(
+    request.toolCallId,
+    request.answer,
+    expectedSessionId
+  )
   return ok
     ? { ok: true }
     : {

@@ -10,6 +10,7 @@ import {
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
+import { parseBearerToken } from "@/lib/auth/jwt-verify"
 import { getErrorMessage } from "@/lib/pi/server"
 import {
   createUnexpectedWorkspaceQueryErrorResponse,
@@ -70,7 +71,7 @@ export async function workspaceReindexHandler(
   return withAuthenticatedChatRequest(
     request,
     async ({ authSession, userId }) => {
-      const bearerAuthenticated = request.headers.has("authorization")
+      const bearerAuthenticated = Boolean(parseBearerToken(request))
       const protectedDeployment = isChatAuthRequired()
       if (
         protectedDeployment &&

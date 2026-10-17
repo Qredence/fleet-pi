@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { chatCommandsHandler } from "../../../routes/api/chat/commands"
 import { chatModelsHandler } from "../../../routes/api/chat/models"
 import { chatModelsDiscoverHandler } from "../../../routes/api/chat/models.discover"
+import { providersServerHandlers } from "../../../routes/api/chat/providers"
 import { chatResourcesHandler } from "../../../routes/api/chat/resources"
+import { chatSettingsGetHandler } from "../../../routes/api/chat/settings"
 import { auth } from "@/lib/auth/server"
 
 vi.mock("@/lib/auth/server", () => ({
@@ -18,6 +20,18 @@ vi.mock("@/lib/pi/server", () => ({
     Promise.resolve({ models: [], defaultModel: null })
   ),
   loadChatResources: vi.fn(() => Promise.resolve({ resources: [] })),
+  loadChatSettings: vi.fn(() =>
+    Promise.resolve({
+      diagnostics: [],
+      effective: {},
+      project: {},
+      projectPath: ".pi/settings.json",
+      updateImpact: {
+        newSessionRecommended: false,
+        resourceReloadRequired: false,
+      },
+    })
+  ),
   getErrorMessage: (error: unknown) =>
     error instanceof Error ? error.message : String(error),
 }))
@@ -110,6 +124,15 @@ describe("chat catalog route auth", () => {
     expect(resources.status).toBe(401)
     expect(commands.status).toBe(401)
     expect(discover.status).toBe(401)
+
+    const settings = await chatSettingsGetHandler(
+      new Request("http://localhost/api/chat/settings")
+    )
+    const providers = await providersServerHandlers.GET({
+      request: new Request("http://localhost/api/chat/providers"),
+    })
+    expect(settings.status).toBe(401)
+    expect(providers.status).toBe(401)
   })
 
   it("allows catalog routes locally without a session", async () => {

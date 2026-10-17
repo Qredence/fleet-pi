@@ -71,11 +71,15 @@ export function registerPlanQuestionnaireTool(pi: ExtensionAPI) {
 
 export function resolveQuestionnaireAnswer(
   toolCallId: string | undefined,
-  answer: ChatQuestionAnswer
+  answer: ChatQuestionAnswer,
+  sessionId?: string
 ) {
   if (!toolCallId) return false
   const pending = pendingQuestions.get(toolCallId)
   if (!pending) return false
+  if (sessionId !== undefined && pending.sessionId !== sessionId) {
+    return false
+  }
 
   pendingQuestions.delete(toolCallId)
   pending.resolve(answer)

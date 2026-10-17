@@ -1,6 +1,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   randomBytes,
   scryptSync,
 } from "node:crypto"
@@ -9,9 +10,24 @@ const ALGORITHM = "aes-256-gcm"
 const IV_LENGTH = 16
 const SALT_LENGTH = 16
 const KEY_LENGTH = 32
+const MAX_DERIVED_KEYS = 256
+const derivedKeyCache = new Map<string, Buffer>()
 
 function getDerivedKey(password: string, salt: Buffer): Buffer {
-  return scryptSync(password, salt, KEY_LENGTH)
+  const cacheKey = `${salt.toString("hex")}:${createHash("sha256").update(password).digest("hex")}`
+  const cached = derivedKeyCache.get(cacheKey)
+  if (cached) {
+    derivedKeyCache.delete(cacheKey)
+    derivedKeyCache.set(cacheKey, cached)
+    return cached
+  }
+  const derived = scryptSync(password, salt, KEY_LENGTH)
+  if (derivedKeyCache.size >= MAX_DERIVED_KEYS) {
+    const oldest = derivedKeyCache.keys().next().value
+    if (oldest !== undefined) derivedKeyCache.delete(oldest)
+  }
+  derivedKeyCache.set(cacheKey, derived)
+  return derived
 }
 
 export function encryptString(text: string, secret: string): string {

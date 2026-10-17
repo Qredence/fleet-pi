@@ -239,4 +239,35 @@ describe("plan questionnaire tool", () => {
       })
     ).toBe(false)
   })
+
+  it("rejects answers from a different sessionId", async () => {
+    const tool = registerTool()
+    const controller = new AbortController()
+    const resultPromise = tool.execute(
+      "tool-session-check",
+      questionnaireParams,
+      controller.signal,
+      undefined,
+      createContext("session-owner")
+    )
+
+    expect(
+      resolveQuestionnaireAnswer(
+        "tool-session-check",
+        { kind: "skip" },
+        "session-other"
+      )
+    ).toBe(false)
+    expect(
+      resolveQuestionnaireAnswer(
+        "tool-session-check",
+        { kind: "skip" },
+        "session-owner"
+      )
+    ).toBe(true)
+
+    await expect(resultPromise).resolves.toMatchObject({
+      details: { cancelled: true },
+    })
+  })
 })
