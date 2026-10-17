@@ -17,6 +17,10 @@ import {
   isAllowedNeonAiGatewayHostname,
 } from "../pi/runtime/openai-chat-completions-url"
 import {
+  normalizeNeonPostgresHostname,
+  parsePostgresConnectionIdentity,
+} from "./preview-worker-isolation"
+import {
   isHostedPreviewTrustZone,
   isHostedProductionTrustZone,
   resolveDeploymentTrustZone,
@@ -86,7 +90,14 @@ function readEnv(name: string, env: NodeJS.ProcessEnv) {
 }
 
 function databaseUrlContainsMarker(url: string, marker: string) {
-  return marker.length > 0 && url.includes(marker)
+  const trimmedMarker = marker.trim().toLowerCase()
+  if (!trimmedMarker || !url) return false
+  if (url.toLowerCase().includes(trimmedMarker)) return true
+  // Markers are stored as normalized (non-pooler) Neon hosts; URLs often use
+  // `-pooler` hostnames, so compare endpoint identity instead of substrings.
+  const identity = parsePostgresConnectionIdentity(url)
+  if (!identity?.host) return false
+  return identity.host === normalizeNeonPostgresHostname(trimmedMarker)
 }
 
 export function validateDeploymentReadiness(

@@ -313,5 +313,30 @@ export function parsePreviewDeployJson(payload: unknown): string | undefined {
       return value.trim().replace(/\/$/, "")
     }
   }
+
+  const preview = record.preview
+  if (preview && typeof preview === "object") {
+    const urls = (preview as { urls?: unknown }).urls
+    if (Array.isArray(urls)) {
+      for (const value of urls) {
+        if (typeof value === "string" && value.trim().length > 0) {
+          return value.trim().replace(/\/$/, "")
+        }
+      }
+    }
+  }
+
+  const deployment = record.deployment
+  if (deployment && typeof deployment === "object") {
+    const urls = (deployment as { urls?: unknown }).urls
+    if (Array.isArray(urls)) {
+      for (const value of urls) {
+        if (typeof value === "string" && value.trim().length > 0) {
+          return value.trim().replace(/\/$/, "")
+        }
+      }
+    }
+  }
+
   return undefined
 }
