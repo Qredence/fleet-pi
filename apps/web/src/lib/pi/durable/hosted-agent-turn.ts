@@ -204,6 +204,8 @@ export async function listHostedDurableSessions(
       id: string
       firstMessage: string
       messageCount: number
+      created?: string
+      modified?: string
     }>
   }
   const now = new Date().toISOString()
@@ -211,8 +213,8 @@ export async function listHostedDurableSessions(
     path: "",
     id: durableSessionId(session.id),
     cwd: getVolumeName(userId),
-    created: now,
-    modified: now,
+    created: session.created ?? now,
+    modified: session.modified ?? session.created ?? now,
     messageCount: session.messageCount,
     firstMessage: session.firstMessage,
   }))

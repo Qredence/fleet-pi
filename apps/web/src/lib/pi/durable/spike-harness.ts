@@ -170,11 +170,28 @@ function sandboxTools(mode: ChatModeRef) {
     name: "search",
     description: "Search a file in the user sandbox.",
     replay: "safe",
-    parameters: Type.Object({ path: Type.String() }),
-    execute: async (args: { path: string }, api: ToolExecutionApi) => {
+    parameters: Type.Object({
+      path: Type.String(),
+      pattern: Type.Optional(Type.String()),
+    }),
+    execute: async (
+      args: { path: string; pattern?: string },
+      api: ToolExecutionApi
+    ) => {
       const text = await requireEnv(api).readTextFile(args.path, context)
       if (!text.ok) throw new Error(text.error.message)
-      return { output: [{ type: "text" as const, text: text.value }] }
+      if (!args.pattern) {
+        return { output: [{ type: "text" as const, text: text.value }] }
+      }
+      const needle = args.pattern.toLowerCase()
+      const matches = text.value
+        .split("\n")
+        .flatMap((line, idx) =>
+          line.toLowerCase().includes(needle) ? [`${idx + 1}:${line}`] : []
+        )
+      return {
+        output: [{ type: "text" as const, text: matches.join("\n") }],
+      }
     },
   })
   const write = defineTool({
@@ -205,20 +222,60 @@ function sandboxTools(mode: ChatModeRef) {
     description: "Edit a file in the user sandbox.",
     parameters: Type.Object({
       path: Type.String(),
-      content: Type.String(),
+      content: Type.Optional(Type.String()),
+      oldText: Type.Optional(Type.String()),
+      newText: Type.Optional(Type.String()),
+      edits: Type.Optional(
+        Type.Array(
+          Type.Object({
+            oldText: Type.String(),
+            newText: Type.String(),
+          })
+        )
+      ),
       confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string; confirm?: boolean },
+      args: {
+        path: string
+        content?: string
+        oldText?: string
+        newText?: string
+        edits?: Array<{ oldText: string; newText: string }>
+        confirm?: boolean
+      },
       api: ToolExecutionApi
     ) => {
       const block = hostedWriteBlock(mode.current, args.path, args.confirm)
       if (block) return blocked(block)
-      const written = await requireEnv(api).writeFile(
-        args.path,
-        args.content,
-        context
-      )
+      const env = requireEnv(api)
+      const replacements =
+        args.edits ??
+        (args.oldText !== undefined
+          ? [{ oldText: args.oldText, newText: args.newText ?? "" }]
+          : undefined)
+      let nextContent: string
+      if (replacements && replacements.length > 0) {
+        const current = await env.readTextFile(args.path, context)
+        if (!current.ok) throw new Error(current.error.message)
+        nextContent = current.value
+        for (const item of replacements) {
+          if (!nextContent.includes(item.oldText)) {
+            throw new Error(
+              `Could not find oldText in ${args.path}: ${item.oldText.slice(0, 80)}`
+            )
+          }
+          nextContent = nextContent.replace(item.oldText, () => item.newText)
+        }
+      } else {
+        if (args.content === undefined) {
+          throw new Error(
+            `Edit tool requires content, oldText, or non-empty edits for ${args.path}`
+          )
+        }
+        nextContent = args.content
+      }
+      const written = await env.writeFile(args.path, nextContent, context)
       if (!written.ok) throw new Error(written.error.message)
       return { output: [{ type: "text" as const, text: "edited" }] }
     },
@@ -408,6 +465,8 @@ export type DurableConversationSummary = {
   id: string
   firstMessage: string
   messageCount: number
+  created?: string
+  modified?: string
 }
 
 export class DurableConversationMissing extends Error {
@@ -572,6 +631,11 @@ export async function openSpikeHarness(
       )
       const view = await conversation.viewState(context)
       input.onView(view.value)
+      const unsubscribe = view.subscribe((value) => {
+        if (!input.signal?.aborted) {
+          input.onView(value)
+        }
+      })
       const gate = { stopped: false }
       const pump = (async () => {
         while (!gate.stopped) {
@@ -600,9 +664,11 @@ export async function openSpikeHarness(
         )
       } finally {
         gate.stopped = true
+        unsubscribe()
         liveConversation = undefined
         input.onView(view.value)
         await pump
+        view.dispose()
       }
       const agent = await conversation.agent(context)
       return {
@@ -626,9 +692,13 @@ export async function openSpikeHarness(
         context
       )
       if (!conversation) throw new DurableConversationMissing(conversationId)
-      const at = (await conversation.viewState(context)).value.entries.at(
-        -1
-      )?.id
+      const view = await conversation.viewState(context)
+      let at: (typeof view.value.entries)[number]["id"] | undefined
+      try {
+        at = view.value.entries.at(-1)?.id
+      } finally {
+        view.dispose()
+      }
       if (at === undefined) throw new DurableConversationEmpty(conversationId)
       // No agent override: a fork inherits the parent's agent at the fork entry.
       const forked = await conversation.fork(
@@ -649,7 +719,7 @@ export async function openSpikeHarness(
         if (!conversation) continue
         const entries = await conversation.entries(
           { order: "ascending" },
-          20,
+          200,
           undefined,
           context
         )
@@ -657,10 +727,27 @@ export async function openSpikeHarness(
           entry.model?.some((message) => message.role === "user")
         )
         const firstText = firstUserText(firstUser?.model)
+        const timestamps = entries.items.flatMap((entry) =>
+          (entry.model ?? []).flatMap((message) =>
+            "timestamp" in message &&
+            typeof message.timestamp === "number" &&
+            Number.isFinite(message.timestamp)
+              ? [message.timestamp]
+              : []
+          )
+        )
+        const firstTs = timestamps.at(0)
+        const lastTs = timestamps.at(-1)
         summaries.push({
           id: String(record.id),
           firstMessage: firstText,
           messageCount: entries.items.length,
+          ...(firstTs !== undefined
+            ? { created: new Date(firstTs).toISOString() }
+            : {}),
+          ...(lastTs !== undefined
+            ? { modified: new Date(lastTs).toISOString() }
+            : {}),
         })
       }
       return summaries
@@ -671,7 +758,12 @@ export async function openSpikeHarness(
         context
       )
       if (!conversation) return undefined
-      return (await conversation.viewState(context)).value
+      const view = await conversation.viewState(context)
+      try {
+        return view.value
+      } finally {
+        view.dispose()
+      }
     },
   }
 }
