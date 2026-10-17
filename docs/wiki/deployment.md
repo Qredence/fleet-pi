@@ -26,9 +26,11 @@ pnpm neon:env-pull   # writes NEON_* vars to .env.local
 
 AI Gateway requires a paid Neon plan and `aws-us-east-2`.
 
-`neon.ts` declares no Object Storage buckets. Discard any `AWS_*` Object Storage
-variables that `neon deploy` pulls into `.env`. The `.neon` branch pin is
-gitignored.
+`neon.ts` declares a private proof bucket `fleet-pi-spike` under
+`preview.buckets` only (not for transcripts or Daytona workspace). When that
+bucket is deployed, `neon env pull` injects branch `AWS_*` S3 vars — keep them
+for the spike script; do not treat them as Bedrock credentials. The `.neon`
+branch pin is gitignored.
 
 ## Hosted environment variables (Cloudflare Workers)
 

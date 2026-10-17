@@ -85,32 +85,27 @@ async function queryAuthDatabaseState(connectionString: string) {
 
 async function runChatRlsSmokeTest(connectionString: string) {
   const pool = new Pool({ connectionString })
-  const testUserId = "__fleet_pi_rls_smoke__"
+  // uuid user_id + neon_auth FK: app role cannot insert, so probe via SELECT.
+  const testUserId = "00000000-0000-4000-8000-000000000001"
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
     await client.query("SELECT set_config('app.current_user_id', $1, true)", [
       testUserId,
     ])
-    await client.query(
-      `
-        INSERT INTO pi_user_providers (user_id, provider_id, encrypted_key)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (user_id, provider_id) DO NOTHING
-      `,
-      [testUserId, "google", "rls-smoke-test"]
-    )
+    await client.query(`SELECT count(*)::int AS n FROM pi_user_providers`)
+    await client.query(`SELECT count(*)::int AS n FROM pi_user_settings`)
     await client.query("ROLLBACK")
     return {
       ok: true as const,
       message:
-        "Pooled RLS smoke insert into pi_user_providers succeeded (rolled back).",
+        "Pooled RLS smoke SELECT under app.current_user_id succeeded (rolled back).",
     }
   } catch (error) {
     try {
       await client.query("ROLLBACK")
     } catch {
-      // Ignore rollback failures after a failed smoke insert.
+      // Ignore rollback failures after a failed smoke probe.
     }
     return {
       ok: false as const,

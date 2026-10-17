@@ -108,6 +108,15 @@ Durable project decisions and rationale for Fleet Pi's Pi-native agent workspace
 - Consequences: Deleted `.codex/`, `.claude/skills/`, and `docs/codex.md`. Updated root `README.md` to point entirely to the standalone setup.
 - Source: `package.json`, `docs/quickstart.md`, `README.md`.
 
+## Storage planes: Neon user DB, Durable Object transcript, Daytona volume workspace
+
+- Decision: Neon Managed Auth + Postgres for identity/settings/BYOK (and optional `pi_*` projection); hosted transcripts on `UserPiDurable`; `agent-workspace` on Daytona volume `fleet-pi-ws-{userId}`. Neon Object Storage stays limited to the private `fleet-pi-spike` proof bucket until an ADR productizes app blobs. Optional later: Daytona external S3 mount for datasets only — not as the workspace volume.
+- Status: Active.
+- Context: 2026-10-17 setup linked `fleet-pi-pg18`, hardened Worker secrets, and proved Object Storage without wiring it into chat or Daytona.
+- Rationale: Chat stays on the Durable Object; agents need a POSIX FS; Neon keeps user-row locality.
+- Consequences: `preview.buckets` may declare only `fleet-pi-spike`; no R2; Cloudflare sandboxes stay BYOK Daytona. Spike: `agent-workspace/scratch/tmp/neon-object-storage-spike.mjs`.
+- Source: `neon.ts`, `docs/daytona.md`, `docs/wiki/deployment.md`, `AGENTS.md`, `CHANGELOG.md`.
+
 ## Circuit breaker and exponential backoff for workspace bootstrap
 
 - Decision: Implement a self-healing retry mechanism with exponential backoff and cached failures for agent workspace bootstrap failures.

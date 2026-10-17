@@ -7,7 +7,8 @@
         "eslint.config.js",
         ".pi/extensions/**/*.ts",
         "neon.ts",
-        "functions/**/*.ts"
+        "functions/**/*.ts",
+        "agent-workspace/scratch/tmp/neon-object-storage-spike.mjs"
       ],
       "project": [
         "scripts/**/*.js",
@@ -17,8 +18,9 @@
       ],
       "ignoreDependencies": [
         "zod",
-        "@aws-sdk/client-s3",
-        "@neondatabase/serverless"
+        "@neondatabase/serverless",
+        "@aws-sdk/s3-presigned-post",
+        "@aws-sdk/s3-request-presigner"
       ]
     },
     "apps/web": {

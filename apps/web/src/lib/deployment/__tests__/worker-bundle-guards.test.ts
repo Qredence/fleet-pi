@@ -31,12 +31,16 @@ describe("Cloudflare worker bundle guards", () => {
     expect(offenders).toEqual([])
   })
 
-  it("does not declare Neon object storage buckets", () => {
+  it("keeps Object Storage limited to the fleet-pi-spike proof bucket", () => {
     const neonConfig = readFileSync(join(WEB_SRC, "../../../neon.ts"), "utf8")
     expect(neonConfig).not.toMatch(/objectStorage|storageBuckets|bucketName/)
     expect(neonConfig).toContain("dataApi: false")
     expect(neonConfig).not.toMatch(/dataApi:\s*true/)
     expect(neonConfig).toContain("fleet-pi-pg18")
+    expect(neonConfig).toMatch(/buckets:\s*\{\s*"fleet-pi-spike":\s*\{\s*\}/)
+    expect(neonConfig).not.toMatch(
+      /buckets:\s*\{[^}]*"[^"]+"\s*:\s*\{[^}]*\}[^}]*"[^"]+"/s
+    )
   })
 
   it("does not import the S3 client or an R2 binding", () => {
