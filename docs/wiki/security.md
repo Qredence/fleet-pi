@@ -65,4 +65,6 @@ External LLM calls can be wrapped with Opossum (`apps/web/src/lib/pi/circuit-bre
 
 ## Dependency management
 
-Dependabot, `syncpack`, and `overrides` in root `package.json` manage dependency hygiene. See `SECURITY.md` for vulnerability reporting.
+Dependabot, `syncpack`, and `overrides` in root [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) manage dependency hygiene. See [`SECURITY.md`](../../SECURITY.md) for vulnerability reporting.
+
+**Accepted advisory (DEP-010):** [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (`braces` ≤3.0.3, stack-exhaustion DoS via nested brace patterns). No patched release is published yet (latest is 3.0.3). It arrives through `micromatch` / `fast-glob` used by `@daytona/sdk`, `shadcn` registry tooling, and `jscpd` (dev). Glob patterns on those paths come from code, not end-user input. Add a `braces` floor once `>=3.0.4` ships.

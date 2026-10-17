@@ -11,6 +11,10 @@ Standalone runbooks:
 - [Deployment release gate](runbooks/deployment-release-gate.md)
 - [DB role rotation](runbooks/db-role-rotation.md) — rotate `fleet_pi_app` and
   the Worker database URLs without downtime
+- [Worker Postgres connections](runbooks/worker-postgres-connections.md) —
+  per-request pool budget after the Durable Object cutover (CF-003)
+- [Production backups and recovery](runbooks/neon-backup-recovery.md) — Neon
+  snapshot schedule, RPO, and restore steps for `main` (NEON-012)
 
 ---
 

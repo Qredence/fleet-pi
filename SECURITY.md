@@ -26,3 +26,8 @@ privately through GitHub and include:
 
 We aim to acknowledge reports within 3 business days and will follow up with
 triage status, fix planning, and coordinated disclosure guidance.
+
+## Known accepted advisories
+
+- **GHSA-vfj7-8cjw-p6xm** (`braces`): no patched release yet. See
+  [docs/wiki/security.md](docs/wiki/security.md#dependency-management).

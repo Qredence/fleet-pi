@@ -2,7 +2,7 @@ packages:
   - "apps/web"
   - "packages/hax-design"
   - "packages/pi-protocol"
-# Security and compatibility floors. Review on 2027-01-14.
+# Security and compatibility floors. Review on 2027-01-16.
 # Drop a line once every direct dependency already satisfies it.
 overrides:
   # Every override below was re-checked for DEP-010 (2026-10-16) by removing it

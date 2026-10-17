@@ -82,3 +82,12 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Current status: **Fully resolved.** The database has been successfully initialized at the root (`runs/autocontext.sqlite3`) using `autoctx init`. All autocontext tools are fully functional and pass validation.
 - Workaround: No workaround needed. All status, scenario list, queue, and judging tools are fully functional.
 - Follow-up: Keep the `runs/autocontext.sqlite3` database in `.gitignore` to avoid version-controlling local evaluation run history.
+
+## Accepted braces DoS advisory (no patch yet)
+
+- Issue: `pnpm audit` reports [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) for `braces` ≤3.0.3 (stack-exhaustion DoS via nested brace patterns). No patched npm release exists; latest is 3.0.3.
+- Affected area: Transitive via `micromatch` / `fast-glob` from `@daytona/sdk`, `shadcn` registry tooling, and `jscpd` (dev). Documented under DEP-010 (#166).
+- Symptoms: High advisory in `pnpm audit`; no runtime Worker path takes end-user brace patterns.
+- Current status: **Accepted.** Override floors elsewhere remain in `pnpm-workspace.yaml` with Review 2027-01-16.
+- Workaround: None until a patched `braces` ships.
+- Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.

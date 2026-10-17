@@ -24,6 +24,10 @@ Start here if you want the human-facing documentation for Fleet Pi.
 - [Runbooks](runbooks.md) — runtime troubleshooting and incident response
 - [DB role rotation](runbooks/db-role-rotation.md) — zero-downtime rotation of
   the `fleet_pi_app` Neon role and the Worker database URLs
+- [Worker Postgres connections](runbooks/worker-postgres-connections.md) —
+  Worker connection budget against Neon (CF-003)
+- [Production backups and recovery](runbooks/neon-backup-recovery.md) — daily
+  snapshot schedule, RPO, and restore for production `main`
 - [Runtime SDK Integration Seams](runtime-sdk-integration.md) — current runtime
   integration boundaries for deeper platform work
 - [Daytona Stateful Sandbox](daytona.md) — run Fleet Pi in Daytona with
