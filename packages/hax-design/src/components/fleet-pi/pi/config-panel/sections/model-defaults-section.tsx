@@ -1,13 +1,6 @@
-import { Plus, RefreshCw, Search, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Button } from "../../../../button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../../../../dialog"
 import {
   InputGroup,
   InputGroupAddon,
@@ -243,97 +236,28 @@ export function ModelDefaultsSection({
         />
       }
     >
-      <div className="flex items-center gap-2">
-        <InputGroup className="flex-1">
-          <InputGroupAddon align="inline-start">
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label="Search listed models"
-            value={modelFilter}
-            onChange={(event) => onModelFilterChange(event.target.value)}
-            placeholder="Search listed models…"
-            disabled={disabled || listedModels.length === 0}
-          />
-        </InputGroup>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={openAddDialog}
-        >
-          <Plus data-icon="inline-start" />
-          Add models
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-3" data-testid="runtime-models-list">
-        {emptyMessage ? (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <p className="px-1 text-center text-xs text-pretty text-muted-foreground">
-              {emptyMessage}
-            </p>
-            {!normalizedFilter ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled}
-                onClick={openAddDialog}
-              >
-                <Plus data-icon="inline-start" />
-                Add models
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          groupedListed.map(([provider, models]) => (
-            <div key={provider} className="flex flex-col gap-1.5">
-              <div className="px-1 text-xs font-medium text-muted-foreground">
-                {providerLabel(provider)}
-              </div>
-              {models.map((model) => (
-                <ItemRow
-                  key={model.id}
-                  icon={<ProviderBrandIcon provider={model.provider} />}
-                  title={model.name}
-                  subtitle={`${providerLabel(model.provider)} · ${model.modelId}`}
-                  trailing={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        HIT_AREA_EXPAND_DENSE_CLASS,
-                        "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
-                      )}
-                      disabled={disabled}
-                      aria-label={`Remove ${model.name}`}
-                      onClick={() => onRemoveModel(model)}
-                    >
-                      <Trash2 data-icon="inline-start" />
-                      Remove
-                    </Button>
-                  }
-                />
-              ))}
+      {addOpen ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back to listed models"
+              onClick={() => setAddOpen(false)}
+            >
+              <ArrowLeft />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">Add models</p>
+              <p className="text-xs text-pretty text-muted-foreground">
+                Pick models from your configured providers. Opening this view
+                loads{" "}
+                <span className="font-medium">GET {"{baseUrl}/models"}</span>{" "}
+                and lists the models that provider can call.
+              </p>
             </div>
-          ))
-        )}
-      </div>
-
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add models</DialogTitle>
-            <DialogDescription>
-              Pick models from your configured providers. Opening this dialog
-              loads{" "}
-              <span className="font-medium">GET {"{baseUrl}/models"}</span> and
-              lists the models that provider can call.
-            </DialogDescription>
-          </DialogHeader>
+          </div>
 
           <div className="flex flex-wrap gap-1.5">
             {discoverableProviders.map((providerId) => {
@@ -372,7 +296,7 @@ export function ModelDefaultsSection({
             />
           </InputGroup>
 
-          <div className="max-h-72 overflow-y-auto">
+          <div className="max-h-52 overflow-y-auto">
             {groupedCandidates.length === 0 ? (
               <p className="py-6 text-center text-xs text-pretty text-muted-foreground">
                 {candidateModels.length === 0 && !normalizedAddFilter
@@ -451,8 +375,93 @@ export function ModelDefaultsSection({
               ) : null}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <InputGroup className="flex-1">
+              <InputGroupAddon align="inline-start">
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                aria-label="Search listed models"
+                value={modelFilter}
+                onChange={(event) => onModelFilterChange(event.target.value)}
+                placeholder="Search listed models…"
+                disabled={disabled || listedModels.length === 0}
+              />
+            </InputGroup>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={openAddDialog}
+            >
+              <Plus data-icon="inline-start" />
+              Add models
+            </Button>
+          </div>
+
+          <div
+            className="flex flex-col gap-3"
+            data-testid="runtime-models-list"
+          >
+            {emptyMessage ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <p className="px-1 text-center text-xs text-pretty text-muted-foreground">
+                  {emptyMessage}
+                </p>
+                {!normalizedFilter ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={openAddDialog}
+                  >
+                    <Plus data-icon="inline-start" />
+                    Add models
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              groupedListed.map(([provider, models]) => (
+                <div key={provider} className="flex flex-col gap-1.5">
+                  <div className="px-1 text-xs font-medium text-muted-foreground">
+                    {providerLabel(provider)}
+                  </div>
+                  {models.map((model) => (
+                    <ItemRow
+                      key={model.id}
+                      icon={<ProviderBrandIcon provider={model.provider} />}
+                      title={model.name}
+                      subtitle={`${providerLabel(model.provider)} · ${model.modelId}`}
+                      trailing={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            HIT_AREA_EXPAND_DENSE_CLASS,
+                            "h-7 px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 hover:text-destructive active:scale-[0.96]"
+                          )}
+                          disabled={disabled}
+                          aria-label={`Remove ${model.name}`}
+                          onClick={() => onRemoveModel(model)}
+                        >
+                          <Trash2 data-icon="inline-start" />
+                          Remove
+                        </Button>
+                      }
+                    />
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </SettingsPane>
   )
 }

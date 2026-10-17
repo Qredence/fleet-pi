@@ -1,4 +1,5 @@
 import { dirname, join, relative } from "node:path"
+import { isCloudflareDeployment } from "../deployment/environment"
 import {
   WORKSPACE_PROJECTION_DATABASE_FILENAME,
   initializeWorkspaceProjection,
@@ -212,7 +213,11 @@ export async function bootstrapAgentWorkspace(
     (directory) => directory.path === toWorkspaceProjectPath("indexes")
   )
 
-  if (projectionDirectory?.exists) {
+  if (
+    projectionDirectory?.exists &&
+    !context.workspaceFS &&
+    !isCloudflareDeployment()
+  ) {
     try {
       initializeWorkspaceProjection(context)
     } catch (error) {

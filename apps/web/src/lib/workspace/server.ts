@@ -17,9 +17,41 @@ import type {
 
 const WORKSPACE_PREVIEW_MAX_BYTES = 256 * 1024
 const BINARY_SAMPLE_BYTES = 8 * 1024
+const SANDBOX_BOOTSTRAP_TTL_MS = 30_000
+const sandboxBootstrapCache = new WeakMap<
+  WorkspaceFS,
+  {
+    expiresAt: number
+    promise: Promise<Awaited<ReturnType<typeof bootstrapAgentWorkspace>>>
+  }
+>()
 
 export async function ensureAgentWorkspace(context: AppRuntimeContext) {
-  return bootstrapAgentWorkspace(context)
+  const fs = context.workspaceFS
+  if (!fs) {
+    return bootstrapAgentWorkspace(context)
+  }
+  const now = Date.now()
+  const cached = sandboxBootstrapCache.get(fs)
+  if (cached && now < cached.expiresAt) {
+    return cached.promise
+  }
+  const promise = bootstrapAgentWorkspace(context)
+    .then((health) => {
+      if (!health.workspace.available) {
+        sandboxBootstrapCache.delete(fs)
+      }
+      return health
+    })
+    .catch((error: unknown) => {
+      sandboxBootstrapCache.delete(fs)
+      throw error
+    })
+  sandboxBootstrapCache.set(fs, {
+    expiresAt: now + SANDBOX_BOOTSTRAP_TTL_MS,
+    promise,
+  })
+  return promise
 }
 
 export async function loadAgentWorkspaceTree(

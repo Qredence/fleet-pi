@@ -31,6 +31,18 @@ export interface UserSandboxContextDeps {
   executeCommand?: typeof defaultExecuteCommand
 }
 
+const sandboxWorkspaceFsCache = new WeakMap<Sandbox, WorkspaceFS>()
+
+export function getSandboxWorkspaceFS(sandbox: Sandbox): WorkspaceFS {
+  const cached = sandboxWorkspaceFsCache.get(sandbox)
+  if (cached) return cached
+  const created = createSandboxWorkspaceFS({
+    executeCommand: (cmd, cwd) => defaultExecuteCommand(sandbox, cmd, cwd),
+  })
+  sandboxWorkspaceFsCache.set(sandbox, created)
+  return created
+}
+
 export async function resolveUserSandboxContext(
   params: ResolveUserSandboxContextParams,
   deps: UserSandboxContextDeps = {}
@@ -47,9 +59,11 @@ export async function resolveUserSandboxContext(
 
   await executeCommand(sandbox, `mkdir -p ${SANDBOX_WORKSPACE_ROOT}`)
 
-  const workspaceFS = createSandboxWorkspaceFS({
-    executeCommand: (cmd, cwd) => executeCommand(sandbox, cmd, cwd),
-  })
+  const workspaceFS = deps.executeCommand
+    ? createSandboxWorkspaceFS({
+        executeCommand: (cmd, cwd) => executeCommand(sandbox, cmd, cwd),
+      })
+    : getSandboxWorkspaceFS(sandbox)
 
   return {
     workspaceRoot: SANDBOX_WORKSPACE_ROOT,
