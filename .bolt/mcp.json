@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "context7": {
+      "enabled": true
+    },
+    "wonder": {
+      "enabled": false
+    },
+    "neon": {
+      "enabled": true
+    }
+  }
+}
