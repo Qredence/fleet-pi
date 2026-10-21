@@ -67,36 +67,34 @@ function calculateDiffStats(oldString: string, newString: string) {
   return { addedLines, removedLines }
 }
 
+function normalizeCommandForDisplay(command: string) {
+  let normalized = command.replace(/\\\s*\n\s*/g, " ").trim()
+  normalized = normalized.replace(
+    /\/(?:Users|home|root)\/[^\s"']+/g,
+    (match: string) => getDisplayPath(match)
+  )
+  return normalized.length > 50 ? normalized.slice(0, 47) + "..." : normalized
+}
+
+const taskToolMeta: ToolMeta = {
+  icon: Sparkles,
+  title: (part) => {
+    const isPending =
+      part.state !== "output-available" && part.state !== "output-error"
+    const subagentType = part.input?.subagent_type || "Agent"
+    return isPending ? `Running ${subagentType}` : `${subagentType} completed`
+  },
+  subtitle: (part) => {
+    const desc = part.input?.description || ""
+    return desc.length > 50 ? desc.slice(0, 47) + "..." : desc
+  },
+  variant: "simple",
+}
+
 export const toolRegistry: Record<string, ToolMeta> = {
-  "tool-Task": {
-    icon: Sparkles,
-    title: (part) => {
-      const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      const subagentType = part.input?.subagent_type || "Agent"
-      return isPending ? `Running ${subagentType}` : `${subagentType} completed`
-    },
-    subtitle: (part) => {
-      const desc = part.input?.description || ""
-      return desc.length > 50 ? desc.slice(0, 47) + "..." : desc
-    },
-    variant: "simple",
-  },
+  "tool-Task": taskToolMeta,
   // Agent tool — renamed from "Task" in claude-agent-sdk 0.2.63+
-  "tool-Agent": {
-    icon: Sparkles,
-    title: (part) => {
-      const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      const subagentType = part.input?.subagent_type || "Agent"
-      return isPending ? `Running ${subagentType}` : `${subagentType} completed`
-    },
-    subtitle: (part) => {
-      const desc = part.input?.description || ""
-      return desc.length > 50 ? desc.slice(0, 47) + "..." : desc
-    },
-    variant: "simple",
-  },
+  "tool-Agent": taskToolMeta,
   "tool-Skill": {
     icon: Sparkles,
     title: () => "Skill",
@@ -197,14 +195,7 @@ export const toolRegistry: Record<string, ToolMeta> = {
     subtitle: (part) => {
       const command = part.input?.command || ""
       if (!command) return ""
-      let normalized = command.replace(/\\\s*\n\s*/g, " ").trim()
-      normalized = normalized.replace(
-        /\/(?:Users|home|root)\/[^\s"']+/g,
-        (match: string) => getDisplayPath(match)
-      )
-      return normalized.length > 50
-        ? normalized.slice(0, 47) + "..."
-        : normalized
+      return normalizeCommandForDisplay(command)
     },
     variant: "simple",
   },
@@ -308,14 +299,7 @@ export const toolRegistry: Record<string, ToolMeta> = {
       if (typeof output === "string" && output.trim()) return output.trim()
       const command = part.input?.command || ""
       if (!command) return ""
-      let normalized = command.replace(/\\\s*\n\s*/g, " ").trim()
-      normalized = normalized.replace(
-        /\/(?:Users|home|root)\/[^\s"']+/g,
-        (match: string) => getDisplayPath(match)
-      )
-      return normalized.length > 50
-        ? normalized.slice(0, 47) + "..."
-        : normalized
+      return normalizeCommandForDisplay(command)
     },
     variant: "simple",
   },

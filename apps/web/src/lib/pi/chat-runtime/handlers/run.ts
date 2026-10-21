@@ -4,10 +4,8 @@ import {
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import {
-  ProvenanceQueryApiError,
-  createProvenanceErrorResponse,
   createRunDetailResponse,
-  createUnexpectedProvenanceErrorResponse,
+  respondWithProvenanceError,
 } from "@/lib/pi/provenance-query"
 
 export async function chatRunHandler(request: Request, userId?: string) {
@@ -23,16 +21,7 @@ export async function chatRunHandler(request: Request, userId?: string) {
   try {
     return Response.json(createRunDetailResponse(context, runId ?? null))
   } catch (error) {
-    if (error instanceof ProvenanceQueryApiError) {
-      return Response.json(
-        createProvenanceErrorResponse(error.code, error.message),
-        { status: error.status }
-      )
-    }
-
-    return Response.json(createUnexpectedProvenanceErrorResponse(error), {
-      status: 500,
-    })
+    return respondWithProvenanceError(error)
   }
 }
 

@@ -22,14 +22,15 @@ export type DaytonaSecretsSyncResult = {
   mode: DaytonaSecretsSyncMode
 }
 
-export function fingerprintDaytonaSecretsConfig(
-  configured: Map<string, string>
-): string {
-  const occBaseUrl = configured.get(
-    OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
-  )
-  const fingerprintParts: Array<string> = []
-
+/**
+ * Yields every configured provider that can use Daytona Secrets, with its
+ * trimmed value and secret hosts. Shared by the fingerprint and sync passes so
+ * both apply the same eligibility rules in the same order.
+ */
+function* eligibleProviderSecrets(
+  configured: Map<string, string>,
+  occBaseUrl: string | undefined
+) {
   for (const provider of KNOWN_PROVIDERS) {
     if (!isDaytonaSecretsEligibleProvider(provider, { occBaseUrl })) {
       continue
@@ -38,6 +39,22 @@ export function fingerprintDaytonaSecretsConfig(
     if (!value) continue
     const hosts = resolveDaytonaSecretHosts(provider.id, { occBaseUrl })
     if (!hosts?.length) continue
+    yield { provider, value, hosts }
+  }
+}
+
+export function fingerprintDaytonaSecretsConfig(
+  configured: Map<string, string>
+): string {
+  const occBaseUrl = configured.get(
+    OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID
+  )
+  const fingerprintParts: Array<string> = []
+
+  for (const { provider, value } of eligibleProviderSecrets(
+    configured,
+    occBaseUrl
+  )) {
     fingerprintParts.push(`${provider.id}:${hashValue(value)}`)
   }
 
@@ -81,17 +98,10 @@ export async function syncDaytonaSecrets(
   )
   const secrets: Record<string, string> = {}
 
-  for (const provider of KNOWN_PROVIDERS) {
-    if (!isDaytonaSecretsEligibleProvider(provider, { occBaseUrl })) {
-      continue
-    }
-
-    const value = configured.get(provider.id)?.trim()
-    if (!value) continue
-
-    const hosts = resolveDaytonaSecretHosts(provider.id, { occBaseUrl })
-    if (!hosts?.length) continue
-
+  for (const { provider, value, hosts } of eligibleProviderSecrets(
+    configured,
+    occBaseUrl
+  )) {
     const name = daytonaSecretName(provider.id)
     try {
       await upsertSecret(client, existingByName, {

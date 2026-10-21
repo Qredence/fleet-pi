@@ -3,11 +3,10 @@ import { isForbiddenSessionError } from "./chat-fetch"
 import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
 import type { ChatClient } from "./chat-client"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
+import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 import type { QueueState } from "./chat-fetch"
 
-export type ForbiddenSessionRecoveryDeps = {
-  client: ChatClient
-  refreshSessions: () => Promise<void>
+export type ChatStateSetters = {
   setActivityLabelSynced: (label: string | undefined) => void
   setError: (error: Error | null) => void
   setMessagesSynced: (
@@ -16,11 +15,13 @@ export type ForbiddenSessionRecoveryDeps = {
   ) => void
   setPlanLabelSynced: (label: string | undefined) => void
   setQueueSynced: (queue: QueueState) => void
-  setSessionMetadataSynced: (metadata: {
-    sessionFile?: string
-    sessionId?: string
-  }) => void
+  setSessionMetadataSynced: (metadata: ChatSessionMetadata) => void
   setStatus: (status: ChatStatus) => void
+}
+
+export type ForbiddenSessionRecoveryDeps = ChatStateSetters & {
+  client: ChatClient
+  refreshSessions: () => Promise<void>
 }
 
 export async function runForbiddenSessionRecovery(
@@ -66,4 +67,21 @@ export async function tryRecoverForbiddenSession(
   }
 
   return true
+}
+
+export async function failChatRequest(
+  error: unknown,
+  recoverFromForbiddenSession: () => Promise<void>,
+  deps: Pick<ForbiddenSessionRecoveryDeps, "setError" | "setStatus">
+) {
+  if (
+    await tryRecoverForbiddenSession(error, recoverFromForbiddenSession, deps)
+  ) {
+    return
+  }
+
+  const nextError = error instanceof Error ? error : new Error(String(error))
+  deps.setError(nextError)
+  deps.setStatus("error")
+  toast.error(nextError.message)
 }

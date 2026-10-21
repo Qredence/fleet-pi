@@ -1,40 +1,21 @@
 import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
+import {
+  requireChatDatabaseOnHost,
+  requireEncryptionSecret,
+} from "./chat-postgres-guards"
 import type { PostgresQueryClient } from "./pi-session-mirror"
-import { isHostedDeployment } from "@/lib/deployment/environment"
+
+export { ChatPostgresUnavailableError } from "./chat-postgres-guards"
 
 export type ProviderAuthType = "apiKey" | "oauth"
-
-export class ChatPostgresUnavailableError extends Error {
-  constructor(
-    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Cloudflare."
-  ) {
-    super(message)
-    this.name = "ChatPostgresUnavailableError"
-  }
-}
 
 type ProviderRow = {
   provider_id: string
   encrypted_key: string
   auth_type: ProviderAuthType
   encrypted_payload: string | null
-}
-
-function requireChatDatabaseOnHost() {
-  if (isHostedDeployment() && !isChatDatabaseConfigured()) {
-    throw new ChatPostgresUnavailableError()
-  }
-}
-
-function requireEncryptionSecret() {
-  if (!process.env.BETTER_AUTH_SECRET) {
-    throw new Error(
-      "BETTER_AUTH_SECRET is missing, cannot encrypt user provider secrets"
-    )
-  }
-  return process.env.BETTER_AUTH_SECRET
 }
 
 async function withUserProvidersTransaction(

@@ -3,6 +3,26 @@ import { join } from "node:path"
 import { writeFileAtomic } from "./fs-atomic"
 
 /**
+ * Read an env file, treating a missing file as empty content. Any other read
+ * error is rethrown so callers keep surfacing real filesystem failures.
+ */
+async function readEnvFileOrEmpty(filePath: string): Promise<string> {
+  try {
+    return await readFile(filePath, "utf8")
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code !== "ENOENT"
+    ) {
+      throw error
+    }
+    return ""
+  }
+}
+
+/**
  * Safely updates or appends a key-value pair to .env.local
  * and sets it in the current process.env.
  */
@@ -27,19 +47,7 @@ export async function updateEnvVars(
   if (keys.length === 0) return
 
   const envPath = join(projectRoot, ".env.local")
-  let content = ""
-  try {
-    content = await readFile(envPath, "utf8")
-  } catch (error: unknown) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code: string }).code !== "ENOENT"
-    ) {
-      throw error
-    }
-  }
+  const content = await readEnvFileOrEmpty(envPath)
 
   const escapeEnvValue = (v: string): string =>
     v
@@ -89,19 +97,7 @@ export async function removeEnvVars(projectRoot: string, keys: Array<string>) {
   if (uniqueKeys.length === 0) return
 
   const envPath = join(projectRoot, ".env.local")
-  let content = ""
-  try {
-    content = await readFile(envPath, "utf8")
-  } catch (error: unknown) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code: string }).code !== "ENOENT"
-    ) {
-      throw error
-    }
-  }
+  const content = await readEnvFileOrEmpty(envPath)
 
   if (content) {
     const keyPattern = new RegExp(

@@ -44,6 +44,35 @@ export type AccountMenuUser = {
   email?: string | null
 }
 
+function DocumentationMenuItem({ className }: { className: string }) {
+  return (
+    <a
+      href={DOCUMENTATION_URL}
+      target="_blank"
+      rel="noreferrer"
+      className={className}
+    >
+      <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
+      <span className="truncate">Documentation</span>
+    </a>
+  )
+}
+
+function SettingsMenuItem({
+  className,
+  onOpenSettings,
+}: {
+  className: string
+  onOpenSettings: () => void
+}) {
+  return (
+    <button type="button" className={className} onClick={onOpenSettings}>
+      <Settings className="size-3.5 shrink-0 text-foreground/50" />
+      <span className="truncate">Settings</span>
+    </button>
+  )
+}
+
 export function AccountMenu({
   user,
   onSignOut,
@@ -82,24 +111,12 @@ export function AccountMenu({
               <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
               <span className="truncate">Account</span>
             </button>
-            <a
-              href={DOCUMENTATION_URL}
-              target="_blank"
-              rel="noreferrer"
-              className={menuItemClass}
-            >
-              <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-              <span className="truncate">Documentation</span>
-            </a>
+            <DocumentationMenuItem className={menuItemClass} />
             {onOpenSettings && (
-              <button
-                type="button"
+              <SettingsMenuItem
                 className={menuItemClass}
-                onClick={onOpenSettings}
-              >
-                <Settings className="size-3.5 shrink-0 text-foreground/50" />
-                <span className="truncate">Settings</span>
-              </button>
+                onOpenSettings={onOpenSettings}
+              />
             )}
             <button
               type="button"
@@ -116,24 +133,12 @@ export function AccountMenu({
               <LogIn className="size-3.5 shrink-0 text-foreground/50" />
               <span className="truncate">Sign in</span>
             </button>
-            <a
-              href={DOCUMENTATION_URL}
-              target="_blank"
-              rel="noreferrer"
-              className={menuItemClass}
-            >
-              <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
-              <span className="truncate">Documentation</span>
-            </a>
+            <DocumentationMenuItem className={menuItemClass} />
             {onOpenSettings && (
-              <button
-                type="button"
+              <SettingsMenuItem
                 className={menuItemClass}
-                onClick={onOpenSettings}
-              >
-                <Settings className="size-3.5 shrink-0 text-foreground/50" />
-                <span className="truncate">Settings</span>
-              </button>
+                onOpenSettings={onOpenSettings}
+              />
             )}
           </>
         )}

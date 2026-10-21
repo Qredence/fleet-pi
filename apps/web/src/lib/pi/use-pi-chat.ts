@@ -5,8 +5,8 @@ import { isPlanDecisionToolCall } from "./plan-state"
 import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
 import { getChatSessionScope } from "./use-chat-storage"
 import {
+  failChatRequest,
   runForbiddenSessionRecovery,
-  tryRecoverForbiddenSession,
 } from "./use-pi-chat-forbidden-session"
 import { usePiChatMessaging } from "./use-pi-chat-messaging"
 import {
@@ -247,19 +247,10 @@ export function usePiChat(
 
     void loadActiveSession().catch(async (err) => {
       if (cancelled) return
-      if (
-        await tryRecoverForbiddenSession(err, recoverFromForbiddenSession, {
-          setError,
-          setStatus,
-        })
-      ) {
-        return
-      }
-
-      const nextError = err instanceof Error ? err : new Error(String(err))
-      setError(nextError)
-      setStatus("error")
-      toast.error(nextError.message)
+      await failChatRequest(err, recoverFromForbiddenSession, {
+        setError,
+        setStatus,
+      })
     })
 
     return () => {
@@ -352,18 +343,10 @@ export function usePiChat(
         toast.success(notice)
         await refreshSessions()
       } catch (err) {
-        if (
-          await tryRecoverForbiddenSession(err, recoverFromForbiddenSession, {
-            setError,
-            setStatus,
-          })
-        ) {
-          return
-        }
-        const nextError = err instanceof Error ? err : new Error(String(err))
-        setError(nextError)
-        setStatus("error")
-        toast.error(nextError.message)
+        await failChatRequest(err, recoverFromForbiddenSession, {
+          setError,
+          setStatus,
+        })
       }
     },
     [

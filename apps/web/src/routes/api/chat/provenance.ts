@@ -1,10 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { resolveAppRuntimeContext } from "../../../lib/app-runtime"
 import {
-  ProvenanceQueryApiError,
   createPathProvenanceResponse,
-  createProvenanceErrorResponse,
-  createUnexpectedProvenanceErrorResponse,
+  respondWithProvenanceError,
 } from "../../../lib/pi/provenance-query"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
@@ -27,16 +25,7 @@ export async function chatProvenanceHandler(request: Request, userId?: string) {
       )
     )
   } catch (error) {
-    if (error instanceof ProvenanceQueryApiError) {
-      return Response.json(
-        createProvenanceErrorResponse(error.code, error.message),
-        { status: error.status }
-      )
-    }
-
-    return Response.json(createUnexpectedProvenanceErrorResponse(error), {
-      status: 500,
-    })
+    return respondWithProvenanceError(error)
   }
 }
 

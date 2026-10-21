@@ -12,9 +12,14 @@ import {
 import { decryptString, encryptString } from "../auth/crypto"
 import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
+import {
+  requireChatDatabaseOnHost,
+  requireEncryptionSecret,
+} from "./chat-postgres-guards"
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
-import { isHostedDeployment } from "@/lib/deployment/environment"
+
+export { ChatPostgresUnavailableError } from "./chat-postgres-guards"
 
 /**
  * A named OpenAI Chat Completions-compatible provider instance. The API key is
@@ -43,15 +48,6 @@ export type OccInstanceInput = Omit<OccInstance, "modelId"> & {
   modelId?: string
 }
 
-export class ChatPostgresUnavailableError extends Error {
-  constructor(
-    message = "FLEET_PI_CHAT_DATABASE_URL is required for encrypted provider storage on Cloudflare."
-  ) {
-    super(message)
-    this.name = "ChatPostgresUnavailableError"
-  }
-}
-
 type OccInstanceMeta = {
   displayName: string
   baseUrl: string
@@ -66,32 +62,6 @@ type OccInstanceMeta = {
 type OccInstanceMetaRow = {
   provider_id: string
   encrypted_payload: string | null
-}
-
-/**
- * Ensures the chat database is configured when running on Cloudflare.
- *
- * @throws `ChatPostgresUnavailableError` if running on Cloudflare without chat database configuration
- */
-function requireChatDatabaseOnHost() {
-  if (isHostedDeployment() && !isChatDatabaseConfigured()) {
-    throw new ChatPostgresUnavailableError()
-  }
-}
-
-/**
- * Retrieves the secret used to encrypt user provider credentials.
- *
- * @returns The configured encryption secret
- * @throws Error if `BETTER_AUTH_SECRET` is not configured
- */
-function requireEncryptionSecret() {
-  if (!process.env.BETTER_AUTH_SECRET) {
-    throw new Error(
-      "BETTER_AUTH_SECRET is missing, cannot encrypt user provider secrets"
-    )
-  }
-  return process.env.BETTER_AUTH_SECRET
 }
 
 /**
