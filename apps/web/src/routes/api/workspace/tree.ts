@@ -1,22 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { getResponseStatus } from "@/lib/app-runtime"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { getErrorMessage } from "@/lib/pi/server"
+import { withWorkspaceQueryHandler } from "@/lib/workspace/workspace-route-handler"
 import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
-import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
-export async function workspaceTreeHandler(request: Request) {
-  return withAuthenticatedChatRequest(request, async ({ authSession }) => {
-    try {
-      const context = await resolveWorkspaceContext(request, authSession?.user)
-      return Response.json(await loadAgentWorkspaceTree(context))
-    } catch (error) {
-      return Response.json(
-        { message: getErrorMessage(error) },
-        { status: getResponseStatus(error) }
-      )
-    }
-  })
+export function workspaceTreeHandler(request: Request) {
+  return withWorkspaceQueryHandler(request, async (context) =>
+    Response.json(await loadAgentWorkspaceTree(context))
+  )
 }
 
 export const Route = createFileRoute("/api/workspace/tree")({

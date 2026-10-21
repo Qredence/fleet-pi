@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { chatClient } from "./chat-client"
+import type { QueryClient } from "@tanstack/react-query"
 import type {
   ChatProviderRemoveRequest,
   ChatProviderRemoveResponse,
@@ -91,6 +92,16 @@ export function useWorkspaceTree(options?: { enabled?: boolean }) {
   })
 }
 
+function applyProviderMutation(
+  queryClient: QueryClient,
+  data: ChatProviderUpdateResponse
+) {
+  queryClient.setQueryData(keys.providers, { providers: data.providers })
+  void queryClient.invalidateQueries({ queryKey: keys.models })
+  void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
+  void queryClient.invalidateQueries({ queryKey: keys.settings })
+}
+
 export function useChatProviders() {
   return useQuery({
     queryKey: keys.providers,
@@ -108,10 +119,7 @@ export function useUpdateChatProvider() {
   >({
     mutationFn: (request) => chatClient.updateProvider(request),
     onSuccess: (data) => {
-      queryClient.setQueryData(keys.providers, { providers: data.providers })
-      void queryClient.invalidateQueries({ queryKey: keys.models })
-      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
-      void queryClient.invalidateQueries({ queryKey: keys.settings })
+      applyProviderMutation(queryClient, data)
     },
   })
 }
@@ -126,10 +134,7 @@ export function useRemoveChatProvider() {
   >({
     mutationFn: (request) => chatClient.removeProvider(request),
     onSuccess: (data) => {
-      queryClient.setQueryData(keys.providers, { providers: data.providers })
-      void queryClient.invalidateQueries({ queryKey: keys.models })
-      void queryClient.invalidateQueries({ queryKey: keys.modelCatalog })
-      void queryClient.invalidateQueries({ queryKey: keys.settings })
+      applyProviderMutation(queryClient, data)
     },
   })
 }

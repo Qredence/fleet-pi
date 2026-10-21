@@ -74,7 +74,7 @@ describe("Workspace API Routes", () => {
       expect(response.status).toBe(500)
 
       const json = await response.json()
-      expect(json.message).toBe("Something went wrong")
+      expect(json.message).toBe("Workspace query failed.")
     })
   })
 

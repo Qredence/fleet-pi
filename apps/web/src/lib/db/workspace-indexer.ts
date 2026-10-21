@@ -224,11 +224,12 @@ async function scanWorkspaceSnapshots(
         parsed,
       })
     } catch (error) {
+      console.error("[workspace] File indexing failed:", error)
       diagnostics.push({
         path: canonicalPath,
         code: "workspace-file-read-failed",
         severity: "error",
-        message: error instanceof Error ? error.message : String(error),
+        message: "Failed to access workspace file.",
       })
     }
   }

@@ -66,6 +66,19 @@ export function createUnexpectedProvenanceErrorResponse(error: unknown) {
   )
 }
 
+export function respondWithProvenanceError(error: unknown) {
+  if (error instanceof ProvenanceQueryApiError) {
+    return Response.json(
+      createProvenanceErrorResponse(error.code, error.message),
+      { status: error.status }
+    )
+  }
+
+  return Response.json(createUnexpectedProvenanceErrorResponse(error), {
+    status: 500,
+  })
+}
+
 export function createProvenanceErrorResponse(
   code: string,
   message: string

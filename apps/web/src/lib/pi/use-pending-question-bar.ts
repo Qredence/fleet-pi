@@ -6,24 +6,24 @@ import type {
   QuestionOption,
 } from "@workspace/hax-design/components/agent-elements/question/question-prompt"
 
+type RawQuestionOption = Partial<QuestionOption>
+
+type RawQuestion = {
+  id?: string
+  prompt?: string
+  title?: string
+  options?: Array<RawQuestionOption>
+  allowOther?: boolean
+  allowCustom?: boolean
+  kind?: QuestionConfig["kind"]
+}
+
 type ToolQuestionPart = {
   type: "tool-Question"
   toolCallId?: string
   state?: string
   input?: {
-    questions?: Array<{
-      id?: string
-      prompt?: string
-      title?: string
-      options?: Array<{
-        value?: string
-        label?: string
-        description?: string
-      }>
-      allowOther?: boolean
-      allowCustom?: boolean
-      kind?: "single" | "multi" | "text"
-    }>
+    questions?: Array<RawQuestion>
   }
   output?: {
     answer?: unknown
@@ -96,20 +96,6 @@ function findPendingQuestionPart(messages: Array<ChatMessageLike>) {
     }
   }
   return undefined
-}
-
-type RawQuestion = {
-  id?: string
-  prompt?: string
-  title?: string
-  options?: Array<{
-    value?: string
-    label?: string
-    description?: string
-  }>
-  allowOther?: boolean
-  allowCustom?: boolean
-  kind?: "single" | "multi" | "text"
 }
 
 function mapToQuestionConfig(raw: RawQuestion): QuestionConfig {

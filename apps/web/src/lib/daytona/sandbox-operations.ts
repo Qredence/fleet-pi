@@ -58,14 +58,22 @@ export function createSandboxBashOperations(
   }
 }
 
-export function createSandboxReadOperations(
+/**
+ * Read and write file operations shared by the read and edit tool adapters.
+ * The edit adapter uses the same three methods, so both adapters build on this.
+ */
+function createSandboxFileOperations(
   sandbox: Sandbox,
   boundRoot?: string
-): ReadOperations {
+): EditOperations {
   return {
     readFile: (absolutePath) => {
       absolutePath = guardPath(absolutePath, boundRoot)
       return downloadFile(sandbox, absolutePath)
+    },
+    writeFile: async (absolutePath, content) => {
+      absolutePath = guardPath(absolutePath, boundRoot)
+      await uploadFile(sandbox, content, absolutePath)
     },
     access: async (absolutePath) => {
       absolutePath = guardPath(absolutePath, boundRoot)
@@ -77,6 +85,14 @@ export function createSandboxReadOperations(
       }
     },
   }
+}
+
+export function createSandboxReadOperations(
+  sandbox: Sandbox,
+  boundRoot?: string
+): ReadOperations {
+  const { readFile, access } = createSandboxFileOperations(sandbox, boundRoot)
+  return { readFile, access }
 }
 
 export function createSandboxWriteOperations(
@@ -107,25 +123,7 @@ export function createSandboxEditOperations(
   sandbox: Sandbox,
   boundRoot?: string
 ): EditOperations {
-  return {
-    readFile: (absolutePath) => {
-      absolutePath = guardPath(absolutePath, boundRoot)
-      return downloadFile(sandbox, absolutePath)
-    },
-    writeFile: async (absolutePath, content) => {
-      absolutePath = guardPath(absolutePath, boundRoot)
-      await uploadFile(sandbox, content, absolutePath)
-    },
-    access: async (absolutePath) => {
-      absolutePath = guardPath(absolutePath, boundRoot)
-      const dir = dirname(absolutePath)
-      const name = absolutePath.slice(dir.length + 1)
-      const entries = await listFiles(sandbox, dir)
-      if (!entries.some((e) => e.name === name)) {
-        throw new Error(`ENOENT: no such file: ${absolutePath}`)
-      }
-    },
-  }
+  return createSandboxFileOperations(sandbox, boundRoot)
 }
 
 export function createSandboxGrepOperations(

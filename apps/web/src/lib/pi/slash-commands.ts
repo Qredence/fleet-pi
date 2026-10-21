@@ -125,6 +125,19 @@ function normalizeSlashCommandName(name: string) {
   return /^[\w.-]+$/.test(normalized) ? normalized : ""
 }
 
+function toSuggestion(
+  name: string,
+  description?: string,
+  argumentHint?: string
+): SlashCommandSuggestion {
+  return {
+    id: name,
+    label: `/${name}`,
+    value: `/${name}${argumentHint ? ` ${argumentHint}` : ""} `,
+    description,
+  }
+}
+
 /**
  * Prefer API command catalog when present; otherwise fall back to builtins
  * (and optional skill/prompt slash commands when enabled).
@@ -141,20 +154,14 @@ export function buildSlashCommands(
   }
 ): Array<SlashCommandSuggestion> {
   if (commandsData && commandsData.commands.length > 0) {
-    return commandsData.commands.map((command) => ({
-      id: command.name,
-      label: `/${command.name}`,
-      value: `/${command.name}${command.argumentHint ? ` ${command.argumentHint}` : ""} `,
-      description: command.description,
-    }))
+    return commandsData.commands.map((command) =>
+      toSuggestion(command.name, command.description, command.argumentHint)
+    )
   }
 
-  const builtins = WEB_BUILTIN_SLASH_COMMANDS.map((command) => ({
-    id: command.name,
-    label: `/${command.name}`,
-    value: `/${command.name}${command.argumentHint ? ` ${command.argumentHint}` : ""} `,
-    description: command.description,
-  }))
+  const builtins = WEB_BUILTIN_SLASH_COMMANDS.map((command) =>
+    toSuggestion(command.name, command.description, command.argumentHint)
+  )
 
   if (!enabled || !resources) return builtins
 
@@ -166,12 +173,7 @@ export function buildSlashCommands(
     .map((resource) => {
       const commandName = normalizeSlashCommandName(resource.name)
       if (!commandName) return null
-      return {
-        id: commandName,
-        label: `/${commandName}`,
-        value: `/${commandName} `,
-        description: resource.description,
-      }
+      return toSuggestion(commandName, resource.description)
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 

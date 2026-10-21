@@ -7,8 +7,8 @@ import {
   searchWorkspaceProjection,
   seedWorkspaceProjectionConnection,
 } from "../db/workspace-projection"
-import { getErrorMessage } from "../pi/server"
 import { loadAgentWorkspaceHealth } from "./bootstrap-agent-workspace"
+import { getSafeWorkspaceErrorMessage } from "./workspace-error-messages"
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
 import type { AppRuntimeContext } from "../app-runtime"
 import type { WorkspaceHealthDiagnostic } from "./bootstrap-agent-workspace"
@@ -131,22 +131,43 @@ export type WorkspaceReindexResponse = WorkspaceProjectionApiBase & {
 }
 
 export class WorkspaceQueryApiError extends RequestContextError {
-  constructor(
-    status: number,
-    readonly body: WorkspaceQueryErrorResponse
-  ) {
-    super(body.message, status)
+  readonly body: WorkspaceQueryErrorResponse
+
+  constructor(status: number, body: WorkspaceQueryErrorResponse) {
+    const message = getSafeWorkspaceErrorMessage(body.message)
+    super(message, status)
+    this.body = {
+      ...body,
+      message,
+      diagnostics: sanitizeDiagnostics(body.diagnostics),
+      ...(body.projection && {
+        projection: {
+          ...body.projection,
+          diagnostics: sanitizeDiagnostics(body.projection.diagnostics),
+        },
+      }),
+    }
   }
+}
+
+function sanitizeDiagnostics(
+  diagnostics: Array<WorkspaceProjectionApiDiagnostic>
+): Array<WorkspaceProjectionApiDiagnostic> {
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    message: getSafeWorkspaceErrorMessage(diagnostic.message),
+  }))
 }
 
 export function createUnexpectedWorkspaceQueryErrorResponse(
   context: AppRuntimeContext,
   error: unknown
 ): WorkspaceQueryErrorResponse {
+  console.error("[workspace] Unexpected query failure:", error)
   return createWorkspaceQueryFailureResponse(
     context,
     "workspace-query-failed",
-    getErrorMessage(error),
+    "Workspace query failed.",
     []
   )
 }
@@ -197,10 +218,11 @@ export async function createWorkspaceReindexResponse(
               : "failed",
         recordedAt: result.recordedAt,
         counts: result.counts,
-        diagnostics: result.diagnostics,
+        diagnostics: sanitizeDiagnostics(result.diagnostics),
       },
     }
   } catch (error) {
+    console.error("[workspace] Reindex failed:", error)
     return {
       status: 503,
       body: {
@@ -214,11 +236,11 @@ export async function createWorkspaceReindexResponse(
           {
             code: "workspace-reindex-failed",
             severity: "error",
-            message: getErrorMessage(error),
+            message: "Workspace reindex failed.",
           },
         ],
         code: "workspace-reindex-failed",
-        message: getErrorMessage(error),
+        message: "Workspace reindex failed.",
       },
     }
   }
@@ -424,19 +446,20 @@ async function openAvailableWorkspaceProjection(context: AppRuntimeContext) {
       workspaceRootId: seeded.workspaceRoot.id,
     }
   } catch (error) {
+    console.error("[workspace] Projection open failed:", error)
     connection.close()
     throw new WorkspaceQueryApiError(
       503,
       createWorkspaceQueryFailureResponse(
         context,
         "workspace-projection-unavailable",
-        getErrorMessage(error),
+        "Workspace projection is unavailable.",
         [
           {
             scope: "projection",
             code: "workspace-projection-open-failed",
             severity: "error",
-            message: getErrorMessage(error),
+            message: "Workspace projection is unavailable.",
           },
         ]
       )
@@ -467,7 +490,7 @@ function createProjectionFailureResponse(
     projection: {
       status: "degraded",
       path: "agent-workspace/indexes",
-      diagnostics,
+      diagnostics: sanitizeDiagnostics(diagnostics),
     },
   }
 }
@@ -483,7 +506,7 @@ function createWorkspaceQueryFailureResponse(
     ok: false,
     code,
     message,
-    diagnostics,
+    diagnostics: sanitizeDiagnostics(diagnostics),
   }
 }
 

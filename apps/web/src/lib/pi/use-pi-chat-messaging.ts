@@ -3,7 +3,8 @@ import { toast } from "sonner"
 import { createTextMessage } from "./chat-message-helpers"
 import { applyChatStreamEvent } from "./chat-stream-state"
 import { hostedWhenBusy } from "./hosted-busy-delivery"
-import { tryRecoverForbiddenSession } from "./use-pi-chat-forbidden-session"
+import { failChatRequest } from "./use-pi-chat-forbidden-session"
+import type { ChatStateSetters } from "./use-pi-chat-forbidden-session"
 import type { MutableRefObject } from "react"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type {
@@ -29,21 +30,8 @@ type PiChatMessagingRefs = {
   sessionMetadataRef: MutableRefObject<ChatSessionMetadata>
 }
 
-type PiChatMessagingSetters = {
-  setActivityLabelSynced: (label: string | undefined) => void
-  setError: (error: Error | null) => void
-  setMessagesSynced: (
-    updater:
-      Array<ChatMessage> | ((current: Array<ChatMessage>) => Array<ChatMessage>)
-  ) => void
-  setPlanLabelSynced: (label: string | undefined) => void
-  setQueueSynced: (queue: QueueState) => void
-  setSessionMetadataSynced: (metadata: ChatSessionMetadata) => void
-  setStatus: (status: ChatStatus) => void
-}
-
 export type UsePiChatMessagingOptions = PiChatMessagingRefs &
-  PiChatMessagingSetters & {
+  ChatStateSetters & {
     client: ChatClient
     hostedAgentOnly?: boolean
     mode: ChatMode
@@ -235,18 +223,10 @@ export function usePiChatMessaging({
         })
       } catch (err) {
         if (controller.signal.aborted) return
-        if (
-          await tryRecoverForbiddenSession(err, recoverFromForbiddenSession, {
-            setError,
-            setStatus,
-          })
-        ) {
-          return
-        }
-        const nextError = err instanceof Error ? err : new Error(String(err))
-        setError(nextError)
-        setStatus("error")
-        toast.error(nextError.message)
+        await failChatRequest(err, recoverFromForbiddenSession, {
+          setError,
+          setStatus,
+        })
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null

@@ -11,6 +11,8 @@ type ChatRouteAuthExpectation = {
 
 const WEB_SRC = join(import.meta.dirname, "../../../")
 
+const CHAT_SESSION_REQUEST_HELPER = "lib/pi/chat-runtime/session-request.ts"
+
 const CHAT_ROUTE_AUTH_MATRIX: Array<ChatRouteAuthExpectation> = [
   {
     route: "POST /api/chat",
@@ -119,9 +121,17 @@ describe("chat route auth matrix", () => {
       expect(source).toContain("withAuthenticatedChatRequest")
       if (ownershipWhenSessionPresent) {
         expect(source).toMatch(
-          /enforceChatSessionOwnership|enforceRunOwnership|fetchUserSessionIds/
+          /enforceChatSessionOwnership|enforceRunOwnership|fetchUserSessionIds|authorizeChatSessionRequest/
         )
       }
     }
   )
+
+  it("the shared chat session request helper enforces ownership", () => {
+    const source = readFileSync(
+      join(WEB_SRC, CHAT_SESSION_REQUEST_HELPER),
+      "utf8"
+    )
+    expect(source).toContain("enforceChatSessionOwnership")
+  })
 })

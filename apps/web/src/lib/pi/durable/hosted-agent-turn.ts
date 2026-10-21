@@ -247,6 +247,23 @@ export async function readHostedDurableSession(
   }
 }
 
+/**
+ * Resolve the user's hosted durable namespace stub, or `undefined` when the
+ * Durable Object binding is not present on this deployment.
+ */
+function getDurableStub(userId: string) {
+  const namespace = readDurableNamespace()
+  if (!namespace) return undefined
+  return namespace.getByName(userPiDurableName(userId))
+}
+
+function durableRuntimeUnavailableResponse(): Response {
+  return Response.json(
+    { message: "Hosted agent runtime is unavailable." },
+    { status: 503 }
+  )
+}
+
 export async function forkHostedConversation(
   userId: string,
   sessionId: string
@@ -257,14 +274,8 @@ export async function forkHostedConversation(
       { status: 400 }
     )
   }
-  const namespace = readDurableNamespace()
-  if (!namespace) {
-    return Response.json(
-      { message: "Hosted agent runtime is unavailable." },
-      { status: 503 }
-    )
-  }
-  const stub = namespace.getByName(userPiDurableName(userId))
+  const stub = getDurableStub(userId)
+  if (!stub) return durableRuntimeUnavailableResponse()
   return stub.fetch(
     new Request("https://user-pi-durable/fork", {
       method: "POST",
@@ -277,14 +288,8 @@ export async function forkHostedConversation(
 }
 
 export async function abortHostedAgentTurn(userId: string): Promise<Response> {
-  const namespace = readDurableNamespace()
-  if (!namespace) {
-    return Response.json(
-      { message: "Hosted agent runtime is unavailable." },
-      { status: 503 }
-    )
-  }
-  const stub = namespace.getByName(userPiDurableName(userId))
+  const stub = getDurableStub(userId)
+  if (!stub) return durableRuntimeUnavailableResponse()
   return stub.fetch(
     new Request("https://user-pi-durable/agent/abort", { method: "POST" })
   )

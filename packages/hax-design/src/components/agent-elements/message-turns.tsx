@@ -165,8 +165,7 @@ export const AssistantTurn = memo(function AssistantTurn({
   )
 })
 
-type BuildAssistantElementsOptions = {
-  messageId: string
+type AssistantRenderOptions = {
   isLast: boolean
   isStreaming: boolean
   suppressQuestionTool: boolean
@@ -174,6 +173,14 @@ type BuildAssistantElementsOptions = {
   TextRendererComponent: React.ComponentType<TextRendererComponentProps>
   toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
   onOpenUIAction?: (message: string) => void
+}
+
+type BuildAssistantElementsOptions = AssistantRenderOptions & {
+  messageId: string
+}
+
+type AssistantPartsProps = AssistantRenderOptions & {
+  msg: ChatMessage
 }
 
 /**
@@ -317,16 +324,7 @@ function AssistantParts({
   TextRendererComponent,
   toolRenderers,
   onOpenUIAction,
-}: {
-  msg: ChatMessage
-  isLast: boolean
-  isStreaming: boolean
-  suppressQuestionTool: boolean
-  ToolRendererComponent: React.ComponentType<ToolRendererProps>
-  TextRendererComponent: React.ComponentType<TextRendererComponentProps>
-  toolRenderers?: Record<string, React.ComponentType<CustomToolRendererProps>>
-  onOpenUIAction?: (message: string) => void
-}) {
+}: AssistantPartsProps) {
   const parts = useMemo(
     () => normalizeAssistantToolParts(msg.parts ?? []),
     [msg.parts]

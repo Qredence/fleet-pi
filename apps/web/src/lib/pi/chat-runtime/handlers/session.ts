@@ -1,18 +1,14 @@
 import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { wrapApiHandler } from "@/lib/api-utils"
 import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { deleteOwnedPiSession } from "@/lib/db/pi-session-deletion"
-import { hydrateChatSession } from "@/lib/pi/server"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
 import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
-import {
-  deleteHostedDurableSession,
-  readHostedDurableSession,
-} from "@/lib/pi/durable/hosted-agent-turn"
+import { deleteHostedDurableSession } from "@/lib/pi/durable/hosted-agent-turn"
+import { readOrHydrateSession } from "@/lib/pi/chat-runtime/session-read"
 
 function deleteStatusForReason(reason: string | undefined) {
   switch (reason) {
@@ -44,30 +40,7 @@ export async function getChatSessionHandler(request: Request) {
         return ownership.response
       }
 
-      if (
-        isCloudflareDeployment() &&
-        userId &&
-        isDurableSessionId(metadata.sessionId) &&
-        !metadata.sessionFile
-      ) {
-        const durable = await readHostedDurableSession(
-          userId,
-          metadata.sessionId
-        )
-        if (!durable) {
-          return Response.json(
-            { message: "Session not found" },
-            { status: 404 }
-          )
-        }
-        return Response.json(durable)
-      }
-
-      return Response.json(
-        await hydrateChatSession(resolveAppRuntimeContext(), metadata, {
-          userId,
-        })
-      )
+      return readOrHydrateSession(userId, metadata)
     })
   )
 }
