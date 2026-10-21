@@ -61,10 +61,7 @@ export async function loadAgentWorkspaceTree(
   const diagnostics = collectWorkspaceMessages(health)
 
   if (!health.workspace.available) {
-    const message =
-      diagnostics[0] ??
-      `Cannot create ${context.workspaceRoot}: workspace is unavailable.`
-    throw new RequestContextError(message, 503)
+    throw new RequestContextError("Workspace is unavailable.", 503)
   }
 
   const fs = context.workspaceFS ?? createLocalWorkspaceFS()
@@ -105,9 +102,7 @@ export async function loadAgentWorkspaceFile(
 ): Promise<WorkspaceFileResponse> {
   const health = await ensureAgentWorkspace(context)
   if (!health.workspace.available) {
-    const message =
-      collectWorkspaceMessages(health)[0] ?? "Workspace is unavailable."
-    throw new WorkspaceFileError(message, 503)
+    throw new WorkspaceFileError("Workspace is unavailable.", 503)
   }
 
   if (context.workspaceFS) {
@@ -518,11 +513,4 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error
 }
 
-export class WorkspaceFileError extends Error {
-  constructor(
-    message: string,
-    readonly status: number
-  ) {
-    super(message)
-  }
-}
+export class WorkspaceFileError extends RequestContextError {}

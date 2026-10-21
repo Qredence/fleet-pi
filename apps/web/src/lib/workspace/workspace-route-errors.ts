@@ -3,17 +3,17 @@ import {
   getResponseStatus,
   resolveAppRuntimeContext,
 } from "../app-runtime"
-import { getErrorMessage } from "../pi/server"
 import {
   WorkspaceQueryApiError,
   createUnexpectedWorkspaceQueryErrorResponse,
 } from "./workspace-query"
+import { getSafeWorkspaceErrorMessage } from "./workspace-error-messages"
 import type { AppRuntimeContext } from "../app-runtime"
 
 /**
  * Map a workspace route failure to its HTTP response: typed query errors keep
- * their status and body, context errors expose their message and status, and
- * everything else becomes a 500 with runtime diagnostics.
+ * their status and sanitized body, context errors expose only safe messages,
+ * and everything else becomes a generic 500 with server-side logging.
  */
 export function createWorkspaceRouteErrorResponse(
   error: unknown,
@@ -25,7 +25,7 @@ export function createWorkspaceRouteErrorResponse(
 
   if (error instanceof RequestContextError) {
     return Response.json(
-      { message: getErrorMessage(error) },
+      { message: getSafeWorkspaceErrorMessage(error.message) },
       { status: getResponseStatus(error) }
     )
   }

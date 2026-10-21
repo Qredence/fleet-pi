@@ -5,6 +5,7 @@ import {
   workspaceReindexCsrfHandler,
   workspaceReindexHandler,
 } from "../../../routes/api/workspace/reindex"
+import type * as WorkspaceQuery from "@/lib/workspace/workspace-query"
 
 const { createWorkspaceReindexResponse, getSession, resolveWorkspaceContext } =
   vi.hoisted(() => ({
@@ -21,7 +22,8 @@ vi.mock("@/lib/workspace/workspace-context", () => ({
   resolveWorkspaceContext,
 }))
 
-vi.mock("@/lib/workspace/workspace-query", () => ({
+vi.mock("@/lib/workspace/workspace-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof WorkspaceQuery>()),
   createWorkspaceReindexResponse,
   createUnexpectedWorkspaceQueryErrorResponse: vi.fn(() => ({})),
 }))

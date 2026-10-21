@@ -390,12 +390,13 @@ export function createWorkspaceHealthFailure(
   context: AppRuntimeContext,
   error: unknown
 ): WorkspaceHealthResponse {
+  console.error("[workspace] Health check failed:", error)
   return buildUnavailableHealth(context, false, [
     createDiagnostic(
       "filesystem",
       "workspace-health-unexpected-failure",
       "error",
-      error instanceof Error ? error.message : String(error),
+      "Workspace is unavailable.",
       relative(context.projectRoot, context.workspaceRoot)
     ),
   ])
@@ -799,7 +800,8 @@ function createDiagnostic(
 }
 
 function getPathFailureMessage(error: unknown, path: string) {
-  if (!isNodeError(error)) return `Cannot initialize ${path}: ${String(error)}`
+  console.error("[workspace] Path initialization failed:", error)
+  if (!isNodeError(error)) return `Cannot initialize ${path}.`
   if (error.code === "EROFS") {
     return `Cannot initialize ${path}: filesystem is read-only.`
   }
@@ -812,7 +814,7 @@ function getPathFailureMessage(error: unknown, path: string) {
   if (error.code === "ENOTDIR") {
     return `Cannot initialize ${path}: a parent path is not a directory.`
   }
-  return `Cannot initialize ${path}: ${error.message}`
+  return `Cannot initialize ${path}.`
 }
 
 function normalizeSeedContents(contents: string) {
