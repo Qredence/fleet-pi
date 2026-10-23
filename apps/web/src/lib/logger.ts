@@ -35,8 +35,55 @@ export const redactPaths = [
   '*.*["api-key"]',
 ]
 
+const sensitiveFieldNames = new Set([
+  "password",
+  "token",
+  "apiKey",
+  "secret",
+  "authorization",
+  "Authorization",
+  "api_key",
+  "api-key",
+])
+
+function redactSensitiveFields<T>(
+  value: T,
+  seen = new WeakMap<object, unknown>()
+): T {
+  if (value === null || typeof value !== "object") return value
+
+  const source = value as object
+  const previous = seen.get(source)
+  if (previous !== undefined) return previous as T
+
+  if (Array.isArray(value)) {
+    const redacted: unknown[] = []
+    seen.set(source, redacted)
+    for (const [index, item] of value.entries()) {
+      redacted[index] = redactSensitiveFields(item, seen)
+    }
+    return redacted as T
+  }
+
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) return value
+
+  const redacted = Object.create(prototype) as Record<string, unknown>
+  seen.set(source, redacted)
+  for (const key of Object.keys(value)) {
+    redacted[key] = sensitiveFieldNames.has(key)
+      ? "[Redacted]"
+      : redactSensitiveFields((value as Record<string, unknown>)[key], seen)
+  }
+  return redacted as T
+}
+
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? "info",
+  formatters: {
+    bindings: (bindings) => redactSensitiveFields(bindings),
+    log: (object) => redactSensitiveFields(object),
+  },
   redact: {
     paths: redactPaths,
     censor: "[Redacted]",
