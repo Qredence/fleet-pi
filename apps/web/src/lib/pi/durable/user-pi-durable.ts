@@ -37,7 +37,7 @@ import type {
   SpikeTrace,
 } from "./spike-harness"
 
-export { userPiDurableName, userPiDurableStub } from "./durable-binding"
+export { userPiDurableStub } from "./durable-binding"
 
 export type UserPiDurableStorageOwner = {
   objectId: string
@@ -92,6 +92,7 @@ const DELETED_CONVERSATIONS_KEY = "fleet-pi:deleted-conversations"
 type TurnClaim = {
   kind: "turn"
   phase: "pending" | "active"
+  conversationId: string | undefined
   /** The stream owns release once the response has been returned. */
   handedOff: boolean
   abortController: AbortController
@@ -313,8 +314,14 @@ export class UserPiDurable extends DurableObject {
   async #agentTurnWhileBusy(request: Request): Promise<Response> {
     const body = (await request.json()) as Partial<AgentTurnBody>
     const claim = this.#gate?.kind === "turn" ? this.#gate : undefined
+    const sameConversation =
+      !body.create &&
+      (!body.conversationId ||
+        !claim?.conversationId ||
+        body.conversationId === claim.conversationId)
     if (
       claim?.phase === "active" &&
+      sameConversation &&
       this.#harness &&
       body.prompt &&
       (body.whenBusy === "steer" || body.whenBusy === "followUp")
@@ -354,6 +361,14 @@ export class UserPiDurable extends DurableObject {
         { status: 400 }
       )
     }
+    if (
+      !body.create &&
+      body.conversationId &&
+      (await this.#readDeletedConversations()).has(body.conversationId)
+    ) {
+      return Response.json({ message: "Session not found" }, { status: 404 })
+    }
+    claim.conversationId = body.create ? undefined : body.conversationId
     claim.phase = "active"
     this.#queue = { steering: [], followUp: [] }
     const abortController = claim.abortController
@@ -403,6 +418,7 @@ export class UserPiDurable extends DurableObject {
         const messageId = crypto.randomUUID()
         const runId = crypto.randomUUID()
         const diff = createDurableViewDiff()
+        const seenEntryIds = new Set<string>()
         let baselined = false
         let started = false
         let streamedText = ""
@@ -411,6 +427,15 @@ export class UserPiDurable extends DurableObject {
           : "durable:pending"
         const streamedTools = new Map<string, ChatToolPart>()
         const signal = abortController.signal
+        const flushClearedQueue = () => {
+          if (
+            this.#queue.steering.length > 0 ||
+            this.#queue.followUp.length > 0
+          ) {
+            this.#queue = { steering: [], followUp: [] }
+            send({ type: "queue", steering: [], followUp: [] })
+          }
+        }
         try {
           const result = await harness.runAgentTurn({
             prompt,
@@ -424,7 +449,9 @@ export class UserPiDurable extends DurableObject {
             },
             signal,
             onView: (view) => {
-              sessionId = durableSessionId(String(view.conversation.id))
+              const activeConversationId = String(view.conversation.id)
+              claim.conversationId = activeConversationId
+              sessionId = durableSessionId(activeConversationId)
               if (!started) {
                 started = true
                 send({
@@ -443,8 +470,23 @@ export class UserPiDurable extends DurableObject {
               }
               const events = eventsFromConversationView(view, diff)
               if (!baselined) {
+                for (const entry of view.entries) {
+                  seenEntryIds.add(String(entry.id))
+                }
                 baselined = true
                 return
+              }
+              let sawNewUserEntry = false
+              for (const entry of view.entries) {
+                const entryId = String(entry.id)
+                if (seenEntryIds.has(entryId)) continue
+                seenEntryIds.add(entryId)
+                if (entry.model?.some((message) => message.role === "user")) {
+                  sawNewUserEntry = true
+                }
+              }
+              if (sawNewUserEntry) {
+                flushClearedQueue()
               }
               for (const event of events) {
                 if (event.type === "delta") streamedText += event.text
@@ -458,6 +500,7 @@ export class UserPiDurable extends DurableObject {
               }
             },
           })
+          flushClearedQueue()
           send({
             type: "done",
             runId,
@@ -475,6 +518,7 @@ export class UserPiDurable extends DurableObject {
           })
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") {
+            flushClearedQueue()
             send({
               type: "done",
               runId,
@@ -527,6 +571,11 @@ export class UserPiDurable extends DurableObject {
   async #deleteSession(conversationId: string | null): Promise<Response> {
     if (!conversationId) {
       return Response.json({ message: "Missing conversation" }, { status: 400 })
+    }
+    const active = this.#gate
+    if (active?.kind === "turn" && active.conversationId === conversationId) {
+      active.abortController.abort()
+      await active.settled
     }
     const harness = await this.#requireHarness()
     const existing = await harness.readConversation(conversationId)
@@ -643,6 +692,7 @@ function createTurnClaim(): TurnClaim {
   return {
     kind: "turn",
     phase: "pending",
+    conversationId: undefined,
     handedOff: false,
     abortController: new AbortController(),
     settled,

@@ -122,7 +122,7 @@ export function QuestionTool({ part }: QuestionToolProps) {
     <div className="overflow-hidden rounded-an-tool-border-radius border border-border bg-an-tool-background">
       <div className="flex h-7 items-center justify-between border-b border-border px-3 text-xs text-an-tool-color-muted">
         <div className="inline-flex items-center gap-1.5">
-          <IconMessageCircleQuestion className="h-3.5 w-3.5" />
+          <IconMessageCircleQuestion className="size-3.5" />
           Question
         </div>
         {showNavigation && (
@@ -134,9 +134,9 @@ export function QuestionTool({ part }: QuestionToolProps) {
               className="inline-flex size-5 items-center justify-center rounded-[4px] hover:bg-an-background-secondary disabled:opacity-40"
               aria-label="Previous question"
             >
-              <IconChevronUp className="h-3.5 w-3.5" />
+              <IconChevronUp className="size-3.5" />
             </button>
-            <span>
+            <span className="tabular-nums">
               {clampedIndex} of {totalQuestions}
             </span>
             <button
@@ -146,7 +146,7 @@ export function QuestionTool({ part }: QuestionToolProps) {
               className="inline-flex size-5 items-center justify-center rounded-[4px] hover:bg-an-background-secondary disabled:opacity-40"
               aria-label="Next question"
             >
-              <IconChevronDown className="h-3.5 w-3.5" />
+              <IconChevronDown className="size-3.5" />
             </button>
           </div>
         )}

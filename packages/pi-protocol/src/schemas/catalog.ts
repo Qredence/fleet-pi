@@ -114,6 +114,7 @@ export const ChatProviderInfoSchema = z
     authType: z.enum(["apiKey", "oauth"]).optional(),
     providerFamily: z.string().optional(),
     displayName: z.string().optional(),
+    baseUrl: z.string().max(4096).optional(),
     api: z
       .enum([
         "openai-completions",

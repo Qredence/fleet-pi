@@ -8,15 +8,13 @@ import {
   defineTool,
 } from "@earendil-works/pi-durable"
 import { Type } from "typebox"
-import {
-  agentWorkspaceBashBlock,
-  agentWorkspaceMutationBlock,
-} from "../command-policy"
+import { agentWorkspaceBashBlock } from "../command-policy"
 import { assertHttpsMcpServer, hostedMcpToolName } from "./durable-mcp"
 import { harnessSettingsFromLoop } from "./durable-loop-settings"
 import { selectHostedExtensions } from "./hosted-extensions"
 import {
   hostedBashBlock,
+  hostedPathBlock,
   hostedToolAllowed,
   hostedWriteBlock,
 } from "./hosted-tool-registry"
@@ -119,13 +117,15 @@ export function createScriptedPort(trace: SpikeTrace): SpikeSandboxPort {
   const files = new Map<string, string>([["notes.txt", "notes"]])
   return {
     async read(path) {
+      const pathBlock = hostedPathBlock(path)
+      if (pathBlock) throw new Error(pathBlock)
       trace.reads += 1
       await hangFirst(trace, trace.reads)
       return files.get(path) ?? ""
     },
     write(path, content) {
-      const block = agentWorkspaceMutationBlock(path)
-      if (block) return Promise.reject(new Error(block))
+      const pathBlock = hostedPathBlock(path)
+      if (pathBlock) return Promise.reject(new Error(pathBlock))
       trace.writes += 1
       files.set(path, content)
       return Promise.resolve()
@@ -161,6 +161,8 @@ function sandboxTools(mode: ChatModeRef) {
     replay: "safe",
     parameters: Type.Object({ path: Type.String() }),
     execute: async (args: { path: string }, api: ToolExecutionApi) => {
+      const pathBlock = hostedPathBlock(args.path)
+      if (pathBlock) return blocked(pathBlock)
       const text = await requireEnv(api).readTextFile(args.path, context)
       if (!text.ok) throw new Error(text.error.message)
       return { output: [{ type: "text" as const, text: text.value }] }
@@ -178,6 +180,8 @@ function sandboxTools(mode: ChatModeRef) {
       args: { path: string; pattern?: string },
       api: ToolExecutionApi
     ) => {
+      const pathBlock = hostedPathBlock(args.path)
+      if (pathBlock) return blocked(pathBlock)
       const text = await requireEnv(api).readTextFile(args.path, context)
       if (!text.ok) throw new Error(text.error.message)
       if (!args.pattern) {
@@ -200,13 +204,24 @@ function sandboxTools(mode: ChatModeRef) {
     parameters: Type.Object({
       path: Type.String(),
       content: Type.String(),
+      rationale: Type.Optional(Type.String()),
       confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
-      args: { path: string; content: string; confirm?: boolean },
+      args: {
+        path: string
+        content: string
+        rationale?: string
+        confirm?: boolean
+      },
       api: ToolExecutionApi
     ) => {
-      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
+      const block = hostedWriteBlock(
+        mode.current,
+        args.path,
+        args.confirm,
+        args.rationale
+      )
       if (block) return blocked(block)
       const written = await requireEnv(api).writeFile(
         args.path,
@@ -233,6 +248,7 @@ function sandboxTools(mode: ChatModeRef) {
           })
         )
       ),
+      rationale: Type.Optional(Type.String()),
       confirm: Type.Optional(Type.Boolean()),
     }),
     execute: async (
@@ -242,11 +258,17 @@ function sandboxTools(mode: ChatModeRef) {
         oldText?: string
         newText?: string
         edits?: Array<{ oldText: string; newText: string }>
+        rationale?: string
         confirm?: boolean
       },
       api: ToolExecutionApi
     ) => {
-      const block = hostedWriteBlock(mode.current, args.path, args.confirm)
+      const block = hostedWriteBlock(
+        mode.current,
+        args.path,
+        args.confirm,
+        args.rationale
+      )
       if (block) return blocked(block)
       const env = requireEnv(api)
       const replacements =

@@ -43,6 +43,7 @@ interface TabsSubtleContextValue {
   hoveredIndex: number | null
   selectedIndex: number
   idPrefix: string | undefined
+  renderPanels: boolean
   activeLabel: boolean
   variant: TabsSubtleVariant
   /** Always invoked on tab press, including re-select of the active tab. */
@@ -164,6 +165,8 @@ interface TabsSubtleProps extends Omit<
   selectedIndex: number
   onSelect: (index: number) => void
   idPrefix?: string
+  /** Whether corresponding TabsSubtlePanel elements are rendered in the DOM. Defaults to true. */
+  renderPanels?: boolean
   /** When true, only the selected tab shows its text label. Requires icons on tabs. */
   activeLabel?: boolean
   /** `pill` wraps the list in Fleet header chrome (bg-sidebar + rounded-full track). */
@@ -177,6 +180,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
       selectedIndex,
       onSelect,
       idPrefix,
+      renderPanels = true,
       activeLabel = false,
       variant = "default",
       className,
@@ -233,6 +237,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
           hoveredIndex,
           selectedIndex,
           idPrefix,
+          renderPanels,
           activeLabel,
           variant,
           onSelect,
@@ -326,6 +331,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
       hoveredIndex,
       selectedIndex,
       idPrefix,
+      renderPanels,
       activeLabel,
       variant,
       onSelect,
@@ -386,7 +392,9 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         value={index}
         data-proximity-index={index}
         id={idPrefix ? `${idPrefix}-tab-${index}` : undefined}
-        aria-controls={idPrefix ? `${idPrefix}-panel-${index}` : undefined}
+        aria-controls={
+          idPrefix && renderPanels ? `${idPrefix}-panel-${index}` : undefined
+        }
         aria-label={ariaLabel}
         className={cn(
           "relative z-10 flex cursor-pointer items-center border-none bg-transparent outline-none",

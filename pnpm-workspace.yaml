@@ -95,3 +95,5 @@ minimumReleaseAgeExclude:
   - '@cloudflare/vitest-plugin@1.4.1'
   - miniflare@5.20261006.2-beta
   - wrangler@4.150.0
+  - '@posthog/browser-common@0.9.9'
+  - '@posthog/core@1.60.0'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import pino from "pino"
-import { createRequestLogger } from "../logger"
+import { createRequestLogger, redactPaths } from "../logger"
 
 function buildTestLogger() {
   const logs: Array<Record<string, unknown>> = []
@@ -8,32 +8,7 @@ function buildTestLogger() {
     {
       level: "info",
       redact: {
-        paths: [
-          "password",
-          "*.password",
-          "**.password",
-          "token",
-          "*.token",
-          "**.token",
-          "apiKey",
-          "*.apiKey",
-          "**.apiKey",
-          "secret",
-          "*.secret",
-          "**.secret",
-          "authorization",
-          "*.authorization",
-          "**.authorization",
-          "Authorization",
-          "*.Authorization",
-          "**.Authorization",
-          "api_key",
-          "*.api_key",
-          "**.api_key",
-          "api-key",
-          "*.api-key",
-          "**.api-key",
-        ],
+        paths: redactPaths,
         censor: "[Redacted]",
       },
     },
@@ -85,18 +60,33 @@ describe("logger", () => {
     expect(logs[0].authorization).toBe("[Redacted]")
   })
 
-  it("redacts nested sensitive fields", () => {
+  it("redacts nested sensitive fields across 1 and 2 levels including hyphenated api-key", () => {
     const { instance, logs } = buildTestLogger()
     instance.info(
       {
-        user: { name: "alice", password: "nested-secret" },
+        user: {
+          name: "alice",
+          password: "nested-secret",
+          "api-key": "nested-hyphen-key",
+          credentials: {
+            password: "deep-password",
+            secret: "deep-secret",
+            "api-key": "deep-hyphen-key",
+          },
+        },
         headers: { Authorization: "Bearer xyz" },
       },
       "test"
     )
     const entry = logs[0]
-    expect((entry.user as Record<string, unknown>).password).toBe("[Redacted]")
-    expect((entry.user as Record<string, unknown>).name).toBe("alice")
+    const user = entry.user as Record<string, unknown>
+    const credentials = user.credentials as Record<string, unknown>
+    expect(user.password).toBe("[Redacted]")
+    expect(user["api-key"]).toBe("[Redacted]")
+    expect(user.name).toBe("alice")
+    expect(credentials.password).toBe("[Redacted]")
+    expect(credentials.secret).toBe("[Redacted]")
+    expect(credentials["api-key"]).toBe("[Redacted]")
     expect((entry.headers as Record<string, unknown>).Authorization).toBe(
       "[Redacted]"
     )

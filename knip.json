@@ -21,7 +21,6 @@
       "ignore": ["src/lib/pi/durable/cloudflare-workers-node-stub.ts"],
       "entry": [
         "scripts/**/*.ts",
-        "src/router.tsx",
         "src/routes/__root.tsx",
         "src/routes/**/*.tsx",
         "src/routes/api/**/*.ts",
@@ -30,7 +29,8 @@
         "src/lib/**/*.test.ts",
         "src/lib/**/__tests__/**/*.ts",
         "src/lib/**/*.workers.test.ts",
-        "src/lib/**/*.spec.ts"
+        "src/lib/**/*.spec.ts",
+        "src/routes/**/__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
         "nitro",

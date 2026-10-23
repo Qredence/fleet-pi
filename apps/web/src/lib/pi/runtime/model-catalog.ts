@@ -12,7 +12,7 @@ import {
   reconcileRuntimeOccModel,
 } from "./openai-chat-completions-compat"
 import { resolveDefaultChatModel } from "./default-chat-model"
-import { createSessionServices } from "./session-factory"
+import { applyRuntimeAuth, createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import type {
   AgentSessionRuntime,
@@ -55,7 +55,6 @@ export async function loadChatModels(
     userId: options?.userId,
     projectRoot: context.projectRoot,
   })
-  const { applyRuntimeAuth } = await import("./session-factory")
   await applyRuntimeAuth(services, { userId: options?.userId })
   const available = await services.modelRuntime.getAvailable()
   const availableKeys = new Set(available.map(modelKey))

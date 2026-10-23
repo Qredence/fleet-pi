@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { hostedWhenBusy } from "../hosted-busy-delivery"
 import {
   hostedBashBlock,
+  hostedPathBlock,
   hostedWriteBlock,
 } from "../durable/hosted-tool-registry"
 import { toolsForChatMode } from "../durable/spike-harness"
@@ -39,7 +40,40 @@ describe("hosted mode tools", () => {
       /Confirmation required/
     )
     expect(
+      hostedBashBlock(
+        "harness",
+        "rm agent-workspace/system/identity.md",
+        undefined
+      )
+    ).toMatch(/Confirmation required/)
+    expect(
       hostedBashBlock("harness", "rm system/identity.md", true)
+    ).toBeUndefined()
+  })
+
+  it("enforces workspace path boundaries and rationale requirements in hosted tools", () => {
+    expect(hostedPathBlock("/etc/passwd")).toMatch(/escapes workspace bound/)
+    expect(hostedPathBlock("../../etc/passwd")).toMatch(
+      /escapes workspace bound/
+    )
+    expect(hostedPathBlock("notes.txt")).toBeUndefined()
+    expect(
+      hostedPathBlock("/home/daytona/agent-workspace/scratch/note.md")
+    ).toBeUndefined()
+
+    expect(
+      hostedWriteBlock("agent", "/etc/passwd", undefined, "reason")
+    ).toMatch(/escapes workspace bound/)
+    expect(
+      hostedWriteBlock("agent", "plans/plan.md", undefined, undefined)
+    ).toMatch(/without a rationale/)
+    expect(
+      hostedWriteBlock(
+        "agent",
+        "plans/plan.md",
+        undefined,
+        "Create implementation plan"
+      )
     ).toBeUndefined()
   })
 

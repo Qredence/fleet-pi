@@ -21,10 +21,7 @@ import type {
 } from "@earendil-works/pi-coding-agent"
 import { isEnvVarConfigured } from "@/lib/env-manager"
 
-export {
-  assertSafeOpenAiCompatibleBaseUrl,
-  normalizeOpenAiCompatibleBaseUrl,
-} from "./openai-chat-completions-url"
+export { assertSafeOpenAiCompatibleBaseUrl } from "./openai-chat-completions-url"
 
 const PROVIDER_ID = OPENAI_CHAT_COMPLETIONS_PROVIDER_ID
 const BASE_URL_ENV_VAR = "OPENAI_CHAT_COMPLETIONS_BASE_URL"

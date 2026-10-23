@@ -5,11 +5,10 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import { cloudflare } from "@cloudflare/vite-plugin"
 import { tempoVitePlugin } from "tempo-sdk"
 import viteReact from "@vitejs/plugin-react"
-import viteTsConfigPaths from "vite-tsconfig-paths"
 import tailwindcss from "@tailwindcss/vite"
 import { config as dotenvConfig } from "dotenv"
 import { visualizer } from "rollup-plugin-visualizer"
-import { workerGlobalScopeShims } from "./scripts/cloudflare/worker-global-scope-shims"
+import { workerGlobalScopeShims } from "./scripts/cloudflare/worker-global-scope-shims.ts"
 
 const repoRoot = resolve(import.meta.dirname, "../..")
 
@@ -50,6 +49,9 @@ const config = defineConfig({
   // Env files live at the monorepo root, so load VITE_-prefixed client vars
   // (e.g. VITE_PUBLIC_POSTHOG_KEY) from there instead of apps/web.
   envDir: repoRoot,
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     watch: {
       // Settings → Providers writes .env.local at runtime. Restarting mid-POST
@@ -64,9 +66,6 @@ const config = defineConfig({
     },
   },
   plugins: [
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
     ...(process.env.FLEET_PI_TARGET === "cloudflare"
       ? [
           cloudflare({ viteEnvironment: { name: "ssr" } }),
@@ -75,7 +74,12 @@ const config = defineConfig({
       : [cloudflareWorkersNodeStubPlugin()]),
     tempoVitePlugin(),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart({
+      router: {
+        routeFileIgnorePattern:
+          "(^|/)__tests__(/|$)|\\.(test|spec)\\.(ts|tsx)$",
+      },
+    }),
     viteReact(),
     visualizer({
       filename: "bundle-report/stats.html",

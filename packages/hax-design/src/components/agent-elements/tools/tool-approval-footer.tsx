@@ -11,7 +11,7 @@ export type ToolApprovalFooterProps = ToolApproval & {
   isPending?: boolean
 }
 
-export const ToolApprovalFooter = memo(function ToolApprovalFooter({
+export const ToolApprovalFooter = memo(function ToolApprovalFooterComponent({
   isPending,
   approveLabel,
   rejectLabel,

@@ -124,11 +124,7 @@ export function FileAttachment({
           )}
           onClick={canPreview ? openLightbox : undefined}
         >
-          <img
-            src={url}
-            alt={filename}
-            className="h-full w-full object-cover"
-          />
+          <img src={url} alt={filename} className="size-full object-cover" />
         </div>
       ) : (
         <>
@@ -143,7 +139,7 @@ export function FileAttachment({
               <img
                 src={url}
                 alt={filename}
-                className="aspect-square h-full w-full object-cover"
+                className="aspect-square size-full object-cover"
               />
             </div>
           ) : (

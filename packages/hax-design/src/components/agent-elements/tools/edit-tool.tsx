@@ -155,7 +155,7 @@ function EditToolDiffCard({
       >
         <div className="flex min-w-0 items-center gap-1.5">
           {hasFileName && (
-            <FileExtIcon filename={fileName} className="h-3 w-3 shrink-0" />
+            <FileExtIcon filename={fileName} className="size-3 shrink-0" />
           )}
           {isPending && !diffFiles ? (
             <TextShimmer as="span" duration={1.2} className="text-xs">
@@ -243,7 +243,7 @@ function EditToolDiffCard({
                 >
                   <IconChevronDown
                     className={
-                      "h-4 w-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100 " +
+                      "size-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100 " +
                       (isExpanded ? "rotate-180" : "rotate-0")
                     }
                   />
@@ -264,7 +264,7 @@ export type EditToolProps = {
   onFilePathClick?: (path: string) => void
 }
 
-export const EditTool = memo(function EditTool({
+export const EditTool = memo(function EditToolComponent({
   part,
   isCollapsible = false,
   onFilePathClick,

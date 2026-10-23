@@ -76,16 +76,16 @@ function CopyButton({
         "bg-transparent opacity-50 hover:bg-an-foreground/10 hover:opacity-100"
       )}
     >
-      <div className="relative h-3.5 w-3.5">
+      <div className="relative size-3.5">
         <IconCopy
           className={cn(
-            "absolute inset-0 h-3.5 w-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
+            "absolute inset-0 size-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
             copied ? "scale-50 opacity-0" : "scale-100 opacity-100"
           )}
         />
         <IconCheck
           className={cn(
-            "absolute inset-0 h-3.5 w-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
+            "absolute inset-0 size-3.5 text-an-foreground-muted transition-[opacity,transform] duration-150 ease-out",
             copied ? "scale-100 opacity-100" : "scale-50 opacity-0"
           )}
         />

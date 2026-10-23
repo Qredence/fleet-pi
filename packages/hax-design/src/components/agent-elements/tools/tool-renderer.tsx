@@ -31,7 +31,7 @@ function deriveToolStatus(
   return isPending ? "pending" : "success"
 }
 
-export const ToolRenderer = memo(function ToolRenderer({
+export const ToolRenderer = memo(function ToolRendererComponent({
   part,
   nestedTools,
   chatStatus,

@@ -21,6 +21,5 @@
   "maxLines": 500,
   "maxSize": "100kb",
   "blame": false,
-  "cache": true,
   "silent": false
 }

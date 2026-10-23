@@ -1,7 +1,10 @@
 import { RefreshCw, X } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { DESKTOP_PANEL_HIDDEN_FLEX } from "../../../lib/layout-constants"
-import { HIT_AREA_EXPAND_DENSE_CLASS } from "../styles/tokens"
+import {
+  HIT_AREA_EXPAND_DENSE_CLASS,
+  PANEL_HEADER_ICON_BUTTON_CLASS,
+} from "../styles/tokens"
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 
 export function ResizableCanvas({
@@ -65,7 +68,7 @@ export function ResizableCanvas({
                   type="button"
                   onClick={onRefresh}
                   disabled={!onRefresh}
-                  className={`${HIT_AREA_EXPAND_DENSE_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-sm text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-foreground/40 disabled:active:scale-100`}
+                  className={`${HIT_AREA_EXPAND_DENSE_CLASS} ${PANEL_HEADER_ICON_BUTTON_CLASS}`}
                   aria-label={`Refresh ${title}`}
                   title={`Refresh ${title}`}
                 >
@@ -76,7 +79,7 @@ export function ResizableCanvas({
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`${HIT_AREA_EXPAND_DENSE_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-sm text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
+                  className={`${HIT_AREA_EXPAND_DENSE_CLASS} ${PANEL_HEADER_ICON_BUTTON_CLASS}`}
                   aria-label="Close panel"
                   title="Close panel"
                 >

@@ -140,9 +140,10 @@ export async function ensureUserCredentials(
   secrets: SandboxProviderSecrets,
   userId?: string
 ): Promise<void> {
+  const cacheValue = `${sandbox.id}:${secrets.fingerprint}`
   if (userId) {
     const cached = authFingerprintByUser.get(userId)
-    if (cached === secrets.fingerprint) return
+    if (cached === cacheValue) return
   }
 
   const authDir = "/home/daytona/.pi/agent"
@@ -163,7 +164,7 @@ export async function ensureUserCredentials(
   )
 
   if (userId) {
-    authFingerprintByUser.set(userId, secrets.fingerprint)
+    authFingerprintByUser.set(userId, cacheValue)
   }
 }
 

@@ -308,7 +308,70 @@ describe("UserPiDurable", () => {
       })
     )
     expect(fork.status).toBe(404)
+
+    const resumed = await durableFetch(
+      stub,
+      new Request("https://user-pi-durable/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "should not revive deleted conversation",
+          create: false,
+          conversationId,
+          model: {
+            provider: "spike",
+            modelId: "spike",
+            apiKey: "test-key",
+            baseUrl: "http://localhost/v1",
+            api: "openai-completions",
+          },
+        }),
+      })
+    )
+    expect(resumed.status).toBe(404)
     expect(await promptedSessions(stub)).toEqual([])
+  })
+
+  it("rejects busy steer/followUp prompts that target a different conversation", async () => {
+    const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-busy-mismatch")
+    const spikeModel = {
+      provider: "spike",
+      modelId: "spike",
+      apiKey: "test",
+      baseUrl: "http://localhost",
+      api: "openai-completions" as const,
+    }
+    const turn = await durableFetch(
+      stub,
+      new Request("https://user-pi-durable/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "hello",
+          create: true,
+          model: spikeModel,
+        }),
+      })
+    )
+    expect(turn.ok).toBe(true)
+    const started = await readUntilStart(turn)
+
+    const wrongConversation = await durableFetch(
+      stub,
+      new Request("https://user-pi-durable/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "steer wrong conversation",
+          create: false,
+          conversationId: "different-conversation-id",
+          whenBusy: "steer",
+          model: spikeModel,
+        }),
+      })
+    )
+    expect(wrongConversation.status).toBe(409)
+    await started.drain()
   })
 
   it("returns aborted false when no agent turn is active", async () => {

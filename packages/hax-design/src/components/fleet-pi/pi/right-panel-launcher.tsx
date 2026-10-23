@@ -6,7 +6,11 @@ import {
   useChatPanelDataContext,
   useWorkspaceTreeContext,
 } from "../layout/right-panel-context"
-import { HIT_AREA_EXPAND_CLASS, PANEL_OVERLAY_CLASS } from "../styles/tokens"
+import {
+  HIT_AREA_EXPAND_CLASS,
+  PANEL_HEADER_ICON_BUTTON_CLASS,
+  PANEL_OVERLAY_CLASS,
+} from "../styles/tokens"
 import { getArtifactsScopePath } from "./artifacts-utils"
 import {
   countWorkspaceFiles,
@@ -96,6 +100,7 @@ export function RightPanelLauncher({
       className="flex items-center"
       data-testid="right-panel-inline-launcher"
       idPrefix="right-panel"
+      renderPanels={false}
       selectedIndex={selectedIndex}
       onSelect={(index) => {
         const next = tabs.at(index)?.id
@@ -197,7 +202,7 @@ export function MobilePanel({
                     <button
                       type="button"
                       onClick={onClose}
-                      className={`${HIT_AREA_EXPAND_CLASS} inline-flex h-7 w-7 items-center justify-center rounded-sm text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96]`}
+                      className={`${HIT_AREA_EXPAND_CLASS} ${PANEL_HEADER_ICON_BUTTON_CLASS}`}
                       aria-label="Close panel"
                       title="Close panel"
                     >

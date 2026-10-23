@@ -21,7 +21,7 @@ function isIconName(value: unknown): value is AttachmentButtonIcon {
   return value === "plus" || value === "paperclip"
 }
 
-export const AttachmentButton = memo(function AttachmentButton({
+export const AttachmentButton = memo(function AttachmentButtonComponent({
   onClick,
   icon = "plus",
 }: AttachmentButtonProps) {

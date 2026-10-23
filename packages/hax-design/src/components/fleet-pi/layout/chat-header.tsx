@@ -7,6 +7,7 @@ import {
   Plus,
   Settings,
 } from "lucide-react"
+import { useState } from "react"
 import { Popover } from "../../agent-elements/input/popover"
 import { ChromePillButton } from "../primitives/chrome-pill"
 import type {
@@ -44,13 +45,20 @@ export type AccountMenuUser = {
   email?: string | null
 }
 
-function DocumentationMenuItem({ className }: { className: string }) {
+function DocumentationMenuItem({
+  className,
+  onSelect,
+}: {
+  className: string
+  onSelect?: () => void
+}) {
   return (
     <a
       href={DOCUMENTATION_URL}
       target="_blank"
       rel="noreferrer"
       className={className}
+      onClick={onSelect}
     >
       <BookOpenText className="size-3.5 shrink-0 text-foreground/50" />
       <span className="truncate">Documentation</span>
@@ -84,12 +92,34 @@ export function AccountMenu({
   onSignIn: () => void
   onOpenSettings?: () => void
 }) {
+  const [open, setOpen] = useState(false)
   const menuItemClass =
     "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label leading-4 text-foreground transition-colors hover:bg-foreground/6"
+
+  const closeMenu = () => {
+    setOpen(false)
+  }
+
+  const sharedMenuItems = (
+    <>
+      <DocumentationMenuItem className={menuItemClass} onSelect={closeMenu} />
+      {onOpenSettings && (
+        <SettingsMenuItem
+          className={menuItemClass}
+          onOpenSettings={() => {
+            closeMenu()
+            onOpenSettings()
+          }}
+        />
+      )}
+    </>
+  )
 
   return (
     <div className="flex items-center gap-2">
       <Popover
+        open={open}
+        onOpenChange={setOpen}
         side="bottom"
         align="start"
         trigger={
@@ -107,21 +137,18 @@ export function AccountMenu({
             <div className="px-2 py-1.5 text-label leading-4 text-foreground/50">
               {user.name || user.email}
             </div>
-            <button type="button" className={menuItemClass}>
+            <button type="button" className={menuItemClass} onClick={closeMenu}>
               <QredenceLogo className="size-3.5 shrink-0 text-foreground/50" />
               <span className="truncate">Account</span>
             </button>
-            <DocumentationMenuItem className={menuItemClass} />
-            {onOpenSettings && (
-              <SettingsMenuItem
-                className={menuItemClass}
-                onOpenSettings={onOpenSettings}
-              />
-            )}
+            {sharedMenuItems}
             <button
               type="button"
               className={menuItemClass}
-              onClick={() => void onSignOut()}
+              onClick={() => {
+                closeMenu()
+                void onSignOut()
+              }}
             >
               <LogOut className="size-3.5 shrink-0 text-foreground/50" />
               <span className="truncate">Sign out</span>
@@ -129,17 +156,18 @@ export function AccountMenu({
           </>
         ) : (
           <>
-            <button type="button" className={menuItemClass} onClick={onSignIn}>
+            <button
+              type="button"
+              className={menuItemClass}
+              onClick={() => {
+                closeMenu()
+                onSignIn()
+              }}
+            >
               <LogIn className="size-3.5 shrink-0 text-foreground/50" />
               <span className="truncate">Sign in</span>
             </button>
-            <DocumentationMenuItem className={menuItemClass} />
-            {onOpenSettings && (
-              <SettingsMenuItem
-                className={menuItemClass}
-                onOpenSettings={onOpenSettings}
-              />
-            )}
+            {sharedMenuItems}
           </>
         )}
       </Popover>
@@ -164,9 +192,13 @@ export function SessionControls({
   onResumeSession: (metadata: ChatSessionMetadata) => void
   sessions: Array<ChatSessionInfo>
 }) {
+  const [open, setOpen] = useState(false)
+
   return (
     <>
       <Popover
+        open={open}
+        onOpenChange={setOpen}
         side="bottom"
         align="center"
         className="w-[min(360px,calc(100vw-2rem))]"
@@ -204,12 +236,13 @@ export function SessionControls({
               >
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    setOpen(false)
                     onResumeSession({
                       sessionFile: session.path,
                       sessionId: session.id,
                     })
-                  }
+                  }}
                   className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left transition-colors hover:text-foreground"
                 >
                   <History className="size-3 shrink-0 text-foreground/45" />
@@ -220,7 +253,10 @@ export function SessionControls({
                     type="button"
                     aria-label="Fork conversation"
                     disabled={forkDisabled}
-                    onClick={onForkSession}
+                    onClick={() => {
+                      setOpen(false)
+                      onForkSession()
+                    }}
                     className="shrink-0 cursor-pointer rounded-sm px-1.5 py-0.5 text-label text-foreground/70 transition-colors hover:bg-foreground/6 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Fork

@@ -36,6 +36,12 @@ describe("sanitizeEmails", () => {
     expect(sanitizeEmails(input)).toBe(input)
   })
 
+  it("does not replace SSH git remote URLs or SCP-style host paths", () => {
+    const input =
+      "Clone git@github.com:org/repo.git or ssh://git@gitlab.com/org/repo.git"
+    expect(sanitizeEmails(input)).toBe(input)
+  })
+
   it("preserves surrounding text", () => {
     const input = "Before email: support@company.io. After email."
     expect(sanitizeEmails(input)).toBe(

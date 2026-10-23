@@ -57,19 +57,18 @@ Constants live in `src/lib/layout-constants.ts`:
 
 `ChatWorkspaceLayout` exposes CSS vars `--chat-chrome-top`, `--chat-header-height` for fixed mobile panels.
 
-Right panel tabs (`resources` \| `workspace` \| `artifacts` \| `configurations`) are registered in `layout/right-panel-registry.tsx` and launched via `DiscreteTabs` in `pi/right-panel-launcher.tsx`.
+Right panel tabs (`resources` \| `workspace` \| `artifacts`) are registered in `layout/right-panel-registry.tsx` and launched via `TabsSubtle` in `pi/right-panel-launcher.tsx`. Settings live in `SettingsDialog` (`pi/settings-dialog.tsx`).
 
 ### Shell layout (confirmed)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Chat header (pills + inline DiscreteTabs launcher)             │
+│  Chat header (pills + inline TabsSubtle launcher)               │
 ├──────────────────────────────────┬──────────────────────────────┤
 │  Chat column (full transcript)   │  Right panel (resizable)     │
-│  — narrows only when panel open  │  ┌ Resources                │
-│  — no in-column artifact split   │  ├ Workspace               │
-│                                  │  ├ Artifacts  ← preview    │
-│                                  │  └ Configurations          │
+│  — narrows only when panel open  │  ┌ Pi Resources             │
+│  — no in-column artifact split   │  ├ Workspace                │
+│                                  │  └ Artifacts  ← preview     │
 └──────────────────────────────────┴──────────────────────────────┘
 ```
 

@@ -31,7 +31,7 @@ export function AddProviderPickerPanel({
   pickerHasResults: boolean
   onClose: () => void
   onQueryChange: (value: string) => void
-  onSelect: (providerId: string) => void
+  onSelect: (providerId: string, opts?: { configured?: boolean }) => void
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -82,7 +82,9 @@ export function AddProviderPickerPanel({
                     key={provider.id}
                     provider={provider}
                     configured={false}
-                    onSelect={() => onSelect(provider.id)}
+                    onSelect={() =>
+                      onSelect(provider.id, { configured: false })
+                    }
                   />
                 ))}
               </div>
@@ -100,7 +102,7 @@ export function AddProviderPickerPanel({
                     key={provider.id}
                     provider={provider}
                     configured
-                    onSelect={() => onSelect(provider.id)}
+                    onSelect={() => onSelect(provider.id, { configured: true })}
                   />
                 ))}
               </div>

@@ -21,7 +21,7 @@ function getToolInput(part: ToolRendererProps["part"]) {
   >
 }
 
-export const FleetPiToolRenderer = memo(function FleetPiToolRenderer(
+export const FleetPiToolRenderer = memo(function FleetPiToolRendererComponent(
   props: ToolRendererProps
 ) {
   const { openWorkspacePath } = useWorkspaceTreeContext()

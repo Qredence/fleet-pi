@@ -135,12 +135,17 @@ export function useModelDefaultsForm({
     nextDraft: ChatPiSettings,
     options?: { silent?: boolean }
   ): Promise<boolean> => {
-    setDraft(nextDraft)
+    setDraft((current) => ({
+      ...(current ?? nextDraft),
+      enabledModels: nextDraft.enabledModels,
+      defaultProvider: nextDraft.defaultProvider,
+      defaultModel: nextDraft.defaultModel,
+      defaultThinkingLevel: nextDraft.defaultThinkingLevel,
+    }))
     setSavingSection("models")
     try {
       const response = await saveSettings(modelSettings(nextDraft))
-      const committed: ChatPiSettings = {
-        ...response.effective,
+      const committedModelFields = {
         enabledModels:
           response.project.enabledModels ??
           nextDraft.enabledModels ??
@@ -158,8 +163,14 @@ export function useModelDefaultsForm({
           nextDraft.defaultThinkingLevel ??
           response.effective.defaultThinkingLevel,
       }
-      lastCommittedModelSettings.current = comparableModelSettings(committed)
-      setDraft(committed)
+      lastCommittedModelSettings.current = comparableModelSettings({
+        ...response.effective,
+        ...committedModelFields,
+      })
+      setDraft((current) => ({
+        ...(current ?? response.effective),
+        ...committedModelFields,
+      }))
       if (!options?.silent) {
         toast.success("Pi settings saved")
       }

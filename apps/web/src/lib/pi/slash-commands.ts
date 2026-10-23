@@ -54,6 +54,7 @@ export type SettingsSlashTab =
   | "providers"
   | "llm-models"
   | "skills"
+  | "agent-loop"
   | "pi-harness"
 
 export type LocalSlashAction =

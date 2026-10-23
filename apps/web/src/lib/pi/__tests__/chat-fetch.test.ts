@@ -3,6 +3,7 @@ import { z } from "zod"
 import { ChatSessionResponseSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 import {
   ChatRequestError,
+  DAYTONA_CREDENTIAL_REQUIRED_MESSAGE,
   fetchValidatedJson,
   isForbiddenSessionError,
   parseWithSchema,
@@ -168,9 +169,7 @@ describe("chat-fetch", () => {
 })
 
 describe("daytona_credential_required errors", () => {
-  it("surfaces a readable message instead of the raw code", async () => {
-    const { ChatRequestError, DAYTONA_CREDENTIAL_REQUIRED_MESSAGE } =
-      await import("../chat-fetch")
+  it("surfaces a readable message instead of the raw code", () => {
     const error = new ChatRequestError(
       403,
       JSON.stringify({ message: "daytona_credential_required" })

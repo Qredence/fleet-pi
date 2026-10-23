@@ -70,8 +70,8 @@ const TodoStatusIcon = ({
 }) => {
   if (isPending && status === "in_progress") {
     return (
-      <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60">
-        <IconArrowRight className="h-2 w-2 text-an-foreground-muted/70" />
+      <div className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60">
+        <IconArrowRight className="size-2 text-an-foreground-muted/70" />
       </div>
     )
   }
@@ -79,24 +79,24 @@ const TodoStatusIcon = ({
   switch (status) {
     case "completed":
       return (
-        <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/40">
-          <CheckIcon className="h-2 w-2 text-an-foreground-muted/70" />
+        <div className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/40">
+          <CheckIcon className="size-2 text-an-foreground-muted/70" />
         </div>
       )
     case "in_progress":
       return (
-        <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60">
-          <IconArrowRight className="h-2 w-2 text-an-foreground-muted/70" />
+        <div className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60">
+          <IconArrowRight className="size-2 text-an-foreground-muted/70" />
         </div>
       )
     default:
       return (
-        <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60" />
+        <div className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-an-foreground-muted/60" />
       )
   }
 }
 
-const TodoListItem = memo(function TodoListItem({
+const TodoListItem = memo(function TodoListItemComponent({
   todo,
   isPending,
 }: {
@@ -123,7 +123,7 @@ const TodoListItem = memo(function TodoListItem({
   )
 })
 
-export const TodoTool = memo(function TodoTool({
+export const TodoTool = memo(function TodoToolComponent({
   part,
   chatStatus,
 }: TodoToolProps) {
@@ -157,29 +157,11 @@ export const TodoTool = memo(function TodoTool({
     )
   }
 
-  // Single update - show full list for clarity
-  if (changes.type === "single") {
-    return (
-      <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
-        {newTodos.map((todo, idx) => (
-          <TodoListItem key={idx} todo={todo} isPending={isPending} />
-        ))}
-      </div>
-    )
-  }
+  const displayTodos =
+    changes.type === "single" || changes.type === "multiple"
+      ? newTodos
+      : newTodos
 
-  // Multiple updates - show full list for clarity
-  if (changes.type === "multiple") {
-    return (
-      <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
-        {newTodos.map((todo, idx) => (
-          <TodoListItem key={idx} todo={todo} isPending={isPending} />
-        ))}
-      </div>
-    )
-  }
-
-  const displayTodos = newTodos
   return (
     <div className="flex flex-col gap-2 text-sm leading-relaxed text-an-foreground/80">
       {displayTodos.map((todo, idx) => (

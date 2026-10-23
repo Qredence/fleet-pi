@@ -10,7 +10,7 @@ export type GenericToolProps = {
   onSubtitleClick?: () => void
 }
 
-export const GenericTool = memo(function GenericTool({
+export const GenericTool = memo(function GenericToolComponent({
   icon,
   title,
   subtitle,
@@ -23,7 +23,7 @@ export const GenericTool = memo(function GenericTool({
     <ToolRowBase
       icon={
         Icon ? (
-          <Icon className="h-full w-full shrink-0 text-muted-foreground" />
+          <Icon className="size-full shrink-0 text-muted-foreground" />
         ) : undefined
       }
       shimmerLabel={title}

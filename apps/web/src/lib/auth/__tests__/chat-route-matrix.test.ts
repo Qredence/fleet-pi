@@ -118,10 +118,12 @@ describe("chat route auth matrix", () => {
     ({ file, hostedAuthRequired, ownershipWhenSessionPresent }) => {
       const source = readFileSync(join(WEB_SRC, file), "utf8")
       expect(hostedAuthRequired).toBe(true)
-      expect(source).toContain("withAuthenticatedChatRequest")
+      expect(source).toMatch(
+        /withAuthenticatedChatRequest|withAuthorizedChatSessionRequest/
+      )
       if (ownershipWhenSessionPresent) {
         expect(source).toMatch(
-          /enforceChatSessionOwnership|enforceRunOwnership|fetchUserSessionIds|authorizeChatSessionRequest/
+          /enforceChatSessionOwnership|enforceRunOwnership|fetchUserSessionIds|authorizeChatSessionRequest|withAuthorizedChatSessionRequest/
         )
       }
     }
@@ -132,6 +134,7 @@ describe("chat route auth matrix", () => {
       join(WEB_SRC, CHAT_SESSION_REQUEST_HELPER),
       "utf8"
     )
+    expect(source).toContain("withAuthenticatedChatRequest")
     expect(source).toContain("enforceChatSessionOwnership")
   })
 })

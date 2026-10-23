@@ -1,5 +1,5 @@
 import { Globe, HardDrive, Info } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
@@ -43,6 +43,26 @@ export function SandboxProviderSection({
     sandboxReady: boolean
     volumeName: string
   } | null>(null)
+
+  const refreshRuntimeStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/sandbox/settings")
+      if (!response.ok) return
+      const body = (await response.json()) as {
+        daytonaApiKeyConfigured?: boolean
+        sandboxReady?: boolean
+        volumeName?: string
+      }
+      if (!body.volumeName) return
+      setRuntimeStatus({
+        keyPresent: Boolean(body.daytonaApiKeyConfigured),
+        sandboxReady: Boolean(body.sandboxReady),
+        volumeName: body.volumeName,
+      })
+    } catch {
+      // Ignore runtime status refresh errors.
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -113,6 +133,7 @@ export function SandboxProviderSection({
         })
       }
 
+      await refreshRuntimeStatus()
       toast.success("Sandbox Provider updated successfully")
       closeEditor()
     } catch (error) {

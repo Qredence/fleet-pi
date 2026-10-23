@@ -51,7 +51,7 @@ function getPlanFileName(plan: Plan) {
   return `plan-${rawId}.md`
 }
 
-export const PlanTool = memo(function PlanTool({
+export const PlanTool = memo(function PlanToolComponent({
   part,
   chatStatus,
 }: PlanToolProps) {
@@ -116,9 +116,9 @@ export const PlanTool = memo(function PlanTool({
       <div className="flex h-7 items-center justify-between pr-2.5 pl-3">
         <div className="flex min-w-0 items-center gap-1">
           {isPending ? (
-            <IconSpinner className="h-3 w-3 shrink-0 animate-spin text-an-tool-color-muted" />
+            <IconSpinner className="size-3 shrink-0 animate-spin text-an-tool-color-muted" />
           ) : (
-            <IconFileDescription className="h-3.5 w-3.5 shrink-0 text-an-tool-color-muted" />
+            <IconFileDescription className="size-3.5 shrink-0 text-an-tool-color-muted" />
           )}
           <span className="truncate text-xs text-an-tool-color-muted">
             {fileName}
@@ -131,9 +131,9 @@ export const PlanTool = memo(function PlanTool({
           className="inline-flex size-5 items-center justify-center text-an-tool-color-muted"
         >
           {isExpanded ? (
-            <IconChevronsUp className="h-3.5 w-3.5" />
+            <IconChevronsUp className="size-3.5" />
           ) : (
-            <IconChevronsDown className="h-3.5 w-3.5" />
+            <IconChevronsDown className="size-3.5" />
           )}
         </button>
       </div>
@@ -163,7 +163,7 @@ export const PlanTool = memo(function PlanTool({
 
               {!isExpanded && (
                 <div className="absolute inset-x-0 bottom-0 h-16 pr-2 pb-2 pl-3.5">
-                  <div className="absolute inset-x-0 bottom-0 h-full w-full bg-linear-to-b from-transparent from-0% to-background to-50%" />
+                  <div className="absolute inset-x-0 bottom-0 size-full bg-linear-to-b from-transparent from-0% to-background to-50%" />
                   <div className="relative flex h-full items-end justify-between">
                     <button
                       type="button"

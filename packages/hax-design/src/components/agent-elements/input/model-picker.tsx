@@ -18,7 +18,7 @@ export type ModelPickerProps = {
   onOpenChange?: (open: boolean) => void
 }
 
-export const ModelPicker = memo(function ModelPicker({
+export const ModelPicker = memo(function ModelPickerComponent({
   models,
   value,
   defaultValue,
@@ -136,7 +136,7 @@ export type ModelBadgeProps = {
   className?: string
 }
 
-export const ModelBadge = memo(function ModelBadge({
+export const ModelBadge = memo(function ModelBadgeComponent({
   models,
   value,
   placeholder = "Auto",

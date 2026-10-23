@@ -5,7 +5,10 @@ export function readStoredWidth(
 ) {
   if (typeof window === "undefined") return defaultWidth
 
-  const value = Number(window.localStorage.getItem(storageKey))
+  const raw = window.localStorage.getItem(storageKey)
+  if (!raw || !raw.trim()) return defaultWidth
+
+  const value = Number(raw)
   return Number.isFinite(value) ? clamp(value) : defaultWidth
 }
 

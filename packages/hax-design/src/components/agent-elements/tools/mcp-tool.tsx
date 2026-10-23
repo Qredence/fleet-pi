@@ -170,7 +170,7 @@ const code = createCodePlugin({
   themes: ["github-light", "github-dark"],
 })
 
-export const McpTool = memo(function McpTool({
+export const McpTool = memo(function McpToolComponent({
   part,
   mcpInfo,
   chatStatus,

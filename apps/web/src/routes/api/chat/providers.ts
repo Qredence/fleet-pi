@@ -86,6 +86,7 @@ async function getProviderRows(userId: string | undefined) {
       envVarName: "OPENAI_CHAT_COMPLETIONS_API_KEY",
       providerFamily: OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
       displayName: instance.displayName,
+      baseUrl: instance.baseUrl,
       api: instance.api,
       modelIds: instance.modelIds,
     })

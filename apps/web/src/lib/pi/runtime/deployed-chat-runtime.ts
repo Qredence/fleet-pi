@@ -1,5 +1,5 @@
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
-import { isHostedDeployment } from "@/lib/deployment/environment"
+import { getChatAuthSurface } from "../../auth/chat-auth-surface"
+import { isHostedDeployment } from "../../deployment/environment"
 
 /** Cloudflare web app or Neon Function chat runtime (not local anonymous dev). */
 export function isDeployedChatRuntimeSurface() {

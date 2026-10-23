@@ -23,8 +23,10 @@ export function startHorizontalResize({
   const handlePointerUp = () => {
     window.removeEventListener("pointermove", handlePointerMove)
     window.removeEventListener("pointerup", handlePointerUp)
+    window.removeEventListener("pointercancel", handlePointerUp)
   }
 
   window.addEventListener("pointermove", handlePointerMove)
   window.addEventListener("pointerup", handlePointerUp, { once: true })
+  window.addEventListener("pointercancel", handlePointerUp, { once: true })
 }
