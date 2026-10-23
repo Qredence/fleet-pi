@@ -57,7 +57,7 @@ function redactSensitiveFields<T>(
   if (previous !== undefined) return previous as T
 
   if (Array.isArray(value)) {
-    const redacted: unknown[] = []
+    const redacted: Array<unknown> = []
     seen.set(source, redacted)
     for (const [index, item] of value.entries()) {
       redacted[index] = redactSensitiveFields(item, seen)
