@@ -705,30 +705,5 @@ function matchesPendingPlanDecisionToolCall(
   )
 }
 
-// Re-export runtime utilities for component library reuse
+// Re-export runtime types for component library reuse
 export type { ActiveSessionRecord } from "./runtime/active-sessions"
-export {
-  collectDiagnostics,
-  resolveDefaultModelSelection,
-  applyModelSelection,
-  resolveModelSelection,
-  loadChatModels,
-  loadChatResources,
-  getProviderConfigStatus,
-  hotReloadActiveRuntimes,
-  hotReloadActiveRuntimesForUser,
-  hotReloadProviderAuthForActiveRuntimes,
-  impactForSettings,
-  loadChatSettings,
-  loadPersistedProjectSettingsOverrides,
-  patchProjectSettingsOverrides,
-  readProjectSettingsFile,
-  saveProjectSettingsOverrides,
-  updateChatSettings,
-  applyRuntimeAuth,
-  createSessionServices,
-  resolveDaytonaRuntimeApiKey,
-  resolveUserDaytonaApiKey,
-  resolveUserProviderSecret,
-  RESOURCE_SETTING_KEYS,
-} from "./runtime/index"

@@ -52,7 +52,7 @@ export type ThinkingToolProps = {
   onToggleExpand?: () => void
 }
 
-export const ThinkingTool = memo(function ThinkingTool({
+export const ThinkingTool = memo(function ThinkingToolComponent({
   part,
   step: externalStep,
   state: externalState,

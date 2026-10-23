@@ -19,8 +19,6 @@ import {
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
-export { ChatPostgresUnavailableError } from "./chat-postgres-guards"
-
 /**
  * A named OpenAI Chat Completions-compatible provider instance. The API key is
  * the only secret; the rest is non-secret metadata stored alongside it.

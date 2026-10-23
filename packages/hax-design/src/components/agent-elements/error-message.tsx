@@ -7,7 +7,7 @@ export type ErrorMessageProps = {
   className?: string
 }
 
-export const ErrorMessage = memo(function ErrorMessage({
+export const ErrorMessage = memo(function ErrorMessageComponent({
   title = "Something went wrong",
   message,
   className,

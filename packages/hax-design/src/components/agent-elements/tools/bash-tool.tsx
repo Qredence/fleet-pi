@@ -53,7 +53,7 @@ function BashToolTerminalCard({
         </div>
         {isPending && (
           <svg
-            className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
+            className="size-3 shrink-0 animate-spin text-muted-foreground"
             viewBox="0 0 16 16"
             fill="none"
           >
@@ -92,7 +92,9 @@ export type BashToolProps = {
   part: any
 }
 
-export const BashTool = memo(function BashTool({ part }: BashToolProps) {
+export const BashTool = memo(function BashToolComponent({
+  part,
+}: BashToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
     ToolApproval | undefined
   const { step, stepState } = adaptToolPart(part, "Bash")

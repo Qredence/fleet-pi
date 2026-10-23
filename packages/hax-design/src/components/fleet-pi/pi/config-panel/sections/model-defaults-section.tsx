@@ -227,13 +227,15 @@ export function ModelDefaultsSection({
         </>
       }
       actions={
-        <SettingsCommitActions
-          dirty={modelDirty}
-          disabled={disabled}
-          onRevert={onRevert}
-          onSave={onSave}
-          saving={saving}
-        />
+        modelDirty || saving ? (
+          <SettingsCommitActions
+            dirty={modelDirty}
+            disabled={disabled}
+            onRevert={onRevert}
+            onSave={onSave}
+            saving={saving}
+          />
+        ) : undefined
       }
     >
       {addOpen ? (

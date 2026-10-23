@@ -3281,6 +3281,10 @@
                           "displayName": {
                             "type": "string"
                           },
+                          "baseUrl": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
                           "api": {
                             "type": "string",
                             "enum": [
@@ -3426,6 +3430,10 @@
                           "displayName": {
                             "type": "string"
                           },
+                          "baseUrl": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
                           "api": {
                             "type": "string",
                             "enum": [
@@ -3537,6 +3545,10 @@
                           },
                           "displayName": {
                             "type": "string"
+                          },
+                          "baseUrl": {
+                            "type": "string",
+                            "maxLength": 4096
                           },
                           "api": {
                             "type": "string",

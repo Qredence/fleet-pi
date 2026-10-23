@@ -1,4 +1,6 @@
 import { unlinkSync } from "node:fs"
+import { clearUserSandboxCache } from "../daytona/user-sandbox"
+import { clearSandboxAuthFingerprint } from "../daytona/sandbox-prepare"
 import { logger } from "../logger"
 import {
   evictAllPiRuntimesForUser,
@@ -117,6 +119,9 @@ export async function eraseUserPiData(
   userId: string
 ): Promise<UserPiDataEraseResult> {
   if (!isPiSessionMirrorEnabled()) {
+    evictAllPiRuntimesForUser(userId)
+    clearUserSandboxCache(userId)
+    clearSandboxAuthFingerprint(userId)
     return { ok: true, erasedSessions: 0, erasedProviders: 0 }
   }
 
@@ -144,10 +149,13 @@ export async function eraseUserPiData(
       )
 
       await client.query("DELETE FROM pi_sessions WHERE user_id = $1", [userId])
-      const providers = await client.query<{ id: string }>(
-        "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING id",
+      const providers = await client.query<{ provider_id: string }>(
+        "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING provider_id",
         [userId]
       )
+      await client.query("DELETE FROM pi_user_settings WHERE user_id = $1", [
+        userId,
+      ])
 
       return {
         sessions: sessions.rows,
@@ -161,6 +169,8 @@ export async function eraseUserPiData(
       sessions: erased.sessions,
     })
     evictAllPiRuntimesForUser(userId)
+    clearUserSandboxCache(userId)
+    clearSandboxAuthFingerprint(userId)
 
     return {
       ok: true,

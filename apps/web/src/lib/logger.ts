@@ -8,31 +8,31 @@ function isDev() {
   return process.env.NODE_ENV !== "production"
 }
 
-const redactPaths = [
+export const redactPaths = [
   "password",
   "*.password",
-  "**.password",
+  "*.*.password",
   "token",
   "*.token",
-  "**.token",
+  "*.*.token",
   "apiKey",
   "*.apiKey",
-  "**.apiKey",
+  "*.*.apiKey",
   "secret",
   "*.secret",
-  "**.secret",
+  "*.*.secret",
   "authorization",
   "*.authorization",
-  "**.authorization",
+  "*.*.authorization",
   "Authorization",
   "*.Authorization",
-  "**.Authorization",
+  "*.*.Authorization",
   "api_key",
   "*.api_key",
-  "**.api_key",
+  "*.*.api_key",
   "api-key",
-  "*.api-key",
-  "**.api-key",
+  '*["api-key"]',
+  '*.*["api-key"]',
 ]
 
 export const logger = pino({

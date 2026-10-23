@@ -93,6 +93,26 @@ export function ProviderCredentialsSection({
     providers,
   })
 
+  const sharedEditorProps = {
+    api,
+    apiKey,
+    attemptedSave,
+    baseUrl,
+    canSave,
+    displayName,
+    isPending,
+    modelId,
+    models,
+    onApiChange: setApi,
+    onApiKeyChange: setApiKey,
+    onBaseUrlChange: setBaseUrl,
+    onDisplayNameChange: setDisplayName,
+    onModelIdChange: setModelId,
+    onModelsChange: setModels,
+    onTogglePassword: () => setShowPassword((current) => !current),
+    showPassword,
+  }
+
   return (
     <SettingsPane
       title="Providers"
@@ -111,24 +131,8 @@ export function ProviderCredentialsSection({
         />
       ) : editingUnconfiguredProvider ? (
         <AddProviderEditorPanel
+          {...sharedEditorProps}
           provider={editingUnconfiguredProvider}
-          api={api}
-          apiKey={apiKey}
-          baseUrl={baseUrl}
-          modelId={modelId}
-          models={models}
-          displayName={displayName}
-          showPassword={showPassword}
-          attemptedSave={attemptedSave}
-          isPending={isPending}
-          canSave={canSave}
-          onApiKeyChange={setApiKey}
-          onApiChange={setApi}
-          onBaseUrlChange={setBaseUrl}
-          onModelIdChange={setModelId}
-          onModelsChange={setModels}
-          onDisplayNameChange={setDisplayName}
-          onTogglePassword={() => setShowPassword((current) => !current)}
           onBack={openAddPicker}
           onCancel={closeEditor}
           onSave={() => {
@@ -190,26 +194,10 @@ export function ProviderCredentialsSection({
             </p>
           ) : (
             <ActiveProviderList
+              {...sharedEditorProps}
               providers={filteredActiveProviders}
               editingProvider={editingProvider}
-              api={api}
-              apiKey={apiKey}
-              baseUrl={baseUrl}
-              modelId={modelId}
-              models={models}
-              displayName={displayName}
-              showPassword={showPassword}
-              attemptedSave={attemptedSave}
-              isPending={isPending}
-              canSave={canSave}
               canRemove={!!onRemoveProvider}
-              onApiKeyChange={setApiKey}
-              onApiChange={setApi}
-              onBaseUrlChange={setBaseUrl}
-              onModelIdChange={setModelId}
-              onModelsChange={setModels}
-              onDisplayNameChange={setDisplayName}
-              onTogglePassword={() => setShowPassword((current) => !current)}
               onEdit={openEditor}
               onCancelEdit={closeEditor}
               onSave={(providerId) => void handleSave(providerId)}

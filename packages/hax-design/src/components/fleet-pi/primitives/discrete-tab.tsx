@@ -152,7 +152,7 @@ function DiscreteTabs<T extends string = string>({
 }
 DiscreteTabs.displayName = "DiscreteTabs"
 
-const DiscreteTabTrigger = React.memo(function DiscreteTabTrigger({
+const DiscreteTabTrigger = React.memo(function DiscreteTabTriggerComponent({
   value,
   title,
   ariaLabel,

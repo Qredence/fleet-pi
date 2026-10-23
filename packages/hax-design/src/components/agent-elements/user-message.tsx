@@ -71,7 +71,7 @@ function getFileFromPart(part: unknown) {
   }
 }
 
-export const UserMessage = memo(function UserMessage({
+export const UserMessage = memo(function UserMessageComponent({
   message,
   className,
   enableImagePreview = true,

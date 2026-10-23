@@ -7,6 +7,8 @@ import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { issueCsrfToken, validateCsrfRequest } from "@/lib/auth/csrf"
 import { isHostedDeployment } from "@/lib/deployment/environment"
 import { readHostedSandboxStatus } from "@/lib/pi/durable/durable-sandbox"
+import { getCachedUserSandbox, getVolumeName } from "@/lib/daytona/user-sandbox"
+import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 
 const SandboxSettingsUpdateSchema = z.object({
   daytonaApiKey: z.string().optional(),
@@ -38,13 +40,19 @@ export const Route = createFileRoute("/api/sandbox/settings")({
                 })
               }
 
+              const effectiveUserId = userId || "anonymous"
+              const cached = getCachedUserSandbox(effectiveUserId)
+              const daytonaApiKeyConfigured =
+                isEnvVarConfigured("DAYTONA_API_KEY") ||
+                Boolean(await resolveDaytonaRuntimeApiKey(effectiveUserId))
               const csrf = issueCsrfToken(request)
               return Response.json(
                 {
-                  daytonaApiKeyConfigured:
-                    isEnvVarConfigured("DAYTONA_API_KEY"),
+                  daytonaApiKeyConfigured,
                   daytonaTargetConfigured: isEnvVarConfigured("DAYTONA_TARGET"),
                   daytonaTarget: process.env.DAYTONA_TARGET || "",
+                  sandboxReady: Boolean(cached?.sandboxId),
+                  volumeName: getVolumeName(effectiveUserId),
                   csrfToken: csrf.token,
                 },
                 {

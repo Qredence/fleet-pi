@@ -46,6 +46,10 @@ export const SUGGESTION_ITEM_CLASS =
 export const PANEL_OVERLAY_CLASS =
   "h-full min-h-0 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-border/70 bg-background/95 shadow-lg backdrop-blur"
 
+/** Compact 28×28 icon action inside right-panel headers. */
+export const PANEL_HEADER_ICON_BUTTON_CLASS =
+  "inline-flex size-7 items-center justify-center rounded-sm text-foreground/40 transition-[background-color,color,transform] duration-150 hover:bg-foreground/6 hover:text-foreground/70 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-foreground/40 disabled:active:scale-100"
+
 /** Inner rows: 4px + 8px section padding = 12px outer (concentric). */
 export const fleetPiRowSurface = cva("flex min-w-0 rounded-[4px] border", {
   variants: {

@@ -363,7 +363,31 @@ function NumberRow({
   value: number | undefined
 }) {
   const [draft, setDraft] = useState<string | null>(null)
-  const shown = draft ?? (value === undefined ? "" : String(value))
+  const [pendingValue, setPendingValue] = useState<number | null>(null)
+  const shown =
+    draft ??
+    (pendingValue !== null
+      ? String(pendingValue)
+      : value === undefined
+        ? ""
+        : String(value))
+
+  const commitDraft = () => {
+    if (draft === null) return
+    const trimmed = draft.trim()
+    const next = Number(trimmed)
+    setDraft(null)
+    if (!trimmed || !Number.isInteger(next) || next < 0 || next === value) {
+      return
+    }
+    setPendingValue(next)
+    void Promise.resolve(onCommit(next))
+      .catch(() => undefined)
+      .finally(() => {
+        setPendingValue(null)
+      })
+  }
+
   return (
     <ItemRow
       title={label}
@@ -373,13 +397,15 @@ function NumberRow({
           className="w-[140px]"
           disabled={disabled}
           inputMode="numeric"
-          onBlur={() => {
-            const next = Number(shown)
-            setDraft(null)
-            if (!Number.isInteger(next) || next < 0 || next === value) return
-            void onCommit(next)
-          }}
+          onBlur={commitDraft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              commitDraft()
+            } else if (event.key === "Escape") {
+              setDraft(null)
+            }
+          }}
           value={shown}
         />
       }

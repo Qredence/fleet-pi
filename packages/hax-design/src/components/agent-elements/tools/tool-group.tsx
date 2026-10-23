@@ -82,7 +82,7 @@ function formatStreamCounts(fileCount: number, searchCount: number): string {
   return parts.join(", ")
 }
 
-export const ToolGroup = memo(function ToolGroup({
+export const ToolGroup = memo(function ToolGroupComponent({
   part,
   nestedTools = [],
   chatStatus,

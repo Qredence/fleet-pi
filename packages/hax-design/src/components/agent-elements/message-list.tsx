@@ -116,7 +116,7 @@ function groupMessagesIntoTurns(messages: Array<ChatMessage>) {
   return turns
 }
 
-export const MessageList = memo(function MessageList({
+export const MessageList = memo(function MessageListComponent({
   messages,
   status,
   className,

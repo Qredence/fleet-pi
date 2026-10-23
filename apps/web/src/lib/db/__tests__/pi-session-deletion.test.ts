@@ -5,16 +5,20 @@ import { resolveOwnedMirrorSession } from "../pi-session-ownership-db"
 import type * as PiSessionOwnershipDbModule from "../pi-session-ownership-db"
 
 const { poolQuery, withUserContext, getChatPostgresPool } = vi.hoisted(() => {
-  const poolQuery = vi.fn()
-  const withUserContext = vi.fn(
+  const queryMock = vi.fn()
+  const withUserContextMock = vi.fn(
     async (
       _pool: unknown,
       _userId: string | undefined,
-      handler: (client: { query: typeof poolQuery }) => Promise<unknown>
-    ) => handler({ query: poolQuery })
+      handler: (client: { query: typeof queryMock }) => Promise<unknown>
+    ) => handler({ query: queryMock })
   )
-  const getChatPostgresPool = vi.fn(() => ({}))
-  return { poolQuery, withUserContext, getChatPostgresPool }
+  const getChatPostgresPoolMock = vi.fn(() => ({}))
+  return {
+    poolQuery: queryMock,
+    withUserContext: withUserContextMock,
+    getChatPostgresPool: getChatPostgresPoolMock,
+  }
 })
 
 vi.mock("@neondatabase/serverless", () => ({
@@ -80,14 +84,15 @@ describe("pi-session-deletion", () => {
     )
   })
 
-  it("erases all mirrored sessions and provider credentials for a user", async () => {
+  it("erases all mirrored sessions, provider credentials, and user settings for a user", async () => {
     poolQuery
       .mockResolvedValueOnce({
         rows: [{ id: "session-1", session_file_path: "/tmp/session-1.jsonl" }],
       })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: "provider-1" }] })
+      .mockResolvedValueOnce({ rows: [{ provider_id: "provider-1" }] })
+      .mockResolvedValueOnce({ rows: [] })
 
     const result = await eraseUserPiData("user-1")
 
@@ -101,7 +106,11 @@ describe("pi-session-deletion", () => {
       ["user-1"]
     )
     expect(poolQuery).toHaveBeenCalledWith(
-      "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING id",
+      "DELETE FROM pi_user_providers WHERE user_id = $1 RETURNING provider_id",
+      ["user-1"]
+    )
+    expect(poolQuery).toHaveBeenCalledWith(
+      "DELETE FROM pi_user_settings WHERE user_id = $1",
       ["user-1"]
     )
   })

@@ -228,8 +228,9 @@ describe("Pi Durable spike harness", () => {
     ).toEqual(["read", "search"])
   })
 
-  it("sends bash through the Daytona sandbox port", async () => {
+  it("sends bash through the Daytona sandbox port and enforces workspace path bounds", async () => {
     const commands: Array<string> = []
+    const downloadedPaths: Array<string> = []
     const sandbox = {
       process: {
         executeCommand: (command: string) => {
@@ -238,7 +239,10 @@ describe("Pi Durable spike harness", () => {
         },
       },
       fs: {
-        downloadFile: () => Promise.resolve(Buffer.from("body")),
+        downloadFile: (path: string) => {
+          downloadedPaths.push(path)
+          return Promise.resolve(Buffer.from("body"))
+        },
         uploadFile: () => Promise.resolve(),
       },
     } as unknown as Parameters<typeof executeCommand>[0]
@@ -250,5 +254,12 @@ describe("Pi Durable spike harness", () => {
     expect(commands).toEqual(["echo fleet-pi"])
     expect(result.output).toBe("from-daytona\n")
     expect(body).toBe("body")
+    expect(downloadedPaths).toEqual(["/home/daytona/agent-workspace/notes.txt"])
+    await expect(port.read("/etc/passwd")).rejects.toThrow(
+      /escapes workspace bound/
+    )
+    await expect(port.write("../../etc/passwd", "x")).rejects.toThrow(
+      /escapes workspace bound/
+    )
   })
 })

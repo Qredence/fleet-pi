@@ -56,15 +56,24 @@ export function useWorkspaceSplitLayout(
     const split = splitRef.current
     if (!split) return
 
-    const containerWidth = split.clientWidth
-    if (containerWidth < WORKSPACE_SPLIT_MIN_WIDTH_PX) return
+    const syncTreeWidth = () => {
+      const containerWidth = split.clientWidth
+      if (containerWidth < WORKSPACE_SPLIT_MIN_WIDTH_PX) return
 
-    setTreeWidth((currentWidth) => {
-      const nextWidth = clampWorkspaceTreeWidth(currentWidth, containerWidth)
-      if (nextWidth === currentWidth) return currentWidth
-      storeWorkspaceTreeWidth(nextWidth)
-      return nextWidth
-    })
+      setTreeWidth((currentWidth) => {
+        const nextWidth = clampWorkspaceTreeWidth(currentWidth, containerWidth)
+        if (nextWidth === currentWidth) return currentWidth
+        storeWorkspaceTreeWidth(nextWidth)
+        return nextWidth
+      })
+    }
+
+    syncTreeWidth()
+
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(syncTreeWidth)
+    observer.observe(split)
+    return () => observer.disconnect()
   }, [workspace])
 
   const splitStyle = isSplitLayout

@@ -6,7 +6,6 @@ import {
 import {
   applyThemePreference,
   clampResourceCanvasWidth,
-  getResourceCanvasInitialWidth,
   readStoredResourceCanvasWidth,
   readStoredThemePreference,
   storeResourceCanvasWidth,
@@ -112,9 +111,9 @@ export function useChatShellState(modelsData: ChatModelsResponse | undefined) {
 
     if (!rightPanel || prevRightPanel !== null) return
 
-    const initialWidth = getResourceCanvasInitialWidth()
-    setResourceCanvasWidth(initialWidth)
-    storeResourceCanvasWidth(initialWidth)
+    const nextWidth = readStoredResourceCanvasWidth()
+    setResourceCanvasWidth(nextWidth)
+    storeResourceCanvasWidth(nextWidth)
   }, [rightPanel])
 
   useEffect(() => {

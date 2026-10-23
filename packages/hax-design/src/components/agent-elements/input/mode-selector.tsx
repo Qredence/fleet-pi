@@ -21,7 +21,7 @@ export type ModeSelectorProps = {
   className?: string
 }
 
-export const ModeSelector = memo(function ModeSelector({
+export const ModeSelector = memo(function ModeSelectorComponent({
   modes,
   value,
   defaultValue,

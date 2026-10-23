@@ -104,7 +104,7 @@ export type InputBarProps = {
   rightActions?: React.ReactNode
 }
 
-export const InputBar = memo(function InputBar({
+export const InputBar = memo(function InputBarComponent({
   onSend,
   status,
   onStop,
@@ -326,11 +326,11 @@ export const InputBar = memo(function InputBar({
             {/* Typing animation image */}
             {isTyping && typingAnimation?.image && showImage && (
               <div className="flex flex-wrap gap-2 px-3 pt-3">
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-md">
                   <img
                     src={typingAnimation.image}
                     alt=""
-                    className="h-full w-full object-cover"
+                    className="size-full object-cover"
                   />
                 </div>
               </div>

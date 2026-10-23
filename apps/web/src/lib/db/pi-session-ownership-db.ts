@@ -245,8 +245,8 @@ export async function verifySessionOwnership(
 
       if (attempt < maxRetries - 1) {
         // Exponential backoff: 100ms, 200ms, 400ms
-        await new Promise((resolve) =>
-          setTimeout(resolve, 100 * Math.pow(2, attempt))
+        await new Promise((done) =>
+          setTimeout(done, 100 * Math.pow(2, attempt))
         )
       }
     }

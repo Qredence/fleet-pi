@@ -127,6 +127,43 @@ const GIT_READ_ONLY_SUBCOMMANDS = new Set([
 
 const PACKAGE_MANAGER_READ_ONLY_SUBCOMMANDS = new Set(["list", "ls", "why"])
 
+const MUTATING_FIND_ACTIONS = new Set([
+  "-delete",
+  "-exec",
+  "-execdir",
+  "-ok",
+  "-okdir",
+  "-fprint",
+  "-fprintf",
+  "-fls",
+  "-fprint0",
+])
+
+function hasMutatingFindAction(args: Array<string>): boolean {
+  return args.some((arg) => MUTATING_FIND_ACTIONS.has(arg))
+}
+
+function hasSedInPlaceFlag(args: Array<string>): boolean {
+  return args.some(
+    (arg) =>
+      arg === "-i" ||
+      arg.startsWith("-i") ||
+      arg === "--in-place" ||
+      arg.startsWith("--in-place=") ||
+      (!arg.startsWith("--") && /^-[a-zA-Z]*i/.test(arg))
+  )
+}
+
+function hasSedPrintOnlyFlag(args: Array<string>): boolean {
+  return args.some(
+    (arg) =>
+      arg === "-n" ||
+      arg === "--quiet" ||
+      arg === "--silent" ||
+      (!arg.startsWith("--") && /^-[a-zA-Z]*n/.test(arg))
+  )
+}
+
 /**
  * Path arguments of mutating commands, plus redirection targets.
  * Agent mode uses this to keep `system/` and `evals/` off raw bash.
@@ -138,8 +175,11 @@ export function listMutatingCommandTargets(command: string): Array<string> {
   for (const clause of splitShellClauses(command)) {
     const tokens = tokenizeShellLike(clause)
     let commandName: string | undefined
+    let commandTokenIndex = -1
+    let seenEnvWrapper = false
     let expectingRedirect = false
-    for (const token of tokens) {
+    for (let index = 0; index < tokens.length; index += 1) {
+      const token = tokens[index] ?? ""
       if (!commandName && isEnvAssignment(token)) continue
       const redirectTarget = redirectionTarget(token)
       if (redirectTarget === "pending") {
@@ -156,14 +196,23 @@ export function listMutatingCommandTargets(command: string): Array<string> {
         continue
       }
       if (!commandName) {
-        commandName = normalizeCommandName(token)
+        if (seenEnvWrapper && token.startsWith("-")) continue
+        const normalized = normalizeCommandName(token)
+        if (normalized === "env") {
+          seenEnvWrapper = true
+          continue
+        }
+        commandName = normalized
+        commandTokenIndex = index
         continue
       }
       if (MUTATING_COMMANDS.has(commandName) && !token.startsWith("-")) {
         targets.push(token)
       }
     }
-    targets.push(...inPlaceEditTargets(commandName, tokens))
+    const commandTokens =
+      commandTokenIndex >= 0 ? tokens.slice(commandTokenIndex) : tokens
+    targets.push(...inPlaceEditTargets(commandName, commandTokens))
   }
   return targets
 }
@@ -187,8 +236,8 @@ export function bashEvasionTargetsProtectedWorkspace(command: string): boolean {
 }
 
 /**
- * `sed` without `-n` and `find -delete` / `-exec` edit files, but they are
- * not in the mutating-command set because Plan mode allows their read forms.
+ * `sed` without `-n` (or with `-i`) and `find` mutating actions edit files,
+ * even though Plan mode allows their read-only forms.
  */
 function inPlaceEditTargets(
   commandName: string | undefined,
@@ -196,12 +245,10 @@ function inPlaceEditTargets(
 ): Array<string> {
   if (!commandName) return []
   const args = tokens.slice(1).filter((token) => !isEnvAssignment(token))
-  const findDeletes =
-    commandName === "find" &&
-    args.some((arg) => arg === "-delete" || arg === "-exec")
+  const findDeletes = commandName === "find" && hasMutatingFindAction(args)
   const sedEdits =
     commandName === "sed" &&
-    !args.some((arg) => arg === "-n" || arg.startsWith("-n"))
+    (hasSedInPlaceFlag(args) || !hasSedPrintOnlyFlag(args))
   const editsInPlace = findDeletes || sedEdits
   if (!editsInPlace) return []
   return args.filter((arg) => !arg.startsWith("-"))
@@ -231,9 +278,12 @@ function splitShellClauses(command: string): Array<string> {
       current += char
       continue
     }
-    const isAnd = char === "&" && command[index + 1] === "&"
-    if (char === ";" || char === "|" || isAnd) {
-      if (isAnd) index += 1
+    const isDouble =
+      (char === "&" && command[index + 1] === "&") ||
+      (char === "|" && command[index + 1] === "|")
+    const isNewline = char === "\n" || char === "\r"
+    if (char === ";" || char === "|" || isDouble || isNewline) {
+      if (isDouble) index += 1
       const trimmed = current.trim()
       if (trimmed) clauses.push(trimmed)
       current = ""
@@ -316,6 +366,9 @@ function evaluatePipelineSegment(segment: string): CommandPolicyResult {
     return deny("Network commands are not allowed in Plan mode.")
   }
 
+  if (commandName === "env" && args.length > 0) {
+    return deny("env command execution is not allowed in Plan mode.")
+  }
   if (commandName === "git") return evaluateGitCommand(args)
   if (
     commandName === "npm" ||
@@ -333,10 +386,7 @@ function evaluatePipelineSegment(segment: string): CommandPolicyResult {
       ? { allowed: true }
       : deny(`${commandName} is only allowed for version checks.`)
   }
-  if (
-    commandName === "find" &&
-    args.some((arg) => arg === "-delete" || arg === "-exec")
-  ) {
+  if (commandName === "find" && hasMutatingFindAction(args)) {
     return deny(
       "find actions that execute commands or delete files are not allowed."
     )
@@ -344,7 +394,10 @@ function evaluatePipelineSegment(segment: string): CommandPolicyResult {
   if (commandName === "awk" && segment.includes("system(")) {
     return deny("awk system execution is not allowed.")
   }
-  if (commandName === "sed" && !args.includes("-n")) {
+  if (
+    commandName === "sed" &&
+    (hasSedInPlaceFlag(args) || !hasSedPrintOnlyFlag(args))
+  ) {
     return deny("sed is only allowed in non-mutating print mode.")
   }
 
@@ -353,13 +406,94 @@ function evaluatePipelineSegment(segment: string): CommandPolicyResult {
     : deny(`${commandName} is not allowed in Plan mode.`)
 }
 
+const MUTATING_GIT_BRANCH_FLAGS = new Set([
+  "-d",
+  "-D",
+  "--delete",
+  "-m",
+  "-M",
+  "--move",
+  "-c",
+  "-C",
+  "--copy",
+  "-f",
+  "--force",
+  "-u",
+  "--set-upstream-to",
+  "--unset-upstream",
+  "--edit-description",
+  "--track",
+  "--no-track",
+])
+
+const GIT_BRANCH_LIST_MODE_FLAGS = new Set([
+  "--list",
+  "-l",
+  "--contains",
+  "--no-contains",
+  "--merged",
+  "--no-merged",
+  "--points-at",
+])
+
 function evaluateGitCommand(args: Array<string>): CommandPolicyResult {
   const subcommand = args[0]
   if (!subcommand) return deny("git requires a read-only subcommand.")
-  if (subcommand === "config" && args[1] === "--get") return { allowed: true }
-  return GIT_READ_ONLY_SUBCOMMANDS.has(subcommand)
-    ? { allowed: true }
-    : deny(`git ${subcommand} is not allowed in Plan mode.`)
+  if (
+    args.some(
+      (arg) =>
+        arg === "--output" ||
+        arg.startsWith("--output=") ||
+        arg === "--ext-diff"
+    )
+  ) {
+    return deny(
+      "git output redirection or external diff execution is not allowed in Plan mode."
+    )
+  }
+  if (subcommand === "config") {
+    if (args[1] === "--get" && args.length <= 3) return { allowed: true }
+    if ((args[1] === "--list" || args[1] === "-l") && args.length === 2) {
+      return { allowed: true }
+    }
+    return deny("git config is only allowed with --get or --list in Plan mode.")
+  }
+  if (!GIT_READ_ONLY_SUBCOMMANDS.has(subcommand)) {
+    return deny(`git ${subcommand} is not allowed in Plan mode.`)
+  }
+  const subArgs = args.slice(1)
+  if (subcommand === "branch") {
+    if (
+      subArgs.some(
+        (arg) =>
+          MUTATING_GIT_BRANCH_FLAGS.has(arg) ||
+          arg.startsWith("--set-upstream-to=")
+      )
+    ) {
+      return deny("git branch mutation flags are not allowed in Plan mode.")
+    }
+    const hasListModeFlag = subArgs.some((arg) =>
+      GIT_BRANCH_LIST_MODE_FLAGS.has(arg)
+    )
+    const hasPositionalArg = subArgs.some((arg) => !arg.startsWith("-"))
+    if (hasPositionalArg && !hasListModeFlag) {
+      return deny("git branch creation is not allowed in Plan mode.")
+    }
+    return { allowed: true }
+  }
+  if (subcommand === "remote") {
+    if (
+      subArgs.length === 0 ||
+      (subArgs.length === 1 &&
+        (subArgs[0] === "-v" || subArgs[0] === "--verbose")) ||
+      subArgs[0] === "get-url" ||
+      (subArgs[0] === "show" && subArgs.includes("-n"))
+    ) {
+      return { allowed: true }
+    }
+    return deny("git remote mutations are not allowed in Plan mode.")
+  }
+  return { allowed: true }
 }
 
 function evaluatePackageManagerCommand(
@@ -468,9 +602,12 @@ function deny(reason: string): CommandPolicyResult {
 
 /**
  * Agent-mode tiers for the Pi Durable spike. Protected paths stay blocked.
- * Rationale-required paths stay blocked until a later issue carries a rationale.
+ * Rationale-required paths require a non-empty rationale.
  */
-export function agentWorkspaceMutationBlock(path: string): string | undefined {
+export function agentWorkspaceMutationBlock(
+  path: string,
+  rationale?: string
+): string | undefined {
   const classified = classifyToolPath(path)
   if (!classified.scoped) return undefined
   switch (classified.tier) {
@@ -479,6 +616,7 @@ export function agentWorkspaceMutationBlock(path: string): string | undefined {
     case "protected":
       return `protected ${classified.relativePath}`
     case "rationale-required":
+      if (rationale?.trim()) return undefined
       return `${classified.relativePath} without a rationale`
     default: {
       const exhaustive: never = classified.tier

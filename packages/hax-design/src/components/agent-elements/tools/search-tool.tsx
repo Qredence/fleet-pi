@@ -74,8 +74,8 @@ function SearchGroupRich({
                     "hover:bg-muted/50"
                   )}
                 >
-                  <div className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
-                    <IconFileText className="h-4 w-4" />
+                  <div className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+                    <IconFileText className="size-4" />
                   </div>
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground/90">
                     {result.title}
@@ -129,7 +129,7 @@ function normalizeResults(value: unknown): Array<SearchResult> | undefined {
   return parsed.length > 0 ? parsed : undefined
 }
 
-export const SearchTool = memo(function SearchTool({
+export const SearchTool = memo(function SearchToolComponent({
   part,
   results,
   defaultOpen,

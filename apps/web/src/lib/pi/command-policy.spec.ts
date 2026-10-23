@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { evaluatePlanCommand } from "./command-policy"
+import {
+  agentWorkspaceBashBlock,
+  evaluatePlanCommand,
+  listMutatingCommandTargets,
+} from "./command-policy"
 
 describe("command policy", () => {
   it("allows local read-only inspection commands", () => {
@@ -10,6 +14,12 @@ describe("command policy", () => {
     expect(
       evaluatePlanCommand("git diff -- apps/web/src/routes/index.tsx").allowed
     ).toBe(true)
+    expect(evaluatePlanCommand("git branch -a").allowed).toBe(true)
+    expect(evaluatePlanCommand("git branch --show-current").allowed).toBe(true)
+    expect(evaluatePlanCommand("git remote -v").allowed).toBe(true)
+    expect(evaluatePlanCommand("git remote get-url origin").allowed).toBe(true)
+    expect(evaluatePlanCommand("env").allowed).toBe(true)
+    expect(evaluatePlanCommand("printenv HOME").allowed).toBe(true)
     expect(evaluatePlanCommand("pnpm list --filter web").allowed).toBe(true)
   })
 
@@ -23,7 +33,24 @@ describe("command policy", () => {
     expect(evaluatePlanCommand("rm -rf apps/web").allowed).toBe(false)
     expect(evaluatePlanCommand("echo hi > file.txt").allowed).toBe(false)
     expect(evaluatePlanCommand("sed -i 's/a/b/' file.txt").allowed).toBe(false)
+    expect(evaluatePlanCommand("sed -n -i 's/a/b/p' file.txt").allowed).toBe(
+      false
+    )
+    expect(evaluatePlanCommand("sed -ni 's/a/b/p' file.txt").allowed).toBe(
+      false
+    )
+    expect(
+      evaluatePlanCommand("sed -n --in-place 's/a/b/p' file.txt").allowed
+    ).toBe(false)
     expect(evaluatePlanCommand("find . -delete").allowed).toBe(false)
+    expect(evaluatePlanCommand("find . -execdir rm {} +").allowed).toBe(false)
+    expect(evaluatePlanCommand("find . -ok rm {} \\;").allowed).toBe(false)
+    expect(evaluatePlanCommand("find . -fprint out.txt").allowed).toBe(false)
+  })
+
+  it("blocks env command execution bypasses", () => {
+    expect(evaluatePlanCommand("env rm -rf apps/web").allowed).toBe(false)
+    expect(evaluatePlanCommand("env FOO=bar sh -c 'id'").allowed).toBe(false)
   })
 
   it("blocks shell execution and substitution", () => {
@@ -58,5 +85,49 @@ describe("command policy", () => {
     expect(evaluatePlanCommand("npm publish").allowed).toBe(false)
     expect(evaluatePlanCommand("git commit -m test").allowed).toBe(false)
     expect(evaluatePlanCommand("git reset --hard").allowed).toBe(false)
+    expect(evaluatePlanCommand("git branch -D main").allowed).toBe(false)
+    expect(evaluatePlanCommand("git branch -m old new").allowed).toBe(false)
+    expect(evaluatePlanCommand("git branch new-feature").allowed).toBe(false)
+    expect(
+      evaluatePlanCommand("git remote add evil https://evil.example").allowed
+    ).toBe(false)
+    expect(
+      evaluatePlanCommand("git remote set-url origin https://evil.example")
+        .allowed
+    ).toBe(false)
+    expect(
+      evaluatePlanCommand("git diff --output=/tmp/pwned HEAD").allowed
+    ).toBe(false)
+    expect(evaluatePlanCommand("git log --output /tmp/pwned").allowed).toBe(
+      false
+    )
+  })
+
+  it("extracts mutating targets across ||, newlines, env wrappers, sed -ni, and find -execdir", () => {
+    expect(
+      listMutatingCommandTargets(
+        "false || rm -rf agent-workspace/instructions/rules.md"
+      )
+    ).toContain("agent-workspace/instructions/rules.md")
+    expect(
+      listMutatingCommandTargets(
+        "echo ok\nrm -rf agent-workspace/instructions/rules.md"
+      )
+    ).toContain("agent-workspace/instructions/rules.md")
+    expect(
+      listMutatingCommandTargets(
+        "env FOO=1 rm -rf agent-workspace/instructions/rules.md"
+      )
+    ).toContain("agent-workspace/instructions/rules.md")
+    expect(
+      agentWorkspaceBashBlock(
+        "sed -n -i 's/a/b/' agent-workspace/instructions/rules.md"
+      )
+    ).toContain("without a rationale")
+    expect(
+      agentWorkspaceBashBlock(
+        "find agent-workspace/instructions/rules.md -execdir rm {} +"
+      )
+    ).toContain("without a rationale")
   })
 })

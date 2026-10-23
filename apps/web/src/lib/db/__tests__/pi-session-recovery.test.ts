@@ -9,16 +9,20 @@ import { resolveOwnedMirrorSession } from "../pi-session-ownership-db"
 import type * as PiSessionOwnershipDbModule from "../pi-session-ownership-db"
 
 const { poolQuery, withUserContext, getChatPostgresPool } = vi.hoisted(() => {
-  const poolQuery = vi.fn()
-  const withUserContext = vi.fn(
-    async (
+  const queryMock = vi.fn()
+  const userContextMock = vi.fn(
+    (
       _pool: unknown,
       _userId: string | undefined,
-      handler: (client: { query: typeof poolQuery }) => Promise<unknown>
-    ) => handler({ query: poolQuery })
+      handler: (client: { query: typeof queryMock }) => Promise<unknown>
+    ) => handler({ query: queryMock })
   )
-  const getChatPostgresPool = vi.fn(() => ({}))
-  return { poolQuery, withUserContext, getChatPostgresPool }
+  const poolMock = vi.fn(() => ({}))
+  return {
+    poolQuery: queryMock,
+    withUserContext: userContextMock,
+    getChatPostgresPool: poolMock,
+  }
 })
 
 vi.mock("@neondatabase/serverless", () => ({

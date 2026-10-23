@@ -83,7 +83,8 @@ function isPrivateOrLinkLocalHost(host: string) {
     return true
   }
 
-  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
+  const ipv4Target = extractEmbeddedIpv4(host) ?? host
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ipv4Target)
   if (ipv4) {
     const octets = ipv4.slice(1).map(Number)
     if (octets.some((part) => part > 255)) return true
@@ -106,6 +107,35 @@ function isPrivateOrLinkLocalHost(host: string) {
   }
 
   return false
+}
+
+/**
+ * Extracts the embedded IPv4 address from IPv4-mapped (`::ffff:a.b.c.d` or
+ * WHATWG-normalized `::ffff:xxxx:yyyy`) and IPv4-compatible (`::a.b.c.d` or
+ * `::xxxx:yyyy`) IPv6 literals.
+ */
+function extractEmbeddedIpv4(host: string): string | null {
+  const unwrapped = host
+    .trim()
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+  const dotted =
+    /^(?:::|(?:0{1,4}:){1,5}:?|(?:0{1,4}:){6})(?:ffff:)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(
+      unwrapped
+    )
+  if (dotted) {
+    return dotted[1]
+  }
+  const hex =
+    /^(?:::|(?:0{1,4}:){1,5}:?|(?:0{1,4}:){6})(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(
+      unwrapped
+    )
+  if (hex) {
+    const hi = Number.parseInt(hex[1], 16)
+    const lo = Number.parseInt(hex[2], 16)
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`
+  }
+  return null
 }
 
 /**
@@ -139,7 +169,14 @@ function firstIpv6Hextet(host: string): number | null {
 
 export function isLoopbackHostname(hostname: string) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "")
-  return host === "localhost" || host === "127.0.0.1" || host === "::1"
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+    return true
+  }
+  const embeddedIpv4 = extractEmbeddedIpv4(host)
+  if (embeddedIpv4 && embeddedIpv4.startsWith("127.")) {
+    return true
+  }
+  return false
 }
 
 /**

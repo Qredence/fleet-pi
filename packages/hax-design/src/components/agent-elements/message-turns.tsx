@@ -31,7 +31,7 @@ type TextRendererComponentProps = {
 }
 
 /** One user message bubble plus its hover copy/timestamp toolbar. */
-export const UserTurn = memo(function UserTurn({
+export const UserTurn = memo(function UserTurnComponent({
   message,
   UserMessageComponent,
   userMessageClassName,
@@ -88,7 +88,7 @@ export const UserTurn = memo(function UserTurn({
 })
 
 /** All assistant messages of a turn plus the single shared copy toolbar. */
-export const AssistantTurn = memo(function AssistantTurn({
+export const AssistantTurn = memo(function AssistantTurnComponent({
   assistantMsgs,
   turnKey,
   isLastTurn,

@@ -137,9 +137,13 @@ export function useProviderCredentialsController({
 
   const editingUnconfiguredProvider =
     editingProvider &&
-    !activeProviders.some((provider) => provider.id === editingProvider)
-      ? (credentialProviders.find((entry) => entry.id === editingProvider) ??
-        null)
+    (editingIsNewOccInstance ||
+      !activeProviders.some((provider) => provider.id === editingProvider))
+      ? (credentialProviders.find(
+          (entry) =>
+            entry.id === editingProvider &&
+            (!editingIsNewOccInstance || entry.providerFamily === undefined)
+        ) ?? null)
       : null
 
   const resetEditor = () => {
@@ -168,7 +172,10 @@ export function useProviderCredentialsController({
     setEditingProvider(providerId)
     setEditingIsNewOccInstance(opts?.newOccInstance === true)
     resetEditor()
-    const existing = providers.find((provider) => provider.id === providerId)
+    const existing = opts?.newOccInstance
+      ? undefined
+      : providers.find((provider) => provider.id === providerId)
+    setBaseUrl(existing?.baseUrl ?? "")
     setDisplayName(existing?.displayName ?? "")
     setApi(existing?.api ?? "openai-completions")
     setModels((existing?.modelIds ?? []).join(", "))
@@ -186,10 +193,15 @@ export function useProviderCredentialsController({
     setAddPickerQuery("")
   }
 
-  const selectProviderFromPicker = (providerId: string) => {
-    // Picker entries are templates; an OCC pick starts a new named instance.
+  const selectProviderFromPicker = (
+    providerId: string,
+    opts?: { configured?: boolean }
+  ) => {
+    // Only the unconfigured OCC template row starts a new named instance;
+    // selecting an already-configured row edits that provider in place.
     openEditor(providerId, {
-      newOccInstance: isOccProviderId(providerId),
+      newOccInstance:
+        !opts?.configured && providerId === OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
     })
   }
 

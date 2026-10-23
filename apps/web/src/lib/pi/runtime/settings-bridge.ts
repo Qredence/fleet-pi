@@ -35,14 +35,6 @@ import type { AppRuntimeContext } from "@/lib/app-runtime"
 import { upsertUserProjectSettings } from "@/lib/db/user-settings"
 import { isHostedDeployment } from "@/lib/deployment/environment"
 
-export {
-  hydrateSessionServicesSettings,
-  isPortableSettingsResourcePath,
-  loadPersistedProjectSettingsOverrides,
-  resolveProjectSettings,
-  sanitizePortableResourcePaths,
-} from "./durable-project-settings"
-
 export { readProjectSettingsFile } from "./project-settings-file"
 
 export async function loadChatSettings(

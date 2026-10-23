@@ -1,8 +1,10 @@
 import {
   agentWorkspaceBashBlock,
   agentWorkspaceMutationBlock,
+  evaluatePlanCommand,
 } from "../command-policy"
 import { classifyToolPath } from "../mutation-tier"
+import { resolveHostedSandboxPath } from "./spike-daytona"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 
 function hostedModes(name: string): ReadonlyArray<ChatMode> | undefined {
@@ -32,16 +34,30 @@ function protectedWorkspacePath(path: string) {
   return classified.scoped && classified.tier === "protected"
 }
 
+export function hostedPathBlock(path: string): string | undefined {
+  try {
+    resolveHostedSandboxPath(path)
+    return undefined
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : `Sandbox path escapes workspace bound: ${path}`
+  }
+}
+
 export function hostedWriteBlock(
   mode: ChatMode,
   path: string,
-  confirm: boolean | undefined
+  confirm: boolean | undefined,
+  rationale?: string
 ): string | undefined {
+  const pathBlock = hostedPathBlock(path)
+  if (pathBlock) return pathBlock
   if (mode === "harness" && protectedWorkspacePath(path)) {
     if (confirm === true) return undefined
     return "Confirmation required before a tool writes system/ or evals/."
   }
-  return agentWorkspaceMutationBlock(path)
+  return agentWorkspaceMutationBlock(path, rationale)
 }
 
 export function hostedBashBlock(
@@ -49,13 +65,21 @@ export function hostedBashBlock(
   command: string,
   confirm: boolean | undefined
 ): string | undefined {
-  if (mode === "harness" && confirm === true) {
-    const block = agentWorkspaceBashBlock(command)
-    if (block?.includes("protected")) return undefined
-    return block
+  if (mode === "plan") {
+    const planResult = evaluatePlanCommand(command)
+    if (!planResult.allowed) {
+      return planResult.reason ?? "Command is not read-only."
+    }
   }
-  if (mode === "harness" && /(?:^|[\s"'`])(?:system|evals)\//.test(command)) {
-    return "Confirmation required before a tool writes system/ or evals/."
+  const block = agentWorkspaceBashBlock(command)
+  if (mode === "harness") {
+    const touchesProtected =
+      block?.includes("protected") ||
+      /(?:^|[\s"'`])(?:system|evals)\//.test(command)
+    if (touchesProtected) {
+      if (confirm === true) return undefined
+      return "Confirmation required before a tool writes system/ or evals/."
+    }
   }
-  return agentWorkspaceBashBlock(command)
+  return block
 }

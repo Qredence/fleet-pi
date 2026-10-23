@@ -324,6 +324,8 @@ export type ChatProviderInfo = {
   providerFamily?: string
   /** OCC family only: user-supplied display label for the instance. */
   displayName?: string
+  /** Custom / OCC instance only: configured non-secret base URL. */
+  baseUrl?: string
   /** Native Pi API family for a custom provider (absent for catalog rows). */
   api?: PiCustomProviderApi
   /** Custom provider only: model ids registered for this provider. */

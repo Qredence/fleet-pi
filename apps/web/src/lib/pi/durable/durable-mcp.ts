@@ -1,3 +1,5 @@
+import { assertSafeCustomProviderBaseUrl } from "../runtime/openai-chat-completions-url"
+
 export type HostedMcpServer = {
   name: string
   url: string
@@ -13,6 +15,11 @@ export function assertHttpsMcpServer(server: HostedMcpServer) {
   }
   if (parsed.protocol !== "https:") {
     throw new Error("Hosted MCP accepts https servers only.")
+  }
+  try {
+    assertSafeCustomProviderBaseUrl(server.url)
+  } catch {
+    throw new Error("Hosted MCP accepts public https servers only.")
   }
   if (!server.name.trim()) {
     throw new Error("MCP server name is required.")

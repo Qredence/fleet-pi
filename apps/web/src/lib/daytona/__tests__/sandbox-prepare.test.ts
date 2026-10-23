@@ -9,7 +9,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
   workspaceVolumeShellKeepPattern,
@@ -18,10 +18,22 @@ import {
   FLEET_PI_SEED_REVISION_LABEL,
   SANDBOX_WORKSPACE_ROOT,
   buildPrepareSandboxCommand,
+  clearSandboxAuthFingerprint,
   ensureAgentWorkspaceSeedCommand,
+  ensureUserCredentials,
   migrateLegacyWorkspaceVolumeCommand,
   sweepScratchCommand,
 } from "../sandbox-prepare"
+
+const { mockExecuteCommand, mockUploadFile } = vi.hoisted(() => ({
+  mockExecuteCommand: vi.fn().mockResolvedValue({ exitCode: 0, result: "" }),
+  mockUploadFile: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("../client", () => ({
+  executeCommand: mockExecuteCommand,
+  uploadFile: mockUploadFile,
+}))
 
 describe("sandbox-prepare migration", () => {
   it("detects nested workspace and monorepo fingerprints", () => {
@@ -274,3 +286,40 @@ function gitIdentity() {
     GIT_COMMITTER_EMAIL: "fleet@example.com",
   }
 }
+
+describe("ensureUserCredentials", () => {
+  it("re-uploads auth.json when sandbox.id changes even if secrets fingerprint is unchanged", async () => {
+    clearSandboxAuthFingerprint("user-recreated-sandbox")
+    mockExecuteCommand.mockClear()
+    mockUploadFile.mockClear()
+
+    const secrets = {
+      envVars: {},
+      authJson: { openai: { type: "api_key" as const, key: "sk-test" } },
+      fingerprint: "fp-same",
+    }
+
+    await ensureUserCredentials(
+      { id: "sandbox-1" } as never,
+      secrets,
+      "user-recreated-sandbox"
+    )
+    expect(mockUploadFile).toHaveBeenCalledTimes(1)
+
+    // Same sandbox id + same fingerprint -> skipped
+    await ensureUserCredentials(
+      { id: "sandbox-1" } as never,
+      secrets,
+      "user-recreated-sandbox"
+    )
+    expect(mockUploadFile).toHaveBeenCalledTimes(1)
+
+    // Recreated sandbox with new id + same fingerprint -> re-uploaded!
+    await ensureUserCredentials(
+      { id: "sandbox-2" } as never,
+      secrets,
+      "user-recreated-sandbox"
+    )
+    expect(mockUploadFile).toHaveBeenCalledTimes(2)
+  })
+})

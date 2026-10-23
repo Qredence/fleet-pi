@@ -38,12 +38,30 @@ describe("hosted extensions, code mode, and MCP", () => {
     ).toEqual(["read", "search"])
   })
 
-  it("refuses stdio and non-https MCP servers", () => {
+  it("refuses stdio, non-https, and private/metadata MCP servers", () => {
     expect(() =>
       assertHttpsMcpServer({ name: "local", url: "stdio://files" })
     ).toThrow(/https/)
     expect(() =>
       assertHttpsMcpServer({ name: "local", url: "http://example.com/mcp" })
+    ).toThrow(/https/)
+    expect(() =>
+      assertHttpsMcpServer({
+        name: "metadata",
+        url: "https://169.254.169.254/latest/meta-data",
+      })
+    ).toThrow(/https/)
+    expect(() =>
+      assertHttpsMcpServer({
+        name: "mapped-metadata",
+        url: "https://[::ffff:169.254.169.254]/mcp",
+      })
+    ).toThrow(/https/)
+    expect(() =>
+      assertHttpsMcpServer({
+        name: "private",
+        url: "https://10.0.0.1/mcp",
+      })
     ).toThrow(/https/)
     expect(() =>
       assertHttpsMcpServer({ name: "docs", url: "https://example.com/mcp" })

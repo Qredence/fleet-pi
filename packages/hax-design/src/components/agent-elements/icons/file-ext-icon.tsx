@@ -6,7 +6,7 @@ export function FileExtIcon({
   className?: string
 }) {
   const ext = filename.split(".").pop()?.toLowerCase() ?? ""
-  const cls = className ?? "w-2.5 h-2.5 shrink-0"
+  const cls = className ?? "size-2.5 shrink-0"
 
   if (ext === "ts" || ext === "tsx") {
     return (

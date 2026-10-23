@@ -1,10 +1,12 @@
 import { defineConfig } from "vitest/config"
-import viteTsConfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
-  plugins: [viteTsConfigPaths({ projects: ["./tsconfig.json"] })],
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     pool: "threads",
+    testTimeout: 15_000,
     // agents-md-validation dry-runs the full suite after other heavy commands on
     // the same runner; a single retry absorbs PGlite/bootstrap flakes there.
     retry: process.env.CI ? 1 : 0,

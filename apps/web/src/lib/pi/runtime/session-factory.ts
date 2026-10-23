@@ -1,4 +1,4 @@
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import {
   SettingsManager,
   createAgentSessionServices,
@@ -24,6 +24,13 @@ import { settingsManagerForLoader } from "./fleet-default-project-settings"
 import { createSandboxResourceSettings } from "./sandbox-resource-settings"
 import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
 import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
+import { registerCustomProviders } from "./custom-provider-registry"
+import {
+  hydrateSessionServicesSettings,
+  resolveProjectSettings,
+} from "./durable-project-settings"
+import { registerOpenAiChatCompletionsProvider } from "./openai-chat-completions-provider"
+import { loadLlmProviderSecrets } from "./user-provider-secrets"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
@@ -120,10 +127,9 @@ export async function createSessionServices(
   }
 
   const workspaceBootstrap = await loadBestEffortWorkspaceHealth(context)
-  return withProjectServicesLock(context.projectRoot, async () => {
+  const lockKey = `${resolve(context.projectRoot)}\0${options?.userId ?? "anonymous"}`
+  return withProjectServicesLock(lockKey, async () => {
     const databaseBacked = usesDatabaseBackedProjectSettings()
-    const { hydrateSessionServicesSettings, resolveProjectSettings } =
-      await import("./durable-project-settings")
     // Seed private settings before Pi's first resource reload. Deployed callers
     // cannot substitute a manager that reads or writes the shared checkout.
     const agentDir = process.env.PI_AGENT_DIR ?? getAgentDir()
@@ -195,15 +201,10 @@ export async function createSessionServices(
       })
     }
 
-    const { registerOpenAiChatCompletionsProvider } =
-      await import("./openai-chat-completions-provider")
     await registerOpenAiChatCompletionsProvider(
       servicesWithBootstrap,
       options?.userId
     )
-
-    const { registerCustomProviders } =
-      await import("./custom-provider-registry")
     await registerCustomProviders(servicesWithBootstrap, options?.userId)
 
     return servicesWithBootstrap
@@ -214,7 +215,6 @@ export async function applyRuntimeAuth(
   services: AgentSessionServices,
   options: ApplyRuntimeAuthOptions
 ) {
-  const { loadLlmProviderSecrets } = await import("./user-provider-secrets")
   const configured = await loadLlmProviderSecrets(options.userId)
 
   const { modelRuntime } = services
@@ -247,11 +247,7 @@ export async function applyRuntimeAuth(
     }
   }
 
-  const { registerOpenAiChatCompletionsProvider } =
-    await import("./openai-chat-completions-provider")
   await registerOpenAiChatCompletionsProvider(services, options.userId)
-
-  const { registerCustomProviders } = await import("./custom-provider-registry")
   await registerCustomProviders(services, options.userId)
 }
 
