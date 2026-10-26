@@ -12,12 +12,12 @@ import { openDaytonaSandboxPort } from "./durable-sandbox-port"
 import {
   DurableConversationEmpty,
   DurableConversationMissing,
-  createScriptedPort,
-  createSpikeTrace,
-  openSpikeHarness,
-  spikeModels,
+  createHostedTrace,
+  createScriptedSandboxPort,
+  hostedModels,
+  openHostedHarness,
   waitForCount,
-} from "./spike-harness"
+} from "./hosted-harness"
 import type {
   ChatMode,
   ChatStreamEvent,
@@ -29,13 +29,13 @@ import type { DurableObjectState } from "cloudflare:workers"
 import type { DurableAgentModelConfig } from "./durable-model"
 import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { DurableSandboxConnection } from "./durable-sandbox-port"
-import type { SpikeSandboxPort } from "./spike-env"
+import type { HostedSandboxPort } from "./hosted-sandbox-env"
 import type {
-  OpenSpikeHarness,
-  SpikeHarnessOptions,
-  SpikeToolMode,
-  SpikeTrace,
-} from "./spike-harness"
+  HostedHarnessOptions,
+  HostedToolMode,
+  HostedTrace,
+  OpenHostedHarness,
+} from "./hosted-harness"
 
 export { userPiDurableStub } from "./durable-binding"
 
@@ -47,21 +47,6 @@ export type UserPiDurableStorageOwner = {
 export type UserPiDurableEcho = {
   rootId: string
   transcript: string
-}
-
-export type UserPiDurableStub = {
-  readonly id: { toString: () => string }
-  storageOwner: () => Promise<UserPiDurableStorageOwner>
-  rootConversation: () => Promise<{ rootId: string }>
-  scriptedBashEcho: () => Promise<UserPiDurableEcho>
-  restart: () => Promise<{ rootId: string; transcript: string }>
-  beginHangingRead: () => Promise<{ reads: number }>
-  beginHangingBash: () => Promise<{ bashes: number }>
-  replayRead: () => Promise<{ reads: number; rootId: string }>
-  replayBash: () => Promise<{ bashes: number; transcript: string }>
-  modelOnlyReply: (
-    prompt: string
-  ) => Promise<{ tools: Array<string>; transcript: string }>
 }
 
 type PiDurableStorage = Awaited<
@@ -106,12 +91,12 @@ type AgentGate = TurnClaim | { kind: "fork" }
 /** One SQLite Durable Object per user id. */
 export class UserPiDurable extends DurableObject {
   #storage: PiDurableStorage | undefined
-  #harness: OpenSpikeHarness | undefined
-  #trace: SpikeTrace = createSpikeTrace()
-  #port: SpikeSandboxPort = createScriptedPort(this.#trace)
-  #mode: SpikeToolMode = "sandbox"
+  #harness: OpenHostedHarness | undefined
+  #trace: HostedTrace = createHostedTrace()
+  #port: HostedSandboxPort = createScriptedSandboxPort(this.#trace)
+  #mode: HostedToolMode = "sandbox"
   #sandboxConnectionKey: string | undefined
-  #options: SpikeHarnessOptions | undefined
+  #options: HostedHarnessOptions | undefined
   #modelConfig: DurableAgentModelConfig | undefined
   #loopKey = ""
   #queue: { steering: Array<string>; followUp: Array<string> } = {
@@ -372,7 +357,7 @@ export class UserPiDurable extends DurableObject {
     claim.phase = "active"
     this.#queue = { steering: [], followUp: [] }
     const abortController = claim.abortController
-    const turnMode: SpikeToolMode = body.sandbox ? "sandbox" : "model-only"
+    const turnMode: HostedToolMode = body.sandbox ? "sandbox" : "model-only"
     let portChanged = false
     if (body.sandbox) {
       const connectionKey = sandboxConnectionKey(body.sandbox)
@@ -619,26 +604,26 @@ export class UserPiDurable extends DurableObject {
   }
 
   async #open(
-    mode: SpikeToolMode,
-    options?: SpikeHarnessOptions,
+    mode: HostedToolMode,
+    options?: HostedHarnessOptions,
     modelConfig?: DurableAgentModelConfig
-  ): Promise<OpenSpikeHarness> {
+  ): Promise<OpenHostedHarness> {
     this.#mode = mode
     this.#options = options
     this.#modelConfig = modelConfig
     this.#loopKey = hostedHarnessKey(options ?? {})
     const storage = await openDurableObjectSqliteStorage(this.ctx.storage)
     this.#storage = storage
-    this.#harness = await openSpikeHarness(storage, mode, this.#port, options)
+    this.#harness = await openHostedHarness(storage, mode, this.#port, options)
     return this.#harness
   }
 
   async #ensureHarness(
-    mode: SpikeToolMode,
-    options: SpikeHarnessOptions,
+    mode: HostedToolMode,
+    options: HostedHarnessOptions,
     modelConfig: DurableAgentModelConfig,
     portChanged: boolean
-  ): Promise<OpenSpikeHarness> {
+  ): Promise<OpenHostedHarness> {
     const loopKey = hostedHarnessKey(options)
     if (
       !portChanged &&
@@ -727,8 +712,8 @@ function thinkingLevelEvent(view: {
 }
 
 function modelsForAgentTurn(model: DurableAgentModelConfig) {
-  if (model.provider === "spike") {
-    return spikeModels
+  if (model.provider === "hosted") {
+    return hostedModels
   }
   return createDurableModels(model)
 }

@@ -141,7 +141,7 @@ export async function listChatSessions(
   }
 
   // Neon is the source of truth for which sessions a user owns: local JSONL is
-  // only a working copy (ephemeral on Cloudflare / Neon Functions). Opening a
+  // only a working copy (ephemeral on Cloudflare). Opening a
   // mirror-only entry goes through resolveSessionFileWithRecovery, which
   // rebuilds the JSONL from pi_session_entries.
   const mirrored = await fetchUserSessionSummaries(options.userId)

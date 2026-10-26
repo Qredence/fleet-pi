@@ -22,6 +22,15 @@ window.
 - `scratch/` for safe temporary working files
 - `pi/` for workspace-installed Pi skills, prompts, extensions, and packages
 
+## Tool state
+
+Track only tool configuration that is a shared environment contract:
+`.agents/setup`, `.agents/resume`, `.amp/services.yaml`, and
+`.chunk/config.json`. Agent skills, caches, sessions, and run output stay
+ignored (`.agents/skills/`, `.factory/`, `.fleet/`, `.remember/`). Do not add
+tool state to `agent-workspace/artifacts/`; that directory holds reviewable
+reports and traces.
+
 ## Why it matters
 
 Fleet Pi keeps important agent context in normal repository files so that:

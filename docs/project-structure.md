@@ -20,7 +20,6 @@ fleet-pi/
 │   ├── src/lib/pii/          # PII sanitization module
 │   ├── src/lib/logger.ts     # Pino logger with redaction
 │   └── (routes compose hax-design only — no app-local components)
-├── functions/                # Legacy Neon Function chat runtime router entry
 ├── packages/hax-design/      # Shared React UI (fleet-pi, agent-elements, openui)
 │   └── src/components/
 │       ├── fleet-pi/         # Product shell, panels, Settings

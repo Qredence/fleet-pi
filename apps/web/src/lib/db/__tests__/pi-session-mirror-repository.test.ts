@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { runWithChatAuthSurface } from "../../auth/chat-auth-surface"
 import { logger } from "../../logger"
 import {
   appendPiRunEvent,
@@ -226,33 +225,6 @@ describe("Pi session mirror repository", () => {
     ).rejects.toThrow(/Authenticated owner is required/)
 
     delete process.env.FLEET_PI_DEPLOYMENT
-  })
-
-  it("fails the turn when mirror sync fails on the Neon Function", async () => {
-    process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://mirror.test/fleet"
-    const errorSpy = vi
-      .spyOn(logger, "error")
-      .mockImplementation(() => undefined)
-
-    await expect(
-      runWithChatAuthSurface("neon-function", () =>
-        syncPiSessionMirrorSafely(
-          {
-            getHeader() {
-              throw new Error("boom function")
-            },
-          } as never,
-          { userId: "user-function" }
-        )
-      )
-    ).rejects.toThrow("boom function")
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      {
-        error: expect.objectContaining({ message: "boom function" }),
-      },
-      "[pi-session-mirror] sync failure; failing the turn"
-    )
   })
 
   it("fails the turn when mirror sync fails on Cloudflare", async () => {

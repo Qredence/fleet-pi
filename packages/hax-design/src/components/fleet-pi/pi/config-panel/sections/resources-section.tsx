@@ -177,31 +177,31 @@ function HostedExtensionList({
   const selection = selectHostedExtensions(values)
   return (
     <div className="flex flex-col gap-1">
-      {BUNDLED_HOSTED_EXTENSIONS.filter((name) => name !== "spike-sandbox").map(
-        (name) => {
-          const active = selection.enabled.includes(name)
-          return (
-            <ItemRow
-              key={name}
-              title={name}
-              subtitle={active ? "Active" : "Staged"}
-              trailing={
-                <Switch
-                  aria-label={`${name} extension`}
-                  checked={active}
-                  disabled={disabled}
-                  onCheckedChange={(checked) => {
-                    const without = values.filter(
-                      (item) => extensionBaseName(item) !== name
-                    )
-                    onChange(checked === true ? [...without, name] : without)
-                  }}
-                />
-              }
-            />
-          )
-        }
-      )}
+      {BUNDLED_HOSTED_EXTENSIONS.filter(
+        (name) => name !== "hosted-sandbox"
+      ).map((name) => {
+        const active = selection.enabled.includes(name)
+        return (
+          <ItemRow
+            key={name}
+            title={name}
+            subtitle={active ? "Active" : "Staged"}
+            trailing={
+              <Switch
+                aria-label={`${name} extension`}
+                checked={active}
+                disabled={disabled}
+                onCheckedChange={(checked) => {
+                  const without = values.filter(
+                    (item) => extensionBaseName(item) !== name
+                  )
+                  onChange(checked === true ? [...without, name] : without)
+                }}
+              />
+            }
+          />
+        )
+      })}
       {selection.unavailable.map((path) => (
         <ItemRow
           key={path}

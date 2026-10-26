@@ -258,7 +258,7 @@ structMd += `│   ├── src/lib/workspace/    # agent-workspace tree and fi
 structMd += `│   ├── src/lib/pii/          # PII sanitization module\n`
 structMd += `│   ├── src/lib/logger.ts     # Pino logger with redaction\n`
 structMd += `│   └── (routes compose hax-design only — no app-local components)\n`
-structMd += `├── functions/                # Legacy Neon Function chat runtime router entry\n`
+
 structMd += `├── packages/hax-design/      # Shared React UI (fleet-pi, agent-elements, openui)\n`
 structMd += `│   └── src/components/\n`
 structMd += `│       ├── fleet-pi/         # Product shell, panels, Settings\n`

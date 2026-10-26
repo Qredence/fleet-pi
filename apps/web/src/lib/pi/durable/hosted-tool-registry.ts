@@ -4,7 +4,7 @@ import {
   evaluatePlanCommand,
 } from "../command-policy"
 import { classifyToolPath } from "../mutation-tier"
-import { resolveHostedSandboxPath } from "./spike-daytona"
+import { resolveHostedSandboxPath } from "./hosted-sandbox"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 
 function hostedModes(name: string): ReadonlyArray<ChatMode> | undefined {

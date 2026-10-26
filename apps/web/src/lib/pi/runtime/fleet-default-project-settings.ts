@@ -1,5 +1,4 @@
 import type { SettingsManager } from "@earendil-works/pi-coding-agent"
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export const FLEET_PI_SHARED_PROJECT_SETTINGS = {
@@ -22,33 +21,21 @@ export const FLEET_PI_SHARED_PROJECT_SETTINGS = {
  * Runtime settings merge these defaults with overrides from `.pi/settings.json` and
  * Neon `pi_user_settings`.
  *
- * On the Neon Function runtime the base `npm:` packages are omitted: the sandbox
- * has no `npm` binary and no persistent package cache, so Pi would `spawn npm
- * install` and fail session creation with `ENOENT`. Local `../agent-workspace/...`
- * resource paths are kept — the loader skips missing local dirs, and per-user
- * overrides still merge on top when present.
- *
- * @returns A shallow copy of the surface-appropriate Fleet Pi project settings
+ * @returns A shallow copy of the Fleet Pi project settings
  */
 export function getFleetBaseProjectSettings(): Record<string, unknown> {
-  const settings: Record<string, unknown> = {
-    ...FLEET_PI_SHARED_PROJECT_SETTINGS,
-  }
-  if (getChatAuthSurface() === "neon-function") {
-    settings.packages = []
-  }
-  return settings
+  return { ...FLEET_PI_SHARED_PROJECT_SETTINGS }
 }
 
 /**
- * Cloudflare Workers and the Neon Function cannot spawn `npm` or `git`.
+ * Cloudflare Workers cannot spawn `npm` or `git`.
  * Pi's resource loader installs missing `npm:` and `git:` packages during
  * session startup, and that spawn fails the whole settings, model, and chat
  * request. The settings document still lists those packages; only the loader
  * view drops them. Local paths stay so a private resource copy can load.
  */
 export function hostedRuntimeSkipsPackageInstall() {
-  return isHostedDeployment() || getChatAuthSurface() === "neon-function"
+  return isHostedDeployment()
 }
 
 export function omitRemoteInstallPackages<T extends { packages?: unknown }>(

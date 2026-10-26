@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint"
 import webConfig from "./apps/web/eslint.config.js"
 import haxDesignConfig from "./packages/hax-design/eslint.config.ts"
 
-const piExtensionFiles = [".pi/extensions/**/*.ts", "functions/**/*.ts"]
+const piExtensionFiles = [".pi/extensions/**/*.ts"]
 
 export default [
   {

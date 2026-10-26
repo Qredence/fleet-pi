@@ -59,4 +59,3 @@ request-scoped pool and shared by the ownership check and the post-turn mirror.
   revisit if Neon shows lingering connections.
 - Verify the production `FLEET_PI_CHAT_DATABASE_URL` secret points at the
   `-pooler` host (do not print it).
-- The legacy Neon Function has its own module-scoped pool (NEON-013).

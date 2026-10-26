@@ -61,6 +61,9 @@ jobs:
       - name: Check OpenUI signatures
         run: pnpm generate:openui-signatures -- --check
 
+      - name: Check OpenAPI spec drift
+        run: pnpm generate:openapi -- --check
+
   typecheck:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10

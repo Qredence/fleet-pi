@@ -3,19 +3,12 @@
   "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
-      "entry": [
-        ".pi/extensions/**/*.ts",
-        "neon.ts",
-        "functions/**/*.ts",
-        "agent-workspace/scratch/tmp/neon-object-storage-spike.mjs"
-      ],
+      "entry": [".pi/extensions/**/*.ts", "neon.ts"],
       "project": [
-        "scripts/**/*.js",
+        "scripts/**/*.{js,mjs}",
         ".pi/extensions/**/*.ts",
-        "functions/**/*.ts",
         "!agent-workspace/pi/**"
-      ],
-      "ignoreDependencies": ["zod", "@neondatabase/serverless"]
+      ]
     },
     "apps/web": {
       "ignore": ["src/lib/pi/durable/cloudflare-workers-node-stub.ts"],
@@ -24,28 +17,38 @@
         "src/routes/__root.tsx",
         "src/routes/**/*.tsx",
         "src/routes/api/**/*.ts",
-        "src/lib/pi/chat-runtime/router.ts",
         "src/lib/pi/durable/user-pi-durable.worker.ts",
         "src/lib/**/*.test.ts",
         "src/lib/**/__tests__/**/*.ts",
         "src/lib/**/*.workers.test.ts",
-        "src/lib/**/*.spec.ts",
         "src/routes/**/__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "nitro",
-        "cloudflare",
         "@tanstack/router-plugin",
         "tailwindcss",
         "pino-pretty",
-        "tslib"
+        "cloudflare"
       ]
     },
     "packages/hax-design": {
-      "entry": ["src/**/*.tsx", "src/**/*.ts", "scripts/**/*.ts"]
+      "entry": ["scripts/**/*.ts", "src/**/__tests__/**", "src/**/*.test.*"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreIssues": {
+        "src/components/alert.tsx": ["exports"],
+        "src/components/breadcrumb.tsx": ["exports"],
+        "src/components/card.tsx": ["exports"],
+        "src/components/command.tsx": ["exports"],
+        "src/components/dialog.tsx": ["exports"],
+        "src/components/field.tsx": ["exports"],
+        "src/components/input-group.tsx": ["exports"],
+        "src/components/sheet.tsx": ["exports"],
+        "src/components/sidebar.tsx": ["exports"],
+        "src/components/table.tsx": ["exports"],
+        "src/components/tooltip.tsx": ["exports"]
+      }
     },
     "packages/pi-protocol": {
-      "entry": ["src/**/*.ts", "src/**/__tests__/**/*.ts"],
+      "entry": ["src/**/__tests__/**", "src/**/*.test.ts"],
       "project": ["src/**/*.ts"]
     }
   }

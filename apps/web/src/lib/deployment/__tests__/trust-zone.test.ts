@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { runWithChatAuthSurface } from "../../auth/chat-auth-surface"
 import {
   requiresAuthenticatedMirrorOwner,
   resolveDeploymentTrustZone,
@@ -44,21 +43,11 @@ describe("shouldFailClosedOnMirrorError", () => {
       })
     ).toBe(true)
   })
-
-  it("fails closed on neon-function chat auth surface", () => {
-    runWithChatAuthSurface("neon-function", () => {
-      expect(shouldFailClosedOnMirrorError({})).toBe(true)
-      expect(requiresAuthenticatedMirrorOwner({})).toBe(true)
-    })
-  })
 })
 
 describe("shouldFailClosedOnFunctionMirrorWrite", () => {
-  it("fails the turn on the Neon Function and on Cloudflare", () => {
+  it("fails the turn on Cloudflare", () => {
     expect(shouldFailClosedOnFunctionMirrorWrite({})).toBe(false)
-    runWithChatAuthSurface("neon-function", () => {
-      expect(shouldFailClosedOnFunctionMirrorWrite({})).toBe(true)
-    })
     expect(
       shouldFailClosedOnFunctionMirrorWrite({
         FLEET_PI_DEPLOYMENT: "cloudflare",

@@ -8,7 +8,6 @@ import {
   clearChatAuthBearerTokenCache,
   getChatAuthBearerToken,
 } from "@/lib/auth/use-auth"
-import { resolveChatApiUrl } from "@/lib/pi/chat-runtime-url"
 
 export class ChatRequestError extends Error {
   readonly status: number
@@ -68,14 +67,11 @@ async function withChatRequestHeaders(init?: RequestInit) {
 
 export async function fetchJson<T>(
   url: string,
-  init?: RequestInit,
-  scope?: ChatSessionMetadata
+  init?: RequestInit
 ): Promise<T> {
-  const resolvedUrl = resolveChatApiUrl(url, scope)
-
   const attempt = async (allowRetry: boolean): Promise<T> => {
     const headers = await withChatRequestHeaders(init)
-    const response = await fetch(resolvedUrl, { ...init, headers })
+    const response = await fetch(url, { ...init, headers })
     if (response.status === 401 && allowRetry) {
       clearChatAuthBearerTokenCache()
       return attempt(false)

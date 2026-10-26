@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   OpenAPIRegistry,
@@ -1132,7 +1132,7 @@ const doc = generator.generateDocument({
   ],
 })
 
-const outPath = join(process.cwd(), "openapi.json")
+const outPath = join(import.meta.dirname, "..", "openapi.json")
 // Format with the repo's Prettier config so regeneration is diff-stable
 // against the (lint-staged formatted) committed document.
 const prettierConfig = await resolveConfig(outPath)
@@ -1141,5 +1141,37 @@ const formatted = await format(JSON.stringify(doc, null, 2), {
   parser: "json",
   filepath: outPath,
 })
+
+if (process.argv.includes("--check")) {
+  let committed: string
+  try {
+    committed = readFileSync(outPath, "utf8")
+  } catch {
+    console.error(`openapi.json is missing at ${outPath}`)
+    process.exit(1)
+  }
+
+  if (committed === formatted) {
+    console.log("openapi.json is up to date")
+    process.exit(0)
+  }
+
+  const expected = formatted.split("\n")
+  const actual = committed.split("\n")
+  const lines = Math.max(expected.length, actual.length)
+  let shown = 0
+
+  console.error("openapi.json is out of date. Run `pnpm generate:openapi`.")
+  for (let index = 0; index < lines && shown < 60; index++) {
+    if (expected[index] === actual[index]) continue
+    console.error(`line ${index + 1}:`)
+    if (index < actual.length) console.error(`- ${actual[index]}`)
+    if (index < expected.length) console.error(`+ ${expected[index]}`)
+    shown++
+  }
+  if (shown === 60) console.error("… diff truncated")
+  process.exit(1)
+}
+
 writeFileSync(outPath, formatted)
 console.log(`openapi.json written to ${outPath}`)

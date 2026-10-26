@@ -10,7 +10,7 @@ On Cloudflare (`FLEET_PI_DEPLOYMENT=cloudflare`) these routes require a signed-i
 - Catalog routes: `/api/chat/models`, `/api/chat/models/discover`, `/api/chat/resources`, `/api/chat/commands`.
 - Workspace routes: `/api/workspace/tree`, `/file`, `/item`, `/items`, `/search`, `/reindex`, `/health`. With Daytona BYOK they resolve the sandbox through `resolveWorkspaceContext`.
 
-Anonymous local chat and workspace access applies only when neither Neon Auth URL is set. `POST /api/chat/durable-spike` exists only when the Worker sets `FLEET_PI_DURABLE_SPIKE=1`.
+Anonymous local chat and workspace access applies only when neither Neon Auth URL is set.
 
 ---
 

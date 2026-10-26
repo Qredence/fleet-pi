@@ -1,4 +1,7 @@
-import type { ChatMessage, ChatMessagePart } from "./chat-types"
+import type {
+  ChatMessage,
+  ChatMessagePart,
+} from "@workspace/pi-protocol/chat-types"
 
 let assistantMessageSequence = 0
 

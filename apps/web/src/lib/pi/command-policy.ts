@@ -601,7 +601,7 @@ function deny(reason: string): CommandPolicyResult {
 }
 
 /**
- * Agent-mode tiers for the Pi Durable spike. Protected paths stay blocked.
+ * Agent-mode tiers for the hosted Durable Object runtime. Protected paths stay blocked.
  * Rationale-required paths require a non-empty rationale.
  */
 export function agentWorkspaceMutationBlock(

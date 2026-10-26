@@ -24,7 +24,7 @@ async function agentTurn(
         create: input.create,
         conversationId: input.conversationId,
         model: {
-          provider: "spike",
+          provider: "hosted",
           modelId: input.modelId,
           apiKey: "test-key",
           baseUrl: "http://localhost/v1",
@@ -126,8 +126,8 @@ describe("UserPiDurable", () => {
     const restarted = await stub.restart()
 
     expect(restarted.rootId).toBe(echo.rootId)
-    expect(restarted.transcript).toContain("fleet-pi-spike")
-    expect(echo.transcript).toContain("fleet-pi-spike")
+    expect(restarted.transcript).toContain("fleet-pi-hosted")
+    expect(echo.transcript).toContain("fleet-pi-hosted")
   })
 
   it("replays a read and interrupts bash inside the object", async () => {
@@ -155,14 +155,14 @@ describe("UserPiDurable", () => {
     expect(reply.tools).not.toContain("bash")
     expect(reply.tools).not.toContain("write")
     expect(reply.tools).not.toContain("edit")
-    expect(reply.transcript).toContain("spike model reply")
+    expect(reply.transcript).toContain("hosted model reply")
   })
 
   it("aborts an in-flight agent turn via POST /agent/abort", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-agent-abort")
-    const spikeModel = {
-      provider: "spike",
-      modelId: "spike",
+    const hostedModel = {
+      provider: "hosted",
+      modelId: "hosted",
       apiKey: "test",
       baseUrl: "http://localhost",
       api: "openai-completions" as const,
@@ -175,7 +175,7 @@ describe("UserPiDurable", () => {
         body: JSON.stringify({
           prompt: "hello",
           create: true,
-          model: spikeModel,
+          model: hostedModel,
         }),
       })
     )
@@ -203,7 +203,7 @@ describe("UserPiDurable", () => {
         body: JSON.stringify({
           prompt: "again",
           create: true,
-          model: spikeModel,
+          model: hostedModel,
         }),
       })
     )
@@ -213,7 +213,7 @@ describe("UserPiDurable", () => {
 
   it("forks the latest entry into a new conversation", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-fork-latest")
-    const turn = await agentTurn(stub, { create: true, modelId: "spike" })
+    const turn = await agentTurn(stub, { create: true, modelId: "hosted" })
     const conversationId = turn.sessionId.slice("durable:".length)
     const source = await durableFetch(
       stub,
@@ -252,9 +252,9 @@ describe("UserPiDurable", () => {
 
   it("refuses to fork while an agent turn is active", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-fork-busy")
-    const spikeModel = {
-      provider: "spike",
-      modelId: "spike",
+    const hostedModel = {
+      provider: "hosted",
+      modelId: "hosted",
       apiKey: "test",
       baseUrl: "http://localhost",
       api: "openai-completions" as const,
@@ -267,7 +267,7 @@ describe("UserPiDurable", () => {
         body: JSON.stringify({
           prompt: "hello",
           create: true,
-          model: spikeModel,
+          model: hostedModel,
         }),
       })
     )
@@ -288,7 +288,7 @@ describe("UserPiDurable", () => {
 
   it("refuses to fork a tombstoned conversation", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-fork-deleted")
-    const turn = await agentTurn(stub, { create: true, modelId: "spike" })
+    const turn = await agentTurn(stub, { create: true, modelId: "hosted" })
     const conversationId = turn.sessionId.replace(/^durable:/, "")
     const deleted = await durableFetch(
       stub,
@@ -319,8 +319,8 @@ describe("UserPiDurable", () => {
           create: false,
           conversationId,
           model: {
-            provider: "spike",
-            modelId: "spike",
+            provider: "hosted",
+            modelId: "hosted",
             apiKey: "test-key",
             baseUrl: "http://localhost/v1",
             api: "openai-completions",
@@ -334,9 +334,9 @@ describe("UserPiDurable", () => {
 
   it("rejects busy steer/followUp prompts that target a different conversation", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-busy-mismatch")
-    const spikeModel = {
-      provider: "spike",
-      modelId: "spike",
+    const hostedModel = {
+      provider: "hosted",
+      modelId: "hosted",
       apiKey: "test",
       baseUrl: "http://localhost",
       api: "openai-completions" as const,
@@ -349,7 +349,7 @@ describe("UserPiDurable", () => {
         body: JSON.stringify({
           prompt: "hello",
           create: true,
-          model: spikeModel,
+          model: hostedModel,
         }),
       })
     )
@@ -366,7 +366,7 @@ describe("UserPiDurable", () => {
           create: false,
           conversationId: "different-conversation-id",
           whenBusy: "steer",
-          model: spikeModel,
+          model: hostedModel,
         }),
       })
     )
@@ -394,8 +394,8 @@ describe("UserPiDurable", () => {
           prompt: "hello durable delete",
           create: true,
           model: {
-            provider: "spike",
-            modelId: "spike",
+            provider: "hosted",
+            modelId: "hosted",
             apiKey: "test-key",
             baseUrl: "http://localhost/v1",
             api: "openai-completions",
@@ -450,22 +450,22 @@ describe("UserPiDurable", () => {
 
   it("runs a resumed conversation on the model chosen for that turn", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-model-switch")
-    const first = await agentTurn(stub, { create: true, modelId: "spike" })
+    const first = await agentTurn(stub, { create: true, modelId: "hosted" })
     const conversationId = first.sessionId.replace(/^durable:/, "")
 
     const second = await agentTurn(stub, {
       create: false,
       conversationId,
-      modelId: "spike-b",
+      modelId: "hosted-b",
     })
 
     expect(second.sessionId).toBe(first.sessionId)
-    expect(second.body).toContain("spike model reply from spike-b")
+    expect(second.body).toContain("hosted model reply from hosted-b")
   })
 
   it("erases every hosted conversation on DELETE /data", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-erase")
-    const before = await agentTurn(stub, { create: true, modelId: "spike" })
+    const before = await agentTurn(stub, { create: true, modelId: "hosted" })
     const conversationId = before.sessionId.replace(/^durable:/, "")
     expect(await promptedSessions(stub)).toHaveLength(1)
 
@@ -483,8 +483,8 @@ describe("UserPiDurable", () => {
     )
     expect(readErased.status).toBe(404)
 
-    const after = await agentTurn(stub, { create: true, modelId: "spike" })
-    expect(after.body).toContain("spike model reply")
+    const after = await agentTurn(stub, { create: true, modelId: "hosted" })
+    expect(after.body).toContain("hosted model reply")
     expect(await promptedSessions(stub)).toHaveLength(1)
   })
 

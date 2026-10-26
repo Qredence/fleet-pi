@@ -28,12 +28,11 @@ Standard AWS credential resolution applies: environment variables (`AWS_ACCESS_K
 
 ### Pi Agent
 
-| Variable                  | Default           | Description                                                                                                                                                                                                                                                                                                          |
-| ------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PI_AGENT_DIR`            | —                 | Override the Pi agent resource directory. Leave unset to use the Pi default.                                                                                                                                                                                                                                         |
-| `FLEET_PI_REPO_ROOT`      | `process.cwd()`   | Absolute path to the repository root. Pi sessions, workspace files, and tool calls are scoped to this directory. On the Neon Function runtime this defaults to an ephemeral per-instance `/tmp` root: session JSONL there is volatile (lost on instance recycle), so the Postgres `pi_*` mirror is the durable copy. |
-| `FLEET_PI_RUNTIME_TTL_MS` | `600000` (10 min) | How long a Pi `AgentSessionRuntime` is kept alive in memory between chat turns before being released.                                                                                                                                                                                                                |
-| `FLEET_PI_DURABLE_SPIKE`  | unset             | Set to `1` to serve the scripted `POST /api/chat/durable-spike` harness route on a Worker. Leave unset in production: the route reopens the user's Durable Object harness.                                                                                                                                           |
+| Variable                  | Default           | Description                                                                                                      |
+| ------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `PI_AGENT_DIR`            | —                 | Override the Pi agent resource directory. Leave unset to use the Pi default.                                     |
+| `FLEET_PI_REPO_ROOT`      | `process.cwd()`   | Absolute path to the repository root. Pi sessions, workspace files, and tool calls are scoped to this directory. |
+| `FLEET_PI_RUNTIME_TTL_MS` | `600000` (10 min) | How long a Pi `AgentSessionRuntime` is kept alive in memory between chat turns before being released.            |
 
 ### Logging
 

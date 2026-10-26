@@ -1,1 +1,0 @@
-export { isHostedDeployment } from "./environment"

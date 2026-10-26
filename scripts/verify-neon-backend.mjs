@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Verifies Postgres, Neon Auth, Object Storage, and the chat Function on the
- * linked Neon branch. Loads .env then .env.local from the repo root.
+ * Verifies Postgres, Neon Auth, and Object Storage on the linked Neon branch.
+ * Loads .env then .env.local from the repo root.
  */
 import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
@@ -79,21 +79,6 @@ function runNeonJson(command, extraArgs = []) {
   return JSON.parse(raw)
 }
 
-function resolveFunctionUrl() {
-  const explicit =
-    process.env.VITE_FLEET_PI_CHAT_RUNTIME_URL?.trim() ||
-    process.env.FLEET_PI_CHAT_RUNTIME_URL?.trim() ||
-    ""
-  if (explicit) return explicit.replace(/\/$/, "")
-
-  try {
-    const parsed = runNeonJson(["functions", "get", "chat", "-o", "json"])
-    return String(parsed.invocation_url ?? "").replace(/\/$/, "")
-  } catch {
-    return ""
-  }
-}
-
 async function checkPostgres(results) {
   const url = resolveChatDatabaseUrl()
   if (!url) {
@@ -162,39 +147,6 @@ async function checkObjectStorage(results) {
   })
 }
 
-async function checkFunction(results) {
-  const baseUrl = resolveFunctionUrl()
-  if (!baseUrl) {
-    results.push({
-      id: "function",
-      ok: false,
-      message: "Chat function invocation URL not configured",
-    })
-    return
-  }
-  try {
-    const response = await fetch(`${baseUrl}/health`)
-    const json = await response.json()
-    const ok =
-      response.ok &&
-      json?.ok === true &&
-      json?.service === "fleet-pi-chat-runtime"
-    results.push({
-      id: "function",
-      ok,
-      message: ok
-        ? `GET ${baseUrl}/health returned ok`
-        : `Unexpected health response (${response.status})`,
-    })
-  } catch (error) {
-    results.push({
-      id: "function",
-      ok: false,
-      message: error instanceof Error ? error.message : String(error),
-    })
-  }
-}
-
 function checkReadiness(results) {
   const hasMigrationUrls = Boolean(
     process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL?.trim() &&
@@ -241,7 +193,6 @@ async function main() {
   await checkPostgres(results)
   checkAuth(results)
   await checkObjectStorage(results)
-  await checkFunction(results)
   checkReadiness(results)
 
   let failed = false

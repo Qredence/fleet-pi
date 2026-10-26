@@ -50,7 +50,7 @@ sandbox: Daytona BYOK per user on Cloudflare (`daytona` in `pi_user_providers`)
 - `agent-workspace/pi/{skills,prompts,extensions,packages}` — workspace-installed Pi resources
 - `.pi/settings.json` — Pi compatibility bridge (overrides only; base defaults in code)
 - `apps/web/src/lib/pi/runtime/` — session factory, settings bridge, Gateway/OCC providers
-- `neon.ts` — Managed Auth + AI Gateway + chat Neon Function IaC
+- `neon.ts` — Managed Auth + AI Gateway IaC
 
 ---
 

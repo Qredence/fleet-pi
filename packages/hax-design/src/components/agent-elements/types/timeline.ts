@@ -41,5 +41,3 @@ export type TimelineStep =
       type: "pause"
       duration: number
     }
-
-export type Turn = { userStep?: TimelineStep; steps: Array<TimelineStep> }

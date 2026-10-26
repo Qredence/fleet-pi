@@ -7,7 +7,6 @@ import {
   unauthorizedChatResponse,
   withAuthenticatedChatRequest,
 } from "../chat-api-auth"
-import { runWithChatAuthSurface } from "../chat-auth-surface"
 
 import { auth } from "@/lib/auth/server"
 import {
@@ -228,16 +227,6 @@ describe("chat-api-auth", () => {
     process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
     expect(isChatAuthRequired()).toBe(true)
     expect(unauthorizedChatResponse().status).toBe(401)
-  })
-
-  it("requires auth on the Neon Function surface", () => {
-    clearDeployedChatAuthEnv()
-
-    const required = runWithChatAuthSurface("neon-function", () =>
-      isChatAuthRequired()
-    )
-
-    expect(required).toBe(true)
   })
 
   it("denies foreign runs when mirror ownership fails", async () => {

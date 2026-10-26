@@ -1,4 +1,3 @@
-import { getChatAuthSurface } from "../auth/chat-auth-surface"
 import { isCloudflareDeployment } from "./environment"
 
 export type DeploymentTrustZone =
@@ -28,16 +27,13 @@ export function isHostedPreviewDeployment() {
 
 /**
  * Fail closed for mirror ownership / DB errors wherever chat auth is required:
- * Cloudflare, Neon Managed Auth, Neon Function surface, or explicit runtime flag.
+ * Cloudflare, Neon Managed Auth, or explicit runtime flag.
  * Keep this aligned with `isChatAuthRequired` without importing chat-api-auth
  * (avoids cycles with auth/server).
  */
 export function shouldFailClosedOnMirrorError(
   env: NodeJS.ProcessEnv = process.env
 ) {
-  if (getChatAuthSurface() === "neon-function") {
-    return true
-  }
   if (env.FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH === "1") {
     return true
   }
@@ -49,14 +45,13 @@ export function shouldFailClosedOnMirrorError(
 
 /**
  * Mirror writes fail the turn when the transcript has no other durable copy.
- * The Neon Function's JSONL lives on /tmp. Cloudflare Workers have no durable
- * JSONL until the Agent cutover. Local Neon Auth keeps streaming:
- * Pi JSONL stays the source of truth and a mirror error is logged.
+ * Cloudflare Workers have no durable JSONL until the Agent cutover. Local Neon
+ * Auth keeps streaming: Pi JSONL stays the source of truth and a mirror error
+ * is logged.
  */
 export function shouldFailClosedOnFunctionMirrorWrite(
   env: NodeJS.ProcessEnv = process.env
 ) {
-  if (getChatAuthSurface() === "neon-function") return true
   return env.FLEET_PI_DEPLOYMENT === "cloudflare"
 }
 

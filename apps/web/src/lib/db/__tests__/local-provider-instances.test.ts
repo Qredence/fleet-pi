@@ -29,7 +29,6 @@ import {
   useLocalProviderStore,
 } from "../local-provider-instances"
 import type { OccInstance } from "../occ-instances"
-import { runWithChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
 const originalHosted = process.env.FLEET_PI_DEPLOYMENT
@@ -89,13 +88,6 @@ describe("useLocalProviderStore", () => {
   it("returns false for a signed-in user with a chat DB", () => {
     process.env.FLEET_PI_CHAT_DATABASE_URL = "postgres://example"
     expect(useLocalProviderStore("user-1")).toBe(false)
-  })
-
-  it("returns false on the Neon Function surface even without a chat DB", () => {
-    runWithChatAuthSurface("neon-function", () => {
-      expect(useLocalProviderStore(undefined)).toBe(false)
-      expect(useLocalProviderStore("user-1")).toBe(false)
-    })
   })
 })
 

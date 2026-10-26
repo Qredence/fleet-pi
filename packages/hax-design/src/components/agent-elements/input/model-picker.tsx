@@ -128,34 +128,3 @@ export const ModelPicker = memo(function ModelPickerComponent({
     </Popover>
   )
 })
-
-export type ModelBadgeProps = {
-  models: Array<ModelOption>
-  value?: string
-  placeholder?: string
-  className?: string
-}
-
-export const ModelBadge = memo(function ModelBadgeComponent({
-  models,
-  value,
-  placeholder = "Auto",
-  className,
-}: ModelBadgeProps) {
-  const activeModel = models.find((m) => m.id === value) ?? models[0]
-  return (
-    <div
-      className={cn(
-        "inline-flex h-7 items-center px-2 text-[12px] leading-4 text-foreground/30",
-        className
-      )}
-    >
-      <span className="font-medium">{activeModel?.name ?? placeholder}</span>
-      {activeModel?.version && (
-        <span className="ml-0.5 font-normal text-foreground/20">
-          {activeModel.version}
-        </span>
-      )}
-    </div>
-  )
-})

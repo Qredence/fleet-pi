@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { assertHttpsMcpServer, hostedMcpToolName } from "../durable-mcp"
 import { selectHostedExtensions } from "../hosted-extensions"
-import { toolsForChatMode } from "../spike-harness"
+import { toolsForChatMode } from "../hosted-harness"
 
 describe("hosted extensions, code mode, and MCP", () => {
   it("turns on a bundled extension by name and leaves unknown files unavailable", () => {
     const selected = selectHostedExtensions([
-      "spike-sandbox",
-      "extensions/spike-sandbox.ts",
+      "hosted-sandbox",
+      "extensions/hosted-sandbox.ts",
       "extensions/vendor/filechanges.ts",
     ])
-    expect(selected.enabled).toEqual(["spike-sandbox"])
+    expect(selected.enabled).toEqual(["hosted-sandbox"])
     expect(selected.unavailable).toEqual(["extensions/vendor/filechanges.ts"])
   })
 

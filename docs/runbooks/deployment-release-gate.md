@@ -50,23 +50,21 @@ or the chat migrate runner imports `chat-postgres-data-api-auth`.
 ## Neon projection and recovery
 
 Hosted transcripts live on the Durable Object. The Neon `pi_*` projection is
-fail-open and is not the chat stream. The Neon Function pool stays at most 5
-connections when it still serves legacy JSONL sessions (limits below). `pnpm chat:maintain`
+fail-open and is not the chat stream. The mirror pool stays at most 5
+connections (limits below). `pnpm chat:maintain`
 is retired (see below). Production `main` has a
 daily snapshot schedule (see
 [Production backups and recovery](./neon-backup-recovery.md)); record the
 latest recovery point before a production promotion.
 
-### Legacy Function Postgres pool (NEON-013)
+### Chat mirror Postgres pool (NEON-013)
 
-**How many DB connections can the legacy Function use? At most 5 per
-Function instance.**
+**How many DB connections can the mirror pool use? At most 5 per pool.**
 
 The pool is created by `createChatPostgresPool()` in
 `apps/web/src/lib/db/pi-session-ownership-db.ts` and used through
-`getChatPostgresPool()` by the `pi_*` mirror modules. `functions/chat.ts`
-(the Neon Function declared in `neon.ts`) reaches it through the chat runtime
-router when it serves legacy JSONL sessions.
+`getChatPostgresPool()` by the `pi_*` mirror modules for the Worker mirror,
+session ownership checks, and recovery.
 
 | Setting                   | Value                                           | Meaning                                             |
 | ------------------------- | ----------------------------------------------- | --------------------------------------------------- |
@@ -78,10 +76,7 @@ router when it serves legacy JSONL sessions.
 
 Scope and concurrency:
 
-- **Neon Function / Node:** one module-scoped pool per process, so the cap is
-  5 connections per Function instance. Requests beyond 5 concurrent queries
-  queue, then fail after 5 s. Total connections = 5 x running instances.
-- **Cloudflare Worker:** uses the same factory per request, not this
+- **Cloudflare Worker:** uses the same factory per request, not a
   module-scoped pool. See
   [worker-postgres-connections.md](./worker-postgres-connections.md) (CF-003)
   for the Worker budget.
@@ -91,7 +86,7 @@ Scope and concurrency:
   this, so the 5-connection cap is the binding limit, not Neon.
 
 The pool stays: the Worker mirror, session ownership checks and recovery all
-use it, not only the legacy path. Change the numbers in
+use it. Change the numbers in
 `createChatPostgresPool()` and this table together.
 
 ### `chat:maintain` retired (NEON-011)

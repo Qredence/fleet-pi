@@ -8,7 +8,7 @@ import { ChatStopControl } from "./chat-stop-control"
 import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 import type { InputBarProps } from "../../agent-elements/input-bar"
 import type { SuggestionItem } from "../../agent-elements/input/suggestions"
-import type { ChatStatus } from "../../agent-elements/chat-types"
+import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type { ModelOption } from "../../agent-elements/types"
 
 export const FLEET_PI_SUGGESTION_ITEM_CLASSNAME = SUGGESTION_ITEM_CLASS

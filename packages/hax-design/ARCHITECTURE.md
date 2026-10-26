@@ -113,6 +113,7 @@ import { FIELD_CONTROL_CLASS } from "../styles/tokens"
 - **Loading indicators**: `@shadcn` `Spinner` + `data-icon` for dense button loading; `agent-elements` `SpiralLoader` for chat/shell wait states.
 - **Fleet Pi surfaces**: add under `fleet-pi/`; reuse `primitives/` and `styles/tokens.ts` before inventing new class strings.
 - **Agent UI**: extend `agent-elements/` and tool registry first for new tool types.
+- **Primitive surface**: top-level shadcn primitives keep their full upstream subcomponent exports even when Fleet Pi does not use one yet. `knip.json` ignores unused exports in those files; delete the ignore entry if a primitive is no longer needed.
 
 ## Related docs
 

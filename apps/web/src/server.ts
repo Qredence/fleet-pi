@@ -1,6 +1,5 @@
 import handler from "@tanstack/react-start/server-entry"
 import { enforceNamedEdgeRateLimit } from "@/lib/deployment/edge-rate-limit"
-import { handleDurableSpikeRequest } from "@/lib/pi/durable/spike-route"
 import { bindWorkerEnv, runInRequestScope } from "@/lib/runtime/request-scope"
 
 export { UserPiDurable } from "@/lib/pi/durable/user-pi-durable"
@@ -17,12 +16,6 @@ export default {
       env: rest[0] instanceof Object ? rest[0] : undefined,
     })
     if (limited) return limited
-
-    const spike = await handleDurableSpikeRequest(
-      request,
-      rest[0] instanceof Object ? rest[0] : undefined
-    )
-    if (spike) return spike
 
     return runInRequestScope(() => {
       bindWorkerEnv(rest[0])

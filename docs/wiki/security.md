@@ -12,18 +12,18 @@ In **Agent mode** the full Pi bash tool is available, scoped to the active proje
 
 Fleet Pi supports two auth backends (`apps/web/src/lib/auth/auth-mode.ts`):
 
-| Surface                          | Backend                                                                                                                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Deployed (Cloudflare + Neon)** | **Neon Managed Auth** when `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL` is set. Same-origin `/api/auth` proxy; JWKS-verified Bearer JWTs for Neon Function chat runtime. |
-| **Local**                        | **Better Auth** with SQLite (`.fleet/auth.sqlite`) when no Neon Auth URL is set. Anonymous chat/workspace is allowed locally only.                                  |
+| Surface                          | Backend                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deployed (Cloudflare + Neon)** | **Neon Managed Auth** when `NEON_AUTH_BASE_URL` or `NEON_AUTH_URL` is set. Same-origin `/api/auth` proxy; JWKS-verified Bearer JWTs for chat APIs. |
+| **Local**                        | **Better Auth** with SQLite (`.fleet/auth.sqlite`) when no Neon Auth URL is set. Anonymous chat/workspace is allowed locally only.                 |
 
 `BETTER_AUTH_SECRET` remains required on Cloudflare for BYOK provider AES-GCM encryption even under Managed Auth. Cookie gate prefers `NEON_AUTH_COOKIE_SECRET`.
 
-Session-scoped chat and workspace APIs require auth on Cloudflare, Neon Managed Auth, Neon Function surfaces, or when `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1`. The route list is in [API endpoints](api/endpoints.md#authentication).
+Session-scoped chat and workspace APIs require auth on Cloudflare, Neon Managed Auth, or when `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1`. The route list is in [API endpoints](api/endpoints.md#authentication).
 
-- `auth-mode.ts` stays client-safe. Server-side checks (`isChatAuthRequired`, `chat-auth-surface`, `node:async_hooks`) live in `chat-api-auth.ts`.
+- `auth-mode.ts` stays client-safe. Server-side checks (`isChatAuthRequired`, `node:async_hooks`) live in `chat-api-auth.ts`.
 - Neon Auth clients call same-origin `/api/auth` when `VITE_NEON_AUTH_URL` is set, so cookies stay first-party. Mint JWTs with `authClient.token()` and `credentials: "include"` (cached, single-flight), not Better Auth `getJWTToken()`.
-- Mirror ownership fails closed (`shouldFailClosedOnMirrorError`, `requiresAuthenticatedMirrorOwner` in `deployment/trust-zone.ts`) on Cloudflare, Neon Managed Auth, the Neon Function surface, or with `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH`.
+- Mirror ownership fails closed (`shouldFailClosedOnMirrorError`, `requiresAuthenticatedMirrorOwner` in `deployment/trust-zone.ts`) on Cloudflare, Neon Managed Auth, or with `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH`.
 - Neon Managed Auth signup is closed-beta only until restricted signups exist.
 
 ## LLM credentials and org key scrubbing

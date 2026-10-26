@@ -40,8 +40,7 @@ export function rateLimitRuleForRequest(
   if (
     pathname === "/api/chat" ||
     pathname === "/api/chat/new" ||
-    pathname === "/api/chat/resume" ||
-    pathname === "/api/chat/durable-spike"
+    pathname === "/api/chat/resume"
   ) {
     return FLEET_PI_CHAT_START_RATE_LIMIT
   }
@@ -60,7 +59,7 @@ export async function enforceNamedEdgeRateLimit(input: {
   now?: number
   /**
    * Use the in-process bucket when this isolate has no Cloudflare rate-limit
-   * binding. The Neon Function sets this; Worker requests keep the binding.
+   * binding. Worker requests keep the binding.
    */
   allowMemoryLimit?: boolean
 }): Promise<Response | undefined> {

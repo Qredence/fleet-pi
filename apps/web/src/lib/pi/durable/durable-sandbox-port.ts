@@ -1,6 +1,6 @@
 import { Daytona } from "@daytona/sdk"
-import { daytonaSandboxPort } from "./spike-daytona"
-import type { SpikeSandboxPort } from "./spike-env"
+import { daytonaSandboxPort } from "./hosted-sandbox"
+import type { HostedSandboxPort } from "./hosted-sandbox-env"
 
 export type DurableSandboxConnection = {
   apiKey: string
@@ -11,7 +11,7 @@ export type DurableSandboxConnection = {
 
 export async function openDaytonaSandboxPort(
   connection: DurableSandboxConnection
-): Promise<SpikeSandboxPort> {
+): Promise<HostedSandboxPort> {
   const client = new Daytona({
     apiKey: connection.apiKey,
     ...(connection.apiUrl ? { apiUrl: connection.apiUrl } : {}),

@@ -85,7 +85,6 @@ describe("UserPiDurable binding", () => {
       "utf8"
     )
     expect(chat).not.toContain("UserPiDurable")
-    expect(chat).not.toContain("durable-spike")
     expect(chat).toContain("postChatHandler")
     expect(sessionFactory).toContain("createAgentSessionServices")
     expect(sessionFactory).not.toContain("Harness.open")

@@ -33,9 +33,9 @@ export function assertSafeOpenAiCompatibleBaseUrl(baseUrl: string): string {
     throw new Error("Invalid OpenAI Chat Completions base URL.")
   }
 
-  // Loopback http is a local-dev convenience only: it stays blocked on Cloudflare
-  // and on the Neon Function surface, where "loopback" means the Function's own
-  // process, not the developer's laptop.
+  // Loopback http is a local-dev convenience only: it stays blocked on hosted
+  // runtimes, where "loopback" means the runtime's own process, not the
+  // developer's laptop.
   const allowLocalHttp = !isDeployedChatRuntimeSurface()
   if (parsed.protocol === "https:") {
     // allowed

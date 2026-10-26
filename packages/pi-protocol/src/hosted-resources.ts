@@ -1,6 +1,6 @@
 /** Bundled hosted extensions. Volume JavaScript is never evaluated. */
 export const BUNDLED_HOSTED_EXTENSIONS = [
-  "spike-sandbox",
+  "hosted-sandbox",
   "workspace-status",
 ] as const
 

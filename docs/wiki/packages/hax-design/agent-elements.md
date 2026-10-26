@@ -125,7 +125,7 @@ A toolbar button that opens a popover listing configured modes. Fully controlled
 
 `packages/hax-design/src/components/agent-elements/input/model-picker.tsx`
 
-A toolbar button that opens a searchable model list popover. Accepts `{ id, name, version? }` model objects. `<ModelBadge>` is a read-only variant for contexts where switching is not allowed.
+A toolbar button that opens a searchable model list popover. Accepts `{ id, name, version? }` model objects.
 
 ---
 
@@ -227,7 +227,7 @@ Two layers handle user questions from the AI:
 
 ## Type hierarchy
 
-`packages/hax-design/src/components/agent-elements/chat-types.ts`
+`packages/pi-protocol/src/chat-types.ts`
 
 ```
 ChatMessage
@@ -252,24 +252,24 @@ Tool parts follow the convention `type: "tool-<Name>"`. The `state` field drives
 
 ## Key source files
 
-| File                                                                             | Purpose                                             |
-| -------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `packages/hax-design/src/components/agent-elements/agent-chat.tsx`               | Top-level drop-in component                         |
-| `packages/hax-design/src/components/agent-elements/message-list.tsx`             | Scrollable message history                          |
-| `packages/hax-design/src/components/agent-elements/input-bar.tsx`                | Chat input with attachments, questions, suggestions |
-| `packages/hax-design/src/components/agent-elements/chat-types.ts`                | `ChatMessage`, `ChatStatus` type definitions        |
-| `packages/hax-design/src/components/agent-elements/markdown.tsx`                 | Streaming markdown via Streamdown                   |
-| `packages/hax-design/src/components/agent-elements/tools/tool-registry.ts`       | Icon + title metadata for 30+ tool types            |
-| `packages/hax-design/src/components/agent-elements/tools/tool-renderer.tsx`      | Tool dispatch logic                                 |
-| `packages/hax-design/src/components/agent-elements/tools/bash-tool.tsx`          | Bash command + output card                          |
-| `packages/hax-design/src/components/agent-elements/tools/edit-tool.tsx`          | Write / Edit diff card                              |
-| `packages/hax-design/src/components/agent-elements/tools/search-tool.tsx`        | Search / Grep / Glob card                           |
-| `packages/hax-design/src/components/agent-elements/tools/plan-tool.tsx`          | Plan write / approve card                           |
-| `packages/hax-design/src/components/agent-elements/tools/tool-group.tsx`         | Task / Agent container                              |
-| `packages/hax-design/src/components/agent-elements/input/mode-selector.tsx`      | Agent / Plan mode toggle                            |
-| `packages/hax-design/src/components/agent-elements/input/model-picker.tsx`       | Model selection dropdown                            |
-| `packages/hax-design/src/components/agent-elements/question/question-prompt.tsx` | Question form (text, choice, scale)                 |
-| `packages/hax-design/src/components/agent-elements/agent-ui.css`                 | Agent UI CSS layer (design tokens)                  |
+| File                                                                 | Purpose                                             |
+| -------------------------------------------------------------------- | --------------------------------------------------- |
+| `packages/hax-design/src/components/agent-elements/agent-chat.tsx`   | Top-level drop-in component                         |
+| `packages/hax-design/src/components/agent-elements/message-list.tsx` | Scrollable message history                          |
+| `packages/hax-design/src/components/agent-elements/input-bar.tsx`    | Chat input with attachments, questions, suggestions |
+
+| `packages/hax-design/src/components/agent-elements/markdown.tsx` | Streaming markdown via Streamdown |
+| `packages/hax-design/src/components/agent-elements/tools/tool-registry.ts` | Icon + title metadata for 30+ tool types |
+| `packages/hax-design/src/components/agent-elements/tools/tool-renderer.tsx` | Tool dispatch logic |
+| `packages/hax-design/src/components/agent-elements/tools/bash-tool.tsx` | Bash command + output card |
+| `packages/hax-design/src/components/agent-elements/tools/edit-tool.tsx` | Write / Edit diff card |
+| `packages/hax-design/src/components/agent-elements/tools/search-tool.tsx` | Search / Grep / Glob card |
+| `packages/hax-design/src/components/agent-elements/tools/plan-tool.tsx` | Plan write / approve card |
+| `packages/hax-design/src/components/agent-elements/tools/tool-group.tsx` | Task / Agent container |
+| `packages/hax-design/src/components/agent-elements/input/mode-selector.tsx` | Agent / Plan mode toggle |
+| `packages/hax-design/src/components/agent-elements/input/model-picker.tsx` | Model selection dropdown |
+| `packages/hax-design/src/components/agent-elements/question/question-prompt.tsx` | Question form (text, choice, scale) |
+| `packages/hax-design/src/components/agent-elements/agent-ui.css` | Agent UI CSS layer (design tokens) |
 
 ---
 

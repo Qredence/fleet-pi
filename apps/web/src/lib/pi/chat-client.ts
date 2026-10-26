@@ -22,7 +22,7 @@ import {
   metadataUrl,
   readChatStream,
 } from "./chat-fetch"
-import { resolveChatApiUrl } from "./chat-runtime-url"
+
 import type {
   ChatCommandsResponse,
   ChatModelsDiscoverRequest,
@@ -89,27 +89,19 @@ export type ChatClient = {
 
 export const chatClient: ChatClient = {
   async abortSession(metadata) {
-    await fetchJson(
-      "/api/chat/abort",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(metadata),
-      },
-      metadata
-    )
+    await fetchJson("/api/chat/abort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    })
   },
 
   async forkSession(metadata) {
-    return fetchJson<{ sessionId: string }>(
-      "/api/chat/fork",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(metadata),
-      },
-      metadata
-    )
+    return fetchJson<{ sessionId: string }>("/api/chat/fork", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    })
   },
 
   async answerQuestion(request) {
@@ -221,18 +213,12 @@ export const chatClient: ChatClient = {
         headers.set("Authorization", `Bearer ${bearer}`)
       }
 
-      const response = await fetch(
-        resolveChatApiUrl("/api/chat", {
-          sessionFile: request.sessionFile,
-          sessionId: request.sessionId,
-        }),
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(request),
-          signal,
-        }
-      )
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(request),
+        signal,
+      })
 
       if (response.status === 401 && allowRetry) {
         clearChatAuthBearerTokenCache()

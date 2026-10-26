@@ -9,10 +9,9 @@ const authModePath = join(
 )
 
 describe("auth-mode client boundary", () => {
-  it("does not import Node-only chat auth surface helpers", async () => {
+  it("does not import Node-only auth helpers", async () => {
     const source = await readFile(authModePath, "utf8")
 
     expect(source).not.toMatch(/node:async_hooks/)
-    expect(source).not.toMatch(/chat-auth-surface/)
   })
 })

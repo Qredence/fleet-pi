@@ -1,5 +1,4 @@
 import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
-import { getChatAuthSurface } from "@/lib/auth/chat-auth-surface"
 import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   parseBearerToken,
@@ -22,15 +21,11 @@ export type AuthenticatedChatContext = {
 
 /**
  * Single chat-auth policy:
- * - Neon Function surface always requires auth
  * - Cloudflare deployments require auth
  * - Neon Managed Auth configured (web) requires auth
  * - Optional `FLEET_PI_CHAT_RUNTIME_REQUIRE_AUTH=1` for explicit gates
  */
 export function isChatAuthRequired(env: NodeJS.ProcessEnv = process.env) {
-  if (getChatAuthSurface() === "neon-function") {
-    return true
-  }
   return (
     isHostedDeployment() ||
     isNeonManagedAuthConfigured(env) ||
@@ -56,10 +51,6 @@ export async function getChatAuthSession(request: Request) {
         },
       }
     }
-  }
-
-  if (getChatAuthSurface() === "neon-function") {
-    return null
   }
 
   const { auth } = await import("@/lib/auth/server")

@@ -6,7 +6,7 @@ import {
 } from "../../../lib/pi/provenance-query"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
-import { isHostedDeployment } from "@/lib/deployment"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export async function chatProvenanceHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()

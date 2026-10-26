@@ -2,7 +2,7 @@ import {
   isModelPatternEnabled,
   modelMatchesPattern,
   modelPattern,
-} from "../../../../../lib/pi/model-patterns"
+} from "@workspace/pi-protocol/model-patterns"
 import type { ConfigModelInfo } from "./types"
 
 export function customModelKey(provider: string, model: string) {

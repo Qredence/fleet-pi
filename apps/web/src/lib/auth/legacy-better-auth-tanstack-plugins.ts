@@ -3,8 +3,8 @@ import type { BetterAuthPlugin } from "better-auth"
 
 /**
  * TanStack Start cookie plugin for Better Auth. Kept out of
- * legacy-better-auth-server.ts so Neon Function bundles do not pull
- * @tanstack/start-server-core.
+ * legacy-better-auth-server.ts so server bundles do not pull
+ * @tanstack/start-server-core eagerly.
  */
 export function getLegacyBetterAuthTanstackPlugins(): Array<BetterAuthPlugin> {
   return [tanstackStartCookies()]

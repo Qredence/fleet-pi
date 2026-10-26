@@ -26,7 +26,7 @@
     "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
     "remap-auth-user-ids": "pnpm --filter web remap-auth-user-ids",
     "dev": "turbo dev --filter=web",
-    "lint": "turbo lint && eslint .pi/extensions functions",
+    "lint": "turbo lint && eslint .pi/extensions",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
@@ -40,6 +40,7 @@
     "tech-debt": "./scripts/scan-tech-debt.sh",
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js",
+    "generate:openapi": "pnpm --filter web exec tsx scripts/generate-openapi.ts",
     "generate:openui-signatures": "pnpm --filter hax-design generate:openui-signatures",
     "check-design-drift": "node scripts/check-design-drift.js"
   },
@@ -48,11 +49,11 @@
     "@earendil-works/pi-tui": "^1.2.0",
     "diff": "^9.0.0",
     "typebox": "1.4.2",
-    "undici": "^8.12.3",
-    "zod": "^4.6.7"
+    "undici": "^8.12.3"
   },
   "devDependencies": {
     "@neon/config": "^0.9.5",
+    "@neondatabase/serverless": "^1.2.0",
     "eslint": "^10.13.0",
     "husky": "^9.1.7",
     "jscpd": "^5.4.2",
@@ -80,9 +81,6 @@
       "pnpm --filter @workspace/pi-protocol exec eslint --fix"
     ],
     ".pi/extensions/**/*.ts": [
-      "eslint --fix"
-    ],
-    "functions/**/*.ts": [
       "eslint --fix"
     ]
   },

@@ -3,7 +3,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { SettingsManager } from "@earendil-works/pi-coding-agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { runWithChatAuthSurface } from "../../../auth/chat-auth-surface"
 import { createSessionServices } from "../session-factory"
 import { hydrateSessionServicesSettings } from "../durable-project-settings"
 import { hotReloadActiveRuntimesForUser } from "../hot-reload"
@@ -12,6 +11,7 @@ import {
   deleteActiveSessionRecord,
   setActiveSessionRecord,
 } from "../active-sessions"
+import { FLEET_PI_SHARED_PROJECT_SETTINGS } from "../fleet-default-project-settings"
 import {
   createIsolatedProjectSettings,
   replaceIsolatedProjectSettings,
@@ -130,6 +130,11 @@ function createServices(
   )
 }
 
+async function withHostedDeployment<T>(fn: () => Promise<T>): Promise<T> {
+  vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
+  return fn()
+}
+
 function retainServices(
   id: string,
   userId: string,
@@ -214,7 +219,7 @@ describe("deployed session settings", () => {
       Promise.resolve(filesByUser.get(sandbox.id)!.get(path))
     )
 
-    await runWithChatAuthSurface("neon-function", async () => {
+    await withHostedDeployment(async () => {
       const [a, b] = await Promise.all([
         createServices("a", undefined, true),
         createServices("b", undefined, true),
@@ -299,7 +304,7 @@ describe("deployed session settings", () => {
     )
     settingsByUser.set("a", { packages: [] })
     mocks.getInFlightUserSandbox.mockReturnValue(new Promise(() => {}))
-    await runWithChatAuthSurface("neon-function", async () => {
+    await withHostedDeployment(async () => {
       const services = await createServices("a")
       expect(services.resourceLoader.getPrompts().prompts).toEqual([])
       expect(mocks.getInFlightUserSandbox).not.toHaveBeenCalled()
@@ -335,7 +340,7 @@ describe("deployed session settings", () => {
     })
     const callerManager = SettingsManager.create(root, join(root, "agent"))
 
-    await runWithChatAuthSurface("neon-function", async () => {
+    await withHostedDeployment(async () => {
       const a = await createServices("a", callerManager)
       const b = await createServices("b")
       expect(a.settingsManager).not.toBe(callerManager)
@@ -351,43 +356,31 @@ describe("deployed session settings", () => {
       expect(b.settingsManager.getDefaultProvider()).toBeUndefined()
       expect(b.settingsManager.getDefaultModel()).toBeUndefined()
       expect(b.settingsManager.getThemePaths()).toEqual([])
-      expect(b.settingsManager.getPackages()).toEqual([])
+      expect(b.settingsManager.getPackages()).toEqual(
+        FLEET_PI_SHARED_PROJECT_SETTINGS.packages
+      )
     })
     expect(await readFile(sharedFile, "utf8")).toBe(sharedSource)
   })
 
-  it.each(["neon-function", "cloudflare"] as const)(
-    "keeps concurrent users and deny-all isolated on %s",
-    async (surface) => {
-      if (surface === "cloudflare") {
-        vi.stubEnv("FLEET_PI_DEPLOYMENT", "cloudflare")
-      }
-      settingsByUser.set("a", {
-        packages: [],
-        enabledModels: ["custom+a/model"],
-      })
-      settingsByUser.set("b", { packages: [], enabledModels: [] })
-      await runWithChatAuthSurface(
-        surface === "neon-function" ? surface : "web",
-        async () => {
-          const [a, b] = await Promise.all([
-            createServices("a"),
-            createServices("b"),
-          ])
-          expect(a.settingsManager).not.toBe(b.settingsManager)
-          await Promise.all([
-            a.resourceLoader.reload(),
-            b.resourceLoader.reload(),
-          ])
-          expect(a.settingsManager.getEnabledModels()).toEqual([
-            "custom+a/model",
-          ])
-          expect(b.settingsManager.getEnabledModels()).toEqual([])
-        }
-      )
-      expect(await readFile(sharedFile, "utf8")).toBe(sharedSource)
-    }
-  )
+  it("keeps concurrent users and deny-all isolated", async () => {
+    settingsByUser.set("a", {
+      packages: [],
+      enabledModels: ["custom+a/model"],
+    })
+    settingsByUser.set("b", { packages: [], enabledModels: [] })
+    await withHostedDeployment(async () => {
+      const [a, b] = await Promise.all([
+        createServices("a"),
+        createServices("b"),
+      ])
+      expect(a.settingsManager).not.toBe(b.settingsManager)
+      await Promise.all([a.resourceLoader.reload(), b.resourceLoader.reload()])
+      expect(a.settingsManager.getEnabledModels()).toEqual(["custom+a/model"])
+      expect(b.settingsManager.getEnabledModels()).toEqual([])
+    })
+    expect(await readFile(sharedFile, "utf8")).toBe(sharedSource)
+  })
 
   it("removes old overrides on hydration and reloads only the matching user", async () => {
     settingsByUser.set("a", {
@@ -398,7 +391,7 @@ describe("deployed session settings", () => {
       transport: "websocket",
     })
     settingsByUser.set("b", { enabledModels: ["custom+b/keep"] })
-    await runWithChatAuthSurface("neon-function", async () => {
+    await withHostedDeployment(async () => {
       const [a, b] = await Promise.all([
         createServices("a"),
         createServices("b"),

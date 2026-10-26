@@ -19,6 +19,8 @@ CI runs every backticked `pnpm` command in this file through
 - Quality: `pnpm syncpack` (fix drift with `pnpm syncpack:fix`), `pnpm knip`,
   `pnpm jscpd`, `pnpm tech-debt`.
 - Docs: `pnpm generate:docs` after doc-generator sources change;
+  `pnpm generate:openapi` after `pi-protocol` schemas or route contracts
+  change (`pnpm generate:openapi -- --check` in CI);
   `pnpm generate:openui-signatures` after OpenUI component signatures change;
   `pnpm validate-agents-md` after editing this file.
 - Bundle size: `pnpm build --filter web`, then open
@@ -61,10 +63,10 @@ Deploy steps: `docs/wiki/deployment.md` and
 - `AGENTS.md` is the only agent instruction file; do not recreate `CLAUDE.md`.
 - Never commit `defaultProvider`, `defaultModel`, or `enabledModels` in
   `.pi/settings.json`. Users choose models in Settings, and
-  `resource-expectations.spec.ts` enforces this.
+  `apps/web/src/lib/pi/__tests__/resource-expectations.test.ts` enforces this.
 - When executing an attached plan, do not edit the plan file; finish its todos.
 - The pre-commit hook (Husky + lint-staged) runs Prettier and `eslint --fix`
-  on staged files in `apps`, `packages`, `.pi/extensions`, and `functions`.
+  on staged files in `apps`, `packages`, and `.pi/extensions`.
   `git config core.hooksPath` must point at `.husky`. Fix lint errors; do not
   bypass the hook.
 - Keep security and isolation audit notes gitignored (`.cursor/hooks/state/`),
@@ -110,16 +112,15 @@ Design context: `DESIGN.md`, `PRODUCT.md`, `packages/hax-design/ARCHITECTURE.md`
 Reference: `docs/wiki/apps/web/pi-integration.md`,
 `docs/wiki/apps/web/plan-mode.md`, `docs/wiki/api/endpoints.md`.
 
-- Protocol types come from `@workspace/pi-protocol`. The hax-design
-  `agent-elements/chat-types.ts` is a deprecated re-export. Server code never
-  imports `agent-elements` or `openui` components.
+- Protocol types come from `@workspace/pi-protocol` (UI message types from
+  `@workspace/pi-protocol/chat-types`). Server code never imports
+  `agent-elements` or `openui` components.
 - `handleChatTurn` (`apps/web/src/lib/pi/handle-chat-turn.ts`) owns turn logic.
   The `/api/chat` route only authenticates, parses, and pipes NDJSON.
 - Local and legacy sessions are Pi JSONL files. An invalid, outside, or
   missing session file starts a fresh project-scoped session; never surface an
   error. Hosted Agent sessions use `durable:` ids, and their transcript is the
-  Durable Object. Legacy Neon Function JSONL is ephemeral, so a failed mirror
-  write there still fails the turn.
+  Durable Object.
 - File tools and bash cwd stay inside the active project or workspace root.
 - Modes: Agent has the coding tools plus approved external tools. Plan is
   read-only: never give it mutating, file-change, subagent, or `fetch_content`
@@ -140,8 +141,6 @@ Reference: `docs/wiki/deployment.md`, `docs/adr/0004-user-controlled-transcript-
 - `DELETE /api/chat/account` erases the Durable Object as well as Neon rows.
   Deleting one hosted session is only a tombstone (Pi Durable has no
   per-conversation delete).
-- `POST /api/chat/durable-spike` is served only with
-  `FLEET_PI_DURABLE_SPIKE=1`; keep it unset in production.
 - Worker code must not import from `.pi/`; colocate helpers under
   `apps/web/src/lib/pi/`. Existing exceptions are tracked in
   `agent-workspace/memory/project/known-issues.md`.

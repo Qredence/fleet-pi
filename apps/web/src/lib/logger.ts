@@ -2,7 +2,7 @@ import pino from "pino"
 import { isHostedDeployment } from "@/lib/deployment/environment"
 
 function isDev() {
-  // Neon Functions and Cloudflare Workers must not use pino-pretty (not bundled).
+  // Cloudflare Workers must not use pino-pretty (not bundled).
   if (process.env.NEON_BRANCH?.trim()) return false
   if (isHostedDeployment()) return false
   return process.env.NODE_ENV !== "production"

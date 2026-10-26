@@ -76,7 +76,7 @@ The checked-in example only includes public-safe knobs. Typical local choices:
 > the chat model picker.
 >
 > These env vars are for local (non-deployed) runs. Deployed chat surfaces
-> (Cloudflare, Neon Functions) never use the env API key: each signed-in user adds the
+> (Cloudflare Workers) never use the env API key: each signed-in user adds the
 > provider under **Settings > Providers** (API key, base URL and model are
 > stored encrypted in `pi_user_providers`); without that, the Neon AI Gateway
 > backs the `openai-chat-completions` slot. Locally, signed-in accounts backed

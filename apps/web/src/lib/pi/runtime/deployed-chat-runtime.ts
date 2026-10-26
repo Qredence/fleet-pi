@@ -1,9 +1,8 @@
-import { getChatAuthSurface } from "../../auth/chat-auth-surface"
 import { isHostedDeployment } from "../../deployment/environment"
 
-/** Cloudflare web app or Neon Function chat runtime (not local anonymous dev). */
+/** Hosted Cloudflare web app (not local anonymous dev). */
 export function isDeployedChatRuntimeSurface() {
-  return isHostedDeployment() || getChatAuthSurface() === "neon-function"
+  return isHostedDeployment()
 }
 
 /**
@@ -11,8 +10,7 @@ export function isDeployedChatRuntimeSurface() {
  * chat history. The git `agent-workspace` tree is the shared harness template.
  * A private file tree exists only as that user's Daytona volume.
  *
- * Per-user `pi_user_settings` overrides apply on every deployed chat surface,
- * including the Neon Function that serves production chat.
+ * Per-user `pi_user_settings` overrides apply on every deployed chat surface.
  */
 export function usesDatabaseBackedProjectSettings() {
   return isDeployedChatRuntimeSurface()

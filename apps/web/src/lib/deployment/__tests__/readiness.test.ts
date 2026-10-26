@@ -208,33 +208,6 @@ describe("validateDeploymentReadiness", () => {
     ).toBe(false)
   })
 
-  it("fails readiness when dual-host chat has an empty CORS allowlist", () => {
-    const result = validateDeploymentReadiness({
-      trustZone: "cloudflare-production",
-      env: {
-        NEON_AUTH_BASE_URL: "https://auth.example",
-        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NEON_AUTH_ISSUER: "https://auth.example",
-        NEON_AUTH_JWKS_URL: "https://auth.example/.well-known/jwks.json",
-        VITE_NEON_AUTH_URL: "https://auth.example",
-        FLEET_PI_CHAT_DATABASE_URL: "postgres://chat",
-        VITE_FLEET_PI_CHAT_RUNTIME_URL: "https://function.example",
-        FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS: "",
-        BETTER_AUTH_SECRET: "secret",
-        BETTER_AUTH_URL: "https://app.example",
-        BETTER_AUTH_TRUSTED_ORIGINS: "https://app.example",
-        ...testGatewayEnv,
-      },
-    })
-
-    expect(result.ok).toBe(false)
-    expect(
-      result.checks.find(
-        (check) => check.id === "env:FLEET_PI_CHAT_RUNTIME_CORS_ORIGINS"
-      )?.ok
-    ).toBe(false)
-  })
-
   it("fails when NEON_AUTH_JWKS_URL is empty under Managed Auth", () => {
     const result = validateDeploymentReadiness({
       trustZone: "cloudflare-production",

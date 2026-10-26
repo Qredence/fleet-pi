@@ -17,13 +17,6 @@ import {
 } from "./settings-resource-path"
 import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
 
-export {
-  addUniqueSettingsResource,
-  resourceOptionValue,
-  settingsResourceListIncludes,
-  toSettingsResourcePath,
-} from "./settings-resource-path"
-
 /**
  * List editor that prefers Select when catalog entries exist (e.g. detected
  * agent-workspace skills). Existing values are always ItemRows; free-text is

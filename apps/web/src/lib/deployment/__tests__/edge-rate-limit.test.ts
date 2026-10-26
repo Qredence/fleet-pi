@@ -21,13 +21,6 @@ describe("rateLimitRuleForRequest", () => {
         })
       )
     ).toBe(FLEET_PI_CHAT_START_RATE_LIMIT)
-    expect(
-      rateLimitRuleForRequest(
-        new Request("https://fleet-pi.example/api/chat/durable-spike", {
-          method: "POST",
-        })
-      )
-    ).toBe(FLEET_PI_CHAT_START_RATE_LIMIT)
   })
 })
 

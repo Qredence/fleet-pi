@@ -5,7 +5,7 @@ import {
   hostedPathBlock,
   hostedWriteBlock,
 } from "../durable/hosted-tool-registry"
-import { toolsForChatMode } from "../durable/spike-harness"
+import { toolsForChatMode } from "../durable/hosted-harness"
 
 describe("hosted mode tools", () => {
   it("keeps plan read-only and requires confirmation before harness writes system or evals", () => {
