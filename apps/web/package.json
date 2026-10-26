@@ -71,7 +71,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.13.0",
-    "happy-dom": "^20.10.6",
+    "happy-dom": "^21.0.4",
     "jose": "^6.2.13",
     "rollup-plugin-visualizer": "^7.1.1",
     "tempo-sdk": "^0.0.52",
