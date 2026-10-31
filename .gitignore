@@ -72,7 +72,7 @@ skills-lock.json
 droid-wiki/
 .neon
 codex-security/
-
+.pi/settings.json
 .qoder/*
 .qoder/repowiki
 .env
