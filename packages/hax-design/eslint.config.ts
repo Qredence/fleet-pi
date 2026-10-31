@@ -3,6 +3,13 @@ import { tanstackConfig } from "@tanstack/eslint-config"
 export default [
   ...tanstackConfig,
   {
+    // `import/order` intent is now owned by oxfmt's `sortImports` (root
+    // vite.config.ts); see apps/web/eslint.config.js for why they conflict.
+    rules: {
+      "import/order": "off",
+    },
+  },
+  {
     files: ["src/components/agent-elements/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-unnecessary-condition": "off",

@@ -9,6 +9,15 @@ export default [
   },
   ...tanstackConfig,
   {
+    // `import/order` intent is now owned by oxfmt's `sortImports`
+    // (root vite.config.ts). The two cannot agree: ESLint resolves tsconfig
+    // paths, so `@/lib/x` and `../../../lib/x` land in one group, while oxfmt
+    // groups by specifier prefix. ESLint is deleted in the same migration.
+    rules: {
+      "import/order": "off",
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     plugins: {
       "@typescript-eslint": tseslint.plugin,
