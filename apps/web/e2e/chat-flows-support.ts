@@ -1,6 +1,5 @@
- 
- 
 import { expect } from "@playwright/test"
+
 import type { Locator, Page, Route } from "@playwright/test"
 
 export const MOCK_SESSION_FILE = "/tmp/fleet-pi-test-session.json"

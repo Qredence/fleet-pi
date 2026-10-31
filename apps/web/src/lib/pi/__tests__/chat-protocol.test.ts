@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
+
 import {
   ChatModeSchema,
   ChatSettingsResponseSchema,
   ChatSettingsUpdateRequestSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
+
 import type { ChatRequest } from "@workspace/pi-protocol/chat-protocol"
 
 describe("chat-protocol types", () => {

@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest"
 
 import { ErrorMessage } from "../error-message"
 import { buildAssistantElements } from "../message-turns"
+
 import type { CustomToolRendererProps } from "../types"
-import type { ReactElement, ReactNode } from "react"
 import type { ToolRendererProps } from "../utils/chat-message-parts"
+import type { ReactElement, ReactNode } from "react"
 
 const StubToolRenderer = (_props: ToolRendererProps) => null
 const StubTextRenderer = (_props: {

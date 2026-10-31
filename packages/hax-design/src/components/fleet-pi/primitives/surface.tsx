@@ -1,7 +1,8 @@
 import { cn } from "../../../lib/utils"
 import { fleetPiRowSurface } from "../styles/tokens"
-import type { ComponentPropsWithoutRef } from "react"
+
 import type { VariantProps } from "class-variance-authority"
+import type { ComponentPropsWithoutRef } from "react"
 
 type RowSurfaceProps = ComponentPropsWithoutRef<"div"> &
   VariantProps<typeof fleetPiRowSurface>

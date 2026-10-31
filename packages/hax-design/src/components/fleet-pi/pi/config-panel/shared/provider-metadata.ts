@@ -1,10 +1,4 @@
 import {
-  CREDENTIAL_UI_PROVIDERS,
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-  isCustomProviderId,
-  isNamedOccInstanceId,
-} from "@workspace/pi-protocol/provider-catalog"
-import {
   Bot,
   Brain,
   Cpu,
@@ -17,6 +11,14 @@ import {
   Wind,
   Zap,
 } from "lucide-react"
+
+import {
+  CREDENTIAL_UI_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isCustomProviderId,
+  isNamedOccInstanceId,
+} from "@workspace/pi-protocol/provider-catalog"
+
 import type { LucideIcon } from "lucide-react"
 
 export type {

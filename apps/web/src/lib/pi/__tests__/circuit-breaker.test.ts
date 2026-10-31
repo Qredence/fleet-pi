@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest"
 import CircuitBreaker from "opossum"
+import { describe, expect, it } from "vitest"
+
 import {
   SESSION_CIRCUIT_BREAKER_OPTIONS,
   createSessionCircuitBreaker,

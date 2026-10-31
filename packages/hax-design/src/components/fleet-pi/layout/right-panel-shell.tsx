@@ -1,8 +1,11 @@
 import { Library } from "lucide-react"
+
 import { ResizableCanvas } from "../pi/resizable-canvas"
 import { MobilePanel } from "../pi/right-panel-launcher"
-import { getRightPanelDefinition } from "./right-panel-registry"
+
 import { useRightPanelContext } from "./right-panel-context"
+import { getRightPanelDefinition } from "./right-panel-registry"
+
 import type { PointerEvent as ReactPointerEvent } from "react"
 
 export type RightPanelShellProps = {

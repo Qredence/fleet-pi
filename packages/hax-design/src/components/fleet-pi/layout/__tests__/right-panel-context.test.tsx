@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it } from "vitest"
+
 import {
   RightPanelProvider,
   useChatPanelDataContext,
@@ -7,13 +8,14 @@ import {
   useSettingsActionsContext,
   useWorkspaceTreeContext,
 } from "../right-panel-context"
-import type { ReactElement } from "react"
+
 import type {
   ChatPanelDataContextValue,
   SettingsActionsContextValue,
   WorkspaceTreeContextValue,
 } from "../right-panel-context"
 import type { ChatSettingsResponse } from "@workspace/pi-protocol/chat-protocol"
+import type { ReactElement } from "react"
 
 const SETTINGS_RESPONSE: ChatSettingsResponse = {
   diagnostics: [],

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
+
+import { sanitizeProviderCredentialValue } from "@/lib/env-manager"
+
 import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
   normalizeOpenAiCompatibleBaseUrl,
 } from "../openai-chat-completions-url"
+
 import { TEST_NEON_AI_GATEWAY_HOST } from "./gateway-test-fixtures"
-import { sanitizeProviderCredentialValue } from "@/lib/env-manager"
 
 describe("openai chat completions credential helpers", () => {
   it("normalizes pasted chat-completions URLs to the API root", () => {

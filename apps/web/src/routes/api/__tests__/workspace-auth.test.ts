@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { workspaceTreeHandler } from "../workspace/tree"
+
 import {
   resetWorkspaceReindexRateLimitForTests,
   workspaceReindexCsrfHandler,
   workspaceReindexHandler,
 } from "../workspace/reindex"
+import { workspaceTreeHandler } from "../workspace/tree"
+
 import type * as WorkspaceQuery from "@/lib/workspace/workspace-query"
 
 const { createWorkspaceReindexResponse, getSession, resolveWorkspaceContext } =

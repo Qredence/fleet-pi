@@ -1,6 +1,7 @@
 import path from "node:path"
-import dotenv from "dotenv"
+
 import { Pool } from "@neondatabase/serverless"
+import dotenv from "dotenv"
 
 const cwd = process.cwd()
 dotenv.config({ path: path.resolve(cwd, ".env") })

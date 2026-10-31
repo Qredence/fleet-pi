@@ -3,15 +3,16 @@ import {
   toChatMessage,
   upsertToolPart,
 } from "./chat-message-helpers"
-import type {
-  ChatMessage,
-  ChatToolPart,
-} from "@workspace/pi-protocol/chat-types"
+
 import type {
   AgentSessionEvent,
   SessionEntry,
   SessionManager,
 } from "@earendil-works/pi-coding-agent"
+import type {
+  ChatMessage,
+  ChatToolPart,
+} from "@workspace/pi-protocol/chat-types"
 
 const CHAT_MESSAGE_ID_CUSTOM_TYPE = "chat-message-id"
 

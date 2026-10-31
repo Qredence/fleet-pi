@@ -1,15 +1,18 @@
 import { useCallback, useState } from "react"
+
+import { CHAT_MODES } from "../../../lib/pi/chat-helpers"
 import { InputBar } from "../../agent-elements/input-bar"
 import { ModeSelector } from "../../agent-elements/input/mode-selector"
 import { ModelPicker } from "../../agent-elements/input/model-picker"
-import { CHAT_MODES } from "../../../lib/pi/chat-helpers"
 import { SUGGESTION_ITEM_CLASS, SUGGESTION_LIST_CLASS } from "../styles/tokens"
+
 import { ChatStopControl } from "./chat-stop-control"
-import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+
 import type { InputBarProps } from "../../agent-elements/input-bar"
 import type { SuggestionItem } from "../../agent-elements/input/suggestions"
-import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type { ModelOption } from "../../agent-elements/types"
+import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 export const FLEET_PI_SUGGESTION_ITEM_CLASSNAME = SUGGESTION_ITEM_CLASS
 const FLEET_PI_SUGGESTION_CLASSNAME = SUGGESTION_LIST_CLASS

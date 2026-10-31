@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
+
 import { assertDeploymentReadyOnBoot } from "../boot-check"
 
 describe("assertDeploymentReadyOnBoot", () => {

@@ -1,10 +1,10 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 import { describe, expect, it } from "vitest"
-import type { executeCommand } from "@/lib/daytona/client"
-import { daytonaSandboxPort } from "@/lib/pi/durable/hosted-sandbox"
+
 import {
   HOSTED_ECHO_TEXT,
   HOSTED_MODEL_REPLY,
@@ -14,6 +14,9 @@ import {
   toolsForChatMode,
   waitForCount,
 } from "@/lib/pi/durable/hosted-harness"
+import { daytonaSandboxPort } from "@/lib/pi/durable/hosted-sandbox"
+
+import type { executeCommand } from "@/lib/daytona/client"
 
 async function sqliteFile(name: string) {
   const dir = mkdtempSync(join(tmpdir(), "fleet-pi-hosted-"))

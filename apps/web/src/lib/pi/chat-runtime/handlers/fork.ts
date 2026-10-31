@@ -1,7 +1,7 @@
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { withAuthorizedChatSessionRequest } from "@/lib/pi/chat-runtime/session-request"
 import { isLegacyChatSession } from "@/lib/pi/durable/durable-session"
 import { forkHostedConversation } from "@/lib/pi/durable/hosted-agent-turn"
-import { withAuthorizedChatSessionRequest } from "@/lib/pi/chat-runtime/session-request"
 
 export async function forkChatHandler(request: Request) {
   return withAuthorizedChatSessionRequest(

@@ -1,5 +1,3 @@
-import { useTheme } from "next-themes"
-import { Toaster as Sonner } from "sonner"
 import {
   CircleCheck,
   Info,
@@ -7,6 +5,9 @@ import {
   OctagonX,
   TriangleAlert,
 } from "lucide-react"
+import { useTheme } from "next-themes"
+import { Toaster as Sonner } from "sonner"
+
 import type { CSSProperties } from "react"
 import type { ToasterProps } from "sonner"
 

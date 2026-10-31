@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+
 import type { Route } from "@playwright/test"
 
 test.describe("OpenUI State Sync E2E Verification", () => {

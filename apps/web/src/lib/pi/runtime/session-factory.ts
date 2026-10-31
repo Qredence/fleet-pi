@@ -1,40 +1,45 @@
 import { join, resolve } from "node:path"
+
 import {
   SettingsManager,
   createAgentSessionServices,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
+
 import { PROVIDER_ENV_SCRUB_VAR_NAMES } from "@workspace/pi-protocol/provider-catalog"
+
+import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
 import { isHostedDeployment } from "../../deployment/environment"
 import {
   bootstrapAgentWorkspace,
   createWorkspaceHealthFailure,
 } from "../../workspace/bootstrap-agent-workspace"
-import { installHarnessWriteResolver } from "../../daytona/harness-write-target"
 import { AGENT_WORKSPACE_DIRECTORY } from "../../workspace/workspace-contract"
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
 import { createPlanModeExtension } from "../plan-mode"
-import { resolveLoaderProjectTrust } from "./project-trust"
+
+import { registerCustomProviders } from "./custom-provider-registry"
 import {
   isDeployedChatRuntimeSurface,
   usesDatabaseBackedProjectSettings,
 } from "./deployed-chat-runtime"
-import { createIsolatedProjectSettings } from "./isolated-project-settings"
-import { settingsManagerForLoader } from "./fleet-default-project-settings"
-import { createSandboxResourceSettings } from "./sandbox-resource-settings"
-import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
-import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
-import { registerCustomProviders } from "./custom-provider-registry"
 import {
   hydrateSessionServicesSettings,
   resolveProjectSettings,
 } from "./durable-project-settings"
+import { settingsManagerForLoader } from "./fleet-default-project-settings"
+import { buildFleetPiInlineExtensions } from "./fleet-pi-core-extensions"
+import { createIsolatedProjectSettings } from "./isolated-project-settings"
+import { captureAndScrubNeonAiGatewayEnv } from "./neon-ai-gateway"
 import { registerOpenAiChatCompletionsProvider } from "./openai-chat-completions-provider"
+import { resolveLoaderProjectTrust } from "./project-trust"
+import { createSandboxResourceSettings } from "./sandbox-resource-settings"
 import { loadLlmProviderSecrets } from "./user-provider-secrets"
-import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
+
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
 import type { ApplyRuntimeAuthOptions } from "./types"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type { ChatWorkspaceStatus } from "@workspace/pi-protocol/chat-protocol"
 
 type ServicesWithWorkspaceBootstrap = AgentSessionServices & {

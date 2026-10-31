@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { isModelPatternEnabled } from "../model-patterns"
 
 const googleFlash = {

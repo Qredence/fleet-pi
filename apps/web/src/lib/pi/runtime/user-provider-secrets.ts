@@ -1,3 +1,7 @@
+import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
+import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import { isEnvVarConfigured } from "@/lib/env-manager"
 import {
   INFRA_PROVIDER_IDS,
   KNOWN_PROVIDERS,
@@ -6,15 +10,12 @@ import {
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+
+import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import {
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
-import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
-import { isChatDatabaseConfigured } from "@/lib/db/chat-db-config"
-import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
-import { isEnvVarConfigured } from "@/lib/env-manager"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 const INFRA_PROVIDER_ID_SET = new Set<string>(INFRA_PROVIDER_IDS)
 

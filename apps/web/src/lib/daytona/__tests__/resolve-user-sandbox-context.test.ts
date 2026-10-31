@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { resolveUserSandboxContext } from "../resolve-user-sandbox-context"
 import { SANDBOX_WORKSPACE_ROOT } from "../sandbox-prepare"
+
 import type * as UserSandboxModule from "../user-sandbox"
 
 const { mockExecuteCommand, mockGetUserSandbox, mockReleaseUserSandbox } =

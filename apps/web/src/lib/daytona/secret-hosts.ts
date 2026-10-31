@@ -5,6 +5,7 @@
  */
 
 import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+
 import type { PiProviderCredentialEntry } from "@workspace/pi-protocol/provider-catalog"
 
 /** Static host allowlists for Secrets-eligible API-key providers. */

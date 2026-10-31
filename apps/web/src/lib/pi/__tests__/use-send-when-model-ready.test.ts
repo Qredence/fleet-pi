@@ -1,6 +1,7 @@
+import { act, renderHook } from "@testing-library/react"
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest"
-import { act, renderHook } from "@testing-library/react"
+
 import {
   isModelPickerReady,
   useSendWhenModelReady,

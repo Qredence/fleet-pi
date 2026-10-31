@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative, resolve, sep } from "node:path"
+
 import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 
 export const RESOURCE_CACHE_PREFIX = join(tmpdir(), "fleet-pi-resources-")

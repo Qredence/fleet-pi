@@ -1,10 +1,12 @@
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
+
 import bedrockBearerAuthExtension from "../../../../../../.pi/extensions/bedrock-bearer-auth"
 import daytonaSandboxExtension from "../../../../../../.pi/extensions/daytona-sandbox"
 import { applyFleetPiIdentity } from "../../../../../../.pi/extensions/lib/fleet-pi-identity"
 import trustHandlerExtension from "../../../../../../.pi/extensions/trust-handler"
 import webFetchExtension from "../../../../../../.pi/extensions/web-fetch"
+
 import type {
   BeforeAgentStartEvent,
   ExtensionAPI,

@@ -1,13 +1,14 @@
+import { AgentLoopSection } from "../config-panel/sections/agent-loop-section"
+import { ModelDefaultsSection } from "../config-panel/sections/model-defaults-section"
 import { PersonalizationSection } from "../config-panel/sections/personalization-section"
 import { ProviderCredentialsSection } from "../config-panel/sections/provider-credentials-section"
-import { ModelDefaultsSection } from "../config-panel/sections/model-defaults-section"
 import { ResourcesSection } from "../config-panel/sections/resources-section"
-import { AgentLoopSection } from "../config-panel/sections/agent-loop-section"
 import { SandboxProviderSection } from "../config-panel/sections/sandbox-provider-section"
 import {
   modelSettings,
   resourceSettings,
 } from "../config-panel/shared/settings-mappers"
+
 import type { SettingsSectionId } from "../settings-sections"
 import type { useSettingsForm } from "./use-settings-form"
 import type { ReactNode } from "react"

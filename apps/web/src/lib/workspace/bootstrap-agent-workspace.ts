@@ -1,10 +1,11 @@
 import { dirname, join, relative } from "node:path"
-import { isCloudflareDeployment } from "../deployment/environment"
+
 import {
   WORKSPACE_PROJECTION_DATABASE_FILENAME,
   initializeWorkspaceProjection,
 } from "../db/workspace-projection"
-import { createLocalWorkspaceFS } from "./workspace-fs"
+import { isCloudflareDeployment } from "../deployment/environment"
+
 import {
   AGENT_WORKSPACE_DIRECTORY,
   WORKSPACE_MANIFEST_RELATIVE_PATH,
@@ -16,13 +17,15 @@ import {
   toWorkspaceProjectPath,
   workspaceManifestSchema,
 } from "./workspace-contract"
-import type { WorkspaceFS } from "./workspace-fs"
+import { createLocalWorkspaceFS } from "./workspace-fs"
+
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
   WorkspaceManifest,
   WorkspaceSectionKind,
   WorkspaceSectionName,
 } from "./workspace-contract"
+import type { WorkspaceFS } from "./workspace-fs"
 
 type WorkspaceHealthStatus = "ok" | "degraded"
 type WorkspaceHealthSeverity = "warning" | "error"

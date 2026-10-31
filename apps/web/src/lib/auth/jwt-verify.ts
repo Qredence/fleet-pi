@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
+
 import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
 
 export type VerifiedNeonAuthToken = {

@@ -1,37 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
-import {
-  ChatProviderRemoveRequestSchema,
-  ChatProviderUpdateRequestSchema,
-  ChatProviderUpdateResponseSchema,
-} from "@workspace/pi-protocol/chat-protocol.zod"
-import {
-  KNOWN_PROVIDERS,
-  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
-  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-  isCustomProviderId,
-  isNamedOccInstanceId,
-  isOccFamilyApi,
-  toCustomProviderId,
-  toOccInstanceId,
-} from "@workspace/pi-protocol/provider-catalog"
-import type {
-  ChatProviderInfo,
-  ChatProviderUpdateRequest,
-  PiCustomProviderApi,
-} from "@workspace/pi-protocol/chat-protocol"
+
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { getErrorMessage } from "@/lib/pi/server"
-import {
-  sanitizeProviderCredentialValue,
-  updateEnvVars,
-} from "@/lib/env-manager"
 import {
   isChatAuthRequired,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
-import { isHostedDeployment } from "@/lib/deployment/environment"
-import { storeUserProviderApiKey } from "@/lib/db/user-providers"
+import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
 import {
   createLocalProviderInstance,
   getLocalProviderInstance,
@@ -48,19 +22,47 @@ import {
   removeOccInstance,
   upsertOccInstance,
 } from "@/lib/db/occ-instances"
-import { refreshSandboxProviderCredentials } from "@/lib/daytona/refresh-sandbox-credentials"
+import { storeUserProviderApiKey } from "@/lib/db/user-providers"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import {
+  sanitizeProviderCredentialValue,
+  updateEnvVars,
+} from "@/lib/env-manager"
 import {
   getProviderConfigStatus,
   hotReloadActiveRuntimesForUser,
   hotReloadProviderAuthForActiveRuntimes,
 } from "@/lib/pi/runtime"
-import { removeProviderBundle } from "@/lib/pi/runtime/remove-provider-bundle"
 import { assertSafeOpenAiCompatibleBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-provider"
 import { assertCustomProviderBaseUrl } from "@/lib/pi/runtime/openai-chat-completions-url"
 import {
   isRemovableCredentialProvider,
   resolveProviderCredentialBundle,
 } from "@/lib/pi/runtime/provider-credential-bundle"
+import { removeProviderBundle } from "@/lib/pi/runtime/remove-provider-bundle"
+import { getErrorMessage } from "@/lib/pi/server"
+import {
+  ChatProviderRemoveRequestSchema,
+  ChatProviderUpdateRequestSchema,
+  ChatProviderUpdateResponseSchema,
+} from "@workspace/pi-protocol/chat-protocol.zod"
+import {
+  KNOWN_PROVIDERS,
+  OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isCustomProviderId,
+  isNamedOccInstanceId,
+  isOccFamilyApi,
+  toCustomProviderId,
+  toOccInstanceId,
+} from "@workspace/pi-protocol/provider-catalog"
+
+import type {
+  ChatProviderInfo,
+  ChatProviderUpdateRequest,
+  PiCustomProviderApi,
+} from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * Combines provider configuration statuses with custom provider instances

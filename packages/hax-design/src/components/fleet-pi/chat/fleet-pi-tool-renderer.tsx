@@ -1,15 +1,17 @@
 import { memo, useMemo } from "react"
+
+import { resolveWorkspacePathFromToolInput } from "../../../lib/workspace-path-nav"
+import { EditTool } from "../../agent-elements/tools/edit-tool"
+import { GenericTool } from "../../agent-elements/tools/generic-tool"
+import { toolRegistry } from "../../agent-elements/tools/tool-registry"
 import { ToolRenderer } from "../../agent-elements/tools/tool-renderer"
 import { getToolStatus } from "../../agent-elements/utils/format-tool"
-import { GenericTool } from "../../agent-elements/tools/generic-tool"
-import { EditTool } from "../../agent-elements/tools/edit-tool"
-import { toolRegistry } from "../../agent-elements/tools/tool-registry"
-import { resolveWorkspacePathFromToolInput } from "../../../lib/workspace-path-nav"
 import { useWorkspaceTreeContext } from "../layout/right-panel-context"
 import {
   PI_TOOL_RENDERERS,
   WorkspaceWriteToolRenderer,
 } from "../pi/tool-renderers"
+
 import type { ToolRendererProps } from "../../agent-elements/tools/tool-renderer"
 
 const EMPTY_TOOL_INPUT = {} as Record<string, unknown>

@@ -1,9 +1,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { ChatSessionInfo } from "@workspace/pi-protocol/chat-protocol"
+
 import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
+import type { ChatSessionInfo } from "@workspace/pi-protocol/chat-protocol"
 
 const SessionManager = {
   create: vi.fn(),

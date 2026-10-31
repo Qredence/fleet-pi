@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react"
 import { IconCheck, IconCopy } from "@tabler/icons-react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { cn } from "./utils/cn"

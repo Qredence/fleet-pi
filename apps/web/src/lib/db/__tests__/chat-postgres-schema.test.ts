@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_SCHEMA_SQL } from "../chat-postgres-schema"
 
 describe("chat postgres schema ordering", () => {

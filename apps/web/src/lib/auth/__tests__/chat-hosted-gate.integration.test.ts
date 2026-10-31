@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { withAuthenticatedChatRequest } from "../chat-api-auth"
+
 import { auth } from "@/lib/auth/server"
 import { chatRunsHandler } from "@/routes/api/chat/runs"
+
+import { withAuthenticatedChatRequest } from "../chat-api-auth"
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {

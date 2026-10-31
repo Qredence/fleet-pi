@@ -1,4 +1,5 @@
 import pino from "pino"
+
 import { isHostedDeployment } from "@/lib/deployment/environment"
 
 function isDev() {

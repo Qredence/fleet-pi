@@ -1,5 +1,4 @@
 import { isNeonManagedAuthConfigured } from "@/lib/auth/auth-mode"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   parseBearerToken,
   verifyNeonAuthAccessToken,
@@ -10,6 +9,7 @@ import {
   verifyRunOwnership,
   verifySessionOwnership,
 } from "@/lib/db/pi-session-ownership-db"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 
 export type ChatAuthSession = Awaited<ReturnType<typeof getChatAuthSession>>

@@ -1,10 +1,13 @@
 import { memo } from "react"
-import { TextShimmer } from "../text-shimmer"
+
 import { useToolComplete } from "../hooks/use-tool-complete"
+import { TextShimmer } from "../text-shimmer"
 import { adaptToolPart } from "../utils/tool-adapters"
+
 import { ToolApprovalFooter } from "./tool-approval-footer"
-import type { ToolApproval } from "./tool-approval-footer"
+
 import type { StepState, TimelineStep } from "../types/timeline"
+import type { ToolApproval } from "./tool-approval-footer"
 
 function extractCommandSummary(cmd: string): string {
   return cmd

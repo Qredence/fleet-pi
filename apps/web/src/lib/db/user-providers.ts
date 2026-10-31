@@ -1,10 +1,12 @@
 import { decryptString, encryptString } from "../auth/crypto"
-import { withChatPostgresTransaction } from "./pi-session-mirror"
+
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import {
   requireChatDatabaseOnHost,
   requireEncryptionSecret,
 } from "./chat-postgres-guards"
+import { withChatPostgresTransaction } from "./pi-session-mirror"
+
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
 export { ChatPostgresUnavailableError } from "./chat-postgres-guards"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { createDefaultWorkspaceManifest } from "../workspace-contract"
 import { WORKSPACE_SEMANTIC_PARSER_VERSION } from "../workspace-index-types"
 import {
@@ -6,6 +7,7 @@ import {
   parseWithFallback,
   parseWorkspaceFile,
 } from "../workspace-semantic-parsers"
+
 import type { WorkspacePathClassification } from "../workspace-index-types"
 
 describe("workspace semantic parsers", () => {

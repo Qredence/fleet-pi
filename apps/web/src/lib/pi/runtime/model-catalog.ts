@@ -1,34 +1,36 @@
 import {
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-  isOccProviderId,
-} from "@workspace/pi-protocol/provider-catalog"
+  listLocalProviderInstances,
+  useLocalProviderStore,
+} from "@/lib/db/local-provider-instances"
+import { listOccInstances } from "@/lib/db/occ-instances"
 import {
   isModelPatternEnabled,
   stripThinkingLevel,
 } from "@workspace/pi-protocol/model-patterns"
+import {
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isOccProviderId,
+} from "@workspace/pi-protocol/provider-catalog"
+
+import { resolveDefaultChatModel } from "./default-chat-model"
 import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   reconcileOpenAiChatCompletionsModel,
   reconcileRuntimeOccModel,
 } from "./openai-chat-completions-compat"
-import { resolveDefaultChatModel } from "./default-chat-model"
 import { applyRuntimeAuth, createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
+
+import type { Model } from "@earendil-works/pi-ai"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
-import type { Model } from "@earendil-works/pi-ai"
 import type {
   ChatModelInfo,
   ChatModelSelection,
   ChatModelsResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import { listOccInstances } from "@/lib/db/occ-instances"
-import {
-  listLocalProviderInstances,
-  useLocalProviderStore,
-} from "@/lib/db/local-provider-instances"
 
 export type LoadChatModelsOptions = {
   /**

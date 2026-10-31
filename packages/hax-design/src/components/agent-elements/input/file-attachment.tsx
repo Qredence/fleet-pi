@@ -1,4 +1,3 @@
-import { useState } from "react"
 import {
   IconFileCode as FileCode,
   IconFileTypeJs as FileJson,
@@ -6,8 +5,10 @@ import {
   IconPhoto as ImageIcon,
   IconX as X,
 } from "@tabler/icons-react"
-import { cn } from "../utils/cn"
+import { useState } from "react"
+
 import { ImageLightbox } from "../image-lightbox"
+import { cn } from "../utils/cn"
 
 export type FileAttachmentProps = {
   id: string

@@ -1,6 +1,8 @@
 import { basename, extname } from "node:path"
+
 import { workspaceManifestSchema } from "./workspace-contract"
 import { WORKSPACE_SEMANTIC_PARSER_VERSION } from "./workspace-index-types"
+
 import type {
   WorkspacePathClassification,
   WorkspacePathType,

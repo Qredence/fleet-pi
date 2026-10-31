@@ -1,10 +1,13 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { createSessionServices } from "../session-factory"
-import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+
 import type { AppRuntimeContext } from "../../../app-runtime"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
 vi.mock("node:child_process", () => {
   const denied = () => {

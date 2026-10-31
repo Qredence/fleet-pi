@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   SessionManager,
   SettingsManager,
@@ -9,9 +9,13 @@ import {
   createAgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
 import { registerOpenAiChatCompletionsProvider } from "../openai-chat-completions-provider"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
+
 import type {
   AgentSessionEvent,
   ToolDefinition,

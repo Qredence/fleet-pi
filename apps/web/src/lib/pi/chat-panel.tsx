@@ -1,8 +1,9 @@
-import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
 import { FleetPiAgentChat } from "@workspace/hax-design/components/fleet-pi/chat/fleet-pi-agent-chat"
+import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
+
+import type { QuestionAnswer } from "@workspace/hax-design/components/agent-elements/question/question-prompt"
 import type { FleetPiAgentChatProps } from "@workspace/hax-design/components/fleet-pi/chat/fleet-pi-agent-chat"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
-import type { QuestionAnswer } from "@workspace/hax-design/components/agent-elements/question/question-prompt"
 
 type ChatPanelProps = {
   messages: Array<ChatMessage>

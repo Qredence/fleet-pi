@@ -1,4 +1,5 @@
 import { stripThinkingLevel } from "@workspace/pi-protocol/model-patterns"
+
 import { resolveProviderCredentialBundle } from "./provider-credential-bundle"
 
 export function cleanupProjectSettingsForRemovedProvider(

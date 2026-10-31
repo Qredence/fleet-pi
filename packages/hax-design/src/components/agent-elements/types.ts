@@ -1,7 +1,7 @@
-import type React from "react"
-import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
-import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
 import type { SuggestionItem } from "./input/suggestions"
+import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
+import type React from "react"
 
 export type InputSuggestions =
   | Array<SuggestionItem>

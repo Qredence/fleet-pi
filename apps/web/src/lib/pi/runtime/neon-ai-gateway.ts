@@ -1,10 +1,11 @@
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import { isEnvVarConfigured } from "@/lib/env-manager"
+import { logger } from "@/lib/logger"
+
 import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
 } from "./openai-chat-completions-url"
-import { isHostedDeployment } from "@/lib/deployment/environment"
-import { isEnvVarConfigured } from "@/lib/env-manager"
-import { logger } from "@/lib/logger"
 
 /** Curated Neon AI Gateway model IDs (OpenAI-compatible /v1 chat completions). */
 export const NEON_AI_GATEWAY_DEFAULT_MODEL_IDS = [

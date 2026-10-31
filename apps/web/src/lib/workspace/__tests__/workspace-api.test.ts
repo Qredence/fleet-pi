@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { workspaceTreeHandler } from "@/routes/api/workspace/tree"
-import { workspaceReindexHandler } from "@/routes/api/workspace/reindex"
-import { workspaceHealthHandler } from "@/routes/api/workspace/health"
-import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
-import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
-import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
+
 import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
+import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
+import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
+import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
+import { workspaceHealthHandler } from "@/routes/api/workspace/health"
+import { workspaceReindexHandler } from "@/routes/api/workspace/reindex"
+import { workspaceTreeHandler } from "@/routes/api/workspace/tree"
 
 // Mock dependencies
 vi.mock("@/lib/workspace/server", () => ({

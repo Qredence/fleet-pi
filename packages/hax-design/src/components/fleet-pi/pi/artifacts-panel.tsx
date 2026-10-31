@@ -1,5 +1,6 @@
-import { WorkspacePanelContent } from "./workspace-panel"
 import { getArtifactsScopePath } from "./artifacts-utils"
+import { WorkspacePanelContent } from "./workspace-panel"
+
 import type { WorkspacePanelContentProps } from "./workspace-panel"
 
 export function ArtifactsPanelContent({

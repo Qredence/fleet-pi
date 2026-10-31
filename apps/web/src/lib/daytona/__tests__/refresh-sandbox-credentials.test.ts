@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { resolveDaytonaRuntimeApiKey } from "../../pi/runtime/user-provider-secrets"
 import { refreshSandboxProviderCredentials } from "../refresh-sandbox-credentials"
-import {
-  getCachedUserSandbox,
-  recreateUserSandboxForSecrets,
-} from "../user-sandbox"
+import { ensureUserCredentials } from "../sandbox-prepare"
 import {
   buildPlaintextSandboxCredentials,
   loadConfiguredProviderSecrets,
 } from "../sandbox-provider-secrets"
 import { fingerprintDaytonaSecretsConfig } from "../sync-daytona-secrets"
-import { ensureUserCredentials } from "../sandbox-prepare"
+import {
+  getCachedUserSandbox,
+  recreateUserSandboxForSecrets,
+} from "../user-sandbox"
 
 vi.mock("../user-sandbox", () => ({
   getCachedUserSandbox: vi.fn(),

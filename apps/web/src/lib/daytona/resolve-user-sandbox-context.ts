@@ -1,13 +1,15 @@
+import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
+
 import { executeCommand as defaultExecuteCommand } from "./client"
+import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
 import {
   getUserSandbox as defaultGetUserSandbox,
   releaseUserSandbox,
 } from "./user-sandbox"
-import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
-import type { Sandbox } from "@daytona/sdk"
+
 import type { UserSandboxHandle } from "./user-sandbox"
 import type { WorkspaceFS } from "@/lib/workspace/workspace-fs"
-import { createSandboxWorkspaceFS } from "@/lib/workspace/workspace-fs"
+import type { Sandbox } from "@daytona/sdk"
 
 export type SandboxSurface = "chat" | "workspace"
 

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
+
 import {
   createSandbox,
   createVolumeMount,
   getOrCreateVolume,
   resolveDaytonaConfig,
 } from "../client"
+
 import type { Daytona, Sandbox } from "@daytona/sdk"
 
 describe("Daytona client", () => {

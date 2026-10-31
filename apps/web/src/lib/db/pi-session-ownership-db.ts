@@ -1,18 +1,17 @@
 import { existsSync, statSync } from "node:fs"
 import { resolve } from "node:path"
+
 import { Pool } from "@neondatabase/serverless"
-import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
+
 import {
   requiresAuthenticatedMirrorOwner,
   shouldFailClosedOnMirrorError,
 } from "../deployment/trust-zone"
 import { logger } from "../logger"
+import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
 import { resolveHostedUserSessionDir } from "../pi/session-paths"
 import { requestScoped } from "../runtime/request-scope"
-import {
-  isSessionAccessAllowed,
-  isSessionOwnershipStatus,
-} from "./session-ownership"
+
 import { resolveChatDatabaseUrl } from "./chat-database-url"
 import {
   CHAT_RUNTIME_ROLE_SQL,
@@ -20,6 +19,10 @@ import {
   chatRuntimeRoleLabel,
 } from "./chat-postgres-session-owner-fn"
 import { isPiSessionDeleted } from "./pi-session-tombstones"
+import {
+  isSessionAccessAllowed,
+  isSessionOwnershipStatus,
+} from "./session-ownership"
 
 export type PostgresQueryClient = {
   query: <T = Record<string, unknown>>(

@@ -1,4 +1,5 @@
 import { isGatewayHost } from "./openai-chat-completions-url"
+
 import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 
 /** Cap a remote catalog so one provider cannot flood the Add models dialog. */

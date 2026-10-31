@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
+
 import { resolveClientNeonAuthUrl } from "../auth-mode"
 
 describe("resolveClientNeonAuthUrl", () => {

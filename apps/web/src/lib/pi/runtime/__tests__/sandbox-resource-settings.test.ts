@@ -1,6 +1,9 @@
 import { rmSync } from "node:fs"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { createSandboxResourceSettings } from "../sandbox-resource-settings"
+
 import type { SettingsManager } from "@earendil-works/pi-coding-agent"
 
 const { rmMock } = vi.hoisted(() => ({

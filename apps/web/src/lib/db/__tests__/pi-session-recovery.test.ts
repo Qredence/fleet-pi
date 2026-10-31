@@ -1,11 +1,13 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { join } from "node:path"
+
 import { SessionManager } from "@earendil-works/pi-coding-agent"
-import { recoverOwnedSessionFile } from "../pi-session-recovery"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { resolveOwnedMirrorSession } from "../pi-session-ownership-db"
+import { recoverOwnedSessionFile } from "../pi-session-recovery"
+
 import type * as PiSessionOwnershipDbModule from "../pi-session-ownership-db"
 
 const { poolQuery, withUserContext, getChatPostgresPool } = vi.hoisted(() => {

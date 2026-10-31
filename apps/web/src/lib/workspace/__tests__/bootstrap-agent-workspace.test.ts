@@ -7,11 +7,14 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import {
   bootstrapAgentWorkspace,
   loadAgentWorkspaceHealth,
 } from "../bootstrap-agent-workspace"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 
 const roots = new Set<string>()

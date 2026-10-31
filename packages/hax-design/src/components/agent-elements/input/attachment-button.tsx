@@ -1,5 +1,6 @@
-import { memo } from "react"
 import { IconPaperclip, IconPlus } from "@tabler/icons-react"
+import { memo } from "react"
+
 import type { ReactNode } from "react"
 
 export type AttachmentButtonIcon = "plus" | "paperclip"

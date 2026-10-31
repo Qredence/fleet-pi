@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
-import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { executeCommand, uploadFile } from "../client"
 import {
   resolveHarnessWriteTarget,
@@ -12,8 +14,9 @@ import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "../tool-context"
-import type { Sandbox } from "@daytona/sdk"
+
 import type { UserSandboxHandle } from "../user-sandbox"
+import type { Sandbox } from "@daytona/sdk"
 
 const getCachedUserSandbox = vi.hoisted(() => vi.fn())
 const getInFlightUserSandbox = vi.hoisted(() => vi.fn())

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { downloadFile, executeCommand, listFiles, uploadFile } from "../client"
 import {
   createSandboxBashOperations,
   createSandboxEditOperations,
@@ -9,9 +10,9 @@ import {
   createSandboxReadOperations,
   createSandboxWriteOperations,
 } from "../sandbox-operations"
-import { downloadFile, executeCommand, listFiles, uploadFile } from "../client"
-import type { Sandbox } from "@daytona/sdk"
+
 import type * as DaytonaClientModule from "../client"
+import type { Sandbox } from "@daytona/sdk"
 
 vi.mock("../client", async (importOriginal) => {
   const actual = await importOriginal<typeof DaytonaClientModule>()

@@ -1,7 +1,8 @@
 import { Folder, Library, Package, X } from "lucide-react"
 import { useEffect, useId, useMemo, useRef } from "react"
-import { TabsSubtle, TabsSubtleItem } from "../../tabs-subtle"
+
 import { DESKTOP_PANEL_ONLY } from "../../../lib/layout-constants"
+import { TabsSubtle, TabsSubtleItem } from "../../tabs-subtle"
 import {
   useChatPanelDataContext,
   useWorkspaceTreeContext,
@@ -11,18 +12,20 @@ import {
   PANEL_HEADER_ICON_BUTTON_CLASS,
   PANEL_OVERLAY_CLASS,
 } from "../styles/tokens"
+
 import { getArtifactsScopePath } from "./artifacts-utils"
 import {
   countWorkspaceFiles,
   findWorkspaceNode,
   getResourceGroups,
 } from "./shared"
-import type { ReactNode } from "react"
+
 import type { RightPanel } from "../../../lib/canvas-utils"
 import type {
   ChatResourcesResponse,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { ReactNode } from "react"
 /** Reads panel state from RightPanelProvider — no prop threading from route. */
 export function RightPanelLauncherFromContext() {
   const { rightPanel, setRightPanel, resources } = useChatPanelDataContext()

@@ -1,3 +1,53 @@
+import { DEFAULT_APP_ROLE, withAppRole } from "./app-role"
+import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
+import {
+  CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_SQL,
+} from "./chat-postgres-data-api-revoke"
+import {
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
+  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
+} from "./chat-postgres-data-api-revoke-again"
+import {
+  CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
+  CHAT_POSTGRES_DB_OPTIMIZATION_SQL,
+} from "./chat-postgres-db-optimization"
+import {
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
+  CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL,
+} from "./chat-postgres-drop-recreated-indexes"
+import {
+  CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
+  CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
+} from "./chat-postgres-drop-unused-indexes"
+import {
+  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
+  CHAT_POSTGRES_FORCE_RLS_SQL,
+} from "./chat-postgres-force-rls"
+import {
+  CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
+  CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
+} from "./chat-postgres-jwt-user-policies"
+import {
+  MIRROR_WATERMARK_MIGRATION_ID,
+  MIRROR_WATERMARK_MIGRATION_SQL,
+} from "./chat-postgres-mirror-watermark"
+import {
+  CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
+  CHAT_POSTGRES_OPTIMIZATION_2_SQL,
+} from "./chat-postgres-optimization-2"
+import {
+  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
+  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
+} from "./chat-postgres-ownership-execute-revoke"
+import {
+  CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
+  CHAT_POSTGRES_PROVIDER_AUTH_SQL,
+} from "./chat-postgres-provider-auth"
+import {
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
+  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
+} from "./chat-postgres-retry-event-type-fix"
 /**
  * Ordered chat-mirror migration runner used by `pnpm chat:migrate`.
  *
@@ -14,6 +64,10 @@ import {
   CHAT_POSTGRES_RLS_STRICT_SQL,
 } from "./chat-postgres-rls-strict"
 import {
+  CHAT_POSTGRES_MIGRATION_ID,
+  CHAT_POSTGRES_SCHEMA_SQL,
+} from "./chat-postgres-schema"
+import {
   CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID,
   CHAT_POSTGRES_SESSION_OWNERSHIP_SQL,
 } from "./chat-postgres-session-ownership"
@@ -22,65 +76,11 @@ import {
   CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID,
   CHAT_POSTGRES_SESSION_TOMBSTONES_SQL,
 } from "./chat-postgres-session-tombstones"
-import {
-  CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID,
-  CHAT_POSTGRES_PROVIDER_AUTH_SQL,
-} from "./chat-postgres-provider-auth"
+import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "./chat-postgres-user-id-uuid"
 import {
   CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID,
   CHAT_POSTGRES_USER_SETTINGS_SQL,
 } from "./chat-postgres-user-settings"
-import {
-  CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_REVOKE_SQL,
-} from "./chat-postgres-data-api-revoke"
-import {
-  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
-  CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
-} from "./chat-postgres-data-api-revoke-again"
-import {
-  CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID,
-  CHAT_POSTGRES_FORCE_RLS_SQL,
-} from "./chat-postgres-force-rls"
-import {
-  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
-  CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,
-} from "./chat-postgres-ownership-execute-revoke"
-import {
-  CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
-  CHAT_POSTGRES_DB_OPTIMIZATION_SQL,
-} from "./chat-postgres-db-optimization"
-import {
-  CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID,
-  CHAT_POSTGRES_DROP_UNUSED_INDEXES_SQL,
-} from "./chat-postgres-drop-unused-indexes"
-import {
-  MIRROR_WATERMARK_MIGRATION_ID,
-  MIRROR_WATERMARK_MIGRATION_SQL,
-} from "./chat-postgres-mirror-watermark"
-import {
-  CHAT_POSTGRES_OPTIMIZATION_2_MIGRATION_ID,
-  CHAT_POSTGRES_OPTIMIZATION_2_SQL,
-} from "./chat-postgres-optimization-2"
-import {
-  CHAT_POSTGRES_DROP_RECREATED_INDEXES_MIGRATION_ID,
-  CHAT_POSTGRES_DROP_RECREATED_INDEXES_SQL,
-} from "./chat-postgres-drop-recreated-indexes"
-import {
-  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_MIGRATION_ID,
-  CHAT_POSTGRES_RETRY_EVENT_TYPE_FIX_SQL,
-} from "./chat-postgres-retry-event-type-fix"
-import {
-  CHAT_POSTGRES_JWT_USER_POLICIES_MIGRATION_ID,
-  CHAT_POSTGRES_JWT_USER_POLICIES_SQL,
-} from "./chat-postgres-jwt-user-policies"
-import { DEFAULT_APP_ROLE, withAppRole } from "./app-role"
-import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "./chat-postgres-app-role-grants"
-import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "./chat-postgres-user-id-uuid"
-import {
-  CHAT_POSTGRES_MIGRATION_ID,
-  CHAT_POSTGRES_SCHEMA_SQL,
-} from "./chat-postgres-schema"
 
 export interface ChatMigrationClient {
   query: <T = unknown>(

@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
+
 import {
   fingerprintDaytonaSecretsConfig,
   isOccSecretsEligible,
   syncDaytonaSecrets,
 } from "../sync-daytona-secrets"
+
 import type { Daytona } from "@daytona/sdk"
 
 describe("syncDaytonaSecrets", () => {

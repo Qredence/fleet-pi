@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
+
+import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import { discoverConfiguredProviderModels } from "@/lib/pi/runtime/discover-provider-models"
+import { getErrorMessage, loadChatModels } from "@/lib/pi/server"
 import {
   ChatModelsDiscoverRequestSchema,
   ChatModelsDiscoverResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
-import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { getErrorMessage, loadChatModels } from "@/lib/pi/server"
-import { discoverConfiguredProviderModels } from "@/lib/pi/runtime/discover-provider-models"
 
 /**
  * Discovers chat models available for the requested provider.

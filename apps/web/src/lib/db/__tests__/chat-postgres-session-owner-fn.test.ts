@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs"
+
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_SCHEMA_SQL } from "../chat-postgres-schema"
 import {
   FLEET_PI_CHECK_SESSION_OWNER_SQL,

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { withWorkspaceQueryHandler } from "@/lib/workspace/workspace-route-handler"
+
 import { loadAgentWorkspaceTree } from "@/lib/workspace/server"
+import { withWorkspaceQueryHandler } from "@/lib/workspace/workspace-route-handler"
 
 export function workspaceTreeHandler(request: Request) {
   return withWorkspaceQueryHandler(request, async (context) =>

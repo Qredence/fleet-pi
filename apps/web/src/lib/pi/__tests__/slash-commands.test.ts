@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import {
   WEB_BUILTIN_SLASH_COMMANDS,
   buildSlashCommands,

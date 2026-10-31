@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { applyProjectSettingsToServices } from "../apply-project-settings"
+
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
 const originalHosted = process.env.FLEET_PI_DEPLOYMENT

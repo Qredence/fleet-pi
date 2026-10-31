@@ -1,3 +1,4 @@
+import { RequestContextError } from "../app-runtime"
 import {
   getRunDetail,
   listPathProvenance,
@@ -6,7 +7,7 @@ import {
   normalizeSessionFilePath,
   openWorkspaceProvenance,
 } from "../db/workspace-provenance"
-import { RequestContextError } from "../app-runtime"
+
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
   ProvenanceMutationRecord,

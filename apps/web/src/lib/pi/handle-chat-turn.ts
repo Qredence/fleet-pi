@@ -1,15 +1,6 @@
-import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
-import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
-import type {
-  AssistantTurnState,
-  TurnStartContext,
-} from "@/lib/pi/server-chat-stream"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
-import type {
-  ChatRequest,
-  ChatStreamEvent,
-} from "@workspace/pi-protocol/chat-protocol"
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { syncPiSessionMirrorSafely } from "@/lib/db/pi-session-mirror"
+import { createRequestLogger } from "@/lib/logger"
 import { createPlanEvent, getPlanState } from "@/lib/pi/plan-mode"
 import { assertProviderCredentialsUsable } from "@/lib/pi/runtime/provider-preflight"
 import {
@@ -26,9 +17,19 @@ import {
   sendTerminalFrame,
   shouldEmitInitialPlanEvent,
 } from "@/lib/pi/server-chat-stream"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { createRequestLogger } from "@/lib/logger"
 import { sanitizePii } from "@/lib/pii/sanitizer"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
+import type {
+  AssistantTurnState,
+  TurnStartContext,
+} from "@/lib/pi/server-chat-stream"
+import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
+import type {
+  ChatRequest,
+  ChatStreamEvent,
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type HandleChatTurnParams = {
   body: ChatRequest

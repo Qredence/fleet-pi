@@ -1,10 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resolveWorkspaceContext } from "../workspace-context"
 import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
+
+import { resolveWorkspaceContext } from "../workspace-context"
 
 const {
   mockExecuteCommand,

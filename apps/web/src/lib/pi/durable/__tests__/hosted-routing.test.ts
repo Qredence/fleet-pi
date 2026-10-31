@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
+
+import { projectDurableTurn } from "../durable-projection"
 import {
   conversationIdFromDurableSession,
   durableSessionId,
   isDurableSessionId,
   isLegacyChatSession,
 } from "../durable-session"
-import { projectDurableTurn } from "../durable-projection"
 
 describe("hosted session routing", () => {
   it("treats JSONL ids as legacy and durable ids as hosted conversations", () => {

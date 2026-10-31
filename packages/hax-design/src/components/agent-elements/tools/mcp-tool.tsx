@@ -1,8 +1,11 @@
+import { createCodePlugin } from "@streamdown/code"
 import { memo, useMemo } from "react"
 import { Streamdown } from "streamdown"
-import { createCodePlugin } from "@streamdown/code"
+
 import { areToolPropsEqual, getToolStatus } from "../utils/format-tool"
+
 import { ToolRowBase } from "./tool-row-base"
+
 import type { McpToolInfo } from "./tool-registry"
 
 export type McpToolProps = {

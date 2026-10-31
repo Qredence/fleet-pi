@@ -2,6 +2,7 @@ import {
   BUNDLED_HOSTED_EXTENSIONS,
   selectHostedExtensions,
 } from "@workspace/pi-protocol/hosted-resources"
+
 import { Switch } from "../../../../switch"
 import { ItemRow } from "../../../primitives/item-row"
 import {
@@ -9,11 +10,12 @@ import {
   SettingsPane,
 } from "../../../primitives/settings-pane"
 import { CatalogValueList } from "../shared/lists"
-import type { ReactNode } from "react"
+
 import type {
   ChatPiSettings,
   ChatResourcesResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { ReactNode } from "react"
 
 export type ResourcesSectionScope = "skills" | "harness"
 

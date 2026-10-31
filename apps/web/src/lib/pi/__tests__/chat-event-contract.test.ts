@@ -15,13 +15,7 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it, vi } from "vitest"
-import {
-  ModelRuntime,
-  SessionManager,
-  SettingsManager,
-  createAgentSession,
-} from "@earendil-works/pi-coding-agent"
+
 import {
   createFauxCore,
   fauxAssistantMessage,
@@ -29,19 +23,28 @@ import {
   fauxThinking,
   fauxToolCall,
 } from "@earendil-works/pi-ai"
+import {
+  ModelRuntime,
+  SessionManager,
+  SettingsManager,
+  createAgentSession,
+} from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { encodeEvent } from "@/lib/pi/server-shared"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import type { FauxResponseStep } from "@earendil-works/pi-ai"
 import type {
   AgentSession,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent"
-import type { RunProvenanceRecorder } from "@/lib/pi/run-provenance"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type {
   ChatRequest,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import { encodeEvent } from "@/lib/pi/server-shared"
 
 const { createPiRuntime } = vi.hoisted(() => ({ createPiRuntime: vi.fn() }))
 

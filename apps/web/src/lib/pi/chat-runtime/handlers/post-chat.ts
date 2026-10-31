@@ -1,18 +1,14 @@
-import { ChatRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
-import type {
-  ChatRequest,
-  ChatStreamEvent,
-} from "@workspace/pi-protocol/chat-protocol"
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
-import { createRequestLogger } from "@/lib/logger"
-import { handleChatTurn } from "@/lib/pi/handle-chat-turn"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
-import { streamHostedAgentTurn } from "@/lib/pi/durable/hosted-agent-turn"
+import { createRequestLogger } from "@/lib/logger"
 import { isLegacyChatSession } from "@/lib/pi/durable/durable-session"
+import { streamHostedAgentTurn } from "@/lib/pi/durable/hosted-agent-turn"
+import { handleChatTurn } from "@/lib/pi/handle-chat-turn"
+import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import {
   encodeEvent,
   getErrorMessage,
@@ -20,8 +16,13 @@ import {
   notLiveSessionResponse,
   queuePromptOnActiveSession,
 } from "@/lib/pi/server"
-import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
 import { sanitizePii } from "@/lib/pii/sanitizer"
+import { ChatRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
+import type {
+  ChatRequest,
+  ChatStreamEvent,
+} from "@workspace/pi-protocol/chat-protocol"
 
 export async function postChatHandler(request: Request) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()

@@ -1,7 +1,6 @@
 import React, { memo, useMemo } from "react"
 
 import { ErrorMessage } from "./error-message"
-import { normalizeAssistantToolParts } from "./utils/tool-part-normalizer"
 import { MessageToolbar, formatTimestamp } from "./message-toolbar"
 import {
   getTextFromParts,
@@ -9,11 +8,13 @@ import {
   isTextPart,
   isV5ToolPart,
 } from "./utils/chat-message-parts"
+import { normalizeAssistantToolParts } from "./utils/tool-part-normalizer"
+
+import type { CustomToolRendererProps } from "./types"
 import type {
   ToolPartBase,
   ToolRendererProps,
 } from "./utils/chat-message-parts"
-import type { CustomToolRendererProps } from "./types"
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 type UserMessageComponentProps = {

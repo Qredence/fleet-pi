@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { auth } from "@/lib/auth/server"
+
 import { chatCommandsHandler } from "../../../routes/api/chat/commands"
 import { chatModelsHandler } from "../../../routes/api/chat/models"
 import { chatModelsDiscoverHandler } from "../../../routes/api/chat/models.discover"
 import { providersServerHandlers } from "../../../routes/api/chat/providers"
 import { chatResourcesHandler } from "../../../routes/api/chat/resources"
 import { chatSettingsGetHandler } from "../../../routes/api/chat/settings"
-import { auth } from "@/lib/auth/server"
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {

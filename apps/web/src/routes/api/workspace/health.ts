@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
-import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
+
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { getErrorMessage } from "@/lib/pi/server"
+import { loadAgentWorkspaceHealth } from "@/lib/workspace/bootstrap-agent-workspace"
+import { resolveWorkspaceContext } from "@/lib/workspace/workspace-context"
 
 function toPublicWorkspaceHealth(
   health: Awaited<ReturnType<typeof loadAgentWorkspaceHealth>>

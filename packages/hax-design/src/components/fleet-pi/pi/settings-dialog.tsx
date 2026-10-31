@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "../../dialog"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +10,6 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from "../../alert-dialog"
-import { ScrollArea } from "../../scroll-area"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +17,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../../breadcrumb"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "../../dialog"
+import { ScrollArea } from "../../scroll-area"
 import {
   Sidebar,
   SidebarContent,
@@ -34,9 +35,11 @@ import {
   SidebarProvider,
 } from "../../sidebar"
 import { DiscreteTabs } from "../primitives/discrete-tab"
+
+import { SETTINGS_SECTIONS, isSettingsSectionId } from "./settings-sections"
 import { settingsSectionPanes } from "./settings/settings-dialog-panes"
 import { useSettingsForm } from "./settings/use-settings-form"
-import { SETTINGS_SECTIONS, isSettingsSectionId } from "./settings-sections"
+
 import type { SettingsSectionId } from "./settings-sections"
 import type { LucideIcon } from "lucide-react"
 

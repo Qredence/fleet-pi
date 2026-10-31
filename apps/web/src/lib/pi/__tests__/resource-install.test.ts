@@ -1,13 +1,14 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import resourceInstallExtension from "../../../../../../.pi/extensions/resource-install"
 import {
   ensureWorkspaceResourceDirectories,
   installWorkspaceResource,
 } from "../../../../../../.pi/extensions/lib/resource-install"
+import resourceInstallExtension from "../../../../../../.pi/extensions/resource-install"
 
 const { lookupMock } = vi.hoisted(() => ({
   lookupMock: vi.fn(),

@@ -1,14 +1,17 @@
-import React, { memo } from "react"
 import { MultiFileDiff } from "@pierre/diffs/react"
 import { IconChevronDown } from "@tabler/icons-react"
+import React, { memo } from "react"
+
 import { useToolComplete } from "../hooks/use-tool-complete"
-import { TextShimmer } from "../text-shimmer"
 import { FileExtIcon } from "../icons/file-ext-icon"
+import { TextShimmer } from "../text-shimmer"
 import { adaptToolPart } from "../utils/tool-adapters"
+
 import { ToolApprovalFooter } from "./tool-approval-footer"
+
+import type { StepState, TimelineStep } from "../types/timeline"
 import type { ToolApproval } from "./tool-approval-footer"
 import type { FileContents } from "@pierre/diffs/react"
-import type { StepState, TimelineStep } from "../types/timeline"
 
 type EditToolDiffCardProps = {
   step: Extract<TimelineStep, { type: "tool-call" }>

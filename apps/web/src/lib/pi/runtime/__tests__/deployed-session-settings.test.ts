@@ -1,27 +1,30 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { SettingsManager } from "@earendil-works/pi-coding-agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createSessionServices } from "../session-factory"
-import { hydrateSessionServicesSettings } from "../durable-project-settings"
-import { hotReloadActiveRuntimesForUser } from "../hot-reload"
+
 import { createSandboxReadOperations } from "../../../daytona/sandbox-operations"
 import {
   deleteActiveSessionRecord,
   setActiveSessionRecord,
 } from "../active-sessions"
+import { hydrateSessionServicesSettings } from "../durable-project-settings"
 import { FLEET_PI_SHARED_PROJECT_SETTINGS } from "../fleet-default-project-settings"
+import { hotReloadActiveRuntimesForUser } from "../hot-reload"
 import {
   createIsolatedProjectSettings,
   replaceIsolatedProjectSettings,
 } from "../isolated-project-settings"
+import { createSessionServices } from "../session-factory"
+
+import type { AppRuntimeContext } from "../../../app-runtime"
 import type { Sandbox } from "@daytona/sdk"
 import type {
   AgentSessionRuntime,
   AgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
-import type { AppRuntimeContext } from "../../../app-runtime"
 
 const mocks = vi.hoisted(() => ({
   loadUserProjectSettings: vi.fn(),

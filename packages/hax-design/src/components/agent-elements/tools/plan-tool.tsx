@@ -1,13 +1,14 @@
-import { memo, useState } from "react"
 import {
   IconChevronsDown,
   IconChevronsUp,
   IconFileDescription,
 } from "@tabler/icons-react"
-import { Markdown } from "../markdown"
+import { memo, useState } from "react"
+
 import { IconSpinner } from "../icons"
-import { areToolPropsEqual, getToolStatus } from "../utils/format-tool"
+import { Markdown } from "../markdown"
 import { cn } from "../utils/cn"
+import { areToolPropsEqual, getToolStatus } from "../utils/format-tool"
 
 export type Plan = {
   id?: string

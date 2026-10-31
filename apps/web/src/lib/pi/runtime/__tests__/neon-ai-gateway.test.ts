@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
 import {
   NEON_AI_GATEWAY_DEFAULT_MODEL,
   NEON_AI_GATEWAY_DEFAULT_MODEL_IDS,
@@ -6,6 +7,7 @@ import {
   resetCapturedNeonAiGatewayCredentialsForTests,
   resolveNeonAiGatewayConfig,
 } from "../neon-ai-gateway"
+
 import {
   TEST_NEON_AI_GATEWAY_BASE_URL,
   TEST_NEON_AI_GATEWAY_BASE_URL_V1,

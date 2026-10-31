@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import {
   MAX_REMOTE_CATALOG_BYTES,
   listGoogleGenaiModels,
@@ -6,6 +7,7 @@ import {
   modelSupportsProviderApi,
   parseOpenAiModelsList,
 } from "../openai-models-list"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 const commandCodeCatalog = {

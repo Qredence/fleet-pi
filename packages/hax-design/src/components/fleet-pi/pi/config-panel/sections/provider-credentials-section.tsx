@@ -1,4 +1,5 @@
 import { Plus, Search } from "lucide-react"
+
 import { Button } from "../../../../button"
 import {
   InputGroup,
@@ -7,13 +8,15 @@ import {
 } from "../../../../input-group"
 import { Spinner } from "../../../../spinner"
 import { SettingsPane } from "../../../primitives/settings-pane"
-import { useProviderCredentialsController } from "./use-provider-credentials-controller"
+
 import {
   AddProviderEditorPanel,
   RemoveProviderConfirmDialog,
 } from "./provider-credential-editor"
 import { ActiveProviderList } from "./provider-credential-list"
 import { AddProviderPickerPanel } from "./provider-credential-picker"
+import { useProviderCredentialsController } from "./use-provider-credentials-controller"
+
 import type {
   ChatProviderInfo,
   ChatProviderRemoveRequest,

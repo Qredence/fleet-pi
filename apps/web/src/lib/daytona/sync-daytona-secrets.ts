@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto"
+
 import {
   KNOWN_PROVIDERS,
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import {
   daytonaSecretName,
   isDaytonaSecretsEligibleProvider,
   resolveDaytonaSecretHosts,
 } from "./secret-hosts"
+
 import type { Daytona, Secret } from "@daytona/sdk"
 
 export type DaytonaSecretsSyncMode = "mounted" | "plaintext-fallback"

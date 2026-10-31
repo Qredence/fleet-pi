@@ -1,6 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
+  createDaytonaClient,
+  createSandbox,
+  deleteSandbox,
+  getOrCreateVolume,
+  getSandboxStatus,
+  startSandbox,
+  stopSandbox,
+} from "../client"
+import {
+  buildPlaintextSandboxCredentials,
+  loadConfiguredProviderSecrets,
+} from "../sandbox-provider-secrets"
+import {
+  fingerprintDaytonaSecretsConfig,
+  syncDaytonaSecrets,
+} from "../sync-daytona-secrets"
+import {
   clearSandboxCache,
   destroyUserSandbox,
   getCachedUserSandbox,
@@ -10,26 +27,10 @@ import {
   isDaytonaEnabled,
   releaseUserSandbox,
 } from "../user-sandbox"
-import {
-  fingerprintDaytonaSecretsConfig,
-  syncDaytonaSecrets,
-} from "../sync-daytona-secrets"
-import {
-  buildPlaintextSandboxCredentials,
-  loadConfiguredProviderSecrets,
-} from "../sandbox-provider-secrets"
-import {
-  createDaytonaClient,
-  createSandbox,
-  deleteSandbox,
-  getOrCreateVolume,
-  getSandboxStatus,
-  startSandbox,
-  stopSandbox,
-} from "../client"
-import type { Daytona, Sandbox } from "@daytona/sdk"
+
 import type * as DaytonaClientModule from "../client"
 import type * as SandboxProviderSecretsModule from "../sandbox-provider-secrets"
+import type { Daytona, Sandbox } from "@daytona/sdk"
 
 vi.mock("../sync-daytona-secrets", () => ({
   syncDaytonaSecrets: vi.fn().mockResolvedValue({

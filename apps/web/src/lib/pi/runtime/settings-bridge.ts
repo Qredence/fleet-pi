@@ -1,29 +1,35 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
+
+import { upsertUserProjectSettings } from "@/lib/db/user-settings"
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import { ChatPiSettingsUpdateSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   loadPersistedProjectSettingsOverrides,
   sanitizePortableResourcePaths,
 } from "./durable-project-settings"
-import { collectDiagnostics, resolveDefaultModelSelection } from "./diagnostics"
 import {
   hotReloadActiveRuntimes,
   hotReloadActiveRuntimesForUser,
 } from "./hot-reload"
 import {
-  prepareProjectSettingsForPersist,
-  prepareProjectSettingsOverridesForPersist,
-  projectSettingsOverridesEqual,
-} from "./project-settings-persist"
-import {
   PROJECT_SETTINGS_PATH,
   projectSettingsPath,
 } from "./project-settings-file"
 import { serializeProjectSettingsPreservingFormat } from "./project-settings-format"
+import {
+  prepareProjectSettingsForPersist,
+  prepareProjectSettingsOverridesForPersist,
+  projectSettingsOverridesEqual,
+} from "./project-settings-persist"
 import { createSessionServices } from "./session-factory"
 import { normalizeChatThinkingLevel } from "./thinking-level"
 import { RESOURCE_SETTING_KEYS } from "./types"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 import type {
   ChatPiSettings,
@@ -31,9 +37,6 @@ import type {
   ChatSettingsResponse,
   ChatTransport,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { upsertUserProjectSettings } from "@/lib/db/user-settings"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export { readProjectSettingsFile } from "./project-settings-file"
 

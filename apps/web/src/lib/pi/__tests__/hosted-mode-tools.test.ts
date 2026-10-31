@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { hostedWhenBusy } from "../hosted-busy-delivery"
+
+import { toolsForChatMode } from "../durable/hosted-harness"
 import {
   hostedBashBlock,
   hostedPathBlock,
   hostedWriteBlock,
 } from "../durable/hosted-tool-registry"
-import { toolsForChatMode } from "../durable/hosted-harness"
+import { hostedWhenBusy } from "../hosted-busy-delivery"
 
 describe("hosted mode tools", () => {
   it("keeps plan read-only and requires confirmation before harness writes system or evals", () => {

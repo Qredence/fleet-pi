@@ -1,13 +1,16 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import { bootstrapAgentWorkspace } from "../../workspace/bootstrap-agent-workspace"
 import {
   WORKSPACE_PROJECTION_DATABASE_FILENAME,
   initializeWorkspaceProjection,
   openWorkspaceProjection,
 } from "../workspace-projection"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 
 const roots = new Set<string>()

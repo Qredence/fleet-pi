@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_SESSION_OWNERSHIP_SQL } from "../chat-postgres-session-ownership"
 
 describe("chat-postgres-session-ownership", () => {

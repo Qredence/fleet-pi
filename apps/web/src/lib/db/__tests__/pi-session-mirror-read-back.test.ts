@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { markPiSessionDeleted } from "../pi-session-tombstones"
+
 import { queryUserSessionSummaries } from "../pi-session-mirror"
+import { markPiSessionDeleted } from "../pi-session-tombstones"
+
 import type { PostgresQueryClient } from "../pi-session-mirror"
 import type { RecordedQuery } from "./pi-session-mirror-fixtures"
 

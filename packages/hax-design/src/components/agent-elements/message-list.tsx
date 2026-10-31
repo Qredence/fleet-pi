@@ -1,17 +1,18 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
+
+import { useChatAutoScroll } from "./hooks/use-chat-auto-scroll"
+import { Markdown } from "./markdown"
+import { AssistantTurn, UserTurn } from "./message-turns"
+import { SpiralLoader } from "./spiral-loader"
+import { ToolRenderer as DefaultToolRenderer } from "./tools/tool-renderer"
+import { ToolRowBase } from "./tools/tool-row-base"
+import { UserMessage } from "./user-message"
+import { isTextPart, isV5ToolPart } from "./utils/chat-message-parts"
 import { cn } from "./utils/cn"
 
-import { UserMessage } from "./user-message"
-import { Markdown } from "./markdown"
-import { ToolRowBase } from "./tools/tool-row-base"
-import { ToolRenderer as DefaultToolRenderer } from "./tools/tool-renderer"
-import { SpiralLoader } from "./spiral-loader"
-import { useChatAutoScroll } from "./hooks/use-chat-auto-scroll"
-import { AssistantTurn, UserTurn } from "./message-turns"
-import { isTextPart, isV5ToolPart } from "./utils/chat-message-parts"
-import type { ToolRendererProps } from "./utils/chat-message-parts"
 import type { CustomToolRendererProps } from "./types"
+import type { ToolRendererProps } from "./utils/chat-message-parts"
 import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 export type MessageListProps = {

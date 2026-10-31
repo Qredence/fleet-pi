@@ -1,25 +1,27 @@
+import { isEnvVarConfigured } from "@/lib/env-manager"
 import {
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
-import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
+
+import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
 import {
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
+import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
 import {
   assertSafeOpenAiCompatibleBaseUrl,
   isGatewayHost,
 } from "./openai-chat-completions-url"
-import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
 import { resolveUserProviderSecret } from "./user-provider-secrets"
+
 import type { NeonAiGatewayConfig } from "./neon-ai-gateway"
 import type {
   AgentSessionServices,
   ProviderConfig,
 } from "@earendil-works/pi-coding-agent"
-import { isEnvVarConfigured } from "@/lib/env-manager"
 
 export { assertSafeOpenAiCompatibleBaseUrl } from "./openai-chat-completions-url"
 

@@ -8,8 +8,10 @@ import {
   Settings,
 } from "lucide-react"
 import { useState } from "react"
+
 import { Popover } from "../../agent-elements/input/popover"
 import { ChromePillButton } from "../primitives/chrome-pill"
+
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,

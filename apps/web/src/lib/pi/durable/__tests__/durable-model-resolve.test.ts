@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "../../runtime/__tests__/gateway-test-fixtures"
 import { NEON_AI_GATEWAY_DEFAULT_MODEL } from "../../runtime/neon-ai-gateway"
 

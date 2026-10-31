@@ -1,5 +1,6 @@
-import { withChatPostgresTransaction } from "./pi-session-mirror"
 import { isChatDatabaseConfigured } from "./chat-db-config"
+import { withChatPostgresTransaction } from "./pi-session-mirror"
+
 import type { PostgresQueryClient } from "./pi-session-mirror"
 
 function isRecord(value: unknown): value is Record<string, unknown> {

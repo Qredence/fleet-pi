@@ -1,11 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV31,
 } from "@asteasolutions/zod-to-openapi"
 import { format, resolveConfig } from "prettier"
 import { z } from "zod"
+
 import {
   ChatCommandsResponseSchema,
   ChatModelsDiscoverRequestSchema,

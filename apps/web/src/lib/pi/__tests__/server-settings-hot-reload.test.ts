@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { hotReloadActiveRuntimes, retainPiRuntime } from "../server"
+
 import { createMockSettingsManager } from "../runtime/__tests__/mock-settings-manager"
+import { hotReloadActiveRuntimes, retainPiRuntime } from "../server"
 
 const mocks = vi.hoisted(() => ({
   applyRuntimeAuth: vi.fn(),

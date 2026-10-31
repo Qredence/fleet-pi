@@ -1,9 +1,11 @@
 import { BuiltinActionType, Renderer } from "@openuidev/react-lang"
 import { useCallback, useMemo, useState } from "react"
+
 import { Markdown } from "../agent-elements/markdown"
 
 import { openUILibrary } from "./openui-library"
 import { segmentOpenUIContent } from "./openui-utils"
+
 import type {
   ActionEvent,
   OpenUIError,

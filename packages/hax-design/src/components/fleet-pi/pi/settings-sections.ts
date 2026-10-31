@@ -7,6 +7,7 @@ import {
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react"
+
 import type { LucideIcon } from "lucide-react"
 
 export type SettingsSectionId =

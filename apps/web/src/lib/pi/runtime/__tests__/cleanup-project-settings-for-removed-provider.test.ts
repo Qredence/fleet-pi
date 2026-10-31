@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { cleanupProjectSettingsForRemovedProvider } from "../cleanup-project-settings-for-removed-provider"
 
 describe("cleanupProjectSettingsForRemovedProvider", () => {

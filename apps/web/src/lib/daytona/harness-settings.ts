@@ -1,20 +1,21 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
+
 import {
   loadUserProjectSettings,
   upsertUserProjectSettings,
 } from "@/lib/db/user-settings"
 import { usesDatabaseBackedProjectSettings } from "@/lib/pi/runtime/deployed-chat-runtime"
 import {
-  prepareProjectSettingsForPersist,
-  prepareProjectSettingsOverridesForPersist,
-  projectSettingsOverridesEqual,
-} from "@/lib/pi/runtime/project-settings-persist"
-import {
   projectSettingsPath,
   readRawProjectSettingsFile,
 } from "@/lib/pi/runtime/project-settings-file"
 import { serializeProjectSettingsPreservingFormat } from "@/lib/pi/runtime/project-settings-format"
+import {
+  prepareProjectSettingsForPersist,
+  prepareProjectSettingsOverridesForPersist,
+  projectSettingsOverridesEqual,
+} from "@/lib/pi/runtime/project-settings-persist"
 
 const RESOURCE_KEYS = ["skills", "prompts", "extensions", "packages"] as const
 

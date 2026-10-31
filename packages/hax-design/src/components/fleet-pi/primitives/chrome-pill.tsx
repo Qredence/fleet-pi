@@ -4,6 +4,7 @@ import {
   CHROME_PILL_CLASS,
   CHROME_PILL_INACTIVE_CLASS,
 } from "../styles/tokens"
+
 import type { ReactNode } from "react"
 
 export function ChromePillButton({

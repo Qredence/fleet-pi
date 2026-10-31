@@ -1,17 +1,20 @@
 import { ArrowLeft, Search } from "lucide-react"
+
+import { cn } from "../../../../../lib/utils"
 import { Button } from "../../../../button"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "../../../../input-group"
-import { cn } from "../../../../../lib/utils"
+import { ProviderBrandIcon } from "../shared/provider-brand-icon"
 import {
   isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
-import { ProviderBrandIcon } from "../shared/provider-brand-icon"
+
 import { CUSTOM_PROVIDER_PICKER_ID } from "./use-provider-credentials-controller"
+
 import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 
 export function AddProviderPickerPanel({

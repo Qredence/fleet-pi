@@ -1,12 +1,13 @@
-import type { AppRuntimeContext } from "@/lib/app-runtime"
 import {
   DaytonaCredentialRequiredError,
   resolveAppRuntimeContext,
 } from "@/lib/app-runtime"
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
-import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 import { isHostedDeployment } from "@/lib/deployment/environment"
+import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function resolveWorkspaceContext(
   request: Request,

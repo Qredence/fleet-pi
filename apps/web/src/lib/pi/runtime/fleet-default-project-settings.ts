@@ -1,5 +1,6 @@
-import type { SettingsManager } from "@earendil-works/pi-coding-agent"
 import { isHostedDeployment } from "@/lib/deployment/environment"
+
+import type { SettingsManager } from "@earendil-works/pi-coding-agent"
 
 export const FLEET_PI_SHARED_PROJECT_SETTINGS = {
   packages: [

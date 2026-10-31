@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../auth-postgres-post-migrate"
 
 describe("auth-postgres-post-migrate", () => {

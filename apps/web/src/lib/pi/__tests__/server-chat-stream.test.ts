@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import {
   completeAssistantTurn,
   createTurnStartContext,
   handleSessionEvent,
 } from "../server-chat-stream"
+
 import type { ChatStreamEvent } from "@workspace/pi-protocol/chat-protocol"
 
 describe("server chat stream", () => {

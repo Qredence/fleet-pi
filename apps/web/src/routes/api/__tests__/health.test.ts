@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { healthHandler } from "../health"
 
 describe("GET /api/health", () => {

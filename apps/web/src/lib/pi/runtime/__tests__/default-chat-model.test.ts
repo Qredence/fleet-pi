@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
+
 import {
   NoChatModelAvailableError,
   resolveDefaultChatModel,
   sessionHasRestorableModel,
 } from "../default-chat-model"
+
 import type { Model } from "@earendil-works/pi-ai"
 
 function model(provider: string, id: string): Model<any> {

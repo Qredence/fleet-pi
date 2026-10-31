@@ -1,19 +1,21 @@
 import { Globe, HardDrive, Info } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+
+import { cn } from "../../../../../lib/utils"
 import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
 import { FieldGroup } from "../../../../field"
 import { Spinner } from "../../../../spinner"
-import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
-import { RowSurface } from "../../../primitives/surface"
 import { SettingsPane } from "../../../primitives/settings-pane"
+import { RowSurface } from "../../../primitives/surface"
 import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import {
   SecretCredentialField,
   TextCredentialField,
 } from "../shared/credential-fields"
+
 import type {
   ChatProviderInfo,
   ChatProviderUpdateRequest,

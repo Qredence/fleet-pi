@@ -1,11 +1,11 @@
 import { Folder, Library, Package } from "lucide-react"
-import { ArtifactsPanelContent } from "../pi/artifacts-panel"
 
+import { ArtifactsPanelContent } from "../pi/artifacts-panel"
 import { ResourcesPanelContent } from "../pi/resources-panel"
 import { WorkspacePanelContent } from "../pi/workspace-panel"
-import type { ElementType, ReactNode } from "react"
-import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
+
 import type { RightPanel, ThemePreference } from "../../../lib/canvas-utils"
+import type { ChatModelOption } from "../../../lib/pi/chat-helpers"
 import type {
   ChatMode,
   ChatPiSettingsUpdate,
@@ -20,7 +20,8 @@ import type {
   WorkspaceFileResponse,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ChatModelOption } from "../../../lib/pi/chat-helpers"
+import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
+import type { ElementType, ReactNode } from "react"
 
 export type ActiveRightPanel = Exclude<RightPanel, null>
 

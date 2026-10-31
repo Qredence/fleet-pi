@@ -1,19 +1,22 @@
 import { writeFile } from "node:fs/promises"
+
+import { loadUserProjectSettings } from "@/lib/db/user-settings"
+
 import { applyProjectSettingsToServices } from "./apply-project-settings"
-import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
 import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
 import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
-import { serializeProjectSettingsPreservingFormat } from "./project-settings-format"
-import { mergeProjectSettingsRecords } from "./project-settings-merge"
+import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
 import {
   projectSettingsPath,
   readProjectSettingsFile,
   readRawProjectSettingsFile,
 } from "./project-settings-file"
-import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
-import { replaceIsolatedProjectSettings } from "./isolated-project-settings"
+import { serializeProjectSettingsPreservingFormat } from "./project-settings-format"
+import { mergeProjectSettingsRecords } from "./project-settings-merge"
+
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
-import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
 export type ResolveProjectSettingsOptions = {
   userId?: string

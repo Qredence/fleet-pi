@@ -1,11 +1,13 @@
 import { Cpu } from "lucide-react"
+
+import { cn } from "../../../../../lib/utils"
 import {
   KNOWN_PROVIDERS,
   PROVIDER_METADATA,
   isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
-import { cn } from "../../../../../lib/utils"
+
 import type { PiCustomProviderApi } from "../shared/provider-metadata"
 
 const BRAND_CLASS = "size-4"

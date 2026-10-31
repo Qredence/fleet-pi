@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { PGlite } from "@electric-sql/pglite"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
 import { runChatMigrations } from "../chat-migrations"
 import { CHAT_POSTGRES_USER_ID_UUID_SQL } from "../chat-postgres-user-id-uuid"
+
 import type { ChatMigrationClient } from "../chat-migrations"
 
 const ALICE = "11111111-1111-4111-8111-111111111111"

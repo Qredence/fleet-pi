@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react"
 import {
   IconChevronDown,
   IconChevronUp,
   IconMessageCircleQuestion,
 } from "@tabler/icons-react"
+import { useEffect, useMemo, useState } from "react"
+
 import { QuestionPrompt } from "./question-prompt"
+
 import type { QuestionAnswer, QuestionConfig } from "./question-prompt"
 
 export type QuestionToolPart = {

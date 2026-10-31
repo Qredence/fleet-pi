@@ -1,10 +1,12 @@
 import { RefreshCw, X } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+
 import { DESKTOP_PANEL_HIDDEN_FLEX } from "../../../lib/layout-constants"
 import {
   HIT_AREA_EXPAND_DENSE_CLASS,
   PANEL_HEADER_ICON_BUTTON_CLASS,
 } from "../styles/tokens"
+
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 
 export function ResizableCanvas({

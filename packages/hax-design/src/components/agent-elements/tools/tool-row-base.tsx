@@ -1,7 +1,9 @@
 import { Collapsible } from "@base-ui/react/collapsible"
 import { IconChevronRight } from "@tabler/icons-react"
+
 import { TextShimmer } from "../text-shimmer"
 import { cn } from "../utils/cn"
+
 import type { ReactNode } from "react"
 
 export type ToolRowBaseProps = {

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { deleteOwnedPiSession, eraseUserPiData } from "../pi-session-deletion"
 
+import { deleteOwnedPiSession, eraseUserPiData } from "../pi-session-deletion"
 import { resolveOwnedMirrorSession } from "../pi-session-ownership-db"
+
 import type * as PiSessionOwnershipDbModule from "../pi-session-ownership-db"
 
 const { poolQuery, withUserContext, getChatPostgresPool } = vi.hoisted(() => {

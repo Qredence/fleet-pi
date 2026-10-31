@@ -5,6 +5,7 @@ import {
 } from "../../../lib/layout-constants"
 import { cn } from "../../../lib/utils"
 import { CHAT_HEADER_LAYER_CLASS } from "../styles/tokens"
+
 import type { CSSProperties, ReactNode } from "react"
 
 export function ChatWorkspaceLayout({

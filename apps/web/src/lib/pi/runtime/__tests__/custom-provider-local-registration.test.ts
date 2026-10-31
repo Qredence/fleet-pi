@@ -1,15 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   SettingsManager,
   createAgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { registerCustomProviders } from "../custom-provider-registry"
 import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
 import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "../openai-chat-completions-compat"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 const {

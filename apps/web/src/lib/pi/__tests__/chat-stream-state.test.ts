@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { EMPTY_QUEUE_STATE, applyChatStreamEvent } from "../chat-stream-state"
+
 import type { ChatStreamTransition } from "../chat-stream-state"
 
 describe("chat stream state", () => {

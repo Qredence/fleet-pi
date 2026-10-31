@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_APP_ROLE_GRANTS_SQL } from "../chat-postgres-app-role-grants"
 
 describe("chat-postgres-app-role-grants", () => {

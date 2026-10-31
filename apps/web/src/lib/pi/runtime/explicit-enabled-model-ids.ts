@@ -6,6 +6,7 @@ import {
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   isNamedOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { isAllowAllEnabledModels } from "./project-settings-merge"
 
 /** Upper bound on models registered for one provider after a user enables them. */

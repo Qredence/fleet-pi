@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest"
 import pino from "pino"
+import { describe, expect, it } from "vitest"
+
 import { createRequestLogger, redactPaths } from "../logger"
 
 function buildTestLogger() {

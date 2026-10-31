@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest"
 import { getOpenApiMetadata } from "@asteasolutions/zod-to-openapi"
+import { describe, expect, it } from "vitest"
+
 import { WorkspaceFileResponseSchema } from "../chat-protocol.zod"
+
 import type { WorkspaceFileResponse } from "../chat-protocol"
 
 describe("WorkspaceFileResponseSchema", () => {

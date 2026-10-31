@@ -2,8 +2,8 @@ import { isReactiveSchema } from "@openuidev/lang-core"
 import { Renderer } from "@openuidev/react-lang"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
-import { getChartColorVarName } from "../../chart"
 
+import { getChartColorVarName } from "../../chart"
 import {
   InputDef,
   ModalDef,

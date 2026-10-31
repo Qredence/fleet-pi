@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { getFleetBaseProjectSettings } from "../fleet-default-project-settings"
 import {
   prepareProjectSettingsForPersist,

@@ -1,9 +1,10 @@
 import { mkdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
-import { betterAuth } from "better-auth"
+
 import { Pool } from "@neondatabase/serverless"
-import type Database from "better-sqlite3"
+import { betterAuth } from "better-auth"
+
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 import {
   LOCAL_AUTH_URL,
@@ -14,6 +15,8 @@ import {
 import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isHostedPreviewDeployment } from "@/lib/deployment/trust-zone"
 import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
+
+import type Database from "better-sqlite3"
 
 function readCsvEnv(name: string) {
   return (process.env[name] ?? "")

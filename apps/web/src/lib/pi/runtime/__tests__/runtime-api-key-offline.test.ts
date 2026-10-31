@@ -1,8 +1,9 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { ModelRuntime } from "@earendil-works/pi-coding-agent"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 // Runs against the real Pi ModelRuntime (not mocked). Pi 1.x removed the
 // `allowNetwork` option from setRuntimeApiKey; fleet relies on the built-in

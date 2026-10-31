@@ -1,13 +1,14 @@
-import { ChatStreamEventSchema } from "@workspace/pi-protocol/chat-protocol.zod"
-import type { ZodType } from "zod"
-import type {
-  ChatSessionMetadata,
-  ChatStreamEvent,
-} from "@workspace/pi-protocol/chat-protocol"
 import {
   clearChatAuthBearerTokenCache,
   getChatAuthBearerToken,
 } from "@/lib/auth/use-auth"
+import { ChatStreamEventSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
+import type {
+  ChatSessionMetadata,
+  ChatStreamEvent,
+} from "@workspace/pi-protocol/chat-protocol"
+import type { ZodType } from "zod"
 
 export class ChatRequestError extends Error {
   readonly status: number

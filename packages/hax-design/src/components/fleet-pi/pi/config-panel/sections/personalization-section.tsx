@@ -1,6 +1,8 @@
 import { Monitor, Moon, Sun } from "lucide-react"
+
 import { Select } from "../../../../select"
 import { ItemRow } from "../../../primitives/item-row"
+
 import type { ThemePreference } from "../../../../../lib/canvas-utils"
 
 const THEME_OPTIONS = [

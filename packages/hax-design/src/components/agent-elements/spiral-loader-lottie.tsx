@@ -1,4 +1,5 @@
 import LottieImport from "lottie-react"
+
 import type { ComponentType } from "react"
 
 type LottieComponent = ComponentType<Record<string, unknown>>

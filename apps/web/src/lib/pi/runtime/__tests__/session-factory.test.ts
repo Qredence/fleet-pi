@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 import { createMockSettingsManager } from "./mock-settings-manager"
+
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type * as PiCodingAgent from "@earendil-works/pi-coding-agent"
 

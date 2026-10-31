@@ -1,32 +1,36 @@
 import { existsSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
+
 import { SessionManager } from "@earendil-works/pi-coding-agent"
-import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
-import { createPlanToolPart, restorePlanState } from "./plan-state"
+
 import {
-  applyChatMessageIdMap,
-  restoreChatMessageIdMap,
-  sessionEntriesToChatMessages,
-} from "./server-utils"
+  fetchUserSessionSummaries,
+  syncPiSessionMirrorSafely,
+} from "@/lib/db/pi-session-mirror"
+import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
+import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
+import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
+
+import { createPlanToolPart, restorePlanState } from "./plan-state"
 import {
   createSessionServices,
   getSessionDir,
   safeRealpath,
 } from "./server-shared"
+import {
+  applyChatMessageIdMap,
+  restoreChatMessageIdMap,
+  sessionEntriesToChatMessages,
+} from "./server-utils"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,
   ChatSessionResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
-import type { PiSessionSummaryRow } from "@/lib/db/pi-session-mirror"
-import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
-import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
-import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
-import {
-  fetchUserSessionSummaries,
-  syncPiSessionMirrorSafely,
-} from "@/lib/db/pi-session-mirror"
 
 export type SessionManagerResult = {
   sessionManager: SessionManager

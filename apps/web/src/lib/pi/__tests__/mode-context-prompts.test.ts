@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { buildOpenUIPrompt } from "@workspace/pi-protocol/openui-prompt"
+
 import {
   AGENT_MODE_CONTEXT_CUSTOM_TYPE,
   HARNESS_MODE_CONTEXT_CUSTOM_TYPE,
@@ -9,6 +11,7 @@ import {
   buildModeContextMessage,
 } from "../mode-context-prompts"
 import { createEmptyPlanState } from "../plan-state"
+
 import type { PlanModeState } from "../plan-state"
 
 const PLAN_MODE_TOOL_LIST =

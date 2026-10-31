@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+
 import {
   useChatPanelDataContext,
   useSettingsActionsContext,
@@ -8,8 +9,10 @@ import {
   sameJson,
   summarizeResources,
 } from "../config-panel/shared/settings-mappers"
+
 import { useModelDefaultsForm } from "./use-model-defaults-form"
 import { useResourcesForm } from "./use-resources-form"
+
 import type { SettingsSectionId } from "../settings-sections"
 import type {
   ChatPiSettings,

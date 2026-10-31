@@ -1,5 +1,6 @@
 import { extractTodoItems, markCompletedSteps } from "./plan-parser"
-import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
+
+import type { TodoItem } from "./plan-parser"
 import type {
   ChatMode,
   ChatPlanAction,
@@ -7,7 +8,7 @@ import type {
   ChatQuestionAnswer,
   ChatQuestionAnswerResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { TodoItem } from "./plan-parser"
+import type { ChatToolPart } from "@workspace/pi-protocol/chat-types"
 
 export const PLAN_DECISION_TOOL_PREFIX = "plan-mode-decision"
 

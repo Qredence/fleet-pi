@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import {
   CHAT_POSTGRES_DATA_API_AUTH_DEFINER_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_AUTH_DEFINER_SQL,

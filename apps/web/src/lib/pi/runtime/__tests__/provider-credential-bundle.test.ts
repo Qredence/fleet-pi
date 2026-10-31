@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+
 import {
   isRemovableCredentialProvider,
   resolveProviderCredentialBundle,

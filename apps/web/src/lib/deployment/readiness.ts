@@ -1,21 +1,22 @@
 import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../db/auth-postgres-post-migrate"
-import { CHAT_POSTGRES_MIGRATION_ID } from "../db/chat-postgres-schema"
-import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../db/chat-postgres-rls-strict"
-import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../db/chat-postgres-session-ownership"
-import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgres-session-tombstones"
-import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../db/chat-postgres-provider-auth"
-import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../db/chat-postgres-user-settings"
 import { CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke"
 import { CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID } from "../db/chat-postgres-data-api-revoke-again"
-import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
-import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
-import { CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID } from "../db/chat-postgres-rls-initplan"
 import { CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID } from "../db/chat-postgres-db-optimization"
 import { CHAT_POSTGRES_DROP_UNUSED_INDEXES_MIGRATION_ID } from "../db/chat-postgres-drop-unused-indexes"
+import { CHAT_POSTGRES_FORCE_RLS_MIGRATION_ID } from "../db/chat-postgres-force-rls"
+import { CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID } from "../db/chat-postgres-ownership-execute-revoke"
+import { CHAT_POSTGRES_PROVIDER_AUTH_MIGRATION_ID } from "../db/chat-postgres-provider-auth"
+import { CHAT_POSTGRES_RLS_INITPLAN_MIGRATION_ID } from "../db/chat-postgres-rls-initplan"
+import { CHAT_POSTGRES_RLS_STRICT_MIGRATION_ID } from "../db/chat-postgres-rls-strict"
+import { CHAT_POSTGRES_MIGRATION_ID } from "../db/chat-postgres-schema"
+import { CHAT_POSTGRES_SESSION_OWNERSHIP_MIGRATION_ID } from "../db/chat-postgres-session-ownership"
+import { CHAT_POSTGRES_SESSION_TOMBSTONES_MIGRATION_ID } from "../db/chat-postgres-session-tombstones"
+import { CHAT_POSTGRES_USER_SETTINGS_MIGRATION_ID } from "../db/chat-postgres-user-settings"
 import {
   assertSafeOpenAiCompatibleBaseUrl,
   isAllowedNeonAiGatewayHostname,
 } from "../pi/runtime/openai-chat-completions-url"
+
 import {
   normalizeNeonPostgresHostname,
   parsePostgresConnectionIdentity,
@@ -25,6 +26,7 @@ import {
   isHostedProductionTrustZone,
   resolveDeploymentTrustZone,
 } from "./trust-zone"
+
 import type { DeploymentTrustZone } from "./trust-zone"
 
 export type ReadinessCheck = {

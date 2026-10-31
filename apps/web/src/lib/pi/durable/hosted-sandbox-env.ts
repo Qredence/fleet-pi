@@ -1,6 +1,7 @@
 import { FileError, err, ok } from "@earendil-works/pi-durable/env"
-import type { ExecutionEnv } from "@earendil-works/pi-durable/env"
+
 import type { Context } from "@earendil-works/chord"
+import type { ExecutionEnv } from "@earendil-works/pi-durable/env"
 
 export type HostedCommandResult = {
   exitCode: number

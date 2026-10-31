@@ -1,13 +1,14 @@
-import { sanitizePortableResourcePaths } from "./durable-project-settings"
-import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
-import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
-import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
-import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
-import { compactProjectSettingsForPersist } from "./project-settings-merge"
 import {
   loadUserProjectSettings,
   upsertUserProjectSettings,
 } from "@/lib/db/user-settings"
+
+import { migrateLegacyAzureProviderOverrides } from "./azure-provider-migration"
+import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+import { sanitizePortableResourcePaths } from "./durable-project-settings"
+import { getFleetBaseProjectSettings } from "./fleet-default-project-settings"
+import { migrateLegacyGatewayProjectOverrides } from "./gateway-settings-migration"
+import { compactProjectSettingsForPersist } from "./project-settings-merge"
 
 export function prepareProjectSettingsForPersist(
   overrides: Record<string, unknown>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
 
 describe("chat helpers", () => {

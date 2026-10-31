@@ -1,7 +1,10 @@
 import { memo } from "react"
+
 import { useToolComplete } from "../hooks/use-tool-complete"
 import { adaptToolPart } from "../utils/tool-adapters"
+
 import { ToolRowBase } from "./tool-row-base"
+
 import type { StepState, TimelineStep } from "../types/timeline"
 
 type ThinkingCollapsedProps = {

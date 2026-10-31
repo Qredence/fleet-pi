@@ -1,6 +1,7 @@
-import { WorkspaceFileResponseSchema } from "@workspace/pi-protocol/chat-protocol.zod"
-import type { WorkspaceFileResponse } from "@workspace/pi-protocol/chat-protocol"
 import { fetchValidatedJson } from "@/lib/pi/chat-fetch"
+import { WorkspaceFileResponseSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
+import type { WorkspaceFileResponse } from "@workspace/pi-protocol/chat-protocol"
 
 export async function loadWorkspaceFile(
   path: string
