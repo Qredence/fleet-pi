@@ -507,7 +507,8 @@ describe("createPiRuntime default model for new sessions", () => {
     )
     await createPiRuntime(context(), { userId: "user-a" }, undefined)
     return mocks.createAgentSessionFromServices.mock.calls.at(-1)?.[0] as
-      { model?: unknown } | undefined
+      | { model?: unknown }
+      | undefined
   }
 
   beforeEach(() => {

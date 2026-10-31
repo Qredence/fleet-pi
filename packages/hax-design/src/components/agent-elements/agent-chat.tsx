@@ -1,13 +1,15 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import { MessageList } from "./message-list"
-import { createAssistantMessage } from "./message-factories"
+
 import { InputBar } from "./input-bar"
 import { Suggestions } from "./input/suggestions"
+import { createAssistantMessage } from "./message-factories"
+import { MessageList } from "./message-list"
 import { cn } from "./utils/cn"
-import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
+
 import type { SuggestionItem } from "./input/suggestions"
+import type { QuestionAnswer, QuestionConfig } from "./question/question-prompt"
 import type { AgentChatProps } from "./types"
 
 export function AgentChat({

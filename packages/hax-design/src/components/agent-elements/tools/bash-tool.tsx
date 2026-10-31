@@ -99,7 +99,8 @@ export const BashTool = memo(function BashToolComponent({
   part,
 }: BashToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
-    ToolApproval | undefined
+    | ToolApproval
+    | undefined
   const { step, stepState } = adaptToolPart(part, "Bash")
   const noop = () => {}
 

@@ -273,7 +273,8 @@ export const EditTool = memo(function EditToolComponent({
   onFilePathClick,
 }: EditToolProps) {
   const approval = (part.input?.approval ?? part.args?.approval) as
-    ToolApproval | undefined
+    | ToolApproval
+    | undefined
   const toolName = (part.type as string)?.replace("tool-", "") || "Edit"
   const { step, stepState } = adaptToolPart(part, toolName)
   const noop = () => {}

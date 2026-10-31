@@ -1,9 +1,12 @@
 "use client"
 
-import { memo, useCallback, useState } from "react"
 import { IconCheck, IconChevronDown } from "@tabler/icons-react"
+import { memo, useCallback, useState } from "react"
+
 import { cn } from "../utils/cn"
+
 import { Popover } from "./popover"
+
 import type { ModelOption } from "../types"
 
 export type ModelPickerProps = {

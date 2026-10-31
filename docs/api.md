@@ -32,118 +32,118 @@ Send a chat message and receive a streaming response
 
 - **200** — NDJSON stream of chat events
   One of:
-  ```json
-  {
-    "type": <string> (required),
-    "id": <string> (required),
-    "runId": <string> (required),
-    "sessionFile": <string>,
-    "sessionId": <string> (required),
-    "sessionReset": <boolean>,
-    "diagnostics": <array>,
-    "workspace": — Workspace tool availability for the chat runtime,
-    "thinkingLevel": <string> — Thinking level
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "text": <string> (required),
-    "messageId": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "part": <object> (required) — Tool message part,
-    "messageId": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "mode": <string> (required) — Chat mode,
-    "executing": <boolean> (required),
-    "completed": <number> (required),
-    "total": <number> (required),
-    "message": <string>,
-    "state": <object> (required) — Structured plan state
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "state": <object> (required) — Chat state event
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "steering": <array> (required),
-    "followUp": <array> (required)
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "text": <string> (required),
-    "messageId": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "phase": <string> (required),
-    "reason": <string> (required)
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "phase": <string> (required),
-    "reason": <string> (required),
-    "aborted": <boolean> (required),
-    "willRetry": <boolean> (required),
-    "errorMessage": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "phase": <string> (required),
-    "attempt": <number> (required),
-    "maxAttempts": <number> (required),
-    "delayMs": <number> (required),
-    "errorMessage": <string> (required)
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "phase": <string> (required),
-    "success": <boolean> (required),
-    "attempt": <number> (required),
-    "finalError": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "runId": <string> (required),
-    "message": <object> (required) — Chat message,
-    "sessionFile": <string>,
-    "sessionId": <string> (required),
-    "sessionReset": <boolean>,
-    "stopReason": <string>
-  }
-  ```
-  ```json
-  {
-    "type": <string> (required),
-    "message": <string> (required),
-    "runId": <string>
-  }
-  ```
+    ```json
+    {
+      "type": <string> (required),
+      "id": <string> (required),
+      "runId": <string> (required),
+      "sessionFile": <string>,
+      "sessionId": <string> (required),
+      "sessionReset": <boolean>,
+      "diagnostics": <array>,
+      "workspace": — Workspace tool availability for the chat runtime,
+      "thinkingLevel": <string> — Thinking level
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "text": <string> (required),
+      "messageId": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "part": <object> (required) — Tool message part,
+      "messageId": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "mode": <string> (required) — Chat mode,
+      "executing": <boolean> (required),
+      "completed": <number> (required),
+      "total": <number> (required),
+      "message": <string>,
+      "state": <object> (required) — Structured plan state
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "state": <object> (required) — Chat state event
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "steering": <array> (required),
+      "followUp": <array> (required)
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "text": <string> (required),
+      "messageId": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "phase": <string> (required),
+      "reason": <string> (required)
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "phase": <string> (required),
+      "reason": <string> (required),
+      "aborted": <boolean> (required),
+      "willRetry": <boolean> (required),
+      "errorMessage": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "phase": <string> (required),
+      "attempt": <number> (required),
+      "maxAttempts": <number> (required),
+      "delayMs": <number> (required),
+      "errorMessage": <string> (required)
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "phase": <string> (required),
+      "success": <boolean> (required),
+      "attempt": <number> (required),
+      "finalError": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "runId": <string> (required),
+      "message": <object> (required) — Chat message,
+      "sessionFile": <string>,
+      "sessionId": <string> (required),
+      "sessionReset": <boolean>,
+      "stopReason": <string>
+    }
+    ```
+    ```json
+    {
+      "type": <string> (required),
+      "message": <string> (required),
+      "runId": <string>
+    }
+    ```
 - **400** — Bad request
   Type: `string`
 
@@ -208,10 +208,10 @@ Hydrate a chat session by query parameters
 
 ### Parameters
 
-| Name          | In    | Required | Description       |
-| ------------- | ----- | -------- | ----------------- |
-| `sessionFile` | query | No       | Session file path |
-| `sessionId`   | query | No       | Session ID        |
+| Name | In | Required | Description |
+|------|-----|----------|-------------|
+| `sessionFile` | query | No | Session file path |
+| `sessionId` | query | No | Session ID |
 
 ### Responses
 
@@ -238,10 +238,10 @@ Delete an owned Pi session mirror row and ephemeral JSONL
 
 ### Parameters
 
-| Name          | In    | Required | Description       |
-| ------------- | ----- | -------- | ----------------- |
-| `sessionFile` | query | No       | Session file path |
-| `sessionId`   | query | No       | Session ID        |
+| Name | In | Required | Description |
+|------|-----|----------|-------------|
+| `sessionFile` | query | No | Session file path |
+| `sessionId` | query | No | Session ID |
 
 ### Responses
 
@@ -884,9 +884,9 @@ Fetch a single indexed workspace item by id
 
 ### Parameters
 
-| Name | In    | Required | Description |
-| ---- | ----- | -------- | ----------- |
-| `id` | query | Yes      |             |
+| Name | In | Required | Description |
+|------|-----|----------|-------------|
+| `id` | query | Yes |  |
 
 ### Responses
 
@@ -919,9 +919,9 @@ Search indexed workspace items and semantic records
 
 ### Parameters
 
-| Name | In    | Required | Description |
-| ---- | ----- | -------- | ----------- |
-| `q`  | query | Yes      |             |
+| Name | In | Required | Description |
+|------|-----|----------|-------------|
+| `q` | query | Yes |  |
 
 ### Responses
 

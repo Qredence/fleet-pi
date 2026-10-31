@@ -13,7 +13,8 @@ export type ChatStateSetters = {
   setError: (error: Error | null) => void
   setMessagesSynced: (
     updater:
-      Array<ChatMessage> | ((current: Array<ChatMessage>) => Array<ChatMessage>)
+      | Array<ChatMessage>
+      | ((current: Array<ChatMessage>) => Array<ChatMessage>)
   ) => void
   setPlanLabelSynced: (label: string | undefined) => void
   setQueueSynced: (queue: QueueState) => void

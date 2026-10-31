@@ -2,9 +2,11 @@
 
 import { Popover as BasePopover } from "@base-ui/react/popover"
 import { cloneElement, isValidElement } from "react"
+
 import { cn } from "../utils/cn"
-import type { ReactNode } from "react"
+
 import type { PopoverPositionerProps } from "@base-ui/react/popover"
+import type { ReactNode } from "react"
 
 export type PopoverSide = "top" | "bottom" | "left" | "right"
 export type PopoverAlign = "start" | "center" | "end"

@@ -1,6 +1,7 @@
 "use client"
 
 import { ErrorBoundary } from "react-error-boundary"
+
 import type { FallbackProps } from "react-error-boundary"
 
 function DefaultFallback({ error, resetErrorBoundary }: FallbackProps) {
@@ -12,7 +13,7 @@ function DefaultFallback({ error, resetErrorBoundary }: FallbackProps) {
       <button
         type="button"
         onClick={resetErrorBoundary}
-        className="text-destructive-foreground mt-1 rounded-md bg-destructive px-3 py-1 text-xs font-medium transition-opacity hover:opacity-90"
+        className="mt-1 rounded-md bg-destructive px-3 py-1 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-90"
       >
         Retry
       </button>

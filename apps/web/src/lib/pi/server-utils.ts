@@ -21,7 +21,9 @@ export function toToolPart(
     AgentSessionEvent,
     {
       type:
-        "tool_execution_start" | "tool_execution_update" | "tool_execution_end"
+        | "tool_execution_start"
+        | "tool_execution_update"
+        | "tool_execution_end"
     }
   >,
   fallbackInput?: Record<string, unknown>

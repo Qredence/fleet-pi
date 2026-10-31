@@ -132,7 +132,8 @@ function buildContextSuggestions({
       if (part.type.startsWith("tool-")) {
         toolTypes.add(part.type)
         const input = (part as ChatToolPart).input as
-          Record<string, unknown> | undefined
+          | Record<string, unknown>
+          | undefined
         const filePath =
           typeof input?.file_path === "string"
             ? input.file_path

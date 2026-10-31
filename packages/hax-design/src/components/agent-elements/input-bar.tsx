@@ -1,20 +1,21 @@
 "use client"
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { cn } from "./utils/cn"
 
-import { SendButton } from "./input/send-button"
+import { useQuestionBarNavigation } from "./hooks/use-question-bar-navigation"
 import { AttachmentButton } from "./input/attachment-button"
 import { FileAttachment } from "./input/file-attachment"
 import { InputInfoBar } from "./input/info-bar"
-import { InputQuestionBar } from "./input/question-bar"
 import { useInputTyping } from "./input/input-typing"
+import { InputQuestionBar } from "./input/question-bar"
+import { SendButton } from "./input/send-button"
 import { Suggestions } from "./input/suggestions"
-import { useQuestionBarNavigation } from "./hooks/use-question-bar-navigation"
+import { cn } from "./utils/cn"
+
+import type { QuestionBarData } from "./hooks/use-question-bar-navigation"
 import type { InputInfoBarData } from "./input/info-bar"
 import type { SuggestionItem } from "./input/suggestions"
 import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
-import type { QuestionBarData } from "./hooks/use-question-bar-navigation"
 import type { RefObject } from "react"
 
 type InputConfig = {

@@ -1,13 +1,14 @@
 import { resolve } from "node:path"
 
-import { defineConfig } from "vite"
-import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import { cloudflare } from "@cloudflare/vite-plugin"
-import { tempoVitePlugin } from "tempo-sdk"
-import viteReact from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
+import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import viteReact from "@vitejs/plugin-react"
 import { config as dotenvConfig } from "dotenv"
 import { visualizer } from "rollup-plugin-visualizer"
+import { tempoVitePlugin } from "tempo-sdk"
+import { defineConfig } from "vite"
+
 import { workerGlobalScopeShims } from "./scripts/cloudflare/worker-global-scope-shims.ts"
 
 const repoRoot = resolve(import.meta.dirname, "../..")

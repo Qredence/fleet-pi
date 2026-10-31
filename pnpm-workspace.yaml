@@ -9,38 +9,38 @@ overrides:
   # and re-resolving the lockfile. Each one stays because removal would resolve
   # a lower/vulnerable version, an unwanted major bump, or break the build.
   # Security floor (fda0c49). Removal re-resolves 0.109 -> 0.129, an untested SDK bump; drop with a deliberate upgrade. Review 2027-01-16.
-  '@anthropic-ai/sdk': '>=0.91.1'
+  "@anthropic-ai/sdk": ">=0.91.1"
   # Security floor (bbfbd6a). Removal pulls undici 7.29/7.30 back in transitively. Review 2027-01-16.
-  undici: '>=8.9.0'
+  undici: ">=8.9.0"
   # Security floor (#117). Removal resolves fast-uri 3.1.8. Review 2027-01-16.
-  fast-uri: '^4.1.5'
+  fast-uri: "^4.1.5"
   # Security floor (fda0c49). Removal resolves uuid 11.1.1 alongside 14.x. Review 2027-01-16.
-  uuid: '>=11.1.1'
+  uuid: ">=11.1.1"
   # Direct dependency is ^1.7.0; removal lets a transitive range resolve better-auth 1.4.18. Review 2027-01-16.
-  better-auth: '>=1.7.0'
+  better-auth: ">=1.7.0"
   # Dependabot floor (47f8ce9). Keeps a single esbuild; removal adds a second copy (0.28.2). Review 2027-01-16.
-  esbuild: '>=0.28.1'
+  esbuild: ">=0.28.1"
   # Dependabot floor (47f8ce9). Keeps OpenTelemetry 2.x deduped; removal adds 2.9.0/2.10.0 copies. Review 2027-01-16.
-  '@opentelemetry/core': '>=2.8.0'
+  "@opentelemetry/core": ">=2.8.0"
   # Security floor (a72a02f). Global floor covers @google/genai, @grpc/proto-loader and
   # @opentelemetry/otlp-transformer; removal resolves protobufjs 7.6.6. Review 2027-01-16.
-  protobufjs: '>=8.6.6'
+  protobufjs: ">=8.6.6"
   # Security floor (a72a02f). Removal resolves @hono/node-server 2.0.4. Review 2027-01-16.
-  '@hono/node-server': '>=2.0.10'
+  "@hono/node-server": ">=2.0.10"
   # Security floor (a72a02f). Removal resolves propagator-jaeger 2.8.0. Review 2027-01-16.
-  '@opentelemetry/propagator-jaeger': '>=2.9.0'
+  "@opentelemetry/propagator-jaeger": ">=2.9.0"
   # @daytona/sdk ESM needs tslib@2 `__esDecorate`; Neon Auth passkey pulls tslib@1 (removal resolves 1.14.1). Review 2027-01-16.
-  tslib: '>=2.8.1'
+  tslib: ">=2.8.1"
   # Security floor (#117). Removal resolves js-yaml 4.3.2. Review 2027-01-16.
-  js-yaml: '^5.4.1'
+  js-yaml: "^5.4.1"
   # Pinned below 7.29.7 (47f8ce9); removal pulls 7.29.7 in. Re-test the build before lifting. Review 2027-01-16.
-  '@babel/core': '>=7.29.6 <7.29.7'
+  "@babel/core": ">=7.29.6 <7.29.7"
   # Security floor (#133). Removal resolves katex 0.16.47. Review 2027-01-16.
-  katex: '^0.18.2'
+  katex: "^0.18.2"
   # GHSA-73rr-hh4g-fpgx (low): neon CLI (devDependency) pins diff 5.2.0. Review 2027-01-16.
-  'diff@>=5.0.0 <5.2.2': '^5.2.2'
+  "diff@>=5.0.0 <5.2.2": "^5.2.2"
 allowBuilds:
-  '@google/genai': true
+  "@google/genai": true
   better-sqlite3: true
   core-js: false
   esbuild: true
@@ -60,37 +60,37 @@ allowBuilds:
 # (@tabler/icons-react, @tabler/icons, posthog-js) Vercel dependabot failures.
 minimumReleaseAgeExclude:
   # Vendored Pi toolchain (internal to this stack; bumped by dependabot).
-  - '@earendil-works/pi-agent-core'
-  - '@earendil-works/pi-ai'
-  - '@earendil-works/pi-coding-agent'
-  - '@earendil-works/pi-tui'
+  - "@earendil-works/pi-agent-core"
+  - "@earendil-works/pi-ai"
+  - "@earendil-works/pi-coding-agent"
+  - "@earendil-works/pi-tui"
   # AWS SDK (transitive; single AWS publisher on a near-daily release train).
-  - '@aws-sdk/*'
+  - "@aws-sdk/*"
   # Motion family — four distinct published names; motion-dom/motion-utils are
   # motion's internal split, NOT covered by the 'motion' entry (exact-name match).
-  - 'framer-motion'
-  - 'motion'
-  - 'motion-dom'
-  - 'motion-utils'
+  - "framer-motion"
+  - "motion"
+  - "motion-dom"
+  - "motion-utils"
   # Neon: 'neon' and the 'neon-init' CLI are unscoped, so @neon/* does NOT cover them.
-  - 'neon'
-  - 'neon-init'
-  - '@neon/*'
+  - "neon"
+  - "neon-init"
+  - "@neon/*"
   # shadcn registry CLI (direct dep of hax-design).
-  - 'shadcn'
+  - "shadcn"
   # Tabler icons (direct dep of hax-design; @tabler/* covers icons + icons-react).
-  - '@tabler/*'
+  - "@tabler/*"
   # PostHog analytics SDK (direct dep of web).
-  - 'posthog-js'
+  - "posthog-js"
   # Toolchain pins (insurance: not in the blocked-19, but same publishers re-release
   # <24h and would re-break dependabot previews). typescript/@types/node/better-sqlite3.
-  - 'typescript'
-  - '@types/node'
-  - 'better-sqlite3'
-  - 'jscpd'
-  - '@earendil-works/chord@1.2.0'
-  - '@earendil-works/pi-codemode@1.2.0'
-  - '@earendil-works/pi-durable@1.2.0'
-  - '@earendil-works/pi-telemetry@1.2.0'
-  - '@posthog/browser-common@0.9.9'
-  - '@posthog/core@1.60.0'
+  - "typescript"
+  - "@types/node"
+  - "better-sqlite3"
+  - "jscpd"
+  - "@earendil-works/chord@1.2.0"
+  - "@earendil-works/pi-codemode@1.2.0"
+  - "@earendil-works/pi-durable@1.2.0"
+  - "@earendil-works/pi-telemetry@1.2.0"
+  - "@posthog/browser-common@0.9.9"
+  - "@posthog/core@1.60.0"

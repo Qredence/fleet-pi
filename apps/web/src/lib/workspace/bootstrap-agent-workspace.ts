@@ -30,7 +30,12 @@ import type { WorkspaceFS } from "./workspace-fs"
 type WorkspaceHealthStatus = "ok" | "degraded"
 type WorkspaceHealthSeverity = "warning" | "error"
 type WorkspaceHealthScope =
-  "filesystem" | "manifest" | "section" | "policy" | "scratch" | "projection"
+  | "filesystem"
+  | "manifest"
+  | "section"
+  | "policy"
+  | "scratch"
+  | "projection"
 
 export type WorkspaceHealthDiagnostic = {
   scope: WorkspaceHealthScope

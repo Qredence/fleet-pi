@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+
 import { cn } from "../utils/cn"
+
 import type { ReactNode, RefObject } from "react"
 
 export type SuggestionItem = {

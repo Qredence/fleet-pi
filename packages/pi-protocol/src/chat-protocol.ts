@@ -10,7 +10,13 @@ export type ChatMode = "agent" | "plan" | "harness"
 export type ChatPlanAction = "execute" | "refine"
 
 export type ChatThinkingLevel =
-  "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+  | "off"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
 
 export type ChatTransport = "auto" | "sse" | "websocket"
 
@@ -427,7 +433,10 @@ export type WorkspaceFileResponse = {
 }
 
 export type ChatSlashCommandSource =
-  "builtin" | "extension" | "prompt" | "skill"
+  | "builtin"
+  | "extension"
+  | "prompt"
+  | "skill"
 
 export type ChatSlashCommandInfo = {
   name: string

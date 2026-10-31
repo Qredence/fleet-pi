@@ -1,7 +1,9 @@
 import { isCloudflareDeployment } from "./environment"
 
 export type DeploymentTrustZone =
-  "local" | "cloudflare-production" | "cloudflare-preview"
+  | "local"
+  | "cloudflare-production"
+  | "cloudflare-preview"
 
 export function isHostedPreviewTrustZone(zone: DeploymentTrustZone) {
   return zone === "cloudflare-preview"

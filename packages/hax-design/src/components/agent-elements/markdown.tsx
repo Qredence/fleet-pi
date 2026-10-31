@@ -1,8 +1,10 @@
 "use client"
 
-import { Streamdown } from "streamdown"
 import { createCodePlugin } from "@streamdown/code"
+import { Streamdown } from "streamdown"
+
 import { cn } from "./utils/cn"
+
 import type { Components } from "streamdown"
 
 function fixNumberedListBreaks(text: string): string {

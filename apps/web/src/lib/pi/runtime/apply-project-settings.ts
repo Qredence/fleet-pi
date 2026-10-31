@@ -194,7 +194,13 @@ export function applyProjectSettingsToServices(
     )
   ) {
     const level = settings.defaultThinkingLevel as
-      "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+      | "off"
+      | "minimal"
+      | "low"
+      | "medium"
+      | "high"
+      | "xhigh"
+      | "max"
     assignProjectSetting(manager, "defaultThinkingLevel", level, () => {
       manager.setDefaultThinkingLevel(level)
     })

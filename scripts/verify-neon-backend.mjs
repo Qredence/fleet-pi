@@ -71,11 +71,15 @@ function neonCommandArgs(extra = []) {
 function runNeonJson(command, extraArgs = []) {
   const env = { ...process.env }
   delete env.NEON_API_KEY
-  const raw = execFileSync("neon", [...command, ...neonCommandArgs(extraArgs)], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    env,
-  })
+  const raw = execFileSync(
+    "neon",
+    [...command, ...neonCommandArgs(extraArgs)],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env,
+    }
+  )
   return JSON.parse(raw)
 }
 
@@ -109,7 +113,7 @@ function checkAuth(results) {
   } catch {
     const ok = Boolean(
       process.env.NEON_AUTH_BASE_URL?.trim() &&
-        process.env.NEON_AUTH_JWKS_URL?.trim()
+      process.env.NEON_AUTH_JWKS_URL?.trim()
     )
     results.push({
       id: "auth",
@@ -124,8 +128,8 @@ function checkAuth(results) {
 async function checkObjectStorage(results) {
   const configured = Boolean(
     process.env.AWS_ENDPOINT_URL_S3?.trim() &&
-      process.env.AWS_ACCESS_KEY_ID?.trim() &&
-      process.env.AWS_SECRET_ACCESS_KEY?.trim()
+    process.env.AWS_ACCESS_KEY_ID?.trim() &&
+    process.env.AWS_SECRET_ACCESS_KEY?.trim()
   )
   if (!configured) {
     // Proof-only fleet-pi-spike may be undeclared on this machine; skip cleanly.
@@ -150,7 +154,7 @@ async function checkObjectStorage(results) {
 function checkReadiness(results) {
   const hasMigrationUrls = Boolean(
     process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL?.trim() &&
-      process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL?.trim()
+    process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL?.trim()
   )
   if (!hasMigrationUrls) {
     results.push({

@@ -1,8 +1,9 @@
 "use client"
 
+import { IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
-import { IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react"
+
 import { cn } from "./utils/cn"
 
 export type LightboxImage = {

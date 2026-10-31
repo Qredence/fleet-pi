@@ -564,7 +564,8 @@ export async function openHostedHarness(
     context
   )
   let liveConversation:
-    Awaited<ReturnType<HostedHarnessHandle["conversation"]>> | undefined
+    | Awaited<ReturnType<HostedHarnessHandle["conversation"]>>
+    | undefined
   const root = await harness.root(context, {
     agent: { model: agentModel },
   })

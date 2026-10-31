@@ -239,7 +239,8 @@ describe("getUserSandbox", () => {
     expect(handle.sandboxId).toBe("sandbox-abc")
     expect(executeCommandMock).toHaveBeenCalled()
     const prepCommand = executeCommandMock.mock.calls[0]?.[0] as
-      string | undefined
+      | string
+      | undefined
     expect(prepCommand).toContain("git clone")
     expect(prepCommand).toContain("--sparse")
     expect(prepCommand).toContain("agent-workspace")

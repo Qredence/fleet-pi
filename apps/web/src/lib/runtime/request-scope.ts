@@ -37,7 +37,8 @@ export function bindWorkerEnv(env: unknown): void {
 }
 
 export function readBoundWorkerEnv():
-  (object & Record<string, unknown>) | undefined {
+  | (object & Record<string, unknown>)
+  | undefined {
   const value = requestScope.getStore()?.get(workerEnvKey)
   if (value && typeof value === "object") {
     return value as object & Record<string, unknown>
