@@ -145,11 +145,16 @@ GitHub App pipeline definition with an `all-pushes` trigger, and configured by
 unit tests, build, knip, jscpd, tech-debt, `validate-agents-md`, and
 `deploy-readiness`.
 
-The project `gh/Qredence/fleet-pi` in the separate OAuth org `gh/Qredence` was
-unfollowed. It used to pick up `.circleci/config.yml` from its own webhook, so
-every push ran the pipeline twice. If it starts firing again, unfollow it with
-`circleci api api/v1.1/project/gh/Qredence/fleet-pi/unfollow -X POST` or from the
-CircleCI Projects page.
+The project `gh/Qredence/fleet-pi` lives in a **separate OAuth org**, `gh/Qredence`,
+and still runs this pipeline from its own webhook on every push. Removing the
+GitHub App from the repository does not reach it, and the standalone-org CLI
+cannot manage it: `circleci project setting set disable-running` reports "No
+project found", and `PATCH /api/v2/project/gh/Qredence/fleet-pi/settings`
+returns 403 for this account, which is not an admin of that OAuth org. An
+org/v3 admin of `gh/Qredence` must disable it: CircleCI → switch to the
+`gh/Qredence` org → Projects → `fleet-pi` → Project Settings → Advanced →
+**Block all new work from starting for this project**. The same page exposes
+**Stop Building**, which also removes the webhook and deploy key.
 
 ### Deployment split
 
