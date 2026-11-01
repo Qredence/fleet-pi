@@ -167,23 +167,21 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Follow-up: If `turbo` caching of lint matters later, add a root-scoped turbo
   task rather than reintroducing a second spelling of the command.
 
-## Oxc migration: SonarCloud re-analysis is cancelled by stack pushes
+## CI: cancelled Sonar runs on stacked PRs are not verdicts
 
 - Issue: SonarCloud runs through the GitHub App with no config in this repo.
   Each branch push cancels the analysis of the previous head, and a cancelled
   check reports as a failure in `gh pr checks`. On a five-PR stack the lower
   PRs are re-analysed on every cascade, so the visible status is often a
   cancelled run rather than a real verdict.
-- Affected area: PRs #191–#195 of the Oxc migration stack (`stack #197`).
-- Current status: The SonarCloud quality gate itself reports OK for #192,
-  #194, and #195. Only #191 fails, on `new_security_rating` (B) from a single
-  low-severity warning in `scripts/verify-neon-backend.mjs`.
-- Known false positive: Sonar's taint tracker follows the `PATH` key through
-  a `process.env` spread even after `delete env.PATH` and an explicit rebuild
-  from fixed directories. The runtime behaviour is correct and verified (an
-  injected `PATH` entry does not reach the child process), so this is
-  accepted rather than suppressed inline.
+- Affected area: Any stack. Observed on PRs #191–#195 (Oxc migration,
+  `stack #197`), where cancelled runs read as failures on the lower layers.
+- Current status: Not a blocker, only noise. The Oxc migration closed green:
+  all five PRs report `SonarCloud` and `SonarCloud Code Analysis` success.
+  The one real finding it produced, `new_security_rating` on #191 from a
+  `PATH` lookup in `scripts/verify-neon-backend.mjs`, was fixed by resolving
+  pinned binaries through `resolveBinary` instead of the inherited `PATH`.
 - Workaround: Read the quality gate through the Sonar API, or wait for the
   top-of-stack analysis, instead of trusting a cancelled check run.
-- Follow-up: If a future change makes the taint tracker accept the explicit
-  environment, drop this note and let the gate go green.
+- Follow-up: If cancelled runs stay confusing, configure Sonar to skip
+  re-analysis on non-head branches rather than teaching readers to ignore it.
