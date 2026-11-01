@@ -406,9 +406,11 @@ workflows:
             - lint
             - typecheck
           filters: *branch-only
+      # No `requires`: this job re-runs most of the gates and is the longest
+      # single job, so gating it behind `test` adds the whole web suite to the
+      # critical path. scripts/validate-agents-md.js skips `pnpm test` when CI is
+      # set precisely so the two can run in parallel.
       - validate-agents-md:
-          requires:
-            - test
           filters: *branch-only
       - deploy-readiness:
           requires:
