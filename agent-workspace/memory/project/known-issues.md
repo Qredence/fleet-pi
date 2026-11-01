@@ -89,14 +89,14 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: None until a patched `braces` ships.
 - Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.
 
-## CircleCI reports a phantom failing check on every PR (Accepted)
+## Two CircleCI projects are followed for this repository (Open)
 
-- Issue: Every pull request carries a red `CircleCI Pipeline` commit status. The message is `No configuration was found in your project`, and the repository has no `.circleci/` directory at all — no workflow, script, or workflow file drives CircleCI.
-- Affected area: GitHub check reporting on all PRs. Nothing in the build, test, or deploy path is involved.
-- Symptoms: PRs read `MERGEABLE/UNSTABLE` instead of clean, and the red context is easy to mistake for a real regression in whatever stack is in flight.
-- Current status: **Accepted.** The context is a legacy commit status published by the CircleCI GitHub App. No active ruleset requires it (the only active branch ruleset is `Copilot review for default branch`, which declares no required status checks), so it does not gate a merge.
-- Workaround: Ignore the context when reading PR health. Decide mergeability from the GitHub Actions jobs.
-- Follow-up: Remove the CircleCI GitHub App from `Qredence/fleet-pi` (GitHub org → Installed GitHub Apps → CircleCI → Configure → unselect this repository, or the CircleCI organization's VCS integration settings). This needs org-app admin rights, which no repo-local token has — `CIRCLECI_TOKEN` is unset and the `circleci` CLI is unauthenticated.
+- Issue: `gh/Qredence/fleet-pi` (OAuth, project `589a2a40-860e-4fed-884f-baad05897656`) and the `fleet-pi` project in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq` (project `ea1af8f1-6cee-451e-b397-7cdebd44a5eb`) are both followed. The GitHub App pipeline definition `ci` (`5f2e5b86-4f49-47b6-b038-e84acb2bfe19`) with an `all-pushes` trigger drives the standalone project; the OAuth project picks up the same `.circleci/config.yml` from its own webhook.
+- Affected area: CircleCI spend and commit-status noise. No build, test, or deploy path depends on either project's arrangement.
+- Symptoms: Every push starts the pipeline twice until the OAuth project is deleted, and PRs carry two CircleCI contexts.
+- Current status: **Open.** This replaces the earlier "no configuration anywhere" state; `.circleci/config.yml` is tracked again as of the CircleCI onboarding change.
+- Workaround: Read the standalone project's run; ignore the `gh/` context.
+- Follow-up: Delete the OAuth project in the CircleCI web app (Project Settings → Overview → Delete Project). The CLI has no project-delete command.
 
 ## Oxc migration: React Compiler-era rules are advisory (PR 2)
 
