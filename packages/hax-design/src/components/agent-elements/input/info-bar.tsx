@@ -1,4 +1,5 @@
 import { IconX } from "@tabler/icons-react"
+
 import { cn } from "../utils/cn"
 
 export type InputInfoBarData = {

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { logger } from "../../logger"
 import {
   appendPiRunEvent,
@@ -11,6 +12,7 @@ import {
   upsertPiSessionMirror,
   upsertPiToolExecution,
 } from "../pi-session-mirror"
+
 import {
   createMockClient,
   entryBase,

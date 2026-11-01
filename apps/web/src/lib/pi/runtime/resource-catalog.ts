@@ -1,4 +1,7 @@
 import { basename, dirname, extname } from "node:path"
+
+import { resourceCachePathToSandbox } from "../../daytona/resource-cache-path"
+import { SANDBOX_WORKSPACE_ROOT } from "../../daytona/sandbox-prepare"
 import { collectResourceExpectationDiagnostics } from "../resource-expectations"
 import {
   applyWorkspaceResourceMetadata,
@@ -6,16 +9,16 @@ import {
   mergeResourceInfo,
   readWorkspacePiSettings,
 } from "../workspace-resource-catalog"
-import { resourceCachePathToSandbox } from "../../daytona/resource-cache-path"
-import { SANDBOX_WORKSPACE_ROOT } from "../../daytona/sandbox-prepare"
+
 import { collectDiagnostics } from "./diagnostics"
 import { createSessionServices } from "./session-factory"
+
+import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type { PromptTemplate, Skill } from "@earendil-works/pi-coding-agent"
 import type {
   ChatResourceInfo,
   ChatResourcesResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 export async function loadChatResources(
   context: AppRuntimeContext,

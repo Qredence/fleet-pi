@@ -6,16 +6,22 @@ import {
   Palette,
   Plug,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+
 import type {
   ChatResourceInfo,
   ChatResourcesResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { LucideIcon } from "lucide-react"
 
 export type ResourceGroupId =
-  "skills" | "prompts" | "extensions" | "packages" | "themes" | "agentsFiles"
+  | "skills"
+  | "prompts"
+  | "extensions"
+  | "packages"
+  | "themes"
+  | "agentsFiles"
 
 export function getResourceGroups(
   resources: ChatResourcesResponse | null,

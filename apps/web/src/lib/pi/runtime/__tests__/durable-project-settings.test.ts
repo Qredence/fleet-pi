@@ -7,9 +7,12 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { hydrateSessionServicesSettings } from "../durable-project-settings"
 import { getFleetBaseProjectSettings } from "../fleet-default-project-settings"
+
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
 const roots = new Set<string>()

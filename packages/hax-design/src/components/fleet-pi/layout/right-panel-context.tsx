@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo } from "react"
-import type { ReactNode } from "react"
+
 import type { RightPanel } from "../../../lib/canvas-utils"
 import type { RightPanelContentProps } from "./right-panel-registry"
+import type { ReactNode } from "react"
 
 export type ChatPanelDataContextValue = Pick<
   RightPanelContentProps,

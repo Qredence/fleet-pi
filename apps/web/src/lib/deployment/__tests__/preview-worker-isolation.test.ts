@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { PGlite } from "@electric-sql/pglite"
 import { describe, expect, it } from "vitest"
+
 import { runChatMigrations } from "../../db/chat-migrations"
 import {
   PreviewWorkerIsolationError,
@@ -18,6 +19,7 @@ import {
   previewAuthMatchesDatabaseUrl,
   resolvePreviewNeonAuthUrls,
 } from "../preview-worker-isolation"
+
 import type { ChatMigrationClient } from "../../db/chat-migrations"
 
 const PRODUCTION_CHAT_URL =

@@ -1,16 +1,18 @@
+import { listConfiguredProviderIds } from "@/lib/db/user-providers"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import { isEnvVarConfigured } from "@/lib/env-manager"
 import {
   KNOWN_PROVIDERS,
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_MODEL_PROVIDER_ID,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { resolveNeonAiGatewayConfig } from "./neon-ai-gateway"
 import { isLocalDbBackedUser } from "./user-provider-secrets"
-import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
+
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
-import { listConfiguredProviderIds } from "@/lib/db/user-providers"
-import { isEnvVarConfigured } from "@/lib/env-manager"
-import { isHostedDeployment } from "@/lib/deployment/environment"
+import type { ChatProviderInfo } from "@workspace/pi-protocol/chat-protocol"
 
 export async function getProviderConfigStatus(options?: {
   userId?: string

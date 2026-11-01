@@ -6,6 +6,7 @@ import {
   resourceSettings,
   sameJson,
 } from "../config-panel/shared/settings-mappers"
+
 import type {
   ChatPiSettings,
   ChatSettingsResponse,

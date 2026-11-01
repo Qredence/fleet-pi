@@ -1,6 +1,8 @@
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
+
 import { Agent } from "undici"
+
 import type { LookupFunction } from "node:net"
 
 const MAX_DISPATCHERS = 100

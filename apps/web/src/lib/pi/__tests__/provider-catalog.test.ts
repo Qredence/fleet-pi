@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
+
+import { PROVIDER_METADATA } from "@workspace/hax-design/components/fleet-pi/pi/config-panel/shared/provider-metadata"
 import {
   KNOWN_PROVIDERS,
   PI_PROVIDER_CATALOG,
 } from "@workspace/pi-protocol/provider-catalog"
-import { PROVIDER_METADATA } from "@workspace/hax-design/components/fleet-pi/pi/config-panel/shared/provider-metadata"
 
 describe("provider catalog", () => {
   it("uses Pi's canonical google provider id for Gemini", () => {

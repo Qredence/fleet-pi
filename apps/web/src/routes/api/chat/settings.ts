@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ChatSettingsUpdateRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
 import { getResponseStatus, resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import {
@@ -7,6 +7,7 @@ import {
   loadChatSettings,
   updateChatSettings,
 } from "@/lib/pi/server"
+import { ChatSettingsUpdateRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
 
 export async function chatSettingsGetHandler(request: Request) {
   return withAuthenticatedChatRequest(request, async ({ userId }) => {

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { abortChatHandler } from "../abort"
 import { abortHostedAgentTurn } from "@/lib/pi/durable/hosted-agent-turn"
+
+import { abortChatHandler } from "../abort"
 
 vi.mock("@/lib/pi/durable/hosted-agent-turn", () => ({
   abortHostedAgentTurn: vi.fn(),

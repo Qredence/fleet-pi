@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "lint": "vp lint",
+    "format": "vp fmt",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -17,8 +17,7 @@
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.13.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   },
   "exports": {

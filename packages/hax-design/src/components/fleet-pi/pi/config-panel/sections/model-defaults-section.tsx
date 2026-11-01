@@ -1,5 +1,7 @@
 import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
+
+import { cn } from "../../../../../lib/utils"
 import { Button } from "../../../../button"
 import {
   InputGroup,
@@ -7,7 +9,6 @@ import {
   InputGroupInput,
 } from "../../../../input-group"
 import { Spinner } from "../../../../spinner"
-import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
 import {
   SettingsCommitActions,
@@ -16,15 +17,16 @@ import {
 import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { isChatListModel } from "../shared/model-patterns"
 import {
-  collectConfiguredModelProviderIds,
-  shouldRefreshProviderModels,
-} from "../shared/provider-metadata"
-import {
   ProviderBrandIcon,
   formatProviderLabel,
 } from "../shared/provider-brand-icon"
-import type { ChatPiSettings } from "@workspace/pi-protocol/chat-protocol"
+import {
+  collectConfiguredModelProviderIds,
+  shouldRefreshProviderModels,
+} from "../shared/provider-metadata"
+
 import type { ConfigModelInfo } from "../shared/types"
+import type { ChatPiSettings } from "@workspace/pi-protocol/chat-protocol"
 
 export function ModelDefaultsSection({
   draft,

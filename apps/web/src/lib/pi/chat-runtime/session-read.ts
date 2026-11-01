@@ -1,9 +1,10 @@
-import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { hydrateChatSession } from "@/lib/pi/server"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
 import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import { readHostedDurableSession } from "@/lib/pi/durable/hosted-agent-turn"
+import { hydrateChatSession } from "@/lib/pi/server"
+
+import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * Reads a hosted durable session when the metadata points at one, otherwise

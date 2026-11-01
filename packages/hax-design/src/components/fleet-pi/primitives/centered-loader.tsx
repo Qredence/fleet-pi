@@ -1,5 +1,5 @@
-import { SpiralLoader } from "../../agent-elements/spiral-loader"
 import { cn } from "../../../lib/utils"
+import { SpiralLoader } from "../../agent-elements/spiral-loader"
 
 export type CenteredLoaderProps = {
   className?: string

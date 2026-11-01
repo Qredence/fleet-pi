@@ -101,7 +101,8 @@ describe("getChatAuthBearerToken", () => {
       "https://fleet-pi-web.workers.dev/api/auth"
     )
     let resolveToken:
-      ((value: { data: { token: string }; error: null }) => void) | undefined
+      | ((value: { data: { token: string }; error: null }) => void)
+      | undefined
     token.mockImplementation(
       () =>
         new Promise((resolve) => {

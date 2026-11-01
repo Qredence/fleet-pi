@@ -1,8 +1,10 @@
 import path from "node:path"
-import dotenv from "dotenv"
+
 import { Pool } from "@neondatabase/serverless"
-import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../src/lib/db/auth-postgres-post-migrate"
+import dotenv from "dotenv"
+
 import { resolveAppRole, withAppRole } from "../src/lib/db/app-role"
+import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../src/lib/db/auth-postgres-post-migrate"
 
 const cwd = process.cwd()
 const preservedMigrationDatabaseUrl =

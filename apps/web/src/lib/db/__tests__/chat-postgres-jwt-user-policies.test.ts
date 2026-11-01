@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_JWT_USER_POLICIES_SQL as SQL } from "../chat-postgres-jwt-user-policies"
 
 describe("JWT user policies migration", () => {

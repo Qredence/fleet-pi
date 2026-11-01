@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { upsertPiSessionMirror } from "../pi-session-mirror"
+
 import type {
   PiSessionEntryMirrorInput,
   PiSessionMirrorInput,
@@ -73,7 +75,7 @@ function createStatefulMockClient(
         throw new Error("boom")
       }
       for (let i = 0; i < params.length; i += MIRROR_ROW_PARAMS) {
-        db.entries.set(`${params[i]}:${params[i + 1]}`, {
+        db.entries.set(`${String(params[i])}:${String(params[i + 1])}`, {
           sessionId: params[i] as string,
           entryId: params[i + 1] as string,
         })

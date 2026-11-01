@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+
 import { chatClient } from "./chat-client"
-import { isPlanDecisionToolCall } from "./plan-state"
 import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
+import { isPlanDecisionToolCall } from "./plan-state"
 import { getChatSessionScope } from "./use-chat-storage"
 import {
   failChatRequest,
@@ -13,8 +14,9 @@ import {
   enhancePlanDecisionMessages,
   resolvePlanDecisionMessages,
 } from "./use-pi-chat-plan-decisions"
+
+import type { ChatClient } from "./chat-client"
 import type { QueueState } from "./chat-fetch"
-import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatModelSelection,
@@ -23,7 +25,7 @@ import type {
   ChatSessionInfo,
   ChatSessionMetadata,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ChatClient } from "./chat-client"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 export type SendMessageInput = {
   text: string

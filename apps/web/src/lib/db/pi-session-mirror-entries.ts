@@ -1,12 +1,14 @@
 import { logger } from "../logger"
+
 import { sanitizeForMirror } from "./pi-session-mirror-normalize"
-import { insertRowsChunked } from "./postgres-batch"
 import { PI_SESSION_USER_ID_ON_CONFLICT_SQL } from "./pi-session-ownership-db"
-import type { PostgresQueryClient } from "./pi-session-ownership-db"
+import { insertRowsChunked } from "./postgres-batch"
+
 import type {
   PiSessionEntryMirrorInput,
   PiSessionMirrorInput,
 } from "./pi-session-mirror"
+import type { PostgresQueryClient } from "./pi-session-ownership-db"
 
 // On conflict, refresh every mirrored column and bump the sync timestamp —
 // unless the canonical entry JSON is unchanged, so replaying the same session

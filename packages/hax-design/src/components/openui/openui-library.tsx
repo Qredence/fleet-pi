@@ -5,6 +5,7 @@ import {
   useStateField,
   useTriggerAction,
 } from "@openuidev/react-lang"
+import { useId } from "react"
 import {
   Bar,
   CartesianGrid,
@@ -12,8 +13,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { useId } from "react"
 import { z } from "zod"
+
+import { cn } from "../../lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "../alert"
 import { Badge } from "../badge"
 import { Button } from "../button"
@@ -47,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "../table"
-import { cn } from "../../lib/utils"
+
 import {
   badgeToneClasses,
   badgeVariantsByTone,

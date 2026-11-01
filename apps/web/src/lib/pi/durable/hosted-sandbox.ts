@@ -1,7 +1,9 @@
 import { posix } from "node:path"
+
 import { downloadFile, executeCommand, uploadFile } from "../../daytona/client"
 import { assertPathWithinWorkspaceBound } from "../../daytona/sandbox-operations"
 import { USER_VOLUME_ROOT } from "../mutation-tier"
+
 import type { HostedSandboxPort } from "./hosted-sandbox-env"
 
 export function resolveHostedSandboxPath(path: string): string {

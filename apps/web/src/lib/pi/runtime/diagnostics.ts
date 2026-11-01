@@ -1,7 +1,8 @@
 import { mirrorMetrics } from "../../db/pi-session-mirror"
 import { CHAT_TOOL_ALLOWLIST } from "../plan-mode"
-import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
+
 import type { WorkspaceHealthResponse } from "../../workspace/bootstrap-agent-workspace"
+import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
 type ModelDefaultSettingsLike = {
   getDefaultModel: () => string | undefined

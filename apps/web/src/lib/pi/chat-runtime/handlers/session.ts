@@ -1,4 +1,3 @@
-import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 import { wrapApiHandler } from "@/lib/api-utils"
 import {
   enforceChatSessionOwnership,
@@ -6,9 +5,11 @@ import {
 } from "@/lib/auth/chat-api-auth"
 import { deleteOwnedPiSession } from "@/lib/db/pi-session-deletion"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
+import { readOrHydrateSession } from "@/lib/pi/chat-runtime/session-read"
 import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
 import { deleteHostedDurableSession } from "@/lib/pi/durable/hosted-agent-turn"
-import { readOrHydrateSession } from "@/lib/pi/chat-runtime/session-read"
+
+import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 
 function deleteStatusForReason(reason: string | undefined) {
   switch (reason) {

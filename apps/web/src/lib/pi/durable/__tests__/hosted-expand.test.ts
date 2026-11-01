@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { assertHttpsMcpServer, hostedMcpToolName } from "../durable-mcp"
 import { selectHostedExtensions } from "../hosted-extensions"
 import { toolsForChatMode } from "../hosted-harness"

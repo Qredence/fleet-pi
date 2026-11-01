@@ -1,7 +1,12 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
+
+import {
+  createFauxCore,
+  fauxAssistantMessage,
+  getCurrentSystemPrompt,
+} from "@earendil-works/pi-ai"
 import {
   DefaultResourceLoader,
   ModelRuntime,
@@ -9,16 +14,14 @@ import {
   SettingsManager,
   createAgentSession,
 } from "@earendil-works/pi-coding-agent"
-import {
-  createFauxCore,
-  fauxAssistantMessage,
-  getCurrentSystemPrompt,
-} from "@earendil-works/pi-ai"
+import { describe, expect, it } from "vitest"
+
 import {
   FLEET_PI_IDENTITY,
   applyFleetPiIdentity,
 } from "../../../../../../.pi/extensions/lib/fleet-pi-identity"
 import workspaceContextExtension from "../../../../../../.pi/extensions/workspace-context"
+
 import type { Context } from "@earendil-works/pi-ai"
 
 describe("Fleet Pi identity prompt section", () => {

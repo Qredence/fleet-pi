@@ -1,11 +1,13 @@
 import { Boxes, Download, FolderTree, Package } from "lucide-react"
+
 import {
   extractWorkspaceFilePathFromToolInput,
   resolveWorkspacePanelTarget,
 } from "../../../lib/workspace-path-nav"
+
+import type { CustomToolRendererProps } from "../../agent-elements/types"
 import type { LucideIcon } from "lucide-react"
 import type { ComponentType, ReactNode } from "react"
-import type { CustomToolRendererProps } from "../../agent-elements/types"
 
 export const PI_TOOL_RENDERERS: Record<
   string,

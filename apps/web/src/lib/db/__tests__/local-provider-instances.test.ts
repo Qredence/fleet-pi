@@ -9,13 +9,16 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
   toCustomProviderId,
   toOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import {
   allocateLocalInstanceId,
   createLocalProviderInstance,
@@ -28,6 +31,7 @@ import {
   upsertLocalProviderInstance,
   useLocalProviderStore,
 } from "../local-provider-instances"
+
 import type { OccInstance } from "../occ-instances"
 
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT

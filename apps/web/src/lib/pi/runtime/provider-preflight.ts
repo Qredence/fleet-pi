@@ -1,4 +1,5 @@
 import { isGatewayHost } from "./openai-chat-completions-url"
+
 import type { AgentSession } from "@earendil-works/pi-coding-agent"
 
 const NEON_AI_GATEWAY_TOKEN_PREFIX = "nt_live_"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { extractAuthProxyPath } from "../neon-managed-auth"
 
 describe("extractAuthProxyPath", () => {

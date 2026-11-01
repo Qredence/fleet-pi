@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
+
 import { Button } from "../../../../button"
 import {
   InputGroup,
@@ -9,12 +10,14 @@ import {
 } from "../../../../input-group"
 import { Select } from "../../../../select"
 import { ItemRow } from "../../../primitives/item-row"
+
 import {
   addUniqueSettingsResource,
   resourceOptionValue,
   settingsResourceListIncludes,
   toSettingsResourcePath,
 } from "./settings-resource-path"
+
 import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
 
 /**

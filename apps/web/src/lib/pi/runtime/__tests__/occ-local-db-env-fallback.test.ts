@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
-import { resolveUserProviderSecret } from "../user-provider-secrets"
+
 import { loadDecryptedUserProviderSecrets } from "@/lib/db/user-providers"
+import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+
+import { resolveUserProviderSecret } from "../user-provider-secrets"
 
 vi.mock("@/lib/db/user-providers", () => ({
   loadDecryptedUserProviderSecrets: vi.fn(),

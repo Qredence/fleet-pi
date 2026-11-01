@@ -1,7 +1,8 @@
 import { readFile, readdir, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, relative, resolve } from "node:path"
-import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
+
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { ChatResourceInfo } from "@workspace/pi-protocol/chat-protocol"
 
 type WorkspaceResourceCatalog = {
   extensions: Array<ChatResourceInfo>

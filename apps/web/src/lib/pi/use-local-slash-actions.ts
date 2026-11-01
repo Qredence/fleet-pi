@@ -1,6 +1,8 @@
 import { useCallback } from "react"
 import { toast } from "sonner"
+
 import { parseSlashInput, resolveLocalSlashAction } from "./slash-commands"
+
 import type { LocalSlashAction, SettingsSlashTab } from "./slash-commands"
 import type { SuggestionItem } from "@workspace/hax-design/components/agent-elements/input/suggestions"
 import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
@@ -43,7 +45,7 @@ export function useLocalSlashActions({
           openSettings(action.tab)
           return true
         case "new-session":
-          void startNewSession()
+          startNewSession()
           return true
         case "show-session": {
           const currentSessionId = sessionId ?? "none"

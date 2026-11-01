@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
+
 import type { ActiveSessionRecord } from "../runtime/active-sessions"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent"
 
 const mocks = vi.hoisted(() => {
   const activeRecords = new Map<string, ActiveSessionRecord>()
@@ -506,7 +507,8 @@ describe("createPiRuntime default model for new sessions", () => {
     )
     await createPiRuntime(context(), { userId: "user-a" }, undefined)
     return mocks.createAgentSessionFromServices.mock.calls.at(-1)?.[0] as
-      { model?: unknown } | undefined
+      | { model?: unknown }
+      | undefined
   }
 
   beforeEach(() => {

@@ -99,10 +99,9 @@ These packages are proprietary to the Earendil Works ecosystem and are published
 | Package                       | Description                                                             |
 | ----------------------------- | ----------------------------------------------------------------------- |
 | `turbo`                       | Monorepo task runner with caching.                                      |
-| `typescript`                  | TypeScript compiler (v6).                                               |
-| `eslint`                      | Linter.                                                                 |
-| `prettier`                    | Code formatter.                                                         |
-| `prettier-plugin-tailwindcss` | Prettier plugin that sorts Tailwind classes.                            |
+| `typescript`                  | TypeScript compiler (v7).                                               |
+| `vite-plus`                   | Static-analysis host: Oxlint, Oxfmt, and the `vpx` script runner.       |
+| `oxfmt`                       | Not a direct dependency; Oxfmt ships inside `vite-plus`.                |
 | `husky`                       | Git hook manager.                                                       |
 | `lint-staged`                 | Runs formatters/linters on staged files before commit.                  |
 | `knip`                        | Dead code and unused dependency detector.                               |
@@ -112,4 +111,3 @@ These packages are proprietary to the Earendil Works ecosystem and are published
 | `@vitest/coverage-v8`         | V8 coverage provider for Vitest.                                        |
 | `@playwright/test`            | End-to-end test framework.                                              |
 | `rollup-plugin-visualizer`    | Generates the bundle size report (`apps/web/bundle-report/stats.html`). |
-| `tsx`                         | TypeScript script runner used for one-off scripts.                      |

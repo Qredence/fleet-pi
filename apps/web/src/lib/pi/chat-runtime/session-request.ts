@@ -1,11 +1,12 @@
-import { ChatSessionMetadataSchema } from "@workspace/pi-protocol/chat-protocol.zod"
-import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 import { wrapApiHandler } from "@/lib/api-utils"
 import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { createRequestLogger } from "@/lib/logger"
+import { ChatSessionMetadataSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
+import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 
 export type ChatSessionAuthorization =
   | { ok: true; metadata: ChatSessionMetadata }

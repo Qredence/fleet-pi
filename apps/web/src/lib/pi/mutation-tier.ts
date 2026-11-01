@@ -65,7 +65,8 @@ const WORKSPACE_SECTION_ROOTS = new Set([
 ])
 
 export type ClassifiedWorkspacePath =
-  { scoped: false } | { scoped: true; relativePath: string; tier: MutationTier }
+  | { scoped: false }
+  | { scoped: true; relativePath: string; tier: MutationTier }
 
 export function classifyTier(relativePath: string): MutationTier {
   if (matchesTier(FREELY_MUTABLE, relativePath)) return "free"

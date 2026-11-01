@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
+
+import { wrapApiHandler } from "@/lib/api-utils"
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
 import { eraseUserPiData } from "@/lib/db/pi-session-deletion"
 import { eraseHostedDurableData } from "@/lib/pi/durable/hosted-agent-turn"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { wrapApiHandler } from "@/lib/api-utils"
 
 export const Route = createFileRoute("/api/chat/account")({
   server: {

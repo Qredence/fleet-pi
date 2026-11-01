@@ -1,9 +1,10 @@
 import { isPlanDecisionToolCall } from "./plan-state"
+
+import type { ChatQuestionAnswer } from "@workspace/pi-protocol/chat-protocol"
 import type {
   ChatMessage,
   ChatMessagePart,
 } from "@workspace/pi-protocol/chat-types"
-import type { ChatQuestionAnswer } from "@workspace/pi-protocol/chat-protocol"
 
 type QuestionAnswerHandler = (input: {
   toolCallId?: string

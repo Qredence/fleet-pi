@@ -1,16 +1,16 @@
 import { deterministicId } from "./json-storage"
 import {
-  PI_SESSION_USER_ID_ON_CONFLICT_SQL,
-  assertMirrorOwnerForPersistence,
-} from "./pi-session-ownership-db"
-import { insertRowsChunked } from "./postgres-batch"
-import {
   readPiSessionSyncState,
   sanitizeForMirror,
   upsertPiSessionEntriesIncremental,
   upsertPiSessionStub,
 } from "./pi-session-mirror-entries"
-import type { PostgresQueryClient } from "./pi-session-ownership-db"
+import {
+  PI_SESSION_USER_ID_ON_CONFLICT_SQL,
+  assertMirrorOwnerForPersistence,
+} from "./pi-session-ownership-db"
+import { insertRowsChunked } from "./postgres-batch"
+
 import type {
   AppendPiRunEventInput,
   InsertPiRunInput,
@@ -18,6 +18,7 @@ import type {
   ReplacePiFileMutationsInput,
   UpsertPiToolExecutionInput,
 } from "./pi-session-mirror"
+import type { PostgresQueryClient } from "./pi-session-ownership-db"
 
 export async function upsertPiSessionMirror(
   client: PostgresQueryClient,

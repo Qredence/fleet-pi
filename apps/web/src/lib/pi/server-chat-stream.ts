@@ -12,18 +12,19 @@ import {
   persistChatMessageIdMapping,
   toToolPart,
 } from "./server-utils"
+
+import type { PlanModeState } from "./plan-state"
 import type {
   AgentSessionEvent,
   AgentSessionRuntime,
 } from "@earendil-works/pi-coding-agent"
-import type { ChatMessagePart } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatRequest,
   ChatRunStopReason,
   ChatStreamEvent,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { PlanModeState } from "./plan-state"
+import type { ChatMessagePart } from "@workspace/pi-protocol/chat-types"
 
 export type ChatRuntimeSession = AgentSessionRuntime["session"]
 

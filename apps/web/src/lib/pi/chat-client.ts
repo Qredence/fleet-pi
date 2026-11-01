@@ -1,4 +1,8 @@
 import {
+  clearChatAuthBearerTokenCache,
+  getChatAuthBearerToken,
+} from "@/lib/auth/use-auth"
+import {
   ChatCommandsResponseSchema,
   ChatModelsDiscoverRequestSchema,
   ChatModelsDiscoverResponseSchema,
@@ -15,6 +19,7 @@ import {
   ChatSettingsUpdateRequestSchema,
   WorkspaceTreeResponseSchema,
 } from "@workspace/pi-protocol/chat-protocol.zod"
+
 import {
   ChatRequestError,
   fetchJson,
@@ -45,10 +50,6 @@ import type {
   ChatStreamEvent,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import {
-  clearChatAuthBearerTokenCache,
-  getChatAuthBearerToken,
-} from "@/lib/auth/use-auth"
 
 export type ChatClient = {
   abortSession: (metadata: ChatSessionMetadata) => Promise<void>

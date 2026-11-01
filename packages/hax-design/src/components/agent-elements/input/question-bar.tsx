@@ -3,8 +3,10 @@ import {
   IconChevronUp,
   IconMessageCircleQuestion,
 } from "@tabler/icons-react"
-import { cn } from "../utils/cn"
+
 import { QuestionPrompt } from "../question/question-prompt"
+import { cn } from "../utils/cn"
+
 import type {
   QuestionBarData,
   QuestionBarNavigation,

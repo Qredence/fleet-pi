@@ -1,7 +1,7 @@
 import { wrapApiHandler } from "@/lib/api-utils"
 import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { authorizeChatSessionRequest } from "@/lib/pi/chat-runtime/session-request"
 import { readOrHydrateSession } from "@/lib/pi/chat-runtime/session-read"
+import { authorizeChatSessionRequest } from "@/lib/pi/chat-runtime/session-request"
 
 export async function resumeChatHandler(request: Request) {
   return wrapApiHandler(async () =>

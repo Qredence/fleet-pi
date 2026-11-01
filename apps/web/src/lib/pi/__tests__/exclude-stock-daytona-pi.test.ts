@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { excludeStockDaytonaPiExtension } from "../exclude-stock-daytona-pi"
+
 import type { LoadExtensionsResult } from "@earendil-works/pi-coding-agent"
 
 describe("excludeStockDaytonaPiExtension", () => {

@@ -1,13 +1,14 @@
-import { ChatQuestionAnswerRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
-import type { ChatQuestionAnswerResponse } from "@workspace/pi-protocol/chat-protocol"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import { wrapApiHandler } from "@/lib/api-utils"
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
 import {
   enforceChatSessionOwnership,
   withAuthenticatedChatRequest,
 } from "@/lib/auth/chat-api-auth"
 import { createRequestLogger } from "@/lib/logger"
 import { answerChatQuestion } from "@/lib/pi/server"
+import { ChatQuestionAnswerRequestSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
+import type { ChatQuestionAnswerResponse } from "@workspace/pi-protocol/chat-protocol"
 
 export async function questionChatHandler(request: Request) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()

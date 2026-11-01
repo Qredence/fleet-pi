@@ -1,5 +1,6 @@
 import Database from "better-sqlite3"
 import { describe, expect, it, vi } from "vitest"
+
 import {
   CompositeProvenanceSink,
   PostgresMirrorSink,
@@ -9,6 +10,8 @@ import {
   ensureWorkspaceProvenanceSchema,
   getRunDetail,
 } from "../workspace-provenance"
+
+import type { PostgresQueryClient } from "../pi-session-mirror"
 import type {
   ProvenanceFileMutationsInput,
   ProvenanceFinalizeRunInput,
@@ -17,7 +20,6 @@ import type {
   ProvenanceSink,
   ProvenanceToolExecutionInput,
 } from "../provenance-sink"
-import type { PostgresQueryClient } from "../pi-session-mirror"
 import type { WorkspaceProvenanceConnection } from "../workspace-provenance"
 
 const runStartInput: ProvenanceRunStartInput = {

@@ -1,12 +1,15 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
+
 import { chatProvenanceHandler } from "../chat/provenance"
 import { chatRunHandler } from "../chat/run"
 import { chatRunsHandler } from "../chat/runs"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { createRunProvenanceRecorder } from "@/lib/pi/run-provenance"
 
 const roots = new Set<string>()
 const originalRepoRoot = process.env.FLEET_PI_REPO_ROOT
@@ -103,7 +106,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-1",
     })
-    recorder.close()
+    void recorder.close()
 
     const runsResponse = await chatRunsHandler(
       createRequest("/api/chat/runs?sessionId=session-1"),
@@ -251,7 +254,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-2",
     })
-    recorder.close()
+    void recorder.close()
 
     const detailResponse = await chatRunHandler(
       createRequest("/api/chat/run?id=run-install-1")
@@ -327,7 +330,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-3",
     })
-    planRecorder.close()
+    void planRecorder.close()
 
     writeProjectFile(
       projectRoot,
@@ -381,7 +384,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-3",
     })
-    executeRecorder.close()
+    void executeRecorder.close()
 
     const planDetailResponse = await chatRunHandler(
       createRequest("/api/chat/run?id=run-plan-1")

@@ -49,6 +49,25 @@ function resolveChatDatabaseUrl() {
   )
 }
 
+/**
+ * PATH for child processes. Stripping inherited extras keeps a caller's
+ * `PATH` from injecting a different `neon`/`pnpm` binary into a verification
+ * run that is supposed to inspect the repo's own tooling.
+ */
+function childProcessPath() {
+  const groups = new Set([
+    join(repoRoot, "node_modules", ".bin"),
+    join(webRoot, "node_modules", ".bin"),
+    dirname(process.execPath),
+  ])
+  for (const dir of ["/opt/homebrew/bin", "/usr/local/bin"]) {
+    if (existsSync(dir)) groups.add(dir)
+  }
+  groups.add("/usr/bin")
+  groups.add("/bin")
+  return [...groups].join(":")
+}
+
 function readNeonContext() {
   const contextPath = join(repoRoot, ".neon")
   if (!existsSync(contextPath)) return {}
@@ -68,14 +87,45 @@ function neonCommandArgs(extra = []) {
   return args
 }
 
-function runNeonJson(command, extraArgs = []) {
+/**
+ * Environment for child processes: the inherited environment with `PATH`
+ * removed, then rebuilt from fixed directories. Deleting the key first means
+ * no inherited, writable directory can select a different `neon`/`pnpm`.
+ */
+function childProcessEnv() {
   const env = { ...process.env }
+  delete env.PATH
+  env.PATH = childProcessPath()
+  return env
+}
+
+/**
+ * Absolute path for a repo-pinned binary. Searching the same fixed directories
+ * that build the child `PATH` means the executable is never selected by
+ * whatever `PATH` the caller happened to have.
+ */
+function resolveBinary(name) {
+  for (const dir of childProcessPath().split(":")) {
+    const candidate = join(dir, name)
+    if (existsSync(candidate)) return candidate
+  }
+  throw new Error(
+    `Unable to resolve ${name} in the pinned tool directories (${childProcessPath()})`
+  )
+}
+
+function runNeonJson(command, extraArgs = []) {
+  const env = childProcessEnv()
   delete env.NEON_API_KEY
-  const raw = execFileSync("neon", [...command, ...neonCommandArgs(extraArgs)], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    env,
-  })
+  const raw = execFileSync(
+    resolveBinary("neon"),
+    [...command, ...neonCommandArgs(extraArgs)],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env,
+    }
+  )
   return JSON.parse(raw)
 }
 
@@ -87,7 +137,7 @@ async function checkPostgres(results) {
   }
   const { neon } = require("@neondatabase/serverless")
   const rows = await neon(url)`SELECT 1 AS ok`
-  const ok = rows?.[0]?.ok === 1
+  const ok = rows[0]?.ok === 1
   results.push({
     id: "postgres",
     ok,
@@ -109,7 +159,7 @@ function checkAuth(results) {
   } catch {
     const ok = Boolean(
       process.env.NEON_AUTH_BASE_URL?.trim() &&
-        process.env.NEON_AUTH_JWKS_URL?.trim()
+      process.env.NEON_AUTH_JWKS_URL?.trim()
     )
     results.push({
       id: "auth",
@@ -124,8 +174,8 @@ function checkAuth(results) {
 async function checkObjectStorage(results) {
   const configured = Boolean(
     process.env.AWS_ENDPOINT_URL_S3?.trim() &&
-      process.env.AWS_ACCESS_KEY_ID?.trim() &&
-      process.env.AWS_SECRET_ACCESS_KEY?.trim()
+    process.env.AWS_ACCESS_KEY_ID?.trim() &&
+    process.env.AWS_SECRET_ACCESS_KEY?.trim()
   )
   if (!configured) {
     // Proof-only fleet-pi-spike may be undeclared on this machine; skip cleanly.
@@ -150,7 +200,7 @@ async function checkObjectStorage(results) {
 function checkReadiness(results) {
   const hasMigrationUrls = Boolean(
     process.env.FLEET_PI_AUTH_MIGRATION_DATABASE_URL?.trim() &&
-      process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL?.trim()
+    process.env.FLEET_PI_CHAT_MIGRATION_DATABASE_URL?.trim()
   )
   if (!hasMigrationUrls) {
     results.push({
@@ -161,11 +211,11 @@ function checkReadiness(results) {
     return
   }
   try {
-    execFileSync("pnpm", ["verify-deployment-readiness"], {
+    execFileSync(resolveBinary("pnpm"), ["verify-deployment-readiness"], {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: "pipe",
-      env: process.env,
+      env: childProcessEnv(),
     })
     results.push({
       id: "deployment-readiness",

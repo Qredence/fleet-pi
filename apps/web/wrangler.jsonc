@@ -40,7 +40,9 @@
       "NODE_ENV": "production",
     },
     "durable_objects": {
-      "bindings": [{ "name": "USER_PI_DURABLE", "class_name": "UserPiDurable" }],
+      "bindings": [
+        { "name": "USER_PI_DURABLE", "class_name": "UserPiDurable" },
+      ],
     },
   },
 }

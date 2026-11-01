@@ -1,15 +1,17 @@
 import { mkdirSync, realpathSync } from "node:fs"
 import { resolve } from "node:path"
-import { createSessionServices } from "./runtime/session-factory"
+
+import { isDeployedChatRuntimeSurface } from "./runtime/deployed-chat-runtime"
 import {
   collectDiagnostics,
   resolveDefaultModelSelection,
 } from "./runtime/diagnostics"
+import { createSessionServices } from "./runtime/session-factory"
 import {
   HOSTED_EPHEMERAL_SESSION_BASE,
   resolveHostedUserSessionDir,
 } from "./session-paths"
-import { isDeployedChatRuntimeSurface } from "./runtime/deployed-chat-runtime"
+
 import type { AgentSessionServices } from "@earendil-works/pi-coding-agent"
 
 export {

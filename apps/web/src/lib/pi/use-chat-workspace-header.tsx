@@ -1,16 +1,18 @@
 import { useNavigate } from "@tanstack/react-router"
+
+import { resetAnalytics } from "@/lib/analytics/posthog"
+import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
+import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
 import {
   AccountMenu,
   SessionControls,
 } from "@workspace/hax-design/components/fleet-pi/layout/chat-header"
 import { RightPanelLauncherFromContext } from "@workspace/hax-design/components/fleet-pi/pi/right-panel-launcher"
+
 import type {
   ChatSessionInfo,
   ChatSessionMetadata,
 } from "@workspace/pi-protocol/chat-protocol"
-import { clearBrowserChatSessions } from "@/lib/pi/use-chat-storage"
-import { signOut, useOptionalUser } from "@/lib/auth/use-auth"
-import { resetAnalytics } from "@/lib/analytics/posthog"
 
 type UseChatWorkspaceHeaderOptions = {
   activeSessionId: string | undefined

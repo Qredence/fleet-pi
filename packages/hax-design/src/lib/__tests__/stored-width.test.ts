@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { readStoredWidth, storeStoredWidth } from "../stored-width"
+
 import { startHorizontalResize } from "../horizontal-resize"
+import { readStoredWidth, storeStoredWidth } from "../stored-width"
+
 import type { PointerEvent as ReactPointerEvent } from "react"
 
 function createMockWindow() {

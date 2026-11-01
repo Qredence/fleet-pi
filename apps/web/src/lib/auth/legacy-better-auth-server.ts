@@ -1,9 +1,10 @@
 import { mkdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
-import { betterAuth } from "better-auth"
+
 import { Pool } from "@neondatabase/serverless"
-import type Database from "better-sqlite3"
+import { betterAuth } from "better-auth"
+
 import { getDefaultProjectRoot } from "@/lib/app-runtime"
 import {
   LOCAL_AUTH_URL,
@@ -14,6 +15,8 @@ import {
 import { isHostedDeployment } from "@/lib/deployment/environment"
 import { isHostedPreviewDeployment } from "@/lib/deployment/trust-zone"
 import { isInRequestScope, requestScoped } from "@/lib/runtime/request-scope"
+
+import type Database from "better-sqlite3"
 
 function readCsvEnv(name: string) {
   return (process.env[name] ?? "")
@@ -149,6 +152,19 @@ const betterAuthSecret = requiredHostedEnv("BETTER_AUTH_SECRET")
 const authSecret =
   betterAuthSecret ?? "fleet-pi-local-development-secret-change-in-production"
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+
+function googleSocialProviders() {
+  if (!googleClientId || !googleClientSecret) return {}
+  return {
+    google: {
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    },
+  }
+}
+
 export function createLegacyBetterAuth(
   plugins: Parameters<typeof betterAuth>[0]["plugins"] = []
 ) {
@@ -167,16 +183,7 @@ export function createLegacyBetterAuth(
     emailAndPassword: {
       enabled: true,
     },
-    socialProviders: {
-      ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-        ? {
-            google: {
-              clientId: process.env.GOOGLE_CLIENT_ID,
-              clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            },
-          }
-        : {}),
-    },
+    socialProviders: googleSocialProviders(),
     plugins,
   })
 }

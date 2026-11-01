@@ -2,6 +2,7 @@
 
 import { cva } from "class-variance-authority"
 import * as React from "react"
+
 import { cn } from "../../../lib/utils"
 import {
   CHROME_PILL_CLASS,
@@ -9,6 +10,7 @@ import {
   DISCRETE_TAB_INACTIVE_CLASS,
   HIT_AREA_EXPAND_DENSE_CLASS,
 } from "../styles/tokens"
+
 import type { ComponentType, SVGProps } from "react"
 
 const discreteTabTriggerVariants = cva(

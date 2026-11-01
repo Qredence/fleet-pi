@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { sameDurableModelConfig } from "../durable-model"
+
 import type { DurableAgentModelConfig } from "../durable-model"
 
 const config: DurableAgentModelConfig = {

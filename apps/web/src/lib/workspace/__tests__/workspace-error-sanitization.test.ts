@@ -1,7 +1,9 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   DaytonaCredentialRequiredError,
   RequestContextError,
@@ -24,6 +26,7 @@ import {
   createWorkspaceReindexResponse,
 } from "../workspace-query"
 import { createWorkspaceRouteErrorResponse } from "../workspace-route-errors"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 import type * as WorkspaceProjection from "../../db/workspace-projection"
 import type * as BootstrapWorkspace from "../bootstrap-agent-workspace"

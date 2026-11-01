@@ -1,9 +1,15 @@
 import { useMemo } from "react"
+
 import type {
   ChatPanelDataContextValue,
   SettingsActionsContextValue,
   WorkspaceTreeContextValue,
 } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
+import type {
+  RightPanel,
+  ThemePreference,
+} from "@workspace/hax-design/lib/canvas-utils"
+import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
 import type {
   ChatMode,
   ChatPiSettingsUpdate,
@@ -18,11 +24,6 @@ import type {
   WorkspaceFileResponse,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
-import type {
-  RightPanel,
-  ThemePreference,
-} from "@workspace/hax-design/lib/canvas-utils"
 import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 type UseRightPanelContextValueArgs = {

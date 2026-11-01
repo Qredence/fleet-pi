@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import * as server from "../server"
 
 // Test barrel exports to ensure all server functions are properly exported

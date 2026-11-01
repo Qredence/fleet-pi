@@ -1,6 +1,8 @@
 import { isHostedDeployment } from "../../deployment/environment"
 import { isInsideUserVolume } from "../mutation-tier"
+
 import { usesDatabaseBackedProjectSettings } from "./deployed-chat-runtime"
+
 import type {
   LoadExtensionsResult,
   ProjectTrustEventResult,
@@ -46,7 +48,8 @@ export async function resolveLoaderProjectTrust(input: {
     const handlers = extension.handlers.get("project_trust") ?? []
     for (const handler of handlers) {
       const result = (await handler(event, ctx)) as
-        ProjectTrustEventResult | undefined
+        | ProjectTrustEventResult
+        | undefined
       if (!result || result.trusted === "undecided") continue
       sawDecision = true
       trusted = result.trusted === "yes"

@@ -1,7 +1,9 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs"
-import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import { getSessionDir } from "../server-shared"
 
 const originalHosted = process.env.FLEET_PI_DEPLOYMENT

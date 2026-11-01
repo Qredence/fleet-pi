@@ -1,5 +1,6 @@
 import { isDeployedChatRuntimeSurface } from "./deployed-chat-runtime"
 import { settingsValuesEqual } from "./project-settings-format"
+
 import type {
   AgentSessionServices,
   CompactionSettings,
@@ -193,7 +194,13 @@ export function applyProjectSettingsToServices(
     )
   ) {
     const level = settings.defaultThinkingLevel as
-      "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+      | "off"
+      | "minimal"
+      | "low"
+      | "medium"
+      | "high"
+      | "xhigh"
+      | "max"
     assignProjectSetting(manager, "defaultThinkingLevel", level, () => {
       manager.setDefaultThinkingLevel(level)
     })

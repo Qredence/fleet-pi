@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import type { ChatStreamEvent } from "@workspace/pi-protocol/chat-protocol"
 
 const createPiRuntime = vi.fn()

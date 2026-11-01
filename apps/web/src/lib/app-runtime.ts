@@ -1,6 +1,8 @@
 import { realpathSync } from "node:fs"
 import { join, resolve } from "node:path"
+
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace/workspace-contract"
+
 import type { WorkspaceFS } from "./workspace/workspace-fs"
 
 const DEFAULT_PROJECT_ROOT = process.cwd()

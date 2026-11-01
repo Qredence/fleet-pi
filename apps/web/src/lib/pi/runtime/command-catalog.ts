@@ -2,9 +2,11 @@ import {
   WEB_BUILTIN_SLASH_COMMANDS,
   isWebBuiltinSlashCommand,
 } from "../slash-commands"
+
 import { createSessionServices } from "./session-factory"
-import type { ChatSlashCommandInfo } from "@workspace/pi-protocol/chat-protocol"
+
 import type { AppRuntimeContext } from "@/lib/app-runtime"
+import type { ChatSlashCommandInfo } from "@workspace/pi-protocol/chat-protocol"
 
 export async function loadChatCommands(
   context: AppRuntimeContext,

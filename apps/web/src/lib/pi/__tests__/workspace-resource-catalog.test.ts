@@ -1,12 +1,15 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import {
   applyWorkspaceResourceMetadata,
   loadWorkspaceResourceCatalog,
   mergeResourceInfo,
 } from "../workspace-resource-catalog"
+
 import type { AppRuntimeContext } from "@/lib/app-runtime"
 
 describe("workspace resource catalog", () => {

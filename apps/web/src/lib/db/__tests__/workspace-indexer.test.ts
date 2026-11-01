@@ -1,10 +1,13 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import { bootstrapAgentWorkspace } from "../../workspace/bootstrap-agent-workspace"
 import { indexWorkspaceProjection } from "../workspace-indexer"
 import { openWorkspaceProjection } from "../workspace-projection"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 
 const roots = new Set<string>()

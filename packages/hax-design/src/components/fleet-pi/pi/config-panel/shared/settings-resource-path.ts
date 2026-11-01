@@ -9,6 +9,9 @@ const PROVENANCE_SOURCES = new Set([
   "workspace",
 ])
 
+/** Pi resource directories, in the order settings paths are written. */
+const PI_RESOURCE_SEGMENTS = ["extensions", "skills", "prompts", "themes"]
+
 /**
  * Value written to Pi settings when picking a catalog entry.
  * Prefer package/path sources (`npm:…`, relative paths). Ignore provenance
@@ -37,7 +40,7 @@ export function resourceOptionValue(item: ChatResourceInfo) {
 export function toSettingsResourcePath(path: string) {
   const normalized = path.replace(/\\/g, "/")
 
-  if (/^\/Users\//.test(normalized) || /^\/home\//.test(normalized)) {
+  if (normalized.startsWith("/Users/") || normalized.startsWith("/home/")) {
     return ""
   }
   if (/^[A-Za-z]:\//.test(normalized)) {
@@ -59,20 +62,33 @@ export function toSettingsResourcePath(path: string) {
     return stripResourceFileSuffix(normalized)
   }
 
-  const workspaceMatch = normalized.match(/\/(agent-workspace\/.+)$/)
-  if (workspaceMatch?.[1]) {
-    const workspacePath = workspaceMatch[1].replace(
-      /^agent-workspace\/\.pi\//,
-      "agent-workspace/pi/"
-    )
+  // Substring scans rather than `match(/\/(agent-workspace\/.+)$/)`-style
+  // patterns: those backtrack quadratically on inputs that repeat the marker,
+  // and these paths come from catalog discovery, not from a trusted literal.
+  const workspaceIndex = normalized.indexOf("/agent-workspace/")
+  if (workspaceIndex !== -1) {
+    let workspacePath = normalized.slice(workspaceIndex + 1)
+    if (workspacePath.startsWith("agent-workspace/.pi/")) {
+      workspacePath = `agent-workspace/pi/${workspacePath.slice("agent-workspace/.pi/".length)}`
+    }
     return stripResourceFileSuffix(`../${workspacePath}`)
   }
 
-  const piMatch = normalized.match(
-    /\/\.pi\/(extensions\/.+|skills\/.+|prompts\/.+|themes\/.+)$/
-  )
-  if (piMatch?.[1]) {
-    return stripResourceFileSuffix(piMatch[1])
+  const piPrefix = "/.pi/"
+  for (
+    let piIndex = normalized.indexOf(piPrefix);
+    piIndex !== -1;
+    piIndex = normalized.indexOf(piPrefix, piIndex + 1)
+  ) {
+    const remainder = normalized.slice(piIndex + piPrefix.length)
+    const isKnownResource = PI_RESOURCE_SEGMENTS.some(
+      (segment) =>
+        remainder.startsWith(`${segment}/`) &&
+        remainder.length > segment.length + 1
+    )
+    if (isKnownResource) {
+      return stripResourceFileSuffix(remainder)
+    }
   }
 
   // Unrecognized absolute paths are not portable — do not persist them.

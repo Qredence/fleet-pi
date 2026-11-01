@@ -2,8 +2,10 @@ import {
   KNOWN_PROVIDERS,
   OPENAI_CHAT_COMPLETIONS_BASE_URL_PROVIDER_ID,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { isCloudflareDeployment } from "../deployment/environment"
 import { resolveDaytonaRuntimeApiKey } from "../pi/runtime/user-provider-secrets"
+
 import {
   clearSandboxAuthFingerprint,
   ensureUserCredentials,
@@ -13,11 +15,11 @@ import {
   loadConfiguredProviderSecrets,
 } from "./sandbox-provider-secrets"
 import { isDaytonaSecretsEligibleProvider } from "./secret-hosts"
+import { fingerprintDaytonaSecretsConfig } from "./sync-daytona-secrets"
 import {
   getCachedUserSandbox,
   recreateUserSandboxForSecrets,
 } from "./user-sandbox"
-import { fingerprintDaytonaSecretsConfig } from "./sync-daytona-secrets"
 
 function hasUnmountedSecretsEligibleKey(
   configured: Map<string, string>,

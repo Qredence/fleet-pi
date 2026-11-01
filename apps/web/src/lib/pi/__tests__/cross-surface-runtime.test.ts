@@ -1,13 +1,16 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   createPathProvenanceResponse,
   createRunDetailResponse,
   createSessionRunsResponse,
 } from "../provenance-query"
 import { createRunProvenanceRecorder } from "../run-provenance"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 
 const SessionManager = {
@@ -144,7 +147,7 @@ describe("cross-surface runtime hardening", () => {
       sessionFile,
       sessionId: "session-1",
     })
-    recorder.close()
+    void recorder.close()
 
     const sessionEntries: Array<Record<string, unknown>> = [
       {
@@ -309,7 +312,7 @@ describe("cross-surface runtime hardening", () => {
       sessionFile: oldSessionFile,
       sessionId: "session-old",
     })
-    recorder.close()
+    void recorder.close()
 
     SessionManager.create.mockReturnValue(
       createSessionManagerStub(freshSessionFile, "session-fresh", [])

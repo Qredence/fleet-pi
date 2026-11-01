@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { getProviderConfigStatus } from "../provider-catalog"
 
 const mocks = vi.hoisted(() => ({

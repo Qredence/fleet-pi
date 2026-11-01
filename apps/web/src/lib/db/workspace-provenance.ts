@@ -1,13 +1,15 @@
 import { relative, resolve } from "node:path"
+
 import { deterministicId, sanitizeJsonForStorage } from "./json-storage"
 import { openWorkspaceProjection } from "./workspace-projection"
+
 import type { AppRuntimeContext } from "../app-runtime"
+import type { WorkspaceProjectionConnection } from "./workspace-projection"
 import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { WorkspaceProjectionConnection } from "./workspace-projection"
 import type Database from "better-sqlite3"
 
 const RUN_STATUS_VALUES = [

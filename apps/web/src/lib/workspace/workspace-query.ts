@@ -7,9 +7,11 @@ import {
   searchWorkspaceProjection,
   seedWorkspaceProjectionConnection,
 } from "../db/workspace-projection"
+
 import { loadAgentWorkspaceHealth } from "./bootstrap-agent-workspace"
-import { getSafeWorkspaceErrorMessage } from "./workspace-error-messages"
 import { AGENT_WORKSPACE_DIRECTORY } from "./workspace-contract"
+import { getSafeWorkspaceErrorMessage } from "./workspace-error-messages"
+
 import type { AppRuntimeContext } from "../app-runtime"
 import type { WorkspaceHealthDiagnostic } from "./bootstrap-agent-workspace"
 

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+
 import { resolveAuthBackend } from "@/lib/auth/auth-mode"
 import { auth } from "@/lib/auth/server"
 

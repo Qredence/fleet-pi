@@ -244,7 +244,7 @@ let structMd = `# Fleet Pi Project Structure\n\n`
 structMd += `Auto-generated overview of the monorepo workspace.\n\n`
 structMd += `Start with [docs/README.md](README.md) and [docs/quickstart.md](quickstart.md) if you are new to Fleet Pi. This file is generated reference material.\n\n`
 structMd += `## Workspace Layout\n\n`
-structMd += "\`\`\`text\n"
+structMd += "```text\n"
 structMd += `fleet-pi/\n`
 structMd += `├── .pi/                      # Committed Pi config, skills, and built-in extensions\n`
 structMd += `├── agent-workspace/          # Durable agent memory, plans, skills, artifacts, and installs\n`
@@ -267,7 +267,7 @@ structMd += `├── packages/pi-protocol/     # Wire-format types, Zod, provi
 structMd += `├── docs/                     # Generated and hand-written documentation\n`
 structMd += `├── scripts/                  # Build and utility scripts\n`
 structMd += `└── .github/workflows/        # CI/CD automation\n`
-structMd += "\`\`\`\n\n"
+structMd += "```\n\n"
 
 structMd += `## Key Dependencies\n\n`
 structMd += `| Package | Purpose |\n`

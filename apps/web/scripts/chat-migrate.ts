@@ -1,8 +1,10 @@
 import path from "node:path"
-import dotenv from "dotenv"
+
 import { Pool } from "@neondatabase/serverless"
-import { runChatMigrations } from "../src/lib/db/chat-migrations"
+import dotenv from "dotenv"
+
 import { resolveAppRole } from "../src/lib/db/app-role"
+import { runChatMigrations } from "../src/lib/db/chat-migrations"
 
 const cwd = process.cwd()
 const preservedMigrationDatabaseUrl =

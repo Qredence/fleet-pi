@@ -1,4 +1,5 @@
 import React, { memo } from "react"
+
 import { ToolRowBase } from "./tool-row-base"
 
 export type GenericToolProps = {

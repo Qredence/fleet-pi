@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import { isChatListModel, nextEnabledModelPatterns } from "../model-patterns"
+
 import type { ConfigModelInfo } from "../types"
 
 const googleFlash: ConfigModelInfo = {

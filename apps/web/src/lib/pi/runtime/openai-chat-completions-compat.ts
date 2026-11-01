@@ -1,14 +1,16 @@
 import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+
 import {
   NEON_AI_GATEWAY_DEFAULT_MODEL,
   isLegacyFleetOccModelId,
   resolveNeonAiGatewayConfig,
 } from "./neon-ai-gateway"
+
+import type { Model } from "@earendil-works/pi-ai"
 import type {
   AgentSession,
   AgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
-import type { Model } from "@earendil-works/pi-ai"
 
 type OpenAiCompletionsCompatFlags = {
   supportsStore?: boolean

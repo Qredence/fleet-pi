@@ -10,7 +10,8 @@ export type { PostgresQueryClient } from "./pi-session-ownership-db"
  *   value (e.g. `{ name: "synced_at", expression: "now()" }`).
  */
 export type InsertRowsColumn =
-  string | { name: string; cast?: string; expression?: string }
+  | string
+  | { name: string; cast?: string; expression?: string }
 
 export type InsertRowsChunkedOptions<TRow> = {
   table: string

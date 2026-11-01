@@ -1,8 +1,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
-import workspaceIndexExtension from "../../../../../../.pi/extensions/workspace-index"
+
 import {
   extractPromptTerms,
   formatProjectMemoryForStartupContext,
@@ -10,6 +11,7 @@ import {
   readProjectMemoryIndex,
   selectScoredSnippets,
 } from "../../../../../../.pi/extensions/lib/workspace-memory-index"
+import workspaceIndexExtension from "../../../../../../.pi/extensions/workspace-index"
 
 const PROJECT_MEMORY_DIR = "agent-workspace/memory/project"
 

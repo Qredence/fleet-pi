@@ -1,10 +1,11 @@
+import { isHostedDeployment } from "@/lib/deployment/environment"
+
 /**
  * Shared guards for the encrypted provider stores. Both `user-providers` and
  * `occ-instances` need the same "is the chat DB configured on this host" and
  * "is the encryption secret available" checks, so they live here.
  */
 import { isChatDatabaseConfigured } from "./chat-db-config"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export class ChatPostgresUnavailableError extends Error {
   constructor(

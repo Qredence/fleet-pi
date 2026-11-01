@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { issueCsrfToken, validateCsrfRequest } from "../csrf"
 
 describe("CSRF protection", () => {

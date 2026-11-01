@@ -1,7 +1,10 @@
 import { Box, Globe, Layers, Tag } from "lucide-react"
+
 import { FieldGroup } from "../../../../field"
 import { Select } from "../../../../select"
+
 import { SecretCredentialField, TextCredentialField } from "./credential-fields"
+
 import type { PiCustomProviderApi } from "./provider-metadata"
 
 const OPENAI_CHAT_BASE_URL_PLACEHOLDER = "https://opencode.ai/zen/v1"

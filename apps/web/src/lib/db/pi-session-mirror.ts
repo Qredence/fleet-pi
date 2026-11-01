@@ -1,10 +1,6 @@
 import { shouldFailClosedOnFunctionMirrorWrite } from "../deployment/trust-zone"
 import { logger } from "../logger"
-import {
-  assertMirrorOwnerForPersistence,
-  isPiSessionMirrorEnabled,
-} from "./pi-session-ownership-db"
-import { isPiSessionDeleted } from "./pi-session-tombstones"
+
 import {
   findFirstMessagePreview,
   normalizeEntry,
@@ -20,6 +16,13 @@ import {
   upsertPiToolExecution,
   withChatPostgresTransaction,
 } from "./pi-session-mirror-writes"
+import {
+  assertMirrorOwnerForPersistence,
+  isPiSessionMirrorEnabled,
+} from "./pi-session-ownership-db"
+import { isPiSessionDeleted } from "./pi-session-tombstones"
+
+import type { ProvenanceMutationKind } from "./workspace-provenance"
 import type {
   SessionEntry,
   SessionHeader,
@@ -30,7 +33,6 @@ import type {
   ChatPlanAction,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ProvenanceMutationKind } from "./workspace-provenance"
 
 export {
   appendPiRunEvent,

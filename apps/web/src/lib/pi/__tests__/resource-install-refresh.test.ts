@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest"
+
 import {
   collectCompletedResourceInstallToolCallIds,
   planResourceInstallRefresh,
 } from "../resource-install-refresh"
-import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
+
 import type { WorkspaceTreeResponse } from "@workspace/pi-protocol/chat-protocol"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 describe("resource install refresh signals", () => {
   it("collects successful resource_install tool calls", () => {

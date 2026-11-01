@@ -1,5 +1,5 @@
-import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 import type { WorkspaceTreeResponse } from "@workspace/pi-protocol/chat-protocol"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 export type ResourceInstallRefreshPlan = {
   shouldRefreshWorkspace: boolean

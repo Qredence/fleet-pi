@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+
 import { startHorizontalResize } from "../../../../lib/horizontal-resize"
 import { WORKSPACE_SPLIT_MIN_WIDTH_PX } from "../../../../lib/layout-constants"
 import {
@@ -6,8 +7,9 @@ import {
   readStoredWorkspaceTreeWidth,
   storeWorkspaceTreeWidth,
 } from "../../../../lib/workspace-tree-width"
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react"
+
 import type { WorkspaceTreeResponse } from "@workspace/pi-protocol/chat-protocol"
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react"
 
 export function useWorkspaceSplitLayout(
   workspace: WorkspaceTreeResponse | null

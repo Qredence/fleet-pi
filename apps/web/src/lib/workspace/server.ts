@@ -1,12 +1,15 @@
 import { open, realpath, stat } from "node:fs/promises"
 import { basename, extname, isAbsolute, join, relative } from "node:path"
+
 import { RequestContextError } from "../app-runtime"
+
 import { bootstrapAgentWorkspace } from "./bootstrap-agent-workspace"
-import { createLocalWorkspaceFS } from "./workspace-fs"
 import {
   AGENT_WORKSPACE_DIRECTORY,
   isWorkspaceContractTopLevelName,
 } from "./workspace-contract"
+import { createLocalWorkspaceFS } from "./workspace-fs"
+
 import type { AppRuntimeContext } from "../app-runtime"
 import type { WorkspaceFS } from "./workspace-fs"
 import type {

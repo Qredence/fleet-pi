@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
+
 import {
   assertProviderCredentialsUsable,
   describeMisroutedGatewayToken,
 } from "../provider-preflight"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL_V1 } from "./gateway-test-fixtures"
 
 const OPENAI_MODEL = {

@@ -1,4 +1,5 @@
 import { Type } from "typebox"
+
 import type {
   ExtensionAPI,
   ExtensionContext,

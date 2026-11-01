@@ -7,6 +7,14 @@ import {
   HardDrive,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+
+import {
+  CHAT_PANEL_BREAKPOINT_PX,
+  WORKSPACE_SPLIT_GAP_RESET,
+  WORKSPACE_SPLIT_HIDDEN_BLOCK,
+} from "../../../lib/layout-constants"
+import { isDaytonaNotConnectedError } from "../../../lib/pi/chat-helpers"
+import { isPathWithinScope } from "../../../lib/workspace-path-nav"
 import { Markdown } from "../../agent-elements/markdown"
 import { Button } from "../../button"
 import {
@@ -14,22 +22,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../../collapsible"
-import {
-  CHAT_PANEL_BREAKPOINT_PX,
-  WORKSPACE_SPLIT_GAP_RESET,
-  WORKSPACE_SPLIT_HIDDEN_BLOCK,
-} from "../../../lib/layout-constants"
-import { isPathWithinScope } from "../../../lib/workspace-path-nav"
-import { isDaytonaNotConnectedError } from "../../../lib/pi/chat-helpers"
+
 import { useWorkspaceSplitLayout } from "./hooks/use-workspace-split-layout"
 import { ResourceNotice, findWorkspaceNode } from "./shared"
 import { WorkspacePreviewSkeleton, WorkspaceSkeleton } from "./skeleton-loaders"
-import type { RefObject } from "react"
+
 import type {
   WorkspaceFileResponse,
   WorkspaceTreeNode,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { RefObject } from "react"
 
 export type WorkspacePanelContentProps = {
   error?: Error | null

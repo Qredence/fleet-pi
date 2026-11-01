@@ -1,5 +1,5 @@
-import { assertDeploymentReadyOnBoot } from "@/lib/deployment/boot-check"
 import { resolveAuthBackend } from "@/lib/auth/auth-mode"
+import { assertDeploymentReadyOnBoot } from "@/lib/deployment/boot-check"
 
 assertDeploymentReadyOnBoot()
 

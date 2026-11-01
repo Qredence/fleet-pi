@@ -11,15 +11,16 @@ import {
   modelSettings,
   sameJson,
 } from "../config-panel/shared/settings-mappers"
-import type { Dispatch, SetStateAction } from "react"
-import type { ConfigModelInfo } from "../config-panel/shared/types"
+
 import type { ChatModelOption } from "../../../../lib/pi/chat-helpers"
+import type { ConfigModelInfo } from "../config-panel/shared/types"
 import type {
   ChatPiSettings,
   ChatPiSettingsUpdate,
   ChatProviderInfo,
   ChatSettingsResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { Dispatch, SetStateAction } from "react"
 
 /**
  * Owns the LLM-models slice of the settings form: filter, discovery, enabled
@@ -210,7 +211,7 @@ export function useModelDefaultsForm({
         models: modelsForPatternUpdate(draft.enabledModels),
       }),
     }
-    void persistModelSettings(nextDraft)
+    persistModelSettings(nextDraft)
   }
 
   const addModels = (modelsToAdd: Array<ConfigModelInfo>) => {
@@ -224,7 +225,7 @@ export function useModelDefaultsForm({
         models: modelsForPatternUpdate(patterns),
       })
     }
-    void persistModelSettings({ ...draft, enabledModels: patterns })
+    persistModelSettings({ ...draft, enabledModels: patterns })
   }
 
   const removeModel = (model: ConfigModelInfo) => {

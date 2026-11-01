@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { migrateLegacyGatewayProjectOverrides } from "../gateway-settings-migration"
 import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 vi.mock("../user-provider-secrets", () => ({

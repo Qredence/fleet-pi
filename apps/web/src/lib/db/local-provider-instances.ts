@@ -1,18 +1,21 @@
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
+
+import { resolveAppRuntimeContext } from "@/lib/app-runtime"
+import { writeFileAtomic } from "@/lib/fs-atomic"
+import { isDeployedChatRuntimeSurface } from "@/lib/pi/runtime/deployed-chat-runtime"
 import {
   allocateProviderId,
   isPiCustomProviderApi,
   normalizeCustomProviderInstance,
   toInstanceSlug,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { isChatDatabaseConfigured } from "./chat-db-config"
-import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
+
 import type { OccInstance, OccInstanceInput } from "./occ-instances"
-import { resolveAppRuntimeContext } from "@/lib/app-runtime"
-import { writeFileAtomic } from "@/lib/fs-atomic"
-import { isDeployedChatRuntimeSurface } from "@/lib/pi/runtime/deployed-chat-runtime"
+import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 
 const PROVIDER_STORE_VERSION = 1 as const
 

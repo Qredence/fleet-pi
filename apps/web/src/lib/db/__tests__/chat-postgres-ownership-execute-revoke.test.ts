@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import {
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_MIGRATION_ID,
   CHAT_POSTGRES_OWNERSHIP_EXECUTE_REVOKE_SQL,

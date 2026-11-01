@@ -88,3 +88,102 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Current status: **Accepted.** Override floors elsewhere remain in `pnpm-workspace.yaml` with Review 2027-01-16.
 - Workaround: None until a patched `braces` ships.
 - Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.
+
+## CircleCI reports a phantom failing check on every PR (Accepted)
+
+- Issue: Every pull request carries a red `CircleCI Pipeline` commit status. The message is `No configuration was found in your project`, and the repository has no `.circleci/` directory at all — no workflow, script, or workflow file drives CircleCI.
+- Affected area: GitHub check reporting on all PRs. Nothing in the build, test, or deploy path is involved.
+- Symptoms: PRs read `MERGEABLE/UNSTABLE` instead of clean, and the red context is easy to mistake for a real regression in whatever stack is in flight.
+- Current status: **Accepted.** The context is a legacy commit status published by the CircleCI GitHub App. No active ruleset requires it (the only active branch ruleset is `Copilot review for default branch`, which declares no required status checks), so it does not gate a merge.
+- Workaround: Ignore the context when reading PR health. Decide mergeability from the GitHub Actions jobs.
+- Follow-up: Remove the CircleCI GitHub App from `Qredence/fleet-pi` (GitHub org → Installed GitHub Apps → CircleCI → Configure → unselect this repository, or the CircleCI organization's VCS integration settings). This needs org-app admin rights, which no repo-local token has — `CIRCLECI_TOKEN` is unset and the `circleci` CLI is unauthenticated.
+
+## Oxc migration: React Compiler-era rules are advisory (PR 2)
+
+- Issue: Oxlint's `react` plugin is new to this repo; the retired ESLint config
+  enabled zero React rules. Three of its rules produce 60 pre-existing findings,
+  every one of which needs a behavioural refactor (move `setState` out of
+  effects, stop reading refs during render, restructure effect dependencies)
+  rather than a mechanical edit.
+- Affected area: `packages/hax-design/src/components/**` and
+  `apps/web/src/lib/pi/**`.
+- Symptoms: `vp lint` reports these as warnings and the gate passes, so real
+  React purity findings can hide in the total.
+- Current status: **Scoped as warnings** in root `vite.config.ts`
+  (`react/set-state-in-effect`, `react/refs`, `react-hooks/exhaustive-deps`),
+  with `typescript/unbound-method` off inside test overrides (that rule fires
+  only on `vi.mocked(...)` spy assertions).
+- Workaround: None needed for CI. Treat new warnings in those rules as real
+  signals on touched files.
+- Follow-up: Burn down the 60 findings rule by rule and promote each back to
+  `error` once its count reaches zero.
+
+## Oxc migration: `typescript/no-unsafe-type-assertion` is test-exempt (follow-up)
+
+- Issue: The rule arrives through the `suspicious` category rather than a
+  hand-authored choice. It is the repo's single noisiest rule: 486 hits, 322 of
+  them in `**/__tests__/**` and `**/*.test.ts(x)`, where test doubles narrow
+  `unknown` payloads into the shape under test by design.
+- Affected area: repo-wide; the remaining 164 hits cluster in
+  `apps/web/src/lib/pi/**`, `apps/web/src/lib/db/**`,
+  `packages/hax-design/src/components/chart.tsx`, and `.pi/extensions/lib/`.
+- Current status: **Off in the test override**, still warning in source, so
+  genuine unsoundness (`e.target as HTMLElement`) stays visible. Repo warning
+  total is ~417 rather than 739.
+- Workaround: None needed for CI. Prefer narrowing guards over casts when the
+  warning appears on a file you are already touching.
+- Follow-up: Burn down the 164 source-side assertions, preferring narrowing
+  guards (`instanceof`, `typeof`, discriminated unions) over casts.
+
+
+## Oxc migration: `.pi/extensions/vendor/**` is lint-excluded (PR 2)
+
+- Issue: Vendored upstream Pi extensions have their own `UPSTREAM.md` refresh
+  contract. Linting them would make every upstream refresh fight a local
+  backlog of style findings.
+- Affected area: `.pi/extensions/vendor/filechanges`, `subagents`,
+  `web-fetch`.
+- Current status: Excluded via `lint.ignorePatterns`, matching the retired root
+  `eslint.config.js`, which ignored `.pi/extensions/vendor/**`. Also excluded
+  from `fmt.ignorePatterns` for the same refresh-diff reason.
+- Follow-up: Revisit only if a vendored extension is forked into first-party
+  code.
+
+## Oxc migration: one entry point for lint policy
+
+- Issue: `pnpm lint` previously ran `turbo lint && vp lint .pi/extensions`,
+  which never saw `scripts/`, `vite.config.ts`, or root `.mjs` files. CI runs
+  `vp check --no-fmt` from the root, so a contributor could pass the documented
+  local command and still fail CI. Verified pre-fix: a `debugger` statement in
+  `scripts/` gave `pnpm lint` exit 0 and `vp check` exit 1.
+- Affected area: root `package.json` `lint` script, `turbo.json`,
+  `docs/wiki/how-to-contribute/tooling.md`.
+- Current status: `lint` is `vp check --no-fmt`, identical to CI. Per-package
+  `vp lint` scripts remain for direct use but are no longer the documented
+  path.
+- Related invariant: a `fmt`/`lint` block in a nested `vite.config.ts`
+  **replaces** the root block instead of merging. All static-analysis policy
+  must stay in the root file; the header comment there says so.
+- Follow-up: If `turbo` caching of lint matters later, add a root-scoped turbo
+  task rather than reintroducing a second spelling of the command.
+
+## Oxc migration: SonarCloud re-analysis is cancelled by stack pushes
+
+- Issue: SonarCloud runs through the GitHub App with no config in this repo.
+  Each branch push cancels the analysis of the previous head, and a cancelled
+  check reports as a failure in `gh pr checks`. On a five-PR stack the lower
+  PRs are re-analysed on every cascade, so the visible status is often a
+  cancelled run rather than a real verdict.
+- Affected area: PRs #191–#195 of the Oxc migration stack (`stack #197`).
+- Current status: The SonarCloud quality gate itself reports OK for #192,
+  #194, and #195. Only #191 fails, on `new_security_rating` (B) from a single
+  low-severity warning in `scripts/verify-neon-backend.mjs`.
+- Known false positive: Sonar's taint tracker follows the `PATH` key through
+  a `process.env` spread even after `delete env.PATH` and an explicit rebuild
+  from fixed directories. The runtime behaviour is correct and verified (an
+  injected `PATH` entry does not reach the child process), so this is
+  accepted rather than suppressed inline.
+- Workaround: Read the quality gate through the Sonar API, or wait for the
+  top-of-stack analysis, instead of trusting a cancelled check run.
+- Follow-up: If a future change makes the taint tracker accept the explicit
+  environment, drop this note and let the gate go green.

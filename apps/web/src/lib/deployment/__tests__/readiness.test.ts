@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "../../pi/runtime/__tests__/gateway-test-fixtures"
 import { validateDeploymentReadiness } from "../readiness"
 

@@ -17,21 +17,24 @@ import {
   createWriteTool,
 } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+
 import { getSandboxStatus } from "../../apps/web/src/lib/daytona/client"
-import { createSandboxOperations } from "../../apps/web/src/lib/daytona/sandbox-operations"
 import {
   SANDBOX_WARMING_MESSAGE,
   resolveReadySandbox,
 } from "../../apps/web/src/lib/daytona/resolve-ready-sandbox"
+import { createSandboxOperations } from "../../apps/web/src/lib/daytona/sandbox-operations"
 import { SANDBOX_WORKSPACE_ROOT } from "../../apps/web/src/lib/daytona/sandbox-prepare"
 import { resolveDaytonaToolUser } from "../../apps/web/src/lib/daytona/tool-context"
 import { getCachedUserSandbox } from "../../apps/web/src/lib/daytona/user-sandbox"
+
 import { applySandboxCwdToPrompt } from "./lib/sandbox-prompt-cwd"
-import type { UserSandboxHandle } from "../../apps/web/src/lib/daytona/user-sandbox"
+
 import type {
   Sandbox,
   ToolOperations,
 } from "../../apps/web/src/lib/daytona/sandbox-operations"
+import type { UserSandboxHandle } from "../../apps/web/src/lib/daytona/user-sandbox"
 import type {
   ExtensionAPI,
   ExtensionContext,

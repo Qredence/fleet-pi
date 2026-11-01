@@ -2,14 +2,17 @@ import { mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+
 import { discoverAndLoadExtensions } from "@earendil-works/pi-coding-agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { requireHarnessWriteResolver } from "../../../../../../.pi/extensions/lib/harness-write"
 import { installHarnessWriteResolver } from "../harness-write-target"
 import {
   trackDaytonaToolSession,
   untrackDaytonaToolSession,
 } from "../tool-context"
+
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent"
 
 const mocks = vi.hoisted(() => ({

@@ -8,20 +8,24 @@ import {
   defineTool,
 } from "@earendil-works/pi-durable"
 import { Type } from "typebox"
+
 import { agentWorkspaceBashBlock } from "../command-policy"
-import { assertHttpsMcpServer, hostedMcpToolName } from "./durable-mcp"
+
 import { harnessSettingsFromLoop } from "./durable-loop-settings"
+import { assertHttpsMcpServer, hostedMcpToolName } from "./durable-mcp"
 import { selectHostedExtensions } from "./hosted-extensions"
+import { createHostedExecutionEnv } from "./hosted-sandbox-env"
 import {
   hostedBashBlock,
   hostedPathBlock,
   hostedToolAllowed,
   hostedWriteBlock,
 } from "./hosted-tool-registry"
-import { createHostedExecutionEnv } from "./hosted-sandbox-env"
-import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+
 import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { HostedMcpServer } from "./durable-mcp"
+import type { HostedSandboxPort } from "./hosted-sandbox-env"
+import type { Context } from "@earendil-works/chord"
 import type {
   ConversationView,
   Storage,
@@ -29,8 +33,7 @@ import type {
   ToolExecutionApi,
   ToolExecutionResult,
 } from "@earendil-works/pi-durable"
-import type { Context } from "@earendil-works/chord"
-import type { HostedSandboxPort } from "./hosted-sandbox-env"
+import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 
 const context: Context = BACKGROUND_CONTEXT
 
@@ -561,7 +564,8 @@ export async function openHostedHarness(
     context
   )
   let liveConversation:
-    Awaited<ReturnType<HostedHarnessHandle["conversation"]>> | undefined
+    | Awaited<ReturnType<HostedHarnessHandle["conversation"]>>
+    | undefined
   const root = await harness.root(context, {
     agent: { model: agentModel },
   })

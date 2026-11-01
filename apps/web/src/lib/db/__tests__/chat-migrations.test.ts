@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
+
 import { runChatMigrations } from "../chat-migrations"
 import { CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL } from "../chat-postgres-session-tombstones"
+
 import type { ChatMigrationClient } from "../chat-migrations"
 
 const OWNER_FN = /CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner\(/

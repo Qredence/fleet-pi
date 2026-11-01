@@ -1,18 +1,20 @@
 import { Info, Trash2 } from "lucide-react"
+
+import { cn } from "../../../../../lib/utils"
 import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
 import { Spinner } from "../../../../spinner"
-import { cn } from "../../../../../lib/utils"
 import { ItemRow } from "../../../primitives/item-row"
-import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
 import { RowSurface } from "../../../primitives/surface"
+import { HIT_AREA_EXPAND_DENSE_CLASS } from "../../../styles/tokens"
+import { ProviderBrandIcon } from "../shared/provider-brand-icon"
+import { ProviderCredentialFields } from "../shared/provider-credential-fields"
 import {
   PROVIDER_METADATA,
   isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
-import { ProviderBrandIcon } from "../shared/provider-brand-icon"
-import { ProviderCredentialFields } from "../shared/provider-credential-fields"
+
 import type {
   ChatProviderInfo,
   PiCustomProviderApi,

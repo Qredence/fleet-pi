@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   SessionManager,
   SettingsManager,
@@ -9,9 +9,13 @@ import {
   createAgentSessionServices,
 } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
 import { resetCapturedNeonAiGatewayCredentialsForTests } from "../neon-ai-gateway"
 import { registerOpenAiChatCompletionsProvider } from "../openai-chat-completions-provider"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
+
 import type {
   AgentSessionEvent,
   ToolDefinition,
@@ -111,7 +115,12 @@ describe("OpenAI-compatible provider at runtime (real Pi session)", () => {
     ]
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = input instanceof Request ? input.url : input.toString()
-      requests.push({ url, body: JSON.parse(String(init?.body ?? "{}")) })
+      requests.push({
+        url,
+        body: JSON.parse(
+          typeof init?.body === "string" ? init.body : "{}"
+        ) as Record<string, unknown>,
+      })
       const next = responses.shift()
       if (!next) throw new Error(`unexpected request to ${url}`)
       return Promise.resolve(next)

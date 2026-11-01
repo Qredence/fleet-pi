@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { workspaceTreeHandler } from "@/routes/api/workspace/tree"
-import { workspaceFileHandler } from "@/routes/api/workspace/file"
-import { workspaceItemsHandler } from "@/routes/api/workspace/items"
-import { workspaceItemHandler } from "@/routes/api/workspace/item"
-import { workspaceSearchHandler } from "@/routes/api/workspace/search"
-import { workspaceReindexHandler } from "@/routes/api/workspace/reindex"
-import { workspaceHealthHandler } from "@/routes/api/workspace/health"
-import { chatCommandsHandler } from "@/routes/api/chat/commands"
+
 import { DaytonaCredentialRequiredError } from "@/lib/app-runtime"
+import { chatCommandsHandler } from "@/routes/api/chat/commands"
+import { workspaceFileHandler } from "@/routes/api/workspace/file"
+import { workspaceHealthHandler } from "@/routes/api/workspace/health"
+import { workspaceItemHandler } from "@/routes/api/workspace/item"
+import { workspaceItemsHandler } from "@/routes/api/workspace/items"
+import { workspaceReindexHandler } from "@/routes/api/workspace/reindex"
+import { workspaceSearchHandler } from "@/routes/api/workspace/search"
+import { workspaceTreeHandler } from "@/routes/api/workspace/tree"
 
 const { resolveWorkspaceContextMock } = vi.hoisted(() => ({
   resolveWorkspaceContextMock: vi.fn(),

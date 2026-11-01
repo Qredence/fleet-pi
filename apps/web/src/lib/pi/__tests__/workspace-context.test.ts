@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
 import { afterEach, describe, expect, it } from "vitest"
+
 import workspaceContextExtension from "../../../../../../.pi/extensions/workspace-context"
 
 const PROJECT_MEMORY_DIR = "agent-workspace/memory/project"

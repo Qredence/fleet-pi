@@ -12,7 +12,9 @@ import {
   IconTerminal2 as Terminal,
   IconCircleX as XCircle,
 } from "@tabler/icons-react"
+
 import { stripWorktreePrefix } from "../../../lib/workspace-path-nav"
+
 import type React from "react"
 
 export type ToolVariant = "simple" | "collapsible"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import {
   addUniqueSettingsResource,
   resourceOptionValue,
@@ -56,6 +57,23 @@ describe("resourceOptionValue", () => {
     ).toBe("../agent-workspace/pi/skills/frontend-helper")
   })
 
+  it("stays linear on paths that repeat the resource markers", () => {
+    // Regression guard for the CodeQL polynomial-ReDoS finding: the previous
+    // `/\/(agent-workspace\/.+)$/`-style patterns backtracked badly on inputs
+    // that repeat the marker, and these paths come from catalog discovery.
+    const repeatedWorkspace = `/${"/agent-workspace/".repeat(4000)}`
+    const repeatedPi = `/${"/.pi/extensions/".repeat(4000)}`
+
+    const startedAt = performance.now()
+    expect(toSettingsResourcePath(repeatedWorkspace)).toBe(
+      `../agent-workspace/${"/agent-workspace/".repeat(3999)}`
+    )
+    expect(toSettingsResourcePath(repeatedPi)).toBe(
+      `extensions/${"/.pi/extensions/".repeat(3999)}`
+    )
+    expect(performance.now() - startedAt).toBeLessThan(1000)
+  })
+
   it("does not collapse distinct auto-loaded extensions to one option", () => {
     const values = [
       resourceOptionValue({
@@ -82,6 +100,12 @@ describe("toSettingsResourcePath", () => {
     expect(
       toSettingsResourcePath("/repo/.pi/extensions/vendor/filechanges/index.ts")
     ).toBe("extensions/vendor/filechanges")
+  })
+
+  it("scans later .pi markers after an unrecognized marker", () => {
+    expect(
+      toSettingsResourcePath("/repo/.pi/agent/.pi/extensions/example.ts")
+    ).toBe("extensions/example.ts")
   })
 
   it("preserves direct prompt filenames", () => {

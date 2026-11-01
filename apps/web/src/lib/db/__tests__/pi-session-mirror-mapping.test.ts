@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import {
   extractPiSessionMirrorInput,
   mapSessionEntryToMirrorRow,
 } from "../pi-session-mirror"
+
 import { entryBase, header } from "./pi-session-mirror-fixtures"
+
 import type { SessionEntry } from "@earendil-works/pi-coding-agent"
 
 const originalChatDatabaseUrl = process.env.FLEET_PI_CHAT_DATABASE_URL

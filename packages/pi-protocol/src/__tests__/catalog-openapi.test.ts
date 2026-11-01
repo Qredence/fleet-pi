@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest"
 import { getOpenApiMetadata } from "@asteasolutions/zod-to-openapi"
+import { describe, expect, it } from "vitest"
+
 import {
   ChatCommandsResponseSchema,
   ChatSlashCommandInfoSchema,

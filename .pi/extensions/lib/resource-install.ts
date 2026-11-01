@@ -10,6 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
+
 import { fetchPublicHttpsUrl } from "./url-security"
 
 export type ResourceInstallKind = "skill" | "prompt" | "extension" | "package"

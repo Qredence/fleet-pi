@@ -1,7 +1,12 @@
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
+
+import {
+  createFauxCore,
+  fauxAssistantMessage,
+  getCurrentSystemPrompt,
+} from "@earendil-works/pi-ai"
 import {
   DefaultResourceLoader,
   ModelRuntime,
@@ -9,14 +14,14 @@ import {
   SettingsManager,
   createAgentSession,
 } from "@earendil-works/pi-coding-agent"
-import {
-  createFauxCore,
-  fauxAssistantMessage,
-  getCurrentSystemPrompt,
-} from "@earendil-works/pi-ai"
+import { describe, expect, it } from "vitest"
+
 import { ChatStreamEventSchema } from "@workspace/pi-protocol/chat-protocol.zod"
+
 import { FLEET_PI_IDENTITY } from "../../../../../../.pi/extensions/lib/fleet-pi-identity"
 import workspaceContextExtension from "../../../../../../.pi/extensions/workspace-context"
+import { DAYTONA_CREDENTIAL_REQUIRED_MESSAGE } from "../chat-fetch"
+import { applyChatStreamEvent } from "../chat-stream-state"
 import {
   FLEET_PI_NO_TOOLS_NOTICE,
   buildFleetPiInlineExtensions,
@@ -24,10 +29,9 @@ import {
   resolveChatWorkspaceStatus,
   withoutWorkspaceTools,
 } from "../runtime/fleet-pi-core-extensions"
-import { applyChatStreamEvent } from "../chat-stream-state"
-import { DAYTONA_CREDENTIAL_REQUIRED_MESSAGE } from "../chat-fetch"
-import type { InlineExtension } from "@earendil-works/pi-coding-agent"
+
 import type { Context } from "@earendil-works/pi-ai"
+import type { InlineExtension } from "@earendil-works/pi-coding-agent"
 
 async function runPrompt(
   extensionFactories: Array<InlineExtension>,

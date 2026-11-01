@@ -4,7 +4,6 @@
     "src/**/*.tsx",
     "e2e/**/*.ts",
     "scripts/**/*.ts",
-    "eslint.config.js",
     "vite.config.ts",
     "vitest.config.ts",
     "vitest.workers.config.ts",

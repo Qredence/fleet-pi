@@ -1,4 +1,3 @@
-import { classifyToolPath, rawWorkspaceMutationBlock } from "./mutation-tier"
 import {
   bashEvasionTargetsProtectedWorkspace,
   evaluatePlanCommand,
@@ -16,6 +15,7 @@ import {
   PLAN_MODE_TOOLS,
   buildModeContextMessage,
 } from "./mode-context-prompts"
+import { classifyToolPath, rawWorkspaceMutationBlock } from "./mutation-tier"
 import {
   registerPlanQuestionnaireTool,
   resolveQuestionnaireAnswer,
@@ -32,6 +32,9 @@ import {
   resolvePlanDecision,
   restorePlanState as restoreStoredPlanState,
 } from "./plan-state"
+
+import type { PlanModeState } from "./plan-state"
+import type { AgentMessage } from "@earendil-works/pi-agent-core"
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai"
 import type {
   AgentSessionRuntime,
@@ -42,8 +45,6 @@ import type {
   ChatPlanAction,
   ChatQuestionAnswer,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { AgentMessage } from "@earendil-works/pi-agent-core"
-import type { PlanModeState } from "./plan-state"
 
 export {
   cleanStepText,

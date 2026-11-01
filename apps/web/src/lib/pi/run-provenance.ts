@@ -9,25 +9,27 @@ import {
   statSync,
 } from "node:fs"
 import { join, relative } from "node:path"
-import {
-  normalizeCanonicalPath,
-  normalizeSessionFilePath,
-  openWorkspaceProvenance,
-} from "../db/workspace-provenance"
+
 import { createChatPostgresOperationQueue } from "../db/pi-session-mirror"
 import {
   CompositeProvenanceSink,
   PostgresMirrorSink,
   SqliteProvenanceSink,
 } from "../db/provenance-sink"
+import {
+  normalizeCanonicalPath,
+  normalizeSessionFilePath,
+  openWorkspaceProvenance,
+} from "../db/workspace-provenance"
+
 import type { AppRuntimeContext } from "../app-runtime"
+import type { ProvenanceSink } from "../db/provenance-sink"
+import type { ProvenanceMutationKind } from "../db/workspace-provenance"
 import type {
   ChatMode,
   ChatPlanAction,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ProvenanceMutationKind } from "../db/workspace-provenance"
-import type { ProvenanceSink } from "../db/provenance-sink"
 import type {
   ChatMessage,
   ChatToolPart,

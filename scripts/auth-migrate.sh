@@ -5,5 +5,5 @@ set -euo pipefail
 # FLEET_PI_AUTH_MIGRATION_DATABASE_URL (neondb_owner connection string).
 # Better Auth schema: programmatic `better-auth/db/migration` (the deprecated
 # `@better-auth/cli` could not load this repo's config).
-pnpm --filter web exec tsx scripts/auth-migrate.ts
-pnpm --filter web exec tsx scripts/auth-post-migrate.ts
+pnpm --filter web exec vpx scripts/auth-migrate.ts
+pnpm --filter web exec vpx scripts/auth-post-migrate.ts

@@ -3,6 +3,29 @@ import {
   createAgentSessionRuntime,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent"
+
+import {
+  getSandboxWorkspaceFS,
+  resolveUserSandboxContext,
+} from "@/lib/daytona/resolve-user-sandbox-context"
+import { SANDBOX_WORKSPACE_ROOT } from "@/lib/daytona/sandbox-prepare"
+import {
+  resolveDaytonaToolUser,
+  trackDaytonaToolSession,
+  untrackDaytonaToolSession,
+} from "@/lib/daytona/tool-context"
+import {
+  getCachedUserSandbox,
+  isDaytonaEnabled,
+  releaseUserSandbox,
+} from "@/lib/daytona/user-sandbox"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import { logger } from "@/lib/logger"
+
+import {
+  createSessionCircuitBreaker,
+  createSessionFallbackError,
+} from "./circuit-breaker"
 import {
   CHAT_TOOL_ALLOWLIST,
   answerPlanDecision,
@@ -14,36 +37,34 @@ import {
   resolveQuestionnaireAnswer,
 } from "./plan-mode"
 import {
-  createSessionCircuitBreaker,
-  createSessionFallbackError,
-} from "./circuit-breaker"
+  deleteActiveSessionRecord,
+  getActiveSessionRecords,
+  hasOtherActiveSessionForUser,
+  setActiveSessionRecord,
+} from "./runtime/active-sessions"
+import { sessionHasRestorableModel } from "./runtime/default-chat-model"
+import {
+  resolveChatWorkspaceStatus,
+  withoutWorkspaceTools,
+} from "./runtime/fleet-pi-core-extensions"
 import {
   applyModelSelection,
   resolveModelSelection,
   resolveServerDefaultChatModel,
 } from "./runtime/model-catalog"
-import { sessionHasRestorableModel } from "./runtime/default-chat-model"
 import { reconcileRuntimeOccModel } from "./runtime/openai-chat-completions-compat"
+import { applyRuntimeAuth } from "./runtime/session-factory"
+import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
+import { createSessionManager, isUsableSessionFile } from "./server-sessions"
 import {
   collectDiagnostics,
   createSessionServices,
   getSessionDir,
   safeRealpath,
 } from "./server-shared"
-import {
-  deleteActiveSessionRecord,
-  getActiveSessionRecords,
-  hasOtherActiveSessionForUser,
-  setActiveSessionRecord,
-} from "./runtime/active-sessions"
-import { resolveDaytonaRuntimeApiKey } from "./runtime/user-provider-secrets"
-import {
-  resolveChatWorkspaceStatus,
-  withoutWorkspaceTools,
-} from "./runtime/fleet-pi-core-extensions"
-import { applyRuntimeAuth } from "./runtime/session-factory"
-import { createSessionManager, isUsableSessionFile } from "./server-sessions"
+
 import type { ActiveSessionRecord } from "./runtime/active-sessions"
+import type { AppRuntimeContext } from "@/lib/app-runtime"
 import type {
   AgentSessionRuntime,
   CreateAgentSessionRuntimeFactory,
@@ -57,24 +78,6 @@ import type {
   ChatSessionMetadata,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { isHostedDeployment } from "@/lib/deployment/environment"
-import {
-  getCachedUserSandbox,
-  isDaytonaEnabled,
-  releaseUserSandbox,
-} from "@/lib/daytona/user-sandbox"
-import { SANDBOX_WORKSPACE_ROOT } from "@/lib/daytona/sandbox-prepare"
-import {
-  getSandboxWorkspaceFS,
-  resolveUserSandboxContext,
-} from "@/lib/daytona/resolve-user-sandbox-context"
-import {
-  resolveDaytonaToolUser,
-  trackDaytonaToolSession,
-  untrackDaytonaToolSession,
-} from "@/lib/daytona/tool-context"
-import { logger } from "@/lib/logger"
 
 // Cap concurrent runtime instances to prevent unbounded memory growth
 const MAX_CONCURRENT_RUNTIMES = 50
@@ -195,7 +198,9 @@ export function evictPiRuntimeForDeletedSession(input: {
 }
 
 export function evictAllPiRuntimesForUser(userId: string) {
-  for (const record of [...runtimeRecords.values()]) {
+  // Map iteration tolerates deleting the current entry, which
+  // `disposeRuntimeRecord` does, so no defensive copy is needed here.
+  for (const record of runtimeRecords.values()) {
     if (record.userId === userId) {
       disposeRuntimeRecord(record)
     }

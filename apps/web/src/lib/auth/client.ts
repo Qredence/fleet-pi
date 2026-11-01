@@ -1,6 +1,7 @@
 import { createAuthClient as createNeonAuthClient } from "@neondatabase/auth"
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react/adapters"
 import { createAuthClient as createBetterAuthClient } from "better-auth/react"
+
 import {
   isNeonManagedAuthClientEnabled,
   resolveClientNeonAuthUrl,

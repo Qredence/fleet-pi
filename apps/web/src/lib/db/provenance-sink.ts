@@ -12,6 +12,7 @@ import {
   replaceRunMutations,
   upsertToolCall,
 } from "./workspace-provenance"
+
 import type { PostgresQueryClient } from "./pi-session-mirror"
 import type {
   ProvenanceMutationKind,
@@ -177,7 +178,7 @@ export class PostgresMirrorSink implements ProvenanceSink {
 
   insertRunStart(input: ProvenanceRunStartInput) {
     const runStart = { ...input }
-    this.queue.enqueue(
+    void this.queue.enqueue(
       (client) =>
         insertPiRunStart(client, {
           ...runStart,
@@ -198,14 +199,14 @@ export class PostgresMirrorSink implements ProvenanceSink {
   }
 
   upsertToolExecution(input: ProvenanceToolExecutionInput) {
-    this.queue.enqueue(
+    void this.queue.enqueue(
       (client) => upsertPiToolExecution(client, input),
       this.options.userId
     )
   }
 
   replaceFileMutations(input: ProvenanceFileMutationsInput) {
-    this.queue.enqueue(
+    void this.queue.enqueue(
       (client) => replacePiFileMutations(client, input),
       this.options.userId
     )
@@ -214,7 +215,7 @@ export class PostgresMirrorSink implements ProvenanceSink {
   finalizeRun(input: ProvenanceFinalizeRunInput) {
     const pending = this.drainRunEvents(input.runId)
     const run = { ...input }
-    this.queue.enqueue(
+    void this.queue.enqueue(
       (client) =>
         appendPiRunEvents(client, pending).then(() =>
           finalizePiRun(client, run)
@@ -230,7 +231,7 @@ export class PostgresMirrorSink implements ProvenanceSink {
     // this is normally a no-op. Enqueued flushes complete before queue.close()
     // resolves because they are chained onto the queue's pending promise.
     for (const runId of Array.from(this.pendingEvents.keys())) {
-      this.queue.enqueue(
+      void this.queue.enqueue(
         (client) => appendPiRunEvents(client, this.drainRunEvents(runId)),
         this.options.userId
       )

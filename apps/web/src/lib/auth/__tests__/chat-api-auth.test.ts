@@ -1,4 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { auth } from "@/lib/auth/server"
+import {
+  lookupSessionIdBySessionFile,
+  verifyRunOwnership,
+  verifySessionOwnership,
+} from "@/lib/db/pi-session-ownership-db"
+
 import {
   enforceChatSessionOwnership,
   enforceRunOwnership,
@@ -7,13 +15,6 @@ import {
   unauthorizedChatResponse,
   withAuthenticatedChatRequest,
 } from "../chat-api-auth"
-
-import { auth } from "@/lib/auth/server"
-import {
-  lookupSessionIdBySessionFile,
-  verifyRunOwnership,
-  verifySessionOwnership,
-} from "@/lib/db/pi-session-ownership-db"
 
 vi.mock("@/lib/auth/server", () => ({
   auth: {

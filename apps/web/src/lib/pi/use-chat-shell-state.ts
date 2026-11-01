@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  toModelOption,
-  toModelSelection,
-} from "@workspace/hax-design/lib/pi/chat-helpers"
+
 import {
   applyThemePreference,
   clampResourceCanvasWidth,
@@ -12,18 +9,24 @@ import {
   storeThemePreference,
 } from "@workspace/hax-design/lib/canvas-utils"
 import { startHorizontalResize } from "@workspace/hax-design/lib/horizontal-resize"
+import {
+  toModelOption,
+  toModelSelection,
+} from "@workspace/hax-design/lib/pi/chat-helpers"
 import { resolveWorkspacePanelTarget } from "@workspace/hax-design/lib/workspace-path-nav"
+
 import { useChatStorage } from "./use-chat-storage"
-import type { PointerEvent as ReactPointerEvent } from "react"
+
+import type {
+  RightPanel,
+  ThemePreference,
+} from "@workspace/hax-design/lib/canvas-utils"
 import type {
   ChatMode,
   ChatModelsResponse,
   ChatSessionMetadata,
 } from "@workspace/pi-protocol/chat-protocol"
-import type {
-  RightPanel,
-  ThemePreference,
-} from "@workspace/hax-design/lib/canvas-utils"
+import type { PointerEvent as ReactPointerEvent } from "react"
 
 /**
  * Pick the model to preselect. The server reports `selectedModelKey: ""` when

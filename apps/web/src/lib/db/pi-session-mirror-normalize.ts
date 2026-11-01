@@ -2,6 +2,7 @@ import {
   MIRROR_JSON_SANITIZE_OPTIONS,
   sanitizeJsonForStorage,
 } from "./json-storage"
+
 import type { SessionEntry } from "@earendil-works/pi-coding-agent"
 
 type NormalizedSessionEntry = {

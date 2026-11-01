@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { applySandboxCwdToPrompt } from "../../../../../../.pi/extensions/lib/sandbox-prompt-cwd"
 
 describe("applySandboxCwdToPrompt", () => {

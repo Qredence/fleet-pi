@@ -1,11 +1,13 @@
 import { readFile, readdir } from "node:fs/promises"
 import { resolve } from "node:path"
+
+import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
 import { isInsideUserVolume } from "./lib/project-trust"
 import {
   formatProjectMemoryForStartupContext,
   readProjectMemoryIndex,
 } from "./lib/workspace-memory-index"
-import { applyFleetPiIdentity } from "./lib/fleet-pi-identity"
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 const WORKSPACE_ROOT = "agent-workspace"

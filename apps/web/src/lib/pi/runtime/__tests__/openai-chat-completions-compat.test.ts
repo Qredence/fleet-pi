@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
+
 import {
   OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT,
   mergeOpenAiChatCompletionsGatewayCompat,
   reconcileOpenAiChatCompletionsModel,
   reconcileRuntimeOccModel,
 } from "../openai-chat-completions-compat"
+
 import type * as NeonAiGatewayModule from "../neon-ai-gateway"
 
 vi.mock("../neon-ai-gateway", async (importOriginal) => {

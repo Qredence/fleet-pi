@@ -1,11 +1,13 @@
 import { execFileSync } from "node:child_process"
+
 import { describe, expect, it } from "vitest"
-import { FLEET_PI_SHARED_PROJECT_SETTINGS } from "../runtime/fleet-default-project-settings"
-import { mergeProjectSettingsRecords } from "../runtime/project-settings-merge"
+
 import {
   EXPECTED_PROJECT_EXTENSION_NAMES,
   collectResourceExpectationDiagnostics,
 } from "../resource-expectations"
+import { FLEET_PI_SHARED_PROJECT_SETTINGS } from "../runtime/fleet-default-project-settings"
+import { mergeProjectSettingsRecords } from "../runtime/project-settings-merge"
 
 describe("resource expectations", () => {
   it("accepts all expected project extensions", () => {
@@ -44,10 +46,14 @@ describe("resource expectations", () => {
     // gitignored. It is read from disk by no test, so a clean checkout has no
     // copy to read.
     expect(() =>
-      execFileSync("git", ["ls-files", "--error-unmatch", ".pi/settings.json"], {
-        cwd: new URL("../../../../../../", import.meta.url),
-        stdio: "ignore",
-      })
+      execFileSync(
+        "git",
+        ["ls-files", "--error-unmatch", ".pi/settings.json"],
+        {
+          cwd: new URL("../../../../../../", import.meta.url),
+          stdio: "ignore",
+        }
+      )
     ).toThrow()
   })
 

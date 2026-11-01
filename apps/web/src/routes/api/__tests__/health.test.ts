@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
+
 import { healthHandler } from "../health"
 
 describe("GET /api/health", () => {
   it("returns 200 with status ok", async () => {
-    const response = await healthHandler()
+    const response = healthHandler()
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -11,7 +12,7 @@ describe("GET /api/health", () => {
   })
 
   it("responds with application/json content type", async () => {
-    const response = await healthHandler()
+    const response = healthHandler()
 
     expect(response.headers.get("content-type")).toBe("application/json")
   })

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { PGlite } from "@electric-sql/pglite"
 import { describe, expect, it } from "vitest"
+
 import {
   DEFAULT_APP_ROLE,
   assertSafeAppRole,
@@ -9,6 +10,7 @@ import {
 } from "../app-role"
 import { AUTH_POSTGRES_POST_MIGRATE_SQL } from "../auth-postgres-post-migrate"
 import { runChatMigrations } from "../chat-migrations"
+
 import type { ChatMigrationClient } from "../chat-migrations"
 
 describe("resolveAppRole", () => {

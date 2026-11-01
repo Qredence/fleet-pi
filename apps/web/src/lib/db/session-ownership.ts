@@ -3,7 +3,11 @@ export type SessionOwnershipRow = {
 }
 
 export type SessionOwnershipStatus =
-  "owned" | "foreign" | "missing" | "orphan" | "deleted"
+  | "owned"
+  | "foreign"
+  | "missing"
+  | "orphan"
+  | "deleted"
 
 /**
  * Resolves mirror-backed session ownership for an authenticated user.

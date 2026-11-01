@@ -1,6 +1,7 @@
 import { buildOpenUIPrompt } from "@workspace/pi-protocol/openui-prompt"
-import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
+
 import type { PlanModeState } from "./plan-state"
+import type { ChatMode } from "@workspace/pi-protocol/chat-protocol"
 
 type LocalToolMode = "agent" | "plan" | "harness"
 

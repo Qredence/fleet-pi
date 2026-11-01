@@ -7,12 +7,14 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { workspaceFileHandler } from "../workspace/file"
 import { workspaceItemHandler } from "../workspace/item"
 import { workspaceItemsHandler } from "../workspace/items"
 import { workspaceReindexHandler } from "../workspace/reindex"
 import { workspaceSearchHandler } from "../workspace/search"
-import { workspaceFileHandler } from "../workspace/file"
 import { workspaceTreeHandler } from "../workspace/tree"
 
 const { mockGetSession } = vi.hoisted(() => ({

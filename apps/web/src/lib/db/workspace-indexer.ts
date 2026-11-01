@@ -1,18 +1,20 @@
 import { createHash } from "node:crypto"
 import { readFile, readdir, stat } from "node:fs/promises"
 import { join, relative } from "node:path"
+
 import { WORKSPACE_SEMANTIC_PARSER_VERSION } from "../workspace/workspace-index-types"
 import {
   classifyWorkspacePath,
   parseWorkspaceFile,
 } from "../workspace/workspace-semantic-parsers"
+
 import { deterministicId } from "./json-storage"
 import {
   listWorkspaceProjectionItems,
   openWorkspaceProjection,
   seedWorkspaceProjectionConnection,
 } from "./workspace-projection"
-import type Database from "better-sqlite3"
+
 import type { AppRuntimeContext } from "../app-runtime"
 import type {
   WorkspacePathClassification,
@@ -20,6 +22,7 @@ import type {
   WorkspaceSemanticRecord,
 } from "../workspace/workspace-index-types"
 import type { WorkspaceProjectionItemRow } from "./workspace-projection"
+import type Database from "better-sqlite3"
 
 type WorkspaceIndexDiagnostic = {
   path?: string

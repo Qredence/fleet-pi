@@ -1,35 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ChatCommandPalette } from "@workspace/hax-design/components/fleet-pi/chat-command-palette"
-import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
-import { RightPanelShell } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-shell"
-import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
-import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
-import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
-import {
-  CHAT_MODES,
-  queueLabel,
-  toModelOption,
-} from "@workspace/hax-design/lib/pi/chat-helpers"
-import type {
-  ChatPiSettingsUpdate,
-  ChatSettingsResponse,
-} from "@workspace/pi-protocol/chat-protocol"
-import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
-import type { SettingsSlashTab } from "@/lib/pi/slash-commands"
-import { useChatWorkspaceHeader } from "@/lib/pi/use-chat-workspace-header"
-import { ChatPanel } from "@/lib/pi/chat-panel"
-import { useLocalSlashActions } from "@/lib/pi/use-local-slash-actions"
-import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
-import { usePiChat } from "@/lib/pi/use-pi-chat"
-import {
-  isModelPickerReady,
-  useSendWhenModelReady,
-} from "@/lib/pi/use-send-when-model-ready"
+
+import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
 import { useOptionalUser } from "@/lib/auth/use-auth"
 import { isCloudflareDeployment } from "@/lib/deployment/environment"
-import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
-import { identifyAnalyticsUser } from "@/lib/analytics/posthog"
+import { ChatPanel } from "@/lib/pi/chat-panel"
 import {
   useChatCommands,
   useChatModelCatalog,
@@ -43,16 +18,43 @@ import {
   useUpdateChatSettings,
   useWorkspaceTree,
 } from "@/lib/pi/chat-queries"
+import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
+import { assistantMessageHasPendingQuestion } from "@/lib/pi/question-pending"
 import { buildSlashCommands } from "@/lib/pi/slash-commands"
-import { useResourceInstallRefresh } from "@/lib/pi/use-resource-install-refresh"
 import { useChatShellState } from "@/lib/pi/use-chat-shell-state"
-import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
 import {
   useActiveSessionLabel,
   useChatSuggestions,
 } from "@/lib/pi/use-chat-view"
+import { useChatWorkspaceHeader } from "@/lib/pi/use-chat-workspace-header"
+import { useLocalSlashActions } from "@/lib/pi/use-local-slash-actions"
 import { usePendingQuestionBar } from "@/lib/pi/use-pending-question-bar"
+import { usePiChat } from "@/lib/pi/use-pi-chat"
+import { useResourceInstallRefresh } from "@/lib/pi/use-resource-install-refresh"
+import { useRightPanelContextValue } from "@/lib/pi/use-right-panel-context-value"
+import {
+  isModelPickerReady,
+  useSendWhenModelReady,
+} from "@/lib/pi/use-send-when-model-ready"
 import { loadWorkspaceFile } from "@/lib/workspace/client"
+import { ChatCommandPalette } from "@workspace/hax-design/components/fleet-pi/chat-command-palette"
+import { ChatWorkspaceLayout } from "@workspace/hax-design/components/fleet-pi/layout/chat-workspace-layout"
+import { RightPanelProvider } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-context"
+import { RightPanelShell } from "@workspace/hax-design/components/fleet-pi/layout/right-panel-shell"
+import { SettingsDialog } from "@workspace/hax-design/components/fleet-pi/pi/settings-dialog"
+import { UiErrorBoundary } from "@workspace/hax-design/components/fleet-pi/ui-error-boundary"
+import {
+  CHAT_MODES,
+  queueLabel,
+  toModelOption,
+} from "@workspace/hax-design/lib/pi/chat-helpers"
+
+import type { SettingsSlashTab } from "@/lib/pi/slash-commands"
+import type { ChatModelOption } from "@workspace/hax-design/lib/pi/chat-helpers"
+import type {
+  ChatPiSettingsUpdate,
+  ChatSettingsResponse,
+} from "@workspace/pi-protocol/chat-protocol"
 
 export const Route = createFileRoute("/")({
   loader: () => ({ hostedAgentOnly: isCloudflareDeployment() }),

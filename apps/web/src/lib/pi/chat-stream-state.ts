@@ -1,20 +1,21 @@
 import {
+  DAYTONA_CREDENTIAL_REQUIRED_MESSAGE,
+  labelForState,
+} from "./chat-fetch"
+import {
   appendAssistantDelta,
   createTextMessage,
   upsertAssistantThinkingPart,
   upsertAssistantToolPart,
 } from "./chat-message-helpers"
-import {
-  DAYTONA_CREDENTIAL_REQUIRED_MESSAGE,
-  labelForState,
-} from "./chat-fetch"
-import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
+
 import type { QueueState } from "./chat-fetch"
 import type {
   ChatSessionMetadata,
   ChatStreamEvent,
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
+import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 export type ChatStreamSnapshot = {
   activityLabel?: string

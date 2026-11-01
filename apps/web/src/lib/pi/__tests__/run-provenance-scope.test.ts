@@ -1,12 +1,15 @@
 import * as NodeFS from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { createRunDetailResponse } from "../provenance-query"
 import {
   createRunProvenanceRecorder,
   mutationsFromToolResults,
 } from "../run-provenance"
-import { createRunDetailResponse } from "../provenance-query"
+
 import type { AppRuntimeContext } from "../../app-runtime"
 import type { WorkspaceFS } from "../../workspace/workspace-fs"
 
@@ -130,7 +133,7 @@ describe("provenance snapshot scoping", () => {
       "# Preferences\n\n- beta\n"
     )
     recorder.record(assistantDone("run-1", sessionFile, "session-1"))
-    recorder.close()
+    void recorder.close()
 
     expect(readdirSyncSpy).not.toHaveBeenCalled()
 
@@ -199,7 +202,7 @@ describe("provenance snapshot scoping", () => {
     writeProjectFile(projectRoot, "src/out-of-scope.ts", "export const x = 2\n")
 
     recorder.record(assistantDone("run-2", sessionFile, "session-2"))
-    recorder.close()
+    void recorder.close()
 
     const detail = createRunDetailResponse(context, "run-2")
     const paths = detail.mutations.map((mutation) => mutation.canonicalPath)
@@ -253,7 +256,7 @@ describe("provenance snapshot scoping", () => {
       Buffer.alloc(MAX_HASH_FILE_SIZE + 1, 0x62)
     )
     recorder.record(assistantDone("run-3", sessionFile, "session-3"))
-    recorder.close()
+    void recorder.close()
 
     const detail = createRunDetailResponse(context, "run-3")
     const paths = detail.mutations.map((mutation) => mutation.canonicalPath)
@@ -312,7 +315,7 @@ describe("Daytona mutations from edit/write tool results", () => {
     recorder.record(tool("edit", "t-fail", "output-error", "src/broken.ts"))
     recorder.record(tool("read", "t-read", "output-available", "src/read.ts"))
     recorder.record(assistantDone("run-d", sessionFile, "session-d"))
-    recorder.close()
+    void recorder.close()
 
     expect(readdirSyncSpy).not.toHaveBeenCalled()
     const detail = createRunDetailResponse(context, "run-d")
@@ -386,7 +389,7 @@ describe("run status from the terminal frame", () => {
       ...assistantDone("run-s", sessionFile, "session-s"),
       ...(stopReason && { stopReason }),
     })
-    recorder.close()
+    void recorder.close()
     expect(createRunDetailResponse(context, "run-s").run.status).toBe(status)
   })
 
@@ -407,7 +410,7 @@ describe("run status from the terminal frame", () => {
       ...assistantDone("run-e", sessionFile, "session-e"),
       stopReason: "error",
     })
-    recorder.close()
+    void recorder.close()
     expect(createRunDetailResponse(context, "run-e").run.status).toBe("errored")
   })
 })

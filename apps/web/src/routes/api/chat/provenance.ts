@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
+
+import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
+import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+
 import { resolveAppRuntimeContext } from "../../../lib/app-runtime"
 import {
   createPathProvenanceResponse,
   respondWithProvenanceError,
 } from "../../../lib/pi/provenance-query"
-import { withAuthenticatedChatRequest } from "@/lib/auth/chat-api-auth"
-import { fetchUserSessionIds } from "@/lib/db/pi-session-mirror"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export async function chatProvenanceHandler(request: Request, userId?: string) {
   const context = resolveAppRuntimeContext()

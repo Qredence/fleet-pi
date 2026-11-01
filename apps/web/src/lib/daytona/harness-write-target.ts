@@ -1,18 +1,21 @@
 import { readFile, readdir } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
+
 import {
   registerHarnessWriteResolver,
   requireHarnessWriteResolver,
 } from "../../../../../.pi/extensions/lib/harness-write"
 import { isDeployedChatRuntimeSurface } from "../pi/runtime/deployed-chat-runtime"
-import { persistHarnessInstallSettings } from "./harness-settings"
+
 import { executeCommand, uploadFile } from "./client"
-import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
-import { resolveDaytonaToolUser } from "./tool-context"
+import { persistHarnessInstallSettings } from "./harness-settings"
 import {
   SANDBOX_WARMING_MESSAGE,
   resolveReadySandbox,
 } from "./resolve-ready-sandbox"
+import { SANDBOX_WORKSPACE_ROOT } from "./sandbox-prepare"
+import { resolveDaytonaToolUser } from "./tool-context"
+
 import type { ResolveReadySandboxDeps } from "./resolve-ready-sandbox"
 import type { Sandbox } from "@daytona/sdk"
 

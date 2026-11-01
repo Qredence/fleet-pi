@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { CHAT_POSTGRES_RLS_STRICT_SQL } from "../chat-postgres-rls-strict"
 
 describe("chat postgres RLS strict migration", () => {

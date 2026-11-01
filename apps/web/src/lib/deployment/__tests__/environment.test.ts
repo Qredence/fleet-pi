@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { isCloudflareDeployment, isHostedDeployment } from "../environment"
 
 describe("deployment environment", () => {

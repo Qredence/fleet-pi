@@ -1,3 +1,7 @@
+import { removeProviderCredentialsAndSettings } from "@/lib/db/remove-provider-with-settings"
+import { isHostedDeployment } from "@/lib/deployment/environment"
+import { removeEnvVars } from "@/lib/env-manager"
+
 import { cleanupProjectSettingsForRemovedProvider } from "./cleanup-project-settings-for-removed-provider"
 import { loadPersistedProjectSettingsOverrides } from "./durable-project-settings"
 import {
@@ -6,10 +10,8 @@ import {
 } from "./project-settings-persist"
 import { resolveProviderCredentialBundle } from "./provider-credential-bundle"
 import { saveProjectSettingsOverrides } from "./settings-bridge"
+
 import type { AppRuntimeContext } from "@/lib/app-runtime"
-import { removeEnvVars } from "@/lib/env-manager"
-import { removeProviderCredentialsAndSettings } from "@/lib/db/remove-provider-with-settings"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export async function removeProviderBundle(options: {
   context: AppRuntimeContext

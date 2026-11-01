@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execSync } from "node:child_process"
 /**
  * Validates that commands documented in AGENTS.md exist in package.json
  * scripts and execute without error.
@@ -12,7 +13,6 @@
  */
 import fs from "node:fs"
 import path from "node:path"
-import { execSync } from "node:child_process"
 
 const AGENTS_MD = path.resolve("AGENTS.md")
 const PACKAGE_JSON = path.resolve("package.json")
@@ -70,7 +70,7 @@ function extractPnpmCommands(content) {
     commands.add("pnpm " + match[1].trim())
   }
 
-  return Array.from(commands).sort()
+  return Array.from(commands).sort((left, right) => left.localeCompare(right))
 }
 
 function existenceOnlyReasonFor(scriptName) {

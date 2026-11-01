@@ -11,7 +11,7 @@ Fleet Pi uses [Turborepo](https://turbo.build/) to coordinate tasks across the `
 ```bash
 pnpm build        # builds all workspaces in dependency order
 pnpm dev          # starts dev servers (apps/web only today)
-pnpm lint         # lints all workspaces
+pnpm lint         # lints the whole repo (scripts, packages, .pi/extensions)
 pnpm typecheck    # type-checks all workspaces
 pnpm test         # runs all unit tests
 pnpm e2e          # runs Playwright tests
@@ -21,28 +21,26 @@ Turborepo caches task outputs in `.turbo/`. If results look stale after a code c
 
 The pipeline is defined in `turbo.json` at the repo root. Build outputs and cache inputs are declared there; changing them incorrectly can cause cache hits on dirty code, so edit with care.
 
-## Prettier
+## Vite+ (Oxfmt and Oxlint)
 
-Prettier formats all TypeScript, TSX, JavaScript, JSON, CSS, and Markdown files. Configuration lives in `.prettierrc` at the repo root. Key settings: 80-character line width, 2-space indent, no semicolons.
+Static analysis runs through [Vite+](https://vite.plus/) (`vite-plus@1.4.0`), which hosts Oxfmt and Oxlint. Both read their config from the `fmt` and `lint` blocks of the root `vite.config.ts` — there is no `.prettierrc`, `.prettierignore` or `eslint.config.*` in the repo, and adding one is a regression.
 
-Tailwind CSS class ordering is handled automatically by `prettier-plugin-tailwindcss`.
+**Oxfmt** formats TypeScript, TSX, JavaScript, JSON, CSS, and Markdown. Key settings (the `fmt` block): 80-character line width, 2-space indent, no semicolons, ES5 trailing commas, LF endings. Import ordering and Tailwind class ordering are both handled by Oxfmt itself (`sortImports` and `sortTailwindcss`), so there is no `import/order` rule and no `prettier-plugin-tailwindcss`.
+
+Two trees are deliberately excluded from formatting and say so in `fmt.ignorePatterns`: `docs/**` and `agent-workspace/**` (prose and agent-owned files), plus `.pi/extensions/vendor/**`, which is vendored upstream code that must stay diffable against a refresh. First-party code in `.pi/extensions/` **is** formatted and linted.
+
+**Oxlint** enforces the `correctness` category as errors and `suspicious` as warnings. `typeAware: true` enables the nursery rules that need types. Repo-specific policies ported from the old ESLint configs live in the same `lint` block: `complexity: 85`, `max-lines: 1200`, `max-lines-per-function: 460`, `unicorn/prefer-node-protocol`, and the two `no-restricted-imports` overrides.
 
 Run manually:
 
 ```bash
 pnpm format           # formats all workspaces
-pnpm --filter web format  # formats apps/web only
+pnpm format:check     # CI gate: fails if anything is unformatted
+pnpm lint             # lints the whole repo (same command CI runs)
+pnpm exec vp check    # format + lint in one pass
 ```
 
-## ESLint
-
-ESLint enforces code style and catches common mistakes. The root `eslint.config.js` delegates to workspace-specific configs so lint-staged can invoke ESLint from the repo root without `--filter`.
-
-Run:
-
-```bash
-pnpm lint
-```
+`apps/web` keeps its own `vite.config.ts` for the bundler; both static-analysis blocks live only in the root file, and a `fmt`/`lint` block added to a nested `vite.config.ts` replaces the root one rather than merging. `vp` from a workspace directory still resolves the root config.
 
 ## lint-staged + Husky
 
@@ -50,10 +48,11 @@ Pre-commit hooks are managed by [Husky](https://typicode.github.io/husky/). The 
 
 `lint-staged` configuration (in `package.json`):
 
-- **`*.{ts,tsx,js,jsx,json,css,md}`** → `prettier --write`
-- **`{apps,packages}/**/\*.{ts,tsx,js,jsx}`** → `eslint --fix`
+- **`*.{ts,tsx,js,jsx,json,css,md}`** → `vp fmt`
+- **`{apps,packages}/**/\*.{ts,tsx,js,jsx}`** → `vp lint --fix` (per workspace, via `pnpm --filter`)
+- **`.pi/extensions/**/\*.ts`** → `vp lint --fix .pi/extensions`
 
-A commit is blocked if ESLint reports errors that cannot be auto-fixed. Husky registers itself via the `prepare` script that runs after `pnpm install`, so hooks are active automatically in any fresh clone.
+A commit is blocked if Oxlint reports errors that cannot be auto-fixed. Husky registers itself via the `prepare` script that runs after `pnpm install`, so hooks are active automatically in any fresh clone.
 
 ## knip — Dead Code Detection
 

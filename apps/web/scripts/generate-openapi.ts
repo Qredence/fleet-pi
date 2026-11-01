@@ -1,11 +1,13 @@
+import { spawnSync } from "node:child_process"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV31,
 } from "@asteasolutions/zod-to-openapi"
-import { format, resolveConfig } from "prettier"
 import { z } from "zod"
+
 import {
   ChatCommandsResponseSchema,
   ChatModelsDiscoverRequestSchema,
@@ -1133,14 +1135,27 @@ const doc = generator.generateDocument({
 })
 
 const outPath = join(import.meta.dirname, "..", "openapi.json")
-// Format with the repo's Prettier config so regeneration is diff-stable
-// against the (lint-staged formatted) committed document.
-const prettierConfig = await resolveConfig(outPath)
-const formatted = await format(JSON.stringify(doc, null, 2), {
-  ...prettierConfig,
-  parser: "json",
-  filepath: outPath,
-})
+// Format through the `vp` CLI rather than calling `format()` with a hand-copied
+// options object: this inherits the root vite.config.ts `fmt` block by
+// construction, so changing printWidth there can never leave the committed
+// document failing `format:check` while this script still reports "up to date".
+function formatThroughCli(source: string) {
+  // Run from the repo root and resolve the `vp` shim by path: `pnpm exec` and a
+  // workspace cwd both print dotenvx banners that would corrupt the output.
+  const repoRoot = join(import.meta.dirname, "..", "..", "..")
+  const result = spawnSync(
+    join(repoRoot, "node_modules", ".bin", "vp"),
+    ["fmt", "--stdin-filepath", outPath],
+    { cwd: repoRoot, input: source, encoding: "utf8" }
+  )
+  if (result.status !== 0) {
+    console.error(result.stderr || "vp fmt failed")
+    process.exit(1)
+  }
+  return result.stdout
+}
+
+const formatted = formatThroughCli(`${JSON.stringify(doc, null, 2)}\n`)
 
 if (process.argv.includes("--check")) {
   let committed: string

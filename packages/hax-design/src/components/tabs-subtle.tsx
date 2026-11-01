@@ -1,5 +1,7 @@
 "use client"
 
+import { Tabs } from "@base-ui/react/tabs"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import {
   createContext,
   forwardRef,
@@ -9,13 +11,12 @@ import {
   useRef,
   useState,
 } from "react"
-import { Tabs } from "@base-ui/react/tabs"
-import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 
 import { useProximityHover } from "../hooks/use-proximity-hover"
 import { fontWeights } from "../lib/font-weight"
 import { spring } from "../lib/springs"
 import { cn } from "../lib/utils"
+
 import type { ItemRect } from "../hooks/use-proximity-hover"
 import type { LucideIcon } from "lucide-react"
 import type { HTMLAttributes, ReactNode } from "react"

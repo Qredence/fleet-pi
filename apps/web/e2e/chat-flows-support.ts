@@ -1,6 +1,5 @@
- 
- 
 import { expect } from "@playwright/test"
+
 import type { Locator, Page, Route } from "@playwright/test"
 
 export const MOCK_SESSION_FILE = "/tmp/fleet-pi-test-session.json"
@@ -725,11 +724,11 @@ export function mockChatSettings(page: Page, settings = MOCK_SETTINGS) {
           ...current,
           effective: {
             ...current.effective,
-            ...(body.settings ?? {}),
+            ...body.settings,
           },
           project: {
             ...current.project,
-            ...(body.settings ?? {}),
+            ...body.settings,
           },
         }
       }

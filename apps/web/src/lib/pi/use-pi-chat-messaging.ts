@@ -1,25 +1,28 @@
 import { useCallback } from "react"
 import { toast } from "sonner"
+
+import {
+  captureChatSessionStarted,
+  captureConversationSaved,
+} from "@/lib/analytics/posthog"
+
 import { createTextMessage } from "./chat-message-helpers"
 import { applyChatStreamEvent } from "./chat-stream-state"
 import { hostedWhenBusy } from "./hosted-busy-delivery"
 import { failChatRequest } from "./use-pi-chat-forbidden-session"
+
+import type { ChatClient } from "./chat-client"
+import type { QueueState } from "./chat-fetch"
+import type { SendMessageInput } from "./use-pi-chat"
 import type { ChatStateSetters } from "./use-pi-chat-forbidden-session"
-import type { MutableRefObject } from "react"
-import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatModelSelection,
   ChatSessionMetadata,
   ChatStreamEvent,
 } from "@workspace/pi-protocol/chat-protocol"
-import type { ChatClient } from "./chat-client"
-import type { QueueState } from "./chat-fetch"
-import type { SendMessageInput } from "./use-pi-chat"
-import {
-  captureChatSessionStarted,
-  captureConversationSaved,
-} from "@/lib/analytics/posthog"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
+import type { MutableRefObject } from "react"
 
 type PiChatMessagingRefs = {
   abortRef: MutableRefObject<AbortController | null>

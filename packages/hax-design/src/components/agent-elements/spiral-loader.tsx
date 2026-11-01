@@ -1,11 +1,13 @@
 "use client"
 
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
-import { cn } from "./utils/cn"
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
+
 import { spiralFastData, spiralSlowData } from "./spiral-loader-data"
-import type { CSSProperties } from "react"
+import { cn } from "./utils/cn"
+
 import type { LottieComponentProps, LottieRefCurrentProps } from "lottie-react"
+import type { CSSProperties } from "react"
 
 const LottieLazy = lazy(() => import("./spiral-loader-lottie"))
 

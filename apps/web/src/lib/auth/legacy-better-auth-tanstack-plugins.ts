@@ -1,4 +1,5 @@
 import { tanstackStartCookies } from "better-auth/tanstack-start"
+
 import type { BetterAuthPlugin } from "better-auth"
 
 /**

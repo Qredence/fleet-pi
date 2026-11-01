@@ -1,17 +1,20 @@
 import { createContext, useContext, useMemo } from "react"
+
 import { AgentChat } from "../../agent-elements/agent-chat"
 import { cn } from "../../agent-elements/utils/cn"
 import { GenerativeTextRenderer } from "../../openui/inline-renderer"
 import { PI_TOOL_RENDERERS } from "../pi/tool-renderers"
-import { FleetPiToolRenderer } from "./fleet-pi-tool-renderer"
+
 import {
   FleetPiInputBar,
   withFleetPiSuggestionStyles,
 } from "./fleet-pi-input-bar"
-import type { AgentChatProps } from "../../agent-elements/types"
-import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
-import type { FleetPiInputBarProps } from "./fleet-pi-input-bar"
+import { FleetPiToolRenderer } from "./fleet-pi-tool-renderer"
+
 import type { InputBarProps } from "../../agent-elements/input-bar"
+import type { AgentChatProps } from "../../agent-elements/types"
+import type { FleetPiInputBarProps } from "./fleet-pi-input-bar"
+import type { ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 export type FleetPiAgentChatProps = Omit<
   AgentChatProps,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+
 import { resolveChatDatabaseUrl } from "../chat-database-url"
 
 describe("resolveChatDatabaseUrl", () => {

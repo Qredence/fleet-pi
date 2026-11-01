@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { ChatRequestError } from "../../pi/chat-fetch"
 import { loadWorkspaceFile } from "../client"
+
 import type { WorkspaceFileResponse } from "@workspace/pi-protocol/chat-protocol"
 
 describe("loadWorkspaceFile", () => {

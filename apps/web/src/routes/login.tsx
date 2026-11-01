@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
+
+import { isLocalAnonymousAuthAllowed } from "@/lib/auth/auth-mode"
+import { signIn, signUp, useSession } from "@/lib/auth/use-auth"
 import {
   LoginPage,
   LoginPageLoading,
 } from "@workspace/hax-design/components/fleet-pi/auth/login-page"
-import { toast } from "sonner"
-import { signIn, signUp, useSession } from "@/lib/auth/use-auth"
-import { isLocalAnonymousAuthAllowed } from "@/lib/auth/auth-mode"
 
 export const Route = createFileRoute("/login")({ component: LoginRoute })
 

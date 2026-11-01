@@ -1,18 +1,20 @@
-import {
-  listCustomProviderRegistrations,
-  toPiApi,
-} from "../runtime/custom-provider-registry"
+import { loadUserProjectSettings } from "@/lib/db/user-settings"
+
 import {
   OCC_CHAT_PROVIDER,
   isEnabledChatModelSelection,
   isOccChatProviderAlias,
   resolveOccChatModelSelection,
 } from "../runtime/chat-model-rematch"
+import {
+  listCustomProviderRegistrations,
+  toPiApi,
+} from "../runtime/custom-provider-registry"
 import { resolveOpenAiChatCompletionsConfig } from "../runtime/openai-chat-completions-provider"
 import { resolveUserProviderSecret } from "../runtime/user-provider-secrets"
-import type { ChatModelSelection } from "@workspace/pi-protocol/chat-protocol"
+
 import type { DurableAgentModelConfig, DurableModelApi } from "./durable-model"
-import { loadUserProjectSettings } from "@/lib/db/user-settings"
+import type { ChatModelSelection } from "@workspace/pi-protocol/chat-protocol"
 
 const BUILTIN_DURABLE_PROVIDER_ENDPOINTS: Readonly<
   Record<string, { baseUrl: string; api: DurableModelApi } | undefined>

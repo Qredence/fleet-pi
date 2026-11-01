@@ -1,5 +1,7 @@
 import { Eye, EyeOff, Lock } from "lucide-react"
 import { useId } from "react"
+
+import { cn } from "../../../../../lib/utils"
 import { Field, FieldLabel } from "../../../../field"
 import {
   InputGroup,
@@ -7,8 +9,8 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "../../../../input-group"
-import { cn } from "../../../../../lib/utils"
 import { HIT_AREA_EXPAND_CLASS } from "../../../styles/tokens"
+
 import type { LucideIcon } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 

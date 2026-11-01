@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+
 import trustHandlerExtension from "../../../../../../../.pi/extensions/trust-handler"
+
 import type {
   ProjectTrustContext,
   ProjectTrustEventResult,

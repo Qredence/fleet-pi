@@ -1,3 +1,4 @@
+import { isHostedDeployment } from "@/lib/deployment/environment"
 import {
   KNOWN_PROVIDERS,
   LLM_PROVIDER_ENV_SCRUB_IDS,
@@ -6,12 +7,14 @@ import {
   INFRA_PROVIDER_IDS as PROTOCOL_INFRA_PROVIDER_IDS,
   isNamedOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { loadDecryptedUserProviderSecrets } from "../db/user-providers"
 import { isEnvVarConfigured } from "../env-manager"
+
 import { fingerprintProviderSecrets } from "./sandbox-prepare"
 import { isDaytonaSecretsEligibleProvider } from "./secret-hosts"
+
 import type { PiAuthFile, SandboxProviderSecrets } from "./sandbox-prepare"
-import { isHostedDeployment } from "@/lib/deployment/environment"
 
 export type { PiAuthFile, SandboxProviderSecrets }
 

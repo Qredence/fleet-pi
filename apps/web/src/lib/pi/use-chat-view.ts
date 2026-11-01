@@ -1,16 +1,18 @@
 import { useMemo } from "react"
+
 import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
+
 import type { SuggestionItem } from "@workspace/hax-design/components/agent-elements/input/suggestions"
-import type {
-  ChatMessage,
-  ChatToolPart,
-} from "@workspace/pi-protocol/chat-types"
 import type {
   ChatMode,
   ChatResourcesResponse,
   ChatSessionInfo,
   WorkspaceTreeResponse,
 } from "@workspace/pi-protocol/chat-protocol"
+import type {
+  ChatMessage,
+  ChatToolPart,
+} from "@workspace/pi-protocol/chat-types"
 
 export function useActiveSessionLabel({
   activeSessionId,
@@ -130,7 +132,8 @@ function buildContextSuggestions({
       if (part.type.startsWith("tool-")) {
         toolTypes.add(part.type)
         const input = (part as ChatToolPart).input as
-          Record<string, unknown> | undefined
+          | Record<string, unknown>
+          | undefined
         const filePath =
           typeof input?.file_path === "string"
             ? input.file_path

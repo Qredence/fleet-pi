@@ -1,8 +1,9 @@
 import { memo, useMemo } from "react"
+
 import { CheckIcon, IconArrowRight } from "../icons"
 import { TextShimmer } from "../text-shimmer"
-import { areToolPropsEqual, getToolStatus } from "../utils/format-tool"
 import { cn } from "../utils/cn"
+import { areToolPropsEqual, getToolStatus } from "../utils/format-tool"
 
 export type TodoItem = {
   content: string

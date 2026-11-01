@@ -1,29 +1,31 @@
 import {
+  listLocalProviderInstances,
+  loadLocalProviderInstanceApiKey,
+  useLocalProviderStore,
+} from "@/lib/db/local-provider-instances"
+import { listOccInstances, loadOccInstanceApiKey } from "@/lib/db/occ-instances"
+import {
   OCC_INSTANCE_ID_PREFIX,
   OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
   isCustomProviderId,
   isNamedOccInstanceId,
   isOccFamilyApi,
 } from "@workspace/pi-protocol/provider-catalog"
-import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
+
 import { modelIdsForRegistration } from "./explicit-enabled-model-ids"
+import { OPENAI_CHAT_COMPLETIONS_GATEWAY_COMPAT } from "./openai-chat-completions-compat"
 import {
   assertCustomProviderBaseUrl,
   isGatewayHost,
 } from "./openai-chat-completions-url"
-import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
+
+import type { OccInstance } from "@/lib/db/occ-instances"
+import type { Api } from "@earendil-works/pi-ai"
 import type {
   AgentSessionServices,
   ProviderConfig,
 } from "@earendil-works/pi-coding-agent"
-import type { Api } from "@earendil-works/pi-ai"
-import type { OccInstance } from "@/lib/db/occ-instances"
-import { listOccInstances, loadOccInstanceApiKey } from "@/lib/db/occ-instances"
-import {
-  listLocalProviderInstances,
-  loadLocalProviderInstanceApiKey,
-  useLocalProviderStore,
-} from "@/lib/db/local-provider-instances"
+import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 
 type RegisteredModels = NonNullable<ProviderConfig["models"]>
 

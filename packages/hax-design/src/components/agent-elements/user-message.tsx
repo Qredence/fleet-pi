@@ -1,8 +1,10 @@
 import { memo, useState } from "react"
-import { cn } from "./utils/cn"
-import { FileAttachment } from "./input/file-attachment"
+
 import { ImageLightbox } from "./image-lightbox"
+import { FileAttachment } from "./input/file-attachment"
 import { isTextPart } from "./utils/chat-message-parts"
+import { cn } from "./utils/cn"
+
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
 
 export type UserMessageProps = {

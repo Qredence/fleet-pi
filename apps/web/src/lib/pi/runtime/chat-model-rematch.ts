@@ -1,5 +1,6 @@
-import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
 import { isModelPatternEnabled } from "@workspace/pi-protocol/model-patterns"
+import { OPENAI_CHAT_COMPLETIONS_PROVIDER_ID } from "@workspace/pi-protocol/provider-catalog"
+
 import {
   NEON_AI_GATEWAY_DEFAULT_MODEL,
   isLegacyFleetOccModelId,

@@ -1,30 +1,32 @@
 import {
-  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
-  isCustomProviderId,
-  isNamedOccInstanceId,
-  normalizeCustomProviderInstance,
-} from "@workspace/pi-protocol/provider-catalog"
-import {
-  listGoogleGenaiModels,
-  listOpenAiCompatibleModels,
-  modelSupportsProviderApi,
-} from "./openai-models-list"
-import { assertCustomProviderBaseUrl } from "./openai-chat-completions-url"
-import { resolveOpenAiChatCompletionsConfig } from "./openai-chat-completions-provider"
-import type {
-  ChatModelInfo,
-  PiCustomProviderApi,
-} from "@workspace/pi-protocol/chat-protocol"
-import type { RemoteOpenAiModel } from "./openai-models-list"
+  getLocalProviderInstance,
+  loadLocalProviderInstanceApiKey,
+  useLocalProviderStore,
+} from "@/lib/db/local-provider-instances"
 import {
   getOccInstanceById,
   loadOccInstanceApiKey,
 } from "@/lib/db/occ-instances"
 import {
-  getLocalProviderInstance,
-  loadLocalProviderInstanceApiKey,
-  useLocalProviderStore,
-} from "@/lib/db/local-provider-instances"
+  OPENAI_CHAT_COMPLETIONS_PROVIDER_ID,
+  isCustomProviderId,
+  isNamedOccInstanceId,
+  normalizeCustomProviderInstance,
+} from "@workspace/pi-protocol/provider-catalog"
+
+import { resolveOpenAiChatCompletionsConfig } from "./openai-chat-completions-provider"
+import { assertCustomProviderBaseUrl } from "./openai-chat-completions-url"
+import {
+  listGoogleGenaiModels,
+  listOpenAiCompatibleModels,
+  modelSupportsProviderApi,
+} from "./openai-models-list"
+
+import type { RemoteOpenAiModel } from "./openai-models-list"
+import type {
+  ChatModelInfo,
+  PiCustomProviderApi,
+} from "@workspace/pi-protocol/chat-protocol"
 
 export type ProviderModelDiscovery =
   | { status: "skip" }

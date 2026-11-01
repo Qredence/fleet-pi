@@ -6,6 +6,7 @@
  */
 
 import { Daytona, DaytonaError } from "@daytona/sdk"
+
 import type {
   CreateSandboxBaseParams,
   DaytonaConfig,

@@ -1,4 +1,5 @@
 import { ArrowLeft, Info } from "lucide-react"
+
 import { Alert, AlertDescription } from "../../../../alert"
 import {
   AlertDialog,
@@ -11,13 +12,15 @@ import {
 } from "../../../../alert-dialog"
 import { Button } from "../../../../button"
 import { Spinner } from "../../../../spinner"
+import { ProviderCredentialFields } from "../shared/provider-credential-fields"
 import {
   PROVIDER_METADATA,
   isCustomProviderId,
   isOccProviderId,
 } from "../shared/provider-metadata"
-import { ProviderCredentialFields } from "../shared/provider-credential-fields"
+
 import { CUSTOM_PROVIDER_PICKER_ID } from "./use-provider-credentials-controller"
+
 import type {
   ChatProviderInfo,
   PiCustomProviderApi,

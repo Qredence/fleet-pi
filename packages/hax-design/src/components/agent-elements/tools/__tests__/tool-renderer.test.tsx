@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it } from "vitest"
+
 import { ToolRenderer } from "../tool-renderer"
+
 import type { CustomToolRendererProps } from "../../types"
 
 function MarkerRenderer({ name, status }: CustomToolRendererProps) {

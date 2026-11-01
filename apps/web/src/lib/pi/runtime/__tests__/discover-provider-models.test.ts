@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import {
   CUSTOM_PROVIDER_ID_PREFIX,
   OCC_INSTANCE_ID_PREFIX,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { discoverConfiguredProviderModels } from "../discover-provider-models"
+
 import { TEST_NEON_AI_GATEWAY_BASE_URL } from "./gateway-test-fixtures"
 
 const { getOccInstanceByIdMock, loadOccInstanceApiKeyMock } = vi.hoisted(

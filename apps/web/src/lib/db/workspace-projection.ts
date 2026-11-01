@@ -2,17 +2,20 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { basename, dirname, join } from "node:path"
+
+import {
+  isCloudflareDeployment,
+  isHostedDeployment,
+} from "@/lib/deployment/environment"
+
 import {
   WORKSPACE_INDEX_CATEGORY_VALUES,
   WORKSPACE_INDEX_SOURCE_OF_TRUTH_VALUES,
   WORKSPACE_SEMANTIC_RECORD_TYPE_VALUES,
 } from "../workspace/workspace-index-types"
-import type Database from "better-sqlite3"
+
 import type { AppRuntimeContext } from "../app-runtime"
-import {
-  isCloudflareDeployment,
-  isHostedDeployment,
-} from "@/lib/deployment/environment"
+import type Database from "better-sqlite3"
 
 export const WORKSPACE_PROJECTION_DATABASE_FILENAME =
   "workspace-projection.sqlite"

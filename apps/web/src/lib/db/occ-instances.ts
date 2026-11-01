@@ -9,15 +9,18 @@ import {
   toInstanceSlug,
   toOccInstanceId,
 } from "@workspace/pi-protocol/provider-catalog"
+
 import { decryptString, encryptString } from "../auth/crypto"
-import { withChatPostgresTransaction } from "./pi-session-mirror"
+
 import { isChatDatabaseConfigured } from "./chat-db-config"
 import {
   requireChatDatabaseOnHost,
   requireEncryptionSecret,
 } from "./chat-postgres-guards"
-import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
+import { withChatPostgresTransaction } from "./pi-session-mirror"
+
 import type { PostgresQueryClient } from "./pi-session-mirror"
+import type { PiCustomProviderApi } from "@workspace/pi-protocol/chat-protocol"
 
 /**
  * A named OpenAI Chat Completions-compatible provider instance. The API key is

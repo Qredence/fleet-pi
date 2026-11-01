@@ -1,6 +1,5 @@
-import type { ComponentType } from "react"
-
 import type { CustomToolRendererProps } from "../types"
+import type { ComponentType } from "react"
 
 export type ToolPartBase = {
   type: string

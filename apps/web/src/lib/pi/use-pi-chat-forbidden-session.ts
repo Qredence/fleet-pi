@@ -1,17 +1,20 @@
 import { toast } from "sonner"
+
 import { isForbiddenSessionError } from "./chat-fetch"
 import { EMPTY_QUEUE_STATE } from "./chat-stream-state"
+
 import type { ChatClient } from "./chat-client"
-import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
-import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
 import type { QueueState } from "./chat-fetch"
+import type { ChatSessionMetadata } from "@workspace/pi-protocol/chat-protocol"
+import type { ChatMessage, ChatStatus } from "@workspace/pi-protocol/chat-types"
 
 export type ChatStateSetters = {
   setActivityLabelSynced: (label: string | undefined) => void
   setError: (error: Error | null) => void
   setMessagesSynced: (
     updater:
-      Array<ChatMessage> | ((current: Array<ChatMessage>) => Array<ChatMessage>)
+      | Array<ChatMessage>
+      | ((current: Array<ChatMessage>) => Array<ChatMessage>)
   ) => void
   setPlanLabelSynced: (label: string | undefined) => void
   setQueueSynced: (queue: QueueState) => void
