@@ -88,3 +88,12 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Current status: **Accepted.** Override floors elsewhere remain in `pnpm-workspace.yaml` with Review 2027-01-16.
 - Workaround: None until a patched `braces` ships.
 - Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.
+
+## CircleCI reports a phantom failing check on every PR (Accepted)
+
+- Issue: Every pull request carries a red `CircleCI Pipeline` commit status. The message is `No configuration was found in your project`, and the repository has no `.circleci/` directory at all — no workflow, script, or workflow file drives CircleCI.
+- Affected area: GitHub check reporting on all PRs. Nothing in the build, test, or deploy path is involved.
+- Symptoms: PRs read `MERGEABLE/UNSTABLE` instead of clean, and the red context is easy to mistake for a real regression in whatever stack is in flight.
+- Current status: **Accepted.** The context is a legacy commit status published by the CircleCI GitHub App. No active ruleset requires it (the only active branch ruleset is `Copilot review for default branch`, which declares no required status checks), so it does not gate a merge.
+- Workaround: Ignore the context when reading PR health. Decide mergeability from the GitHub Actions jobs.
+- Follow-up: Remove the CircleCI GitHub App from `Qredence/fleet-pi` (GitHub org → Installed GitHub Apps → CircleCI → Configure → unselect this repository, or the CircleCI organization's VCS integration settings). This needs org-app admin rights, which no repo-local token has — `CIRCLECI_TOKEN` is unset and the `circleci` CLI is unauthenticated.

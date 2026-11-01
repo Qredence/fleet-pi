@@ -99,11 +99,26 @@ function childProcessEnv() {
   return env
 }
 
+/**
+ * Absolute path for a repo-pinned binary. Searching the same fixed directories
+ * that build the child `PATH` means the executable is never selected by
+ * whatever `PATH` the caller happened to have.
+ */
+function resolveBinary(name) {
+  for (const dir of childProcessPath().split(":")) {
+    const candidate = join(dir, name)
+    if (existsSync(candidate)) return candidate
+  }
+  throw new Error(
+    `Unable to resolve ${name} in the pinned tool directories (${childProcessPath()})`
+  )
+}
+
 function runNeonJson(command, extraArgs = []) {
   const env = childProcessEnv()
   delete env.NEON_API_KEY
   const raw = execFileSync(
-    "neon",
+    resolveBinary("neon"),
     [...command, ...neonCommandArgs(extraArgs)],
     {
       cwd: repoRoot,
@@ -196,7 +211,7 @@ function checkReadiness(results) {
     return
   }
   try {
-    execFileSync("pnpm", ["verify-deployment-readiness"], {
+    execFileSync(resolveBinary("pnpm"), ["verify-deployment-readiness"], {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: "pipe",

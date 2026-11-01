@@ -7,7 +7,7 @@
 # GitHub reads this filename automatically. Keep one SHA per line, no commas.
 
 # style: re-sort imports with oxfmt (PR 1, import-only)
-e6d6c47430fb3e2b9235e99555e89ee6b3ead740
+a69660e0d549737c444f932a9e580ceb86151ba5
 
 # style: apply oxfmt formatting drift (PR 1)
-48a955201ffb8b7d2910eb05e5936f8205a67d40
+ccc55f9439ff4d7a91cd457ff3e19cbfbc498692
