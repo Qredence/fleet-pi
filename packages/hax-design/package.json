@@ -4,12 +4,12 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint",
+    "lint": "vp lint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "generate:openui-signatures": "tsx scripts/generate-openui-signatures.ts"
+    "generate:openui-signatures": "vpx scripts/generate-openui-signatures.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -46,8 +46,7 @@
     "eslint": "^10.13.0",
     "shadcn": "^4.22.1",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   },
   "exports": {

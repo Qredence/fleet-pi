@@ -104,7 +104,7 @@ jobs:
           FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_CHAT_DATABASE_URL }}
           FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL: ${{ secrets.FLEET_PI_PRODUCTION_NEON_AUTH_BASE_URL }}
         run: >-
-          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          pnpm exec vpx scripts/cloudflare/assert-preview-worker-secrets.ts
           resolve
           --pr ${{ github.event.pull_request.number }}
 
@@ -132,7 +132,7 @@ jobs:
           PREVIEW_NEON_AUTH_ISSUER: ${{ steps.preview_ctx.outputs.neon_auth_issuer }}
           PREVIEW_NEON_AUTH_USE_OVERRIDES: "1"
         run: >-
-          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          pnpm exec vpx scripts/cloudflare/assert-preview-worker-secrets.ts
           validate
           --pr ${{ github.event.pull_request.number }}
 
@@ -167,10 +167,10 @@ jobs:
           PREVIEW_NEON_AI_GATEWAY_BASE_URL: ${{ secrets.PREVIEW_NEON_AI_GATEWAY_BASE_URL }}
         run: |
           set -euo pipefail
-          ORIGIN="$(pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts origin --deploy-json preview-deploy.json)"
+          ORIGIN="$(pnpm exec vpx scripts/cloudflare/assert-preview-worker-secrets.ts origin --deploy-json preview-deploy.json)"
           echo "origin=${ORIGIN}" >> "$GITHUB_OUTPUT"
           PREVIEW_WORKER_ORIGIN="${ORIGIN}" \
-            pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts write \
+            pnpm exec vpx scripts/cloudflare/assert-preview-worker-secrets.ts write \
             --pr ${{ github.event.pull_request.number }} \
             > secrets-file-path.txt
           echo "file=$(cat secrets-file-path.txt)" >> "$GITHUB_OUTPUT"
@@ -190,7 +190,7 @@ jobs:
         if: steps.creds.outputs.ready == 'true' && github.event_name == 'pull_request'
         working-directory: apps/web
         run: >-
-          pnpm exec tsx scripts/cloudflare/assert-preview-worker-secrets.ts
+          pnpm exec vpx scripts/cloudflare/assert-preview-worker-secrets.ts
           audit
           --pr ${{ github.event.pull_request.number }}
 

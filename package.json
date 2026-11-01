@@ -26,7 +26,7 @@
     "quarantine-orphan-sessions": "pnpm --filter web quarantine-orphan-sessions",
     "remap-auth-user-ids": "pnpm --filter web remap-auth-user-ids",
     "dev": "turbo dev --filter=web",
-    "lint": "turbo lint && eslint .pi/extensions",
+    "lint": "turbo lint && vp lint .pi/extensions",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "typecheck": "turbo typecheck",
@@ -41,7 +41,7 @@
     "tech-debt": "./scripts/scan-tech-debt.sh",
     "validate-agents-md": "node scripts/validate-agents-md.js",
     "generate:docs": "node scripts/generate-docs.js",
-    "generate:openapi": "pnpm --filter web exec tsx scripts/generate-openapi.ts",
+    "generate:openapi": "pnpm --filter web exec vpx scripts/generate-openapi.ts",
     "generate:openui-signatures": "pnpm --filter hax-design generate:openui-signatures",
     "check-design-drift": "node scripts/check-design-drift.js"
   },
@@ -65,7 +65,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "syncpack": "^15.3.3",
     "turbo": "^2.11.10",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.71.2",
     "vite-plus": "1.4.0"
   },
@@ -74,20 +74,20 @@
       "vp fmt --no-error-on-unmatched-pattern"
     ],
     "apps/web/**/*.{ts,tsx,js,jsx}": [
-      "pnpm --filter web exec eslint --fix"
+      "pnpm --filter web exec vp lint --fix"
     ],
     "packages/hax-design/**/*.{ts,tsx,js,jsx}": [
-      "pnpm --filter @workspace/hax-design exec eslint --fix"
+      "pnpm --filter @workspace/hax-design exec vp lint --fix"
     ],
     "packages/pi-protocol/**/*.{ts,tsx,js,jsx}": [
-      "pnpm --filter @workspace/pi-protocol exec eslint --fix"
+      "pnpm --filter @workspace/pi-protocol exec vp lint --fix"
     ],
     ".pi/extensions/**/*.ts": [
-      "eslint --fix"
+      "vp lint --fix .pi/extensions"
     ]
   },
   "engines": {
-    "node": ">=22.19"
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
   },
   "packageManager": "pnpm@11.1.3"
 }
