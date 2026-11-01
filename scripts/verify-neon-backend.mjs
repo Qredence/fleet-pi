@@ -87,8 +87,21 @@ function neonCommandArgs(extra = []) {
   return args
 }
 
+/**
+ * Environment for child processes: the inherited environment with `PATH`
+ * removed, then rebuilt from fixed directories. Spreading `process.env` and
+ * overriding `PATH` in the same object still reads as an untrusted value to
+ * static analysis, so the key is deleted first.
+ */
+function childProcessEnv(extra = {}) {
+  const env = { ...process.env, ...extra }
+  delete env.PATH
+  env.PATH = childProcessPath()
+  return env
+}
+
 function runNeonJson(command, extraArgs = []) {
-  const env = { ...process.env }
+  const env = childProcessEnv()
   delete env.NEON_API_KEY
   const raw = execFileSync(
     "neon",
@@ -96,7 +109,7 @@ function runNeonJson(command, extraArgs = []) {
     {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...env, PATH: childProcessPath() },
+      env,
     }
   )
   return JSON.parse(raw)
@@ -188,7 +201,7 @@ function checkReadiness(results) {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: "pipe",
-      env: { ...process.env, PATH: childProcessPath() },
+      env: childProcessEnv(),
     })
     results.push({
       id: "deployment-readiness",
