@@ -16,6 +16,12 @@ declare module "cloudflare:workers" {
           query: string,
           ...bindings: Array<ArrayBuffer | string | number | null>
         ) => {
+          next: () =>
+            | {
+                readonly done?: false
+                readonly value: Record<string, ArrayBuffer | string | number | null>
+              }
+            | { readonly done: true; readonly value?: undefined }
           toArray: () => Array<
             Record<string, ArrayBuffer | string | number | null>
           >
