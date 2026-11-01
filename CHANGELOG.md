@@ -13,6 +13,12 @@ and an optional projection. The Daytona volume holds the harness and artifacts.
 
 ### Added
 
+- **CircleCI validation pipeline** — `.circleci/config.yml` mirrors the GitHub
+  Actions gates (lint/format/guards, typecheck, syncpack, web unit tests, build,
+  knip, jscpd, tech-debt, `validate-agents-md`) on every push and PR, wired to
+  the `fleet-pi` project in the standalone Qredence org through a GitHub App
+  pipeline definition and an `all-pushes` trigger. E2E and the Cloudflare
+  release gate stay on GitHub Actions.
 - **Hosted transcript is the Durable Object** — new Cloudflare `/api/chat`
   sessions address `USER_PI_DURABLE`. Legacy JSONL sessions can still use the
   Neon Function. Session JSONL is no longer copied to object storage.

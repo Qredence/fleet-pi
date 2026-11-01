@@ -138,6 +138,15 @@ See [deployment release gate](../runbooks/deployment-release-gate.md) for produc
 
 `.github/workflows/ci.yml` runs lint, typecheck, test, build, e2e, `validate-agents-md`, knip, jscpd, syncpack, and tech-debt scans on PRs and `main`.
 
+CircleCI mirrors the validation gates on every push and PR. The project is
+`fleet-pi` in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq`, driven by a
+GitHub App pipeline definition with an `all-pushes` trigger, and configured by
+`.circleci/config.yml`. It runs lint/format/guards, typecheck, syncpack, the web
+unit tests, build, knip, jscpd, tech-debt, and `validate-agents-md`; e2e and the
+Cloudflare release gate stay in GitHub Actions. The older OAuth project
+`gh/Qredence/fleet-pi` is not part of this pipeline; delete it in the CircleCI
+web app so pushes do not run twice.
+
 `.github/workflows/neon_workflow.yml` manages one Neon preview branch per same-repo PR (Dependabot and fork PRs are skipped; they have no secrets):
 
 - Project: repo variable `NEON_PROJECT_ID` (must be the non-production `soft-art-21843403` project) and secret `NEON_API_KEY`.

@@ -1,0 +1,260 @@
+# CircleCI validation pipeline for Fleet Pi.
+#
+# Mirrors the validation gates in .github/workflows/ci.yml: lint/format/guards,
+# typecheck, syncpack, web unit tests, build, knip, jscpd, tech-debt, and the
+# AGENTS.md command check. Deploy and release stay on GitHub Actions.
+#
+# House style follows the sister repos in this org (see
+# Qredence/fleet-prime-agent/.circleci/config.yml): no orbs, pnpm installed by
+# hand, because corepack and the node orb fight pnpm 11.
+
+version: 2.1
+
+executors:
+  node-lts:
+    docker:
+      - image: cimg/node:24.22.2
+    resource_class: medium
+    working_directory: ~/project
+
+  # Heavier jobs: the Vite build with rollup-plugin-visualizer, and
+  # validate-agents-md which re-runs most of the gates.
+  node-heavy:
+    docker:
+      - image: cimg/node:24.22.2
+    resource_class: medium+
+    working_directory: ~/project
+
+commands:
+  install-pnpm:
+    parameters:
+      pnpm_version:
+        type: string
+        default: "11.1.3"
+    steps:
+      - run:
+          name: Install pnpm << parameters.pnpm_version >>
+          command: |
+            pnpm_root="${HOME}/.cache/fleet-pnpm"
+            mkdir -p "${pnpm_root}"
+            npm install --prefix "${pnpm_root}" --no-save --no-package-lock \
+              --ignore-scripts --no-audit --no-fund "pnpm@<< parameters.pnpm_version >>"
+            pnpm_bin="${pnpm_root}/node_modules/pnpm/bin/pnpm.cjs"
+            pnpm_bin_dir="${pnpm_root}/node_modules/.bin"
+            if [ ! -f "${pnpm_bin}" ]; then
+              echo "Expected pnpm launcher was not installed at ${pnpm_bin}" >&2
+              exit 1
+            fi
+            if [ ! -x "${pnpm_bin_dir}/pnpm" ]; then
+              echo "Expected pnpm executable was not installed at ${pnpm_bin_dir}/pnpm" >&2
+              exit 1
+            fi
+            {
+              echo "export FLEET_PNPM_BIN=\"${pnpm_bin}\""
+              echo "export PATH=\"${pnpm_bin_dir}:\$PATH\""
+              echo 'export npm_config_manage_package_manager_versions=false'
+              echo 'pnpm() { node "${FLEET_PNPM_BIN}" "$@"; }'
+            } >> "${BASH_ENV}"
+            export FLEET_PNPM_BIN="${pnpm_bin}"
+            export PATH="${pnpm_bin_dir}:${PATH}"
+            export npm_config_manage_package_manager_versions=false
+            pnpm config set store-dir ~/.cache/pnpm
+            pnpm --version
+
+  install-dependencies:
+    steps:
+      - restore_cache:
+          keys:
+            # Exact lockfile match first; otherwise fall back to any older
+            # store, which pnpm tops up. The store only holds content-addressable
+            # tarballs, so this cannot violate --frozen-lockfile.
+            - v1-linux-node24-pnpm-{{ checksum "pnpm-lock.yaml" }}
+            - v1-linux-node24-pnpm-
+      - run:
+          name: Install dependencies
+          command: pnpm install --frozen-lockfile
+          # Cold installs download native binaries (workerd, better-sqlite3)
+          # without printing anything for long stretches.
+          no_output_timeout: 20m
+
+  install-tech-debt-tools:
+    steps:
+      - run:
+          name: Install ripgrep and python3
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y ripgrep python3
+
+jobs:
+  lint:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Lint
+          command: pnpm exec vp check --no-fmt
+      - run:
+          name: Check formatting
+          command: pnpm exec vp fmt --check
+      - run:
+          name: Guard against retired ESLint/Prettier tooling
+          command: pnpm guard:no-eslint-prettier
+      - run:
+          name: Check OpenUI signatures
+          command: pnpm generate:openui-signatures -- --check
+      - run:
+          name: Check OpenAPI spec drift
+          command: pnpm generate:openapi -- --check
+      - save_cache:
+          key: v1-linux-node24-pnpm-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.cache/pnpm
+
+  typecheck:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Typecheck all workspaces
+          command: pnpm typecheck
+          no_output_timeout: 20m
+
+  syncpack:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Check dependency version drift
+          command: pnpm syncpack
+
+  test:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      # Matches .github/workflows/ci.yml, which runs the web suite only.
+      - run:
+          name: Test web
+          command: pnpm --filter web test
+          no_output_timeout: 20m
+
+  build:
+    executor: node-heavy
+    environment:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Build
+          command: pnpm build
+          # Turbo hides successful task output, so a long build can look silent.
+          no_output_timeout: 20m
+      - store_artifacts:
+          path: apps/web/bundle-report
+          destination: bundle-report
+
+  knip:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Find unused files, exports and dependencies
+          command: pnpm knip
+
+  jscpd:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Scan for copy-paste duplication
+          command: pnpm jscpd
+      - store_artifacts:
+          path: report
+          destination: jscpd-report
+          when: always
+
+  tech-debt:
+    executor: node-lts
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - install-tech-debt-tools
+      # scripts/scan-tech-debt.sh exits 1 whenever it finds markers, so GitHub
+      # Actions runs it with continue-on-error. Keep the job green for the same
+      # reason; the report is published as an artifact every time.
+      - run:
+          name: Scan for tech-debt markers (non-blocking)
+          command: |
+            set +e
+            pnpm tech-debt
+            status=$?
+            set -e
+            if [ "${status}" -eq 1 ]; then
+              echo "Tech-debt markers found (exit 1). This gate is informational; see the tech-debt-report artifact."
+              exit 0
+            fi
+            exit "${status}"
+      - store_artifacts:
+          path: tech-debt-report.json
+          destination: tech-debt-report.json
+          when: always
+
+  validate-agents-md:
+    executor: node-heavy
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      # scripts/validate-agents-md.js executes every backticked pnpm command in
+      # AGENTS.md, so this step re-runs most of the gates above and can sit
+      # quiet for a while. CircleCI's default no-output timeout is 10m.
+      - run:
+          name: Validate the AGENTS.md command set
+          command: pnpm validate-agents-md
+          no_output_timeout: 25m
+
+workflows:
+  ci:
+    jobs:
+      - lint:
+          filters: &branch-only
+            tags:
+              ignore: /.*/
+      - typecheck:
+          filters: *branch-only
+      - syncpack:
+          filters: *branch-only
+      - knip:
+          filters: *branch-only
+      - jscpd:
+          filters: *branch-only
+      - tech-debt:
+          filters: *branch-only
+      - test:
+          requires:
+            - lint
+            - typecheck
+          filters: *branch-only
+      - build:
+          requires:
+            - lint
+            - typecheck
+          filters: *branch-only
+      - validate-agents-md:
+          requires:
+            - test
+          filters: *branch-only
