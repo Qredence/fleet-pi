@@ -75,8 +75,11 @@ export function toSettingsResourcePath(path: string) {
   }
 
   const piPrefix = "/.pi/"
-  const piIndex = normalized.indexOf(piPrefix)
-  if (piIndex !== -1) {
+  for (
+    let piIndex = normalized.indexOf(piPrefix);
+    piIndex !== -1;
+    piIndex = normalized.indexOf(piPrefix, piIndex + 1)
+  ) {
     const remainder = normalized.slice(piIndex + piPrefix.length)
     const isKnownResource = PI_RESOURCE_SEGMENTS.some(
       (segment) =>

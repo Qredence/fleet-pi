@@ -55,13 +55,14 @@ function resolveChatDatabaseUrl() {
  * run that is supposed to inspect the repo's own tooling.
  */
 function childProcessPath() {
-  const groups = new Set()
-  const nodeBin = dirname(process.execPath)
-  groups.add(nodeBin)
-  const homebrew = "/opt/homebrew/bin"
-  const usrLocal = "/usr/local/bin"
-  if (existsSync(homebrew)) groups.add(homebrew)
-  if (existsSync(usrLocal)) groups.add(usrLocal)
+  const groups = new Set([
+    join(repoRoot, "node_modules", ".bin"),
+    join(webRoot, "node_modules", ".bin"),
+    dirname(process.execPath),
+  ])
+  for (const dir of ["/opt/homebrew/bin", "/usr/local/bin"]) {
+    if (existsSync(dir)) groups.add(dir)
+  }
   groups.add("/usr/bin")
   groups.add("/bin")
   return [...groups].join(":")

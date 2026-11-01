@@ -102,6 +102,12 @@ describe("toSettingsResourcePath", () => {
     ).toBe("extensions/vendor/filechanges")
   })
 
+  it("scans later .pi markers after an unrecognized marker", () => {
+    expect(
+      toSettingsResourcePath("/repo/.pi/agent/.pi/extensions/example.ts")
+    ).toBe("extensions/example.ts")
+  })
+
   it("preserves direct prompt filenames", () => {
     expect(toSettingsResourcePath("/repo/.pi/prompts/release-check.md")).toBe(
       "prompts/release-check.md"
