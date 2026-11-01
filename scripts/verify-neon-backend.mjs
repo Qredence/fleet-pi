@@ -89,12 +89,11 @@ function neonCommandArgs(extra = []) {
 
 /**
  * Environment for child processes: the inherited environment with `PATH`
- * removed, then rebuilt from fixed directories. Spreading `process.env` and
- * overriding `PATH` in the same object still reads as an untrusted value to
- * static analysis, so the key is deleted first.
+ * removed, then rebuilt from fixed directories. Deleting the key first means
+ * no inherited, writable directory can select a different `neon`/`pnpm`.
  */
-function childProcessEnv(extra = {}) {
-  const env = { ...process.env, ...extra }
+function childProcessEnv() {
+  const env = { ...process.env }
   delete env.PATH
   env.PATH = childProcessPath()
   return env
