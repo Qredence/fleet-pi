@@ -65,10 +65,17 @@ commands:
     steps:
       - restore_cache:
           keys:
+            # Exact lockfile match first; otherwise fall back to any older
+            # store, which pnpm tops up. The store only holds content-addressable
+            # tarballs, so this cannot violate --frozen-lockfile.
             - v1-linux-node24-pnpm-{{ checksum "pnpm-lock.yaml" }}
+            - v1-linux-node24-pnpm-
       - run:
           name: Install dependencies
           command: pnpm install --frozen-lockfile
+          # Cold installs download native binaries (workerd, better-sqlite3)
+          # without printing anything for long stretches.
+          no_output_timeout: 20m
 
   install-tech-debt-tools:
     steps:
@@ -114,6 +121,7 @@ jobs:
       - run:
           name: Typecheck all workspaces
           command: pnpm typecheck
+          no_output_timeout: 20m
 
   syncpack:
     executor: node-lts
@@ -135,6 +143,7 @@ jobs:
       - run:
           name: Test web
           command: pnpm --filter web test
+          no_output_timeout: 20m
 
   build:
     executor: node-heavy
@@ -147,6 +156,8 @@ jobs:
       - run:
           name: Build
           command: pnpm build
+          # Turbo hides successful task output, so a long build can look silent.
+          no_output_timeout: 20m
       - store_artifacts:
           path: apps/web/bundle-report
           destination: bundle-report
