@@ -101,14 +101,14 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 ## Oxc migration: React Compiler-era rules are advisory (PR 2)
 
 - Issue: Oxlint's `react` plugin is new to this repo; the retired ESLint config
-  enabled zero React rules. Four of its rules produce 60 pre-existing findings,
+  enabled zero React rules. Three of its rules produce 60 pre-existing findings,
   every one of which needs a behavioural refactor (move `setState` out of
   effects, stop reading refs during render, restructure effect dependencies)
   rather than a mechanical edit.
 - Affected area: `packages/hax-design/src/components/**` and
   `apps/web/src/lib/pi/**`.
-- Symptoms: `vp lint` reports 739 warnings and 0 errors; the gate passes, but
-  the warning count hides real React purity findings.
+- Symptoms: `vp lint` reports these as warnings and the gate passes, so real
+  React purity findings can hide in the total.
 - Current status: **Scoped as warnings** in root `vite.config.ts`
   (`react/set-state-in-effect`, `react/refs`, `react-hooks/exhaustive-deps`),
   with `typescript/unbound-method` off inside test overrides (that rule fires
@@ -117,6 +117,24 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
   signals on touched files.
 - Follow-up: Burn down the 60 findings rule by rule and promote each back to
   `error` once its count reaches zero.
+
+## Oxc migration: `typescript/no-unsafe-type-assertion` is test-exempt (follow-up)
+
+- Issue: The rule arrives through the `suspicious` category rather than a
+  hand-authored choice. It is the repo's single noisiest rule: 486 hits, 322 of
+  them in `**/__tests__/**` and `**/*.test.ts(x)`, where test doubles narrow
+  `unknown` payloads into the shape under test by design.
+- Affected area: repo-wide; the remaining 164 hits cluster in
+  `apps/web/src/lib/pi/**`, `apps/web/src/lib/db/**`,
+  `packages/hax-design/src/components/chart.tsx`, and `.pi/extensions/lib/`.
+- Current status: **Off in the test override**, still warning in source, so
+  genuine unsoundness (`e.target as HTMLElement`) stays visible. Repo warning
+  total is ~417 rather than 739.
+- Workaround: None needed for CI. Prefer narrowing guards over casts when the
+  warning appears on a file you are already touching.
+- Follow-up: Burn down the 164 source-side assertions, preferring narrowing
+  guards (`instanceof`, `typeof`, discriminated unions) over casts.
+
 
 ## Oxc migration: `.pi/extensions/vendor/**` is lint-excluded (PR 2)
 
