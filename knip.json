@@ -4,6 +4,7 @@
   "workspaces": {
     ".": {
       "entry": [".pi/extensions/**/*.ts", "neon.ts"],
+      "ignoreDependencies": ["neon"],
       "project": [
         "scripts/**/*.{js,mjs}",
         ".pi/extensions/**/*.ts",
