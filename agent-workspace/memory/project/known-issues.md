@@ -97,3 +97,35 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Current status: **Accepted.** The context is a legacy commit status published by the CircleCI GitHub App. No active ruleset requires it (the only active branch ruleset is `Copilot review for default branch`, which declares no required status checks), so it does not gate a merge.
 - Workaround: Ignore the context when reading PR health. Decide mergeability from the GitHub Actions jobs.
 - Follow-up: Remove the CircleCI GitHub App from `Qredence/fleet-pi` (GitHub org → Installed GitHub Apps → CircleCI → Configure → unselect this repository, or the CircleCI organization's VCS integration settings). This needs org-app admin rights, which no repo-local token has — `CIRCLECI_TOKEN` is unset and the `circleci` CLI is unauthenticated.
+
+## Oxc migration: React Compiler-era rules are advisory (PR 2)
+
+- Issue: Oxlint's `react` plugin is new to this repo; the retired ESLint config
+  enabled zero React rules. Four of its rules produce 60 pre-existing findings,
+  every one of which needs a behavioural refactor (move `setState` out of
+  effects, stop reading refs during render, restructure effect dependencies)
+  rather than a mechanical edit.
+- Affected area: `packages/hax-design/src/components/**` and
+  `apps/web/src/lib/pi/**`.
+- Symptoms: `vp lint` reports 739 warnings and 0 errors; the gate passes, but
+  the warning count hides real React purity findings.
+- Current status: **Scoped as warnings** in root `vite.config.ts`
+  (`react/set-state-in-effect`, `react/refs`, `react-hooks/exhaustive-deps`),
+  with `typescript/unbound-method` off inside test overrides (that rule fires
+  only on `vi.mocked(...)` spy assertions).
+- Workaround: None needed for CI. Treat new warnings in those rules as real
+  signals on touched files.
+- Follow-up: Burn down the 60 findings rule by rule and promote each back to
+  `error` once its count reaches zero.
+
+## Oxc migration: `.pi/extensions/vendor/**` is lint-excluded (PR 2)
+
+- Issue: Vendored upstream Pi extensions have their own `UPSTREAM.md` refresh
+  contract. Linting them would make every upstream refresh fight a local
+  backlog of style findings.
+- Affected area: `.pi/extensions/vendor/filechanges`, `subagents`,
+  `web-fetch`.
+- Current status: Excluded via `lint.ignorePatterns`, matching the retired root
+  `eslint.config.js`, which ignored `.pi/extensions/vendor/**`.
+- Follow-up: Revisit only if a vendored extension is forked into first-party
+  code.

@@ -73,7 +73,7 @@ export function decryptString(
     decrypted += decipher.final("utf8")
 
     return decrypted
-  } catch (error) {
+  } catch {
     // Return null if decryption fails (e.g., wrong secret or corrupted data)
     return null
   }

@@ -152,6 +152,19 @@ const betterAuthSecret = requiredHostedEnv("BETTER_AUTH_SECRET")
 const authSecret =
   betterAuthSecret ?? "fleet-pi-local-development-secret-change-in-production"
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+
+function googleSocialProviders() {
+  if (!googleClientId || !googleClientSecret) return {}
+  return {
+    google: {
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    },
+  }
+}
+
 export function createLegacyBetterAuth(
   plugins: Parameters<typeof betterAuth>[0]["plugins"] = []
 ) {
@@ -170,16 +183,7 @@ export function createLegacyBetterAuth(
     emailAndPassword: {
       enabled: true,
     },
-    socialProviders: {
-      ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-        ? {
-            google: {
-              clientId: process.env.GOOGLE_CLIENT_ID,
-              clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            },
-          }
-        : {}),
-    },
+    socialProviders: googleSocialProviders(),
     plugins,
   })
 }

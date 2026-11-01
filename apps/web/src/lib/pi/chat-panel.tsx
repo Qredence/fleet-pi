@@ -45,7 +45,7 @@ export function ChatPanel({
           submitLabel: "Continue",
           allowSkip: true,
           onAnswer: ({ toolCallId, answer }) => {
-            void onQuestionAnswer({ toolCallId, answer })
+            onQuestionAnswer({ toolCallId, answer })
           },
         }}
         suppressQuestionTool={suppressQuestionTool}

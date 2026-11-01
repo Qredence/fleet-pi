@@ -211,7 +211,7 @@ export function useModelDefaultsForm({
         models: modelsForPatternUpdate(draft.enabledModels),
       }),
     }
-    void persistModelSettings(nextDraft)
+    persistModelSettings(nextDraft)
   }
 
   const addModels = (modelsToAdd: Array<ConfigModelInfo>) => {
@@ -225,7 +225,7 @@ export function useModelDefaultsForm({
         models: modelsForPatternUpdate(patterns),
       })
     }
-    void persistModelSettings({ ...draft, enabledModels: patterns })
+    persistModelSettings({ ...draft, enabledModels: patterns })
   }
 
   const removeModel = (model: ConfigModelInfo) => {

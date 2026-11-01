@@ -147,7 +147,7 @@ describe("cross-surface runtime hardening", () => {
       sessionFile,
       sessionId: "session-1",
     })
-    recorder.close()
+    void recorder.close()
 
     const sessionEntries: Array<Record<string, unknown>> = [
       {
@@ -312,7 +312,7 @@ describe("cross-surface runtime hardening", () => {
       sessionFile: oldSessionFile,
       sessionId: "session-old",
     })
-    recorder.close()
+    void recorder.close()
 
     SessionManager.create.mockReturnValue(
       createSessionManagerStub(freshSessionFile, "session-fresh", [])

@@ -80,7 +80,7 @@ export function getChatSessionScope(mode: ChatMode): ChatSessionScope {
 }
 
 function readStoredBrowserSessions(): StoredChatSessions {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage)
     return EMPTY_STORED_SESSIONS
 
@@ -102,7 +102,7 @@ function readStoredBrowserSessions(): StoredChatSessions {
 }
 
 function readLegacyStoredBrowserSessions(): StoredChatSessions {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage)
     return EMPTY_STORED_SESSIONS
   const raw = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
@@ -124,7 +124,7 @@ function parseSessionMetadata(value: unknown): ChatSessionMetadata {
 }
 
 export function clearBrowserChatSessions() {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage) return
 
   window.localStorage.removeItem(CHAT_SESSION_BY_SCOPE_STORAGE_KEY)
@@ -132,7 +132,7 @@ export function clearBrowserChatSessions() {
 }
 
 function storeBrowserSessions(sessions: StoredChatSessions) {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage) return
 
   const hasSession = Object.values(sessions).some(
@@ -153,7 +153,7 @@ function storeBrowserSessions(sessions: StoredChatSessions) {
 }
 
 function readStoredMode(): ChatMode {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage) return "agent"
 
   const raw = window.localStorage.getItem(CHAT_MODE_STORAGE_KEY)
@@ -174,7 +174,7 @@ function parseLegacyModeString(raw: string) {
 }
 
 function storeMode(mode: ChatMode) {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `window` and `localStorage` are absent during SSR; the DOM lib types do not model that.
   if (typeof window === "undefined" || !window.localStorage) return
   window.localStorage.setItem(CHAT_MODE_STORAGE_KEY, mode)
 }

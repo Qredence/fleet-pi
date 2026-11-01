@@ -45,7 +45,7 @@ export function useLocalSlashActions({
           openSettings(action.tab)
           return true
         case "new-session":
-          void startNewSession()
+          startNewSession()
           return true
         case "show-session": {
           const currentSessionId = sessionId ?? "none"

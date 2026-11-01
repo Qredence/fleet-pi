@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest"
 
 import { WorkspaceFileResponseSchema } from "../chat-protocol.zod"
 
-import type { WorkspaceFileResponse } from "../chat-protocol"
-
 describe("WorkspaceFileResponseSchema", () => {
   it("parses a valid payload", () => {
     const payload = {
@@ -19,10 +17,7 @@ describe("WorkspaceFileResponseSchema", () => {
     const result = WorkspaceFileResponseSchema.safeParse(payload)
 
     expect(result.success).toBe(true)
-    if (result.success) {
-      const response: WorkspaceFileResponse = result.data
-      expect(response).toEqual(payload)
-    }
+    expect(result.data).toEqual(payload)
   })
 
   it("parses a minimal payload without size or status", () => {

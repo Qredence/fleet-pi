@@ -22,7 +22,7 @@ export type ChatClassNames = {
 export type CustomToolRendererProps = {
   name: string
   input: Record<string, unknown>
-  output: unknown | undefined
+  output?: unknown
   status: "pending" | "streaming" | "success" | "error"
 }
 

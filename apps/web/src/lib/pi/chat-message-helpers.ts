@@ -38,7 +38,9 @@ export function appendTextPart(parts: Array<ChatMessagePart>, delta: string) {
   const next = [...parts]
   const part = next[index]
   next[index] =
-    part.type === "text" ? { ...part, text: `${part.text}${delta}` } : part
+    part.type === "text"
+      ? { ...part, text: `${String(part.text)}${delta}` }
+      : part
   return next
 }
 

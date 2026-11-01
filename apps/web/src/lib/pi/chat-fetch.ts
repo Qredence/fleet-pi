@@ -208,7 +208,7 @@ export function metadataUrl(metadata: ChatSessionMetadata) {
   return params.toString()
 }
 
-export function labelForState(state: ChatStreamEvent["type"] | string) {
+export function labelForState(state: string) {
   switch (state) {
     case "agent_start":
       return "Agent running"

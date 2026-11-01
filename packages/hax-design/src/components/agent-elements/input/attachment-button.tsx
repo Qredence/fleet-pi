@@ -15,7 +15,7 @@ export type AttachmentButtonProps = {
    *   rendered as-is inside the button; size/color from this component's
    *   styling is only applied to the built-in presets.
    */
-  icon?: AttachmentButtonIcon | ReactNode
+  icon?: ReactNode
 }
 
 function isIconName(value: unknown): value is AttachmentButtonIcon {

@@ -137,7 +137,7 @@ async function checkPostgres(results) {
   }
   const { neon } = require("@neondatabase/serverless")
   const rows = await neon(url)`SELECT 1 AS ok`
-  const ok = rows?.[0]?.ok === 1
+  const ok = rows[0]?.ok === 1
   results.push({
     id: "postgres",
     ok,

@@ -90,8 +90,11 @@ function sanitizeValue(
     return options.functionsAndSymbols === "preserve" ? value : String(value)
   }
 
+  // Exotic objects (Date, Map, Set, class instances) are not plain records.
+  // They keep their historical string projection so a stored value stays
+  // readable instead of collapsing to `{}`.
   if (!isRecord(value)) {
-    return String(value)
+    return stringifyLeaf(value)
   }
 
   const result: Record<string, unknown> = {}
@@ -112,6 +115,16 @@ function sanitizeValue(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Exotic objects (Date, Map, Set, class instances) are not plain records and
+ * keep their historical `String()` projection so an already-persisted value
+ * reads the same after this refactor.
+ */
+function stringifyLeaf(value: object): string {
+  // oxlint-disable-next-line typescript/no-base-to-string -- output shape is persisted, see above
+  return String(value)
 }
 
 /**

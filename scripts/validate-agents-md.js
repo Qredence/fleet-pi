@@ -70,7 +70,7 @@ function extractPnpmCommands(content) {
     commands.add("pnpm " + match[1].trim())
   }
 
-  return Array.from(commands).sort()
+  return Array.from(commands).sort((left, right) => left.localeCompare(right))
 }
 
 function existenceOnlyReasonFor(scriptName) {

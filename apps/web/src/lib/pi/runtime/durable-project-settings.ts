@@ -72,7 +72,7 @@ export function isPortableSettingsResourcePath(path: string) {
   const normalized = path.replace(/\\/g, "/")
   if (normalized.startsWith("npm:")) return true
   if (normalized.startsWith("git:")) return true
-  if (/^\/Users\//.test(normalized) || /^\/home\//.test(normalized)) {
+  if (normalized.startsWith("/Users/") || normalized.startsWith("/home/")) {
     return false
   }
   if (/^[A-Za-z]:\//.test(normalized)) return false

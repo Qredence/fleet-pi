@@ -115,7 +115,12 @@ describe("OpenAI-compatible provider at runtime (real Pi session)", () => {
     ]
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = input instanceof Request ? input.url : input.toString()
-      requests.push({ url, body: JSON.parse(String(init?.body ?? "{}")) })
+      requests.push({
+        url,
+        body: JSON.parse(
+          typeof init?.body === "string" ? init.body : "{}"
+        ) as Record<string, unknown>,
+      })
       const next = responses.shift()
       if (!next) throw new Error(`unexpected request to ${url}`)
       return Promise.resolve(next)

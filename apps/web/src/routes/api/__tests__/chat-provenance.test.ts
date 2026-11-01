@@ -106,7 +106,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-1",
     })
-    recorder.close()
+    void recorder.close()
 
     const runsResponse = await chatRunsHandler(
       createRequest("/api/chat/runs?sessionId=session-1"),
@@ -254,7 +254,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-2",
     })
-    recorder.close()
+    void recorder.close()
 
     const detailResponse = await chatRunHandler(
       createRequest("/api/chat/run?id=run-install-1")
@@ -330,7 +330,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-3",
     })
-    planRecorder.close()
+    void planRecorder.close()
 
     writeProjectFile(
       projectRoot,
@@ -384,7 +384,7 @@ describe("chat provenance APIs", () => {
       sessionFile,
       sessionId: "session-3",
     })
-    executeRecorder.close()
+    void executeRecorder.close()
 
     const planDetailResponse = await chatRunHandler(
       createRequest("/api/chat/run?id=run-plan-1")

@@ -19,7 +19,9 @@ export default [
     if (config.files) {
       return {
         ...config,
-        files: config.files.map((pattern) => `packages/hax-design/${pattern}`),
+        files: config.files.map(
+          (pattern) => `packages/hax-design/${String(pattern)}`
+        ),
       }
     }
     return { ...config, files: ["packages/hax-design/**/*.{js,ts,tsx}"] }

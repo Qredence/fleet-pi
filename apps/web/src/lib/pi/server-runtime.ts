@@ -198,7 +198,9 @@ export function evictPiRuntimeForDeletedSession(input: {
 }
 
 export function evictAllPiRuntimesForUser(userId: string) {
-  for (const record of [...runtimeRecords.values()]) {
+  // Map iteration tolerates deleting the current entry, which
+  // `disposeRuntimeRecord` does, so no defensive copy is needed here.
+  for (const record of runtimeRecords.values()) {
     if (record.userId === userId) {
       disposeRuntimeRecord(record)
     }

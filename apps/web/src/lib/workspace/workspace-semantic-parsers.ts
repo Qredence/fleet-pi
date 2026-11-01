@@ -751,7 +751,7 @@ function metadataText(metadata: Record<string, unknown>) {
     .filter(
       ([, value]) => typeof value === "string" || typeof value === "number"
     )
-    .map(([key, value]) => `${key}: ${value}`)
+    .map(([key, value]) => `${key}: ${String(value)}`)
     .join("\n")
 }
 

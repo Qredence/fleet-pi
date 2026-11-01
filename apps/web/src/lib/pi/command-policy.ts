@@ -254,7 +254,7 @@ function inPlaceEditTargets(
   return args.filter((arg) => !arg.startsWith("-"))
 }
 
-function redirectionTarget(token: string): string | "pending" | undefined {
+function redirectionTarget(token: string): string | undefined {
   if (token === ">" || token === ">>") return "pending"
   if (token.startsWith(">>") && token.length > 2) return token.slice(2)
   if (token.startsWith(">") && token.length > 1) return token.slice(1)
@@ -307,7 +307,7 @@ export function evaluatePlanCommand(command: string): CommandPolicyResult {
   if (!trimmed) return deny("Command is empty.")
 
   // Plan mode must never accept shell command termination or other controls.
-  const hasControlChars = [...trimmed].some((char) => {
+  const hasControlChars = Array.from(trimmed).some((char) => {
     const code = char.charCodeAt(0)
     // Allow tab for ordinary argument separation. Newline and carriage return
     // are command separators and therefore must be rejected.

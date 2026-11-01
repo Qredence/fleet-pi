@@ -724,11 +724,11 @@ export function mockChatSettings(page: Page, settings = MOCK_SETTINGS) {
           ...current,
           effective: {
             ...current.effective,
-            ...(body.settings ?? {}),
+            ...body.settings,
           },
           project: {
             ...current.project,
-            ...(body.settings ?? {}),
+            ...body.settings,
           },
         }
       }

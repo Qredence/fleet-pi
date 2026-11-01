@@ -40,7 +40,7 @@ export function resourceOptionValue(item: ChatResourceInfo) {
 export function toSettingsResourcePath(path: string) {
   const normalized = path.replace(/\\/g, "/")
 
-  if (/^\/Users\//.test(normalized) || /^\/home\//.test(normalized)) {
+  if (normalized.startsWith("/Users/") || normalized.startsWith("/home/")) {
     return ""
   }
   if (/^[A-Za-z]:\//.test(normalized)) {
