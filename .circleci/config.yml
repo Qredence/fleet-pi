@@ -1,14 +1,31 @@
-# CircleCI validation pipeline for Fleet Pi.
+# CircleCI pipeline for Fleet Pi.
 #
-# Mirrors the validation gates in .github/workflows/ci.yml: lint/format/guards,
-# typecheck, syncpack, web unit tests, build, knip, jscpd, tech-debt, and the
-# AGENTS.md command check. Deploy and release stay on GitHub Actions.
+# Validation mirrors the gates in .github/workflows/ci.yml: lint/format/guards,
+# typecheck, syncpack, web unit tests, build, knip, jscpd, tech-debt, the
+# AGENTS.md command check, and the deployment-readiness gate.
+#
+# Deployment split: GitHub Actions keeps auto-deploying the Worker on every main
+# push (`.github/workflows/cloudflare.yml`). This pipeline adds `deploy-readiness`
+# on every push, and an approval-gated production redeploy that records a
+# CircleCI deployment for tracking and rollback. It never runs unattended, so it
+# cannot race the GitHub Actions deploy. PR previews and Neon preview branches
+# stay on GitHub Actions.
 #
 # House style follows the sister repos in this org (see
 # Qredence/fleet-prime-agent/.circleci/config.yml): no orbs, pnpm installed by
 # hand, because corepack and the node orb fight pnpm 11.
 
 version: 2.1
+
+# Component and environment names for CircleCI deploy tracking. `circleci run
+# release plan` creates the component when it does not exist yet.
+parameters:
+  deploy_component:
+    type: string
+    default: fleet-pi-web
+  deploy_environment:
+    type: string
+    default: production
 
 executors:
   node-lts:
@@ -84,6 +101,23 @@ commands:
           command: |
             sudo apt-get update
             sudo apt-get install -y ripgrep python3
+
+  # Marks the CircleCI deployment record for this pipeline. `plan` opens a
+  # PENDING deployment in the Deploys UI; `update` moves it to RUNNING, SUCCESS,
+  # FAILED or CANCELED. `circleci run release` ships in CircleCI's images but is
+  # not in the local CLI, so this only works inside a job.
+  plan-deploy-marker:
+    parameters:
+      deploy_name:
+        type: string
+    steps:
+      - run:
+          name: Plan the CircleCI deployment record
+          command: |
+            circleci run release plan << parameters.deploy_name >> \
+              --environment-name=<< pipeline.parameters.deploy_environment >> \
+              --component-name=<< pipeline.parameters.deploy_component >> \
+              --target-version="${CIRCLE_SHA1:0:7}"
 
 jobs:
   lint:
@@ -227,6 +261,124 @@ jobs:
           command: pnpm validate-agents-md
           no_output_timeout: 25m
 
+  # Parity with .github/workflows/ci.yml's `cloudflare-release-gate`: proves the
+  # Worker builds and that deployment readiness holds for both trust zones.
+  # Deliberately needs no credentials — the migration probes self-skip.
+  deploy-readiness:
+    executor: node-heavy
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - run:
+          name: Build Cloudflare Worker
+          command: pnpm --filter web build:cloudflare
+          environment:
+            VITE_NEON_AUTH_URL: https://auth.ci.example
+          no_output_timeout: 20m
+      - run:
+          name: Verify deployment readiness (env-only)
+          command: pnpm verify-deployment-readiness
+          environment:
+            FLEET_PI_DEPLOYMENT: cloudflare
+            NEON_AUTH_BASE_URL: https://auth.ci.example
+            NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+            NEON_AUTH_JWKS_URL: https://auth.ci.example/.well-known/jwks.json
+            NEON_AUTH_ISSUER: https://auth.ci.example
+            VITE_NEON_AUTH_URL: https://auth.ci.example
+            BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+            BETTER_AUTH_URL: https://fleet-pi-web.ci.workers.dev
+            BETTER_AUTH_TRUSTED_ORIGINS: https://fleet-pi-web.ci.workers.dev
+            FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
+            NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+            NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
+      - run:
+          name: Verify preview trust-zone contract
+          command: pnpm verify-deployment-readiness
+          environment:
+            FLEET_PI_DEPLOYMENT: cloudflare
+            FLEET_PI_DEPLOYMENT_TRUST_ZONE: preview
+            NEON_AUTH_BASE_URL: https://auth.preview.ci.example
+            NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+            NEON_AUTH_JWKS_URL: https://auth.preview.ci.example/.well-known/jwks.json
+            NEON_AUTH_ISSUER: https://auth.preview.ci.example
+            VITE_NEON_AUTH_URL: https://auth.preview.ci.example
+            BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+            BETTER_AUTH_URL: https://pr-0.fleet-pi-web.ci.workers.dev
+            BETTER_AUTH_TRUSTED_ORIGINS: https://pr-0.fleet-pi-web.ci.workers.dev
+            FLEET_PI_CHAT_DATABASE_URL: postgres://preview-neon-host/preview-chat
+            FLEET_PI_PRODUCTION_CHAT_DATABASE_URL: postgres://prod-neon-host/production-chat
+            FLEET_PI_PREVIEW_DATABASE_MARKER: preview-neon
+            FLEET_PI_PRODUCTION_DATABASE_MARKER: prod-neon
+            NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+            NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
+      - run:
+          name: Verify deployment readiness (migration probes)
+          command: |
+            if [ -z "${FLEET_PI_CHAT_MIGRATION_DATABASE_URL}" ]; then
+              echo "Skipping live migration probes; chat migration URL is not configured."
+              exit 0
+            fi
+            pnpm verify-deployment-readiness
+          environment:
+            FLEET_PI_DEPLOYMENT: cloudflare
+            NEON_AUTH_BASE_URL: https://auth.ci.example
+            NEON_AUTH_COOKIE_SECRET: ci-placeholder-cookie-secret-32chars
+            NEON_AUTH_JWKS_URL: https://auth.ci.example/.well-known/jwks.json
+            NEON_AUTH_ISSUER: https://auth.ci.example
+            VITE_NEON_AUTH_URL: https://auth.ci.example
+            BETTER_AUTH_SECRET: ci-placeholder-secret-32chars-min
+            BETTER_AUTH_URL: https://fleet-pi-web.ci.workers.dev
+            BETTER_AUTH_TRUSTED_ORIGINS: https://fleet-pi-web.ci.workers.dev
+            FLEET_PI_CHAT_DATABASE_URL: postgres://ci-chat
+            NEON_AI_GATEWAY_TOKEN: ci-gateway-token
+            NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
+            FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES: "1"
+
+  # Manual, approval-gated production redeploy. GitHub Actions already deploys
+  # main on push; this is the deliberate path — re-deploy a specific approved
+  # commit and record it in the Deploys UI. Requires the `fleet-pi-deploy`
+  # context (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, VITE_NEON_AUTH_URL).
+  deploy-production:
+    executor: node-heavy
+    environment:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - checkout
+      - install-pnpm
+      - install-dependencies
+      - plan-deploy-marker:
+          deploy_name: fleet-pi-web-deploy
+      - run:
+          name: Mark the deployment running
+          command: circleci run release update fleet-pi-web-deploy --status=RUNNING
+      - run:
+          name: Build Cloudflare Worker
+          command: pnpm --filter web build:cloudflare
+          no_output_timeout: 20m
+      - run:
+          name: Deploy to Cloudflare
+          command: pnpm --filter web exec wrangler deploy --message "${CIRCLE_SHA1:0:7}"
+          no_output_timeout: 20m
+      - run:
+          name: Mark the deployment successful
+          command: circleci run release update fleet-pi-web-deploy --status=SUCCESS
+          when: on_success
+      - run:
+          name: Mark the deployment failed
+          command: |
+            circleci run release update fleet-pi-web-deploy \
+              --status=FAILED \
+              --failure-reason="wrangler deploy failed"
+          when: on_fail
+
+  cancel-deploy-marker:
+    executor: node-lts
+    steps:
+      - run:
+          name: Mark the deployment canceled
+          command: circleci run release update fleet-pi-web-deploy --status=CANCELED
+
 workflows:
   ci:
     jobs:
@@ -258,3 +410,32 @@ workflows:
           requires:
             - test
           filters: *branch-only
+      - deploy-readiness:
+          requires:
+            - lint
+            - typecheck
+          filters: *branch-only
+
+      # Production redeploy, main only, held for a human. The hold is what stops
+      # this racing the GitHub Actions deploy.
+      - approval:
+          type: approval
+          requires:
+            - deploy-readiness
+          filters: &main-only
+            branches:
+              only: main
+            tags:
+              ignore: /.*/
+      - deploy-production:
+          requires:
+            - approval
+          context:
+            - fleet-pi-deploy
+          serial-group: fleet-pi-production-deploy
+          filters: *main-only
+      - cancel-deploy-marker:
+          requires:
+            - deploy-production:
+                - canceled
+          filters: *main-only

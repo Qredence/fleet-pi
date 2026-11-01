@@ -89,14 +89,14 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: None until a patched `braces` ships.
 - Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.
 
-## Two CircleCI projects are followed for this repository (Open)
+## Two CircleCI projects are followed for this repository (Resolved)
 
-- Issue: `gh/Qredence/fleet-pi` (OAuth, project `589a2a40-860e-4fed-884f-baad05897656`) and the `fleet-pi` project in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq` (project `ea1af8f1-6cee-451e-b397-7cdebd44a5eb`) are both followed. The GitHub App pipeline definition `ci` (`5f2e5b86-4f49-47b6-b038-e84acb2bfe19`) with an `all-pushes` trigger drives the standalone project; the OAuth project picks up the same `.circleci/config.yml` from its own webhook.
-- Affected area: CircleCI spend and commit-status noise. No build, test, or deploy path depends on either project's arrangement.
-- Symptoms: Every push starts the pipeline twice until the OAuth project is deleted, and PRs carry two CircleCI contexts.
-- Current status: **Open.** This replaces the earlier "no configuration anywhere" state; `.circleci/config.yml` is tracked again as of the CircleCI onboarding change.
-- Workaround: Read the standalone project's run; ignore the `gh/` context.
-- Follow-up: Delete the OAuth project in the CircleCI web app (Project Settings → Overview → Delete Project). The CLI has no project-delete command.
+- Issue: `gh/Qredence/fleet-pi` (OAuth, project `589a2a40-860e-4fed-884f-baad05897656`) and the `fleet-pi` project in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq` (project `ea1af8f1-6cee-451e-b397-7cdebd44a5eb`) were both followed. The GitHub App pipeline definition `ci` (`5f2e5b86-4f49-47b6-b038-e84acb2bfe19`) with an `all-pushes` trigger drives the standalone project; the OAuth project picked up the same `.circleci/config.yml` from its own webhook.
+- Affected area: CircleCI spend and commit-status noise. No build, test, or deploy path depended on either project's arrangement.
+- Symptoms: Every push started the pipeline twice, and PRs carried two CircleCI contexts.
+- Current status: **Resolved.** The OAuth project was unfollowed with `circleci api api/v1.1/project/gh/Qredence/fleet-pi/unfollow -X POST`, which returned `{"following":false}`; `circleci api api/v3/projects/<id>` now reports `is_followed: false`. The project entity still exists but no longer builds. It lives in the separate OAuth org `gh/Qredence`, not the standalone org, which is why removing the GitHub App from the repo would never have fixed it.
+- Note: `circleci project setting set disable-running` cannot address this project — the CLI resolves the slug through the standalone org and reports "No project found". Unfollow is the API-reachable lever.
+- Workaround: None needed. If the context reappears, `circleci project follow` is what re-creates it.
 
 ## Oxc migration: React Compiler-era rules are advisory (PR 2)
 
