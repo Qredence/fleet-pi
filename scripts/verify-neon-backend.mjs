@@ -49,6 +49,24 @@ function resolveChatDatabaseUrl() {
   )
 }
 
+/**
+ * PATH for child processes. Stripping inherited extras keeps a caller's
+ * `PATH` from injecting a different `neon`/`pnpm` binary into a verification
+ * run that is supposed to inspect the repo's own tooling.
+ */
+function childProcessPath() {
+  const groups = new Set()
+  const nodeBin = dirname(process.execPath)
+  groups.add(nodeBin)
+  const homebrew = "/opt/homebrew/bin"
+  const usrLocal = "/usr/local/bin"
+  if (existsSync(homebrew)) groups.add(homebrew)
+  if (existsSync(usrLocal)) groups.add(usrLocal)
+  groups.add("/usr/bin")
+  groups.add("/bin")
+  return [...groups].join(":")
+}
+
 function readNeonContext() {
   const contextPath = join(repoRoot, ".neon")
   if (!existsSync(contextPath)) return {}
@@ -77,7 +95,7 @@ function runNeonJson(command, extraArgs = []) {
     {
       cwd: repoRoot,
       encoding: "utf8",
-      env,
+      env: { ...env, PATH: childProcessPath() },
     }
   )
   return JSON.parse(raw)
@@ -169,7 +187,7 @@ function checkReadiness(results) {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: "pipe",
-      env: process.env,
+      env: { ...process.env, PATH: childProcessPath() },
     })
     results.push({
       id: "deployment-readiness",
