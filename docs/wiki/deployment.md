@@ -145,16 +145,16 @@ GitHub App pipeline definition with an `all-pushes` trigger, and configured by
 unit tests, build, knip, jscpd, tech-debt, `validate-agents-md`, and
 `deploy-readiness`.
 
-The project `gh/Qredence/fleet-pi` lives in a **separate OAuth org**, `gh/Qredence`,
-and still runs this pipeline from its own webhook on every push. Removing the
-GitHub App from the repository does not reach it, and the standalone-org CLI
-cannot manage it: `circleci project setting set disable-running` reports "No
-project found", and `PATCH /api/v2/project/gh/Qredence/fleet-pi/settings`
-returns 403 for this account, which is not an admin of that OAuth org. An
-org/v3 admin of `gh/Qredence` must disable it: CircleCI → switch to the
-`gh/Qredence` org → Projects → `fleet-pi` → Project Settings → Advanced →
-**Block all new work from starting for this project**. The same page exposes
-**Stop Building**, which also removes the webhook and deploy key.
+The project `gh/Qredence/fleet-pi` in the separate OAuth org `gh/Qredence` was
+fed by a legacy repository webhook (`https://circleci.com/hooks/github`), which
+ran a duplicate pipeline on every push. That webhook has been deleted
+(`gh api -X DELETE repos/Qredence/fleet-pi/hooks/639718649`), so only the
+standalone org's `all-pushes` trigger starts a pipeline now.
+
+The `gh/Qredence` project entity and its read-only `CircleCI` deploy key still
+exist but can no longer start a pipeline. Do not re-run `circleci project
+follow` for `gh/Qredence/fleet-pi`: it recreates the webhook and restarts the
+duplicate.
 
 ### Deployment split
 

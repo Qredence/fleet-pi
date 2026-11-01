@@ -89,14 +89,15 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Workaround: None until a patched `braces` ships.
 - Follow-up: Add a `braces` floor in `pnpm-workspace.yaml` once `>=3.0.4` is published. See `docs/wiki/security.md` and `SECURITY.md`.
 
-## Two CircleCI projects fire on every push for this repository (Open, needs OAuth-org admin)
+## Two CircleCI projects fire on every push for this repository (Resolved)
 
-- Issue: `gh/Qredence/fleet-pi` (OAuth org `gh/Qredence`, project `589a2a40-860e-4fed-884f-baad05897656`) and `fleet-pi` in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq` (project `ea1af8f1-6cee-451e-b397-7cdebd44a5eb`) both run the pipeline on every push. The GitHub App definition `ci` (`5f2e5b86-4f49-47b6-b038-e84acb2bfe19`) + `all-pushes` trigger drives the standalone project; the OAuth project picks up the same `.circleci/config.yml` from its own webhook.
-- Affected area: CircleCI spend and duplicate commit statuses. No build, test, or deploy path depends on it.
-- Symptoms: Two full pipelines per push, two CircleCI contexts per PR. Confirmed on `ci/circleci-smart-deploy` (`7262f46`): runs `432dafcd-…` (standalone) and `33917b40-…` (OAuth) both started at 18:29 UTC.
-- Current status: **Open — blocked on permissions.** The signed-in CircleCI identity belongs only to the standalone org (`api/v2/me/collaborations` returns exactly one collaboration). Everything tried against the OAuth project fails: `api/v1.1/.../unfollow` returns `{"following":false}` but does not stop the push-triggered pipeline; `PATCH /api/v2/project/gh/Qredence/fleet-pi/settings` returns 403; CLI `project setting set disable-running` cannot resolve the slug.
-- Workaround: Read the standalone project's run; ignore the `gh/` context.
-- Follow-up: An admin of `gh/Qredence` opens CircleCI, switches to that org, and sets **Project Settings → Advanced → Block all new work** (or **Stop Building**, which also removes the webhook and deploy key). Re-verify with one push: exactly one run should appear.
+- Issue: `gh/Qredence/fleet-pi` (OAuth org `gh/Qredence`, project `589a2a40-860e-4fed-884f-baad05897656`) and `fleet-pi` in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq` (project `ea1af8f1-6cee-451e-b397-7cdebd44a5eb`) both ran the pipeline on every push.
+- Affected area: CircleCI spend and duplicate commit statuses. No build, test, or deploy path depended on it.
+- Symptoms: Two full pipelines per push, two CircleCI contexts per PR.
+- Current status: **Resolved.** The OAuth project was fed by a legacy repository webhook (`https://circleci.com/hooks/github`, id `639718649`), separate from the `circleci-app` GitHub App installation (`134720486`) that drives the standalone project. Deleting that webhook was the fix.
+- Resolution: `gh api -X DELETE repos/Qredence/fleet-pi/hooks/639718649`. A push of commit `8554681` then produced exactly one run (standalone `b219457c`), with zero runs on the OAuth project, confirmed by polling both projects for 160s.
+- Why the earlier attempts failed: `api/v1.1/.../unfollow` returns `{"following":false}` but does not stop webhook-triggered pipelines, and `PATCH /api/v2/project/gh/Qredence/fleet-pi/settings` returns 403 because this CircleCI identity belongs only to the standalone org. The fix was never available from CircleCI's side — only from GitHub.
+- Residual: the `gh/Qredence` project entity and its deploy key (`CircleCI`, read-only, id `154180124`) still exist, but neither can start a pipeline now. The webhook config (URL, events `fork`/`public`/`pull_request`/`push`/`repository`, form content type) is saved so it can be recreated if it is ever needed.
 
 ## Oxc migration: React Compiler-era rules are advisory (PR 2)
 
