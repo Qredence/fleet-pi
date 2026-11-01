@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "lint": "vp lint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format": "vp fmt",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

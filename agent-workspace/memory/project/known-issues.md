@@ -144,6 +144,25 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Affected area: `.pi/extensions/vendor/filechanges`, `subagents`,
   `web-fetch`.
 - Current status: Excluded via `lint.ignorePatterns`, matching the retired root
-  `eslint.config.js`, which ignored `.pi/extensions/vendor/**`.
+  `eslint.config.js`, which ignored `.pi/extensions/vendor/**`. Also excluded
+  from `fmt.ignorePatterns` for the same refresh-diff reason.
 - Follow-up: Revisit only if a vendored extension is forked into first-party
   code.
+
+## Oxc migration: one entry point for lint policy
+
+- Issue: `pnpm lint` previously ran `turbo lint && vp lint .pi/extensions`,
+  which never saw `scripts/`, `vite.config.ts`, or root `.mjs` files. CI runs
+  `vp check --no-fmt` from the root, so a contributor could pass the documented
+  local command and still fail CI. Verified pre-fix: a `debugger` statement in
+  `scripts/` gave `pnpm lint` exit 0 and `vp check` exit 1.
+- Affected area: root `package.json` `lint` script, `turbo.json`,
+  `docs/wiki/how-to-contribute/tooling.md`.
+- Current status: `lint` is `vp check --no-fmt`, identical to CI. Per-package
+  `vp lint` scripts remain for direct use but are no longer the documented
+  path.
+- Related invariant: a `fmt`/`lint` block in a nested `vite.config.ts`
+  **replaces** the root block instead of merging. All static-analysis policy
+  must stay in the root file; the header comment there says so.
+- Follow-up: If `turbo` caching of lint matters later, add a root-scoped turbo
+  task rather than reintroducing a second spelling of the command.

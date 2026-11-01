@@ -10,11 +10,12 @@
 
 ## Code style
 
-- **Prettier:** 80-char line width, 2-space indent, no semicolons. Tailwind classes sorted via `prettier-plugin-tailwindcss`.
+- **Oxfmt:** 80-char line width, 2-space indent, no semicolons, ES5 trailing commas, LF endings. Import order and Tailwind class order are handled by Oxfmt (`sortImports`, `sortTailwindcss`). Configure it in the `fmt` block of the root `vite.config.ts`.
 - **Path aliases:** `@/*` → `apps/web/src/*`, `@workspace/hax-design/*` → `packages/hax-design/src/*`.
 - **Tailwind CSS v4:** No `tailwind.config.js`. All design tokens live in `packages/hax-design/src/styles/globals.css`.
 - **No explicit `any`:** TypeScript strict mode is on. Use proper types or `unknown` + narrowing.
-- **ESLint rules of note:** Complexity cap (≤ 10), max-lines warning (300), `@typescript-eslint/naming-convention` for consistent casing.
+- **Oxlint rules of note:** `correctness` is error, `suspicious` is warn. Repo policies: complexity cap (85), `max-lines` 1200, `max-lines-per-function` 460, `unicorn/prefer-node-protocol`, and two `no-restricted-imports` overrides (no `@/components/*` in `apps/web`, no `@workspace/hax-design/*` inside `hax-design`).
+- **Naming:** review policy, not a lint rule (it was `@typescript-eslint/naming-convention`). `camelCase` for variables/functions/keys, `PascalCase` for types and components, `SCREAMING_SNAKE_CASE` only for true module constants, `is`/`has`/`should` prefixes for booleans. See `AGENTS.md`.
 
 ## React patterns
 

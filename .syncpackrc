@@ -7,10 +7,21 @@
       "dependencyTypes": ["dev", "prod"],
       "pinVersion": "workspace:*"
     },
-    {
+     {
       "label": "Ignore tag-based versions",
       "dependencies": ["nitro", "tempo-sdk"],
       "isIgnored": true
+    },
+    {
+      "label": "Retired ESLint/Prettier tooling",
+      "dependencies": [
+        "eslint",
+        "prettier",
+        "prettier-plugin-tailwindcss",
+        "@tanstack/eslint-config",
+        "typescript-eslint"
+      ],
+      "isBanned": true
     }
   ]
 }

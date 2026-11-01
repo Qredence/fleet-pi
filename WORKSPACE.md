@@ -9,7 +9,7 @@ langs: TypeScript, JSON, YAML
 runtimes: Node.js ≥22  
 pkgManager: pnpm@11.1.3  
 deliverables: web app (TanStack Start + Pi coding agent), hax-design UI, pi-protocol wire types  
-rootConfigs: pnpm-workspace.yaml, eslint.config.js, neon.ts, turbo.json
+rootConfigs: pnpm-workspace.yaml, vite.config.ts (oxlint/oxfmt host), neon.ts, turbo.json
 
 ---
 

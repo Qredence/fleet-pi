@@ -16,8 +16,10 @@ CI runs every backticked `pnpm` command in this file through
 - Setup: `pnpm install`. Devcontainer: `.devcontainer/devcontainer.json`
   (port `3000`, runs `pnpm install` on create).
 - Daily: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm e2e`.
+- Format: `pnpm format` (write) and `pnpm format:check` (CI gate). Both are
+  Oxfmt through Vite+; import order and Tailwind class order are part of it.
 - Quality: `pnpm syncpack` (fix drift with `pnpm syncpack:fix`), `pnpm knip`,
-  `pnpm jscpd`, `pnpm tech-debt`.
+  `pnpm jscpd`, `pnpm tech-debt`, `pnpm guard:no-eslint-prettier`.
 - Docs: `pnpm generate:docs` after doc-generator sources change;
   `pnpm generate:openapi` after `pi-protocol` schemas or route contracts
   change (`pnpm generate:openapi -- --check` in CI);
@@ -62,13 +64,25 @@ Deploy steps: `docs/wiki/deployment.md` and
   artifacts to Playwright `testInfo.outputPath()`, never machine paths.
 - `AGENTS.md` is the only agent instruction file; do not recreate `CLAUDE.md`.
 - Never commit `defaultProvider`, `defaultModel`, or `enabledModels` in
-  `.pi/settings.json`. Users choose models in Settings, and
-  `apps/web/src/lib/pi/__tests__/resource-expectations.test.ts` enforces this.
+  `.pi/settings.json`. Users choose models in Settings. The file stays
+  gitignored, and `apps/web/src/lib/pi/__tests__/resource-expectations.test.ts`
+  fails if it is ever tracked again.
 - When executing an attached plan, do not edit the plan file; finish its todos.
-- The pre-commit hook (Husky + lint-staged) runs Prettier and `eslint --fix`
+- The pre-commit hook (Husky + lint-staged) runs `vp fmt` and `vp lint --fix`
   on staged files in `apps`, `packages`, and `.pi/extensions`.
   `git config core.hooksPath` must point at `.husky`. Fix lint errors; do not
   bypass the hook.
+- Oxfmt and Oxlint are configured only in the `fmt` and `lint` blocks of the
+  root `vite.config.ts`. Never add `.prettierrc`, `.prettierignore`, or an
+  `eslint.config.*`; `pnpm guard:no-eslint-prettier` fails CI's `lint` job if
+  they reappear, and `.syncpackrc` bans the packages themselves.
+- Naming is review policy, not a lint rule: `camelCase` for variables,
+  functions, and object keys; `PascalCase` for types and components (and for
+  component-shaped functions or factory results such as `const Badge = ...`);
+  `SCREAMING_SNAKE_CASE` only for true module constants. Prefix booleans with
+  `is`/`has`/`should`/`can` where the name would otherwise be ambiguous. Use `_`
+  only for a deliberately unused parameter; that case is exempt from
+  `no-underscore-dangle`.
 - Keep security and isolation audit notes gitignored (`.cursor/hooks/state/`),
   never under tracked `agent-workspace/artifacts/`.
 

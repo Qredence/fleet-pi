@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "lint": "vp lint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format": "vp fmt",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -38,12 +38,10 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "^0.4.0",
     "@types/node": "^22.19.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.13.0",
     "shadcn": "^4.22.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",

@@ -56,7 +56,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm exec vp check --no-fmt
+
+      - name: Check formatting
+        run: pnpm exec vp fmt --check
+
+      - name: Guard against retired ESLint/Prettier tooling
+        run: pnpm guard:no-eslint-prettier
 
       - name: Check OpenUI signatures
         run: pnpm generate:openui-signatures -- --check
