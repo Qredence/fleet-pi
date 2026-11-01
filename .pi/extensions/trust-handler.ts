@@ -11,6 +11,7 @@ import {
   decideHeadlessProjectTrust,
   isProtectedWorkspacePath,
 } from "./lib/project-trust"
+
 import type {
   ExtensionAPI,
   ExtensionContext,

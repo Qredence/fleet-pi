@@ -1,0 +1,13 @@
+# Commits that only re-derive formatting. `git blame` skips them so history
+# points at the change that introduced the code, not the tool that touched it.
+#
+# Enable per clone:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub reads this filename automatically. Keep one SHA per line, no commas.
+
+# style: re-sort imports with oxfmt (PR 1, import-only)
+e6d6c47430fb3e2b9235e99555e89ee6b3ead740
+
+# style: apply oxfmt formatting drift (PR 1)
+48a955201ffb8b7d2910eb05e5936f8205a67d40

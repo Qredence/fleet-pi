@@ -1,5 +1,7 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path"
+
 import { Type } from "typebox"
+
 import { resolveHarnessWriteTarget } from "./lib/harness-write"
 import { evaluateWorkspaceWrite } from "./lib/mutation-tier"
 import {
@@ -7,6 +9,7 @@ import {
   ensureSafeDirectory,
   writeNoFollowFile,
 } from "./lib/safe-path"
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 
 const WORKSPACE_ROOT = "agent-workspace"

@@ -1,11 +1,11 @@
 // Workspace-root static-analysis host for Vite+ (`vp`). This is not an app
-// config: the TanStack Start build lives in `apps/web/vite.config.ts`. Only the
-// `fmt` / `check` blocks belong here in PR 1; `lint` follows in PR 2.
+// config: the TanStack Start build lives in `apps/web/vite.config.ts`.
+// A `fmt`/`lint` block added to a nested `vite.config.ts` REPLACES this one
+// instead of merging, so every static-analysis policy belongs here.
 import { defineConfig } from "vite-plus"
 
 export default defineConfig({
   fmt: {
-    // Locked-in equivalents of the retired .prettierrc.
     printWidth: 80,
     semi: false,
     trailingComma: "es5",
@@ -47,9 +47,19 @@ export default defineConfig({
       "packages/pi-protocol/src/openui-signatures.ts",
       "pnpm-lock.yaml",
       // Agent-owned and prose-only trees: formatting churn buys nothing here.
+      // `.pi/extensions` is deliberately NOT ignored: it is first-party code
+      // with a lint contract, so it must be formatted too.
       "agent-workspace/**",
       "docs/**",
-      ".pi/**",
+      ".pi/settings.json",
+      ".pi/*.md",
+      ".pi/skills/**",
+      ".pi/prompts/**",
+      ".pi/packages/**",
+      ".pi/themes/**",
+      // Vendored upstream extensions keep their own formatting so an upstream
+      // refresh stays a clean diff (same reason they are lint-excluded).
+      ".pi/extensions/vendor/**",
     ],
   },
   check: {
