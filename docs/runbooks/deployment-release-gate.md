@@ -34,6 +34,45 @@ That probe includes the Data API privilege check (`authenticated` and `anonymous
 must not hold grants on `pi_*`). CI also fails when `neon.ts` sets `dataApi: true`
 or the chat migrate runner imports `chat-postgres-data-api-auth`.
 
+The `deploy-readiness` job in `.circleci/config.yml` runs the same three checks
+with the same placeholders, so both systems gate the same properties. It needs
+no credentials; the migration probes self-skip unless
+`FLEET_PI_CHAT_MIGRATION_DATABASE_URL` is set in the CircleCI project.
+
+## CircleCI approval-gated redeploy
+
+GitHub Actions still deploys the Worker automatically on every `main` push.
+CircleCI's lane is separate and never runs unattended:
+
+1. `deploy-readiness` passes on `main`.
+2. The `approval` job holds. Nothing has deployed yet.
+3. A human approves in the CircleCI UI. `deploy-production` then runs
+   `circleci run release plan` (opening a PENDING deployment for component
+   `fleet-pi-web` in environment `production`), builds, runs `wrangler deploy`,
+   and closes the deployment as SUCCESS or FAILED.
+
+**Caveat:** the lane deploys the commit that was approved, not necessarily
+`HEAD`. By the time someone approves, `main` may have moved on and GitHub
+Actions may already have shipped a newer commit. Use this lane for a deliberate
+re-deploy or an emergency, and confirm which commit you are approving.
+
+### Rollback
+
+`.circleci/rollback.yml` is a trigger-less definition, started by hand:
+
+```bash
+pnpm --filter web exec wrangler deployments list --name fleet-pi-web   # find versions
+circleci pipeline run \
+  --project circleci/SomxVLJYMpo86z6XUrZBUq/VugchWoosMNMTsS2niYAQi \
+  --definition-id 05ff1bdc-6dd3-4803-afdf-8a58d369bc97 \
+  --branch main \
+  --parameters target_version=<worker-version-id> \
+  --parameters reason="why"
+```
+
+The job runs `wrangler rollback <version> --name fleet-pi-web --yes`. It needs
+the `fleet-pi-deploy` context.
+
 ## Pre-promotion checklist
 
 1. Apply auth grants: `pnpm auth:migrate`

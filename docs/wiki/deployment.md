@@ -138,14 +138,47 @@ See [deployment release gate](../runbooks/deployment-release-gate.md) for produc
 
 `.github/workflows/ci.yml` runs lint, typecheck, test, build, e2e, `validate-agents-md`, knip, jscpd, syncpack, and tech-debt scans on PRs and `main`.
 
-CircleCI mirrors the validation gates on every push and PR. The project is
+CircleCI runs the same validation gates on every push and PR. The project is
 `fleet-pi` in the standalone org `circleci/SomxVLJYMpo86z6XUrZBUq`, driven by a
 GitHub App pipeline definition with an `all-pushes` trigger, and configured by
 `.circleci/config.yml`. It runs lint/format/guards, typecheck, syncpack, the web
-unit tests, build, knip, jscpd, tech-debt, and `validate-agents-md`; e2e and the
-Cloudflare release gate stay in GitHub Actions. The older OAuth project
-`gh/Qredence/fleet-pi` is not part of this pipeline; delete it in the CircleCI
-web app so pushes do not run twice.
+unit tests, build, knip, jscpd, tech-debt, `validate-agents-md`, and
+`deploy-readiness`.
+
+The project `gh/Qredence/fleet-pi` lives in a **separate OAuth org**, `gh/Qredence`,
+and still runs this pipeline from its own webhook on every push. Removing the
+GitHub App from the repository does not reach it, and the standalone-org CLI
+cannot manage it: `circleci project setting set disable-running` reports "No
+project found", and `PATCH /api/v2/project/gh/Qredence/fleet-pi/settings`
+returns 403 for this account, which is not an admin of that OAuth org. An
+org/v3 admin of `gh/Qredence` must disable it: CircleCI → switch to the
+`gh/Qredence` org → Projects → `fleet-pi` → Project Settings → Advanced →
+**Block all new work from starting for this project**. The same page exposes
+**Stop Building**, which also removes the webhook and deploy key.
+
+### Deployment split
+
+GitHub Actions remains the only **automatic** deployer
+(`.github/workflows/cloudflare.yml` on every `main` push). CircleCI adds a
+parallel, human-gated lane:
+
+- `deploy-readiness` runs on every push, with the same prod-shaped and
+  preview-shaped `verify-deployment-readiness` placeholders as the GitHub Actions
+  release gate. It needs no credentials; the migration probes self-skip.
+- `approval` holds on `main` after `deploy-readiness`. Nothing deploys until a
+  human approves.
+- `deploy-production` then rebuilds, runs `wrangler deploy`, and records a
+  deployment in the Deploys UI (`fleet-pi-web` in `production`, version =
+  short SHA) with `circleci run release plan/update`. It needs the
+  `fleet-pi-deploy` context: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+  `VITE_NEON_AUTH_URL`.
+- `.circleci/rollback.yml` is a separate, trigger-less definition for manual
+  `wrangler rollback`.
+
+Because the approval lane redeploys the **approved commit**, it can be older
+than `HEAD` by the time someone approves. Treat it as the deliberate re-deploy
+and emergency path, not the routine one. PR previews and Neon preview branches
+stay entirely on GitHub Actions.
 
 `.github/workflows/neon_workflow.yml` manages one Neon preview branch per same-repo PR (Dependabot and fork PRs are skipped; they have no secrets):
 

@@ -13,6 +13,12 @@ and an optional projection. The Daytona volume holds the harness and artifacts.
 
 ### Added
 
+- **CircleCI deployment lane** — `deploy-readiness` gates every push with the
+  same production-shaped and preview-shaped readiness checks as the GitHub
+  Actions release gate. On `main`, an approval hold guards a production
+  redeploy that records a CircleCI deployment for component `fleet-pi-web` in
+  environment `production`, plus a trigger-less `.circleci/rollback.yml` for
+  manual `wrangler rollback`. GitHub Actions remains the automatic deployer.
 - **CircleCI validation pipeline** — `.circleci/config.yml` mirrors the GitHub
   Actions gates (lint/format/guards, typecheck, syncpack, web unit tests, build,
   knip, jscpd, tech-debt, `validate-agents-md`) on every push and PR, wired to
