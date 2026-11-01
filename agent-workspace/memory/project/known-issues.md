@@ -166,3 +166,24 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
   must stay in the root file; the header comment there says so.
 - Follow-up: If `turbo` caching of lint matters later, add a root-scoped turbo
   task rather than reintroducing a second spelling of the command.
+
+## Oxc migration: SonarCloud re-analysis is cancelled by stack pushes
+
+- Issue: SonarCloud runs through the GitHub App with no config in this repo.
+  Each branch push cancels the analysis of the previous head, and a cancelled
+  check reports as a failure in `gh pr checks`. On a five-PR stack the lower
+  PRs are re-analysed on every cascade, so the visible status is often a
+  cancelled run rather than a real verdict.
+- Affected area: PRs #191–#195 of the Oxc migration stack (`stack #197`).
+- Current status: The SonarCloud quality gate itself reports OK for #192,
+  #194, and #195. Only #191 fails, on `new_security_rating` (B) from a single
+  low-severity warning in `scripts/verify-neon-backend.mjs`.
+- Known false positive: Sonar's taint tracker follows the `PATH` key through
+  a `process.env` spread even after `delete env.PATH` and an explicit rebuild
+  from fixed directories. The runtime behaviour is correct and verified (an
+  injected `PATH` entry does not reach the child process), so this is
+  accepted rather than suppressed inline.
+- Workaround: Read the quality gate through the Sonar API, or wait for the
+  top-of-stack analysis, instead of trusting a cancelled check run.
+- Follow-up: If a future change makes the taint tracker accept the explicit
+  environment, drop this note and let the gate go green.
