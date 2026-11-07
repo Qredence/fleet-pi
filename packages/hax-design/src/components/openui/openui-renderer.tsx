@@ -15,14 +15,10 @@ import type {
 type OpenUIStateByBlock = Record<string, Record<string, unknown>>
 
 function getActionMessage(event: ActionEvent) {
-  if (event.type === BuiltinActionType.OpenUrl) return null
+  if (event.type !== BuiltinActionType.ContinueConversation) return null
 
-  if (event.type === BuiltinActionType.ContinueConversation) {
-    const message = event.params.message
-    if (typeof message === "string" && message.trim()) return message
-  }
-
-  return event.humanFriendlyMessage.trim() || null
+  const message = event.humanFriendlyMessage.trim()
+  return message || null
 }
 
 function getFinalErrors(result: ParseResult | null, isStreaming?: boolean) {

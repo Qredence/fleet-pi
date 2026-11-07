@@ -10,6 +10,7 @@ import {
   SelectDef,
   SwitchDef,
   openUILibrary,
+  triggerButtonAction,
 } from "../openui-library"
 
 function renderOpenUI(response: string) {
@@ -26,6 +27,37 @@ function expectLabelAssociation(html: string, label: string) {
   expect(labelMatch?.[1]).toBeTruthy()
   expect(html).toContain(`id="${labelMatch?.[1]}"`)
 }
+
+describe("triggerButtonAction", () => {
+  it("sends a historical string action as the follow-up message", () => {
+    const calls: unknown[][] = []
+    const triggerAction = (...args: unknown[]) => {
+      calls.push(args)
+    }
+
+    triggerButtonAction(
+      triggerAction,
+      "Re-run tests",
+      "Run the test suite again"
+    )
+
+    expect(calls).toEqual([["Run the test suite again"]])
+  })
+
+  it("passes an action plan through as the action argument", () => {
+    const calls: unknown[][] = []
+    const triggerAction = (...args: unknown[]) => {
+      calls.push(args)
+    }
+    const plan = {
+      steps: [{ type: "continue_conversation", message: "Explain" }],
+    }
+
+    triggerButtonAction(triggerAction, "Explain", plan)
+
+    expect(calls).toEqual([["Explain", undefined, plan]])
+  })
+})
 
 describe("openUILibrary", () => {
   it("renders nested child components", () => {

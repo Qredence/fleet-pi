@@ -10,7 +10,7 @@ import {
 import { isPiSessionMirrorEnabled } from "@/lib/db/pi-session-ownership-db"
 import { recoverOwnedSessionFile } from "@/lib/db/pi-session-recovery"
 import { isDurableSessionId } from "@/lib/pi/durable/durable-session"
-import { normalizeSessionLabel } from "@workspace/hax-design/lib/pi/chat-helpers"
+import { normalizeSessionLabel } from "@workspace/pi-protocol/session-label"
 
 import { createPlanToolPart, restorePlanState } from "./plan-state"
 import {
