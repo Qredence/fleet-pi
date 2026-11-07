@@ -1,0 +1,19 @@
+sonar-project.properties
+  s_f93efa4195d77a::t_8f9f1064fe724f 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9944eee2cc80092c267d36ab8179988962f7902d",
+  "prompts": {},
+  "sessions": {
+    "s_f93efa4195d77a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dba39832-e89d-43d6-b867-ca8f619768ff",
+        "model": "grok-4.7"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
