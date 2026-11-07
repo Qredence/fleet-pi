@@ -7,7 +7,7 @@ afterEach(() => {
 })
 
 describe("loadSandboxRuntimeStatus", () => {
-  it("maps a ready sandbox response", async () => {
+  it("maps a configured sandbox that is not ready", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({

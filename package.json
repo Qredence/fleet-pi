@@ -77,7 +77,7 @@
       "pnpm --filter @workspace/hax-design exec vp lint --fix"
     ],
     "packages/pi-protocol/**/*.{ts,tsx,js,jsx}": [
-      "pnpm --filter @workspace/pi-protocol exec vp lint --fix"
+      "pnpm --filter @workspace/pi-protocol exec vp lint --fix --no-error-on-unmatched-pattern"
     ],
     ".pi/extensions/**/*.ts": [
       "vp lint --fix .pi/extensions"
