@@ -12,8 +12,8 @@ summary = Card("Status", Stack([ok, note]))
 ok = Badge("Tests passing", "success")
 note = Text("3 of 3 suites green.", "muted")
 actions = Group([run, skip])
-run = Button("Re-run tests", "Run the test suite again")
-skip = Button("Skip", "Skip this step", "outline")
+run = Button("Re-run tests", @ToAssistant("Run the test suite again"))
+skip = Button("Skip", @ToAssistant("Skip this step"), "outline")
 ```
 
 Programs are declarative and stateless from Pi's point of view. State lives in the React renderer.
@@ -53,7 +53,7 @@ If the entire message is plain markdown (no openui segments), `GenerativeTextRen
 
 When the user clicks a `Button` inside a rendered block, `@openuidev/react-lang` fires an `ActionEvent`. The renderer converts it to a plain string message via `getActionMessage` and calls the `onOpenUIAction` prop, which is wired to `sendMessage()` in the chat hook. This lets Pi create conversational buttons that send a follow-up without the user having to type.
 
-Only `ContinueConversation` actions produce messages. `OpenUrl` actions are silently ignored. Destructive action types (`Query`, `Mutation`) are blocked at the prompt level.
+A button action is one bare step, such as `@ToAssistant("Run the test suite again")`, or several steps inside `Action([...])`. `@ToAssistant` arrives as `continue_conversation`. The renderer sends only that event's `humanFriendlyMessage` and ignores `params.context`. A stored button whose action is still a plain string sends that string. `open_url` is ignored, and modes that allow actions tell the model not to use `@OpenUrl`. The generated catalog still lists it. The renderer has no `toolProvider`, and the prompt forbids `Query()`, `Mutation()`, and `@Run`, so generated UI cannot call host tools. `@Set` and `@Reset` still run inside the renderer. Plan mode receives the status example only and forbids actions.
 
 ### Per-block state
 
@@ -73,7 +73,7 @@ The library is built with `createLibrary` and registered in `@openuidev/react-la
 | `Heading`     | h1–h4 heading                                                          |
 | `Text`        | Body text with tone and size variants                                  |
 | `Badge`       | Small status badge                                                     |
-| `Button`      | Conversational button — fires a `ContinueConversation` action          |
+| `Button`      | Conversational button — `@ToAssistant` sends a follow-up message       |
 | `Input`       | Display-only text input (for form mockups)                             |
 | `Card`        | Chat-sized card container                                              |
 | `Callout`     | Highlighted note, warning, or error block                              |
@@ -96,7 +96,7 @@ Before each turn, the server calls `buildOpenUIPrompt(mode)` and injects the res
 3. Mode-specific rules:
    - **Agent/harness mode** — encourages using OpenUI for dashboards, status cards, result summaries, and safe conversational buttons; bars destructive actions.
    - **Plan mode** — restricts OpenUI to optional visual summaries and disables buttons.
-4. Two canonical examples (status card and conversational action row).
+4. Canonical examples: one bare `@ToAssistant` button, a status card, and a form whose button runs `@Set` and `@ToAssistant` inside `Action([...])`.
 
 The component signatures embedded in the prompt come from `packages/pi-protocol/src/openui-signatures.ts` (generated from `openui-library.tsx` via `pnpm generate:openui-signatures`). `buildOpenUIPrompt` in `@workspace/pi-protocol/openui-prompt` imports signatures only — no React/recharts chain — so server-side plan mode stays lightweight.
 

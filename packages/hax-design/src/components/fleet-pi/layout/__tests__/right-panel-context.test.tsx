@@ -82,6 +82,7 @@ const SETTINGS_ACTIONS: SettingsActionsContextValue = {
   onThemePreferenceChange: () => {},
   onUpdateProvider: () => Promise.resolve({ providers: [], success: true }),
   providers: [],
+  loadSandboxStatus: () => Promise.resolve(null),
   saveSettings: () => Promise.resolve(SETTINGS_RESPONSE),
   settings: null,
   settingsError: null,
@@ -119,6 +120,7 @@ const WORKSPACE_TREE_KEYS = [
 const SETTINGS_ACTIONS_KEYS = [
   "isLoadingProviders",
   "isUpdatingProvider",
+  "loadSandboxStatus",
   "modelCatalog",
   "onDiscoverModels",
   "onRemoveProvider",
@@ -187,8 +189,8 @@ describe("right-panel context narrowing", () => {
     )
   })
 
-  it("compat hook merges the same 34 fields previously provided", () => {
-    expect(COMPAT_KEYS).toHaveLength(34)
+  it("compat hook merges the same 35 fields previously provided", () => {
+    expect(COMPAT_KEYS).toHaveLength(35)
     expect(renderKeys(CompatKeys).split(",")).toEqual(COMPAT_KEYS)
   })
 

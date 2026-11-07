@@ -26,6 +26,7 @@ import type { MutableRefObject } from "react"
 
 type PiChatMessagingRefs = {
   abortRef: MutableRefObject<AbortController | null>
+  followUpAbortRef: MutableRefObject<AbortController | null>
   activityLabelRef: MutableRefObject<string | undefined>
   messagesRef: MutableRefObject<Array<ChatMessage>>
   planLabelRef: MutableRefObject<string | undefined>
@@ -47,6 +48,7 @@ export type UsePiChatMessagingOptions = PiChatMessagingRefs &
 
 export function usePiChatMessaging({
   abortRef,
+  followUpAbortRef,
   activityLabelRef,
   client,
   hostedAgentOnly = false,
@@ -130,33 +132,48 @@ export function usePiChatMessaging({
       setMessagesSynced((current) => [...current, userMessage])
       setError(null)
 
-      await client.streamMessage(
-        {
-          message: trimmed,
-          model,
-          mode: requestMode,
-          sessionFile: sessionMetadataRef.current.sessionFile,
-          sessionId: sessionMetadataRef.current.sessionId,
-          streamingBehavior: behavior,
-        },
-        (event) => {
-          if (event.type === "queue") {
-            setQueueSynced({
-              steering: event.steering,
-              followUp: event.followUp,
-            })
-            setActivityLabelSynced(
-              behavior === "steer" ? "Steering the turn" : "Follow-up queued"
-            )
-          }
-          if (event.type === "error") {
-            throw new Error(event.message)
-          }
+      const controller = new AbortController()
+      followUpAbortRef.current?.abort()
+      followUpAbortRef.current = controller
+
+      try {
+        await client.streamMessage(
+          {
+            message: trimmed,
+            model,
+            mode: requestMode,
+            sessionFile: sessionMetadataRef.current.sessionFile,
+            sessionId: sessionMetadataRef.current.sessionId,
+            streamingBehavior: behavior,
+          },
+          (event) => {
+            if (event.type === "queue") {
+              setQueueSynced({
+                steering: event.steering,
+                followUp: event.followUp,
+              })
+              setActivityLabelSynced(
+                behavior === "steer" ? "Steering the turn" : "Follow-up queued"
+              )
+            }
+            if (event.type === "error") {
+              throw new Error(event.message)
+            }
+          },
+          controller.signal
+        )
+      } catch (err) {
+        if (controller.signal.aborted) return
+        throw err
+      } finally {
+        if (followUpAbortRef.current === controller) {
+          followUpAbortRef.current = null
         }
-      )
+      }
     },
     [
       client,
+      followUpAbortRef,
       model,
       sessionMetadataRef,
       setActivityLabelSynced,
@@ -188,6 +205,8 @@ export function usePiChatMessaging({
       }
 
       const controller = new AbortController()
+      followUpAbortRef.current?.abort()
+      followUpAbortRef.current = null
       abortRef.current?.abort()
       abortRef.current = controller
       setError(null)
@@ -239,6 +258,7 @@ export function usePiChatMessaging({
     [
       abortRef,
       client,
+      followUpAbortRef,
       handleStreamEvent,
       hostedAgentOnly,
       messagesRef,

@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@openuidev/lang-core": "^0.2.7",
+    "@openuidev/lang-core": "^1.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -28,6 +28,7 @@
     "./model-patterns": "./src/model-patterns.ts",
     "./provider-catalog": "./src/provider-catalog.ts",
     "./openui-prompt": "./src/openui-prompt.ts",
-    "./hosted-resources": "./src/hosted-resources.ts"
+    "./hosted-resources": "./src/hosted-resources.ts",
+    "./session-label": "./src/session-label.ts"
   }
 }

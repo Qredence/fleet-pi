@@ -7,12 +7,14 @@ import { openUILibrary } from "../src/components/openui/openui-library.js"
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const outPath = join(scriptDir, "../../pi-protocol/src/openui-signatures.ts")
 
-const spec = openUILibrary.toSpec()
+const { schema: _schema, ...promptSpec } = openUILibrary.toSpec() as ReturnType<
+  typeof openUILibrary.toSpec
+> & { schema?: unknown }
 const content = `// @generated — do not edit
 
 import type { PromptSpec } from "@openuidev/lang-core"
 
-export const openUIPromptSpec = ${JSON.stringify(spec, null, 2)} as PromptSpec
+export const openUIPromptSpec = ${JSON.stringify(promptSpec, null, 2)} as PromptSpec
 `
 
 const isCheck = process.argv.includes("--check")

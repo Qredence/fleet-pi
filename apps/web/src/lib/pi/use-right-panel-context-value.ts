@@ -1,4 +1,6 @@
-import { useMemo } from "react"
+import { useCallback, useMemo } from "react"
+
+import { loadSandboxRuntimeStatus } from "./sandbox-runtime-status"
 
 import type {
   ChatPanelDataContextValue,
@@ -167,10 +169,13 @@ export function useRightPanelContextValue({
     ]
   )
 
+  const loadSandboxStatus = useCallback(() => loadSandboxRuntimeStatus(), [])
+
   const settingsActions = useMemo<SettingsActionsContextValue>(
     () => ({
       isLoadingProviders,
       isUpdatingProvider,
+      loadSandboxStatus,
       modelCatalog,
       onDiscoverModels,
       onRemoveProvider,
@@ -187,6 +192,7 @@ export function useRightPanelContextValue({
       handleThemePreferenceChange,
       isLoadingProviders,
       isUpdatingProvider,
+      loadSandboxStatus,
       modelCatalog,
       onDiscoverModels,
       onRemoveProvider,

@@ -22,4 +22,19 @@ Outro`}
     expect(html).toContain("World")
     expect(html).toContain("Outro")
   })
+
+  it("renders a bare ToAssistant button", () => {
+    const html = renderToStaticMarkup(
+      <GenerativeTextRenderer
+        content={`\`\`\`openui
+root = Root([ask])
+ask = Button("Explain", @ToAssistant("Explain this chart"))
+\`\`\``}
+        messageId="m2"
+      />
+    )
+
+    expect(html).toContain("Explain")
+    expect(html).not.toContain("OpenUI Render Error")
+  })
 })

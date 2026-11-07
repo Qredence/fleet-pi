@@ -19,7 +19,12 @@ const BASE_RULES = [
   "Prefer compact UI blocks that fit inside a chat message.",
   'Reactive State ($variables): Declare reactive variables with `$name = defaultValue`. Bind them to inputs such as `Input("search", $search)` or `Select("timeframe", $timeframe, [{ value: "7", label: "7 Days" }])`. Updating the input automatically recalculates all dependent expressions.',
   "Built-in Functions: Use @-prefixed functions for data transformation: `@Count(array)`, `@Sum(numbers[])`, `@Avg(numbers[])`, `@Filter(array, field, op, value)`. Bare names without @ are not supported.",
-  'Action Compositions: Chained actions can be defined inside `Action([...])`. For example: `Button("Submit", Action([@Run(myMutation), @Set($success, true), @Reset($inp)]))`. Steps execute sequentially; failure in any step aborts the rest.',
+]
+
+const ACTION_RULES = [
+  'One action is a bare step, for example `Button("Explain", @ToAssistant("Explain this chart"))` or `Button("Clear", @Set($searchQuery, ""))`. Several actions run in order inside `Action([...])`, for example `Button("Apply Filters", Action([@Set($searchQuery, ""), @ToAssistant("Applying search filters")]))`.',
+  "Generated UI cannot call host tools. Buttons may change $variables or send a follow-up message only.",
+  "Do not use @OpenUrl. This host ignores link actions.",
 ]
 
 const PLAN_RULES = [
@@ -32,13 +37,19 @@ const AGENT_RULES = [
   "Buttons may trigger conversational messages or complex action compositions; do not use them for destructive actions.",
 ]
 
-const EXAMPLES = [
-  `A compact status summary:
+const STATUS_EXAMPLE = `A compact status summary:
 \`\`\`openui
 root = Root([summary])
 summary = Card("OpenUI status", Stack([ok, next]))
 ok = Badge("Renderer wired", "success")
 next = Text("Next: validate streamed fenced blocks.", "muted")
+\`\`\``
+
+const ACTION_EXAMPLES = [
+  `A single follow-up button:
+\`\`\`openui
+root = Root([ask])
+ask = Button("Explain", @ToAssistant("Explain this chart"))
 \`\`\``,
   `An interactive settings form with reactive bindings and actions:
 \`\`\`openui
@@ -61,18 +72,19 @@ submit = Button("Apply Filters", Action([@Set($searchQuery, ""), @ToAssistant("A
 ]
 
 export function buildOpenUIPrompt(mode: OpenUIPromptMode) {
+  const isPlan = mode === "plan"
   const additionalRules = [
     ...BASE_RULES,
-    ...(mode === "plan" ? PLAN_RULES : AGENT_RULES),
+    ...(isPlan ? PLAN_RULES : [...ACTION_RULES, ...AGENT_RULES]),
   ]
 
   return generatePrompt({
     ...openUIPromptSpec,
     preamble: OPENUI_PREAMBLE,
     additionalRules,
-    examples: EXAMPLES,
+    examples: isPlan ? [STATUS_EXAMPLE] : [STATUS_EXAMPLE, ...ACTION_EXAMPLES],
     bindings: true,
-    toolCalls: mode === "agent" || mode === "plan-execution",
+    toolCalls: false,
     editMode: false,
   })
 }

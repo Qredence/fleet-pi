@@ -1,8 +1,11 @@
 import { createContext, useContext, useMemo } from "react"
 
 import type { RightPanel } from "../../../lib/canvas-utils"
+import type { SandboxRuntimeStatus } from "../pi/config-panel/sections/sandbox-runtime-status"
 import type { RightPanelContentProps } from "./right-panel-registry"
 import type { ReactNode } from "react"
+
+export type { SandboxRuntimeStatus }
 
 export type ChatPanelDataContextValue = Pick<
   RightPanelContentProps,
@@ -49,7 +52,9 @@ export type SettingsActionsContextValue = Pick<
   | "settingsError"
   | "settingsLoading"
   | "themePreference"
->
+> & {
+  loadSandboxStatus: () => Promise<SandboxRuntimeStatus | null>
+}
 
 export type RightPanelContextValue = ChatPanelDataContextValue &
   WorkspaceTreeContextValue &

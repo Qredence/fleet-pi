@@ -355,6 +355,7 @@ export const InputBar = memo(function InputBarComponent({
                     placeholder={effectivePlaceholder}
                     disabled={disabled}
                     rows={1}
+                    aria-label="Message"
                     className={cn(
                       "peer w-full resize-none border-0 bg-transparent text-[14px] leading-[1.6] text-an-foreground outline-none placeholder:text-an-input-placeholder-color",
                       "overflow-hidden",

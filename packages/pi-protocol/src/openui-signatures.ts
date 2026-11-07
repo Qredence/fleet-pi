@@ -33,7 +33,7 @@ export const openUIPromptSpec = {
       "description": "Short body text for cards, captions, and summaries."
     },
     "Button": {
-      "signature": "Button(label: string, action?: any, variant?: \"default\" | \"destructive\" | \"outline\" | \"secondary\" | \"ghost\" | \"link\")",
+      "signature": "Button(label: string, action?: ActionExpression, variant?: \"default\" | \"destructive\" | \"outline\" | \"secondary\" | \"ghost\" | \"link\")",
       "description": "A button that triggers interactive actions or conversational updates."
     },
     "Input": {

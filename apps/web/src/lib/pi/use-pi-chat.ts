@@ -75,6 +75,7 @@ export function usePiChat(
   const planLabelRef = useRef(planLabel)
   const queueRef = useRef(queue)
   const abortRef = useRef<AbortController | null>(null)
+  const followUpAbortRef = useRef<AbortController | null>(null)
   const forkInFlight = useRef(false)
   const sendMessageRef = useRef<(input: SendMessageInput) => Promise<void>>(
     () => Promise.resolve()
@@ -207,7 +208,10 @@ export function usePiChat(
   }, [initialSessionMetadata])
 
   useEffect(() => {
-    return () => abortRef.current?.abort()
+    return () => {
+      abortRef.current?.abort()
+      followUpAbortRef.current?.abort()
+    }
   }, [])
 
   useEffect(() => {
@@ -223,6 +227,8 @@ export function usePiChat(
     const loadActiveSession = async () => {
       abortRef.current?.abort()
       abortRef.current = null
+      followUpAbortRef.current?.abort()
+      followUpAbortRef.current = null
       setStatus("ready")
       setError(null)
       setQueueSynced(EMPTY_QUEUE_STATE)
@@ -271,6 +277,7 @@ export function usePiChat(
 
   const { sendMessage } = usePiChatMessaging({
     abortRef,
+    followUpAbortRef,
     activityLabelRef,
     client,
     hostedAgentOnly,
@@ -297,6 +304,8 @@ export function usePiChat(
     void client.abortSession(sessionMetadataRef.current).catch(() => undefined)
     abortRef.current?.abort()
     abortRef.current = null
+    followUpAbortRef.current?.abort()
+    followUpAbortRef.current = null
     setStatus("ready")
     setQueueSynced(EMPTY_QUEUE_STATE)
     setActivityLabelSynced(undefined)

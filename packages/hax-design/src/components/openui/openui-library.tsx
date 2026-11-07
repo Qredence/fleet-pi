@@ -1,4 +1,5 @@
 import {
+  action as actionSchema,
   createLibrary,
   defineComponent,
   reactive,
@@ -84,17 +85,37 @@ const childrenProp = z
   .optional()
   .describe("Child component, array of child components, or plain content")
 
+type TriggerAction = ReturnType<typeof useTriggerAction>
+
+export function triggerButtonAction(
+  triggerAction: TriggerAction,
+  label: string,
+  action: unknown
+) {
+  if (typeof action === "string") {
+    const message = action.trim()
+    void triggerAction(message || label)
+    return
+  }
+
+  if (action == null) {
+    void triggerAction(label)
+    return
+  }
+
+  void triggerAction(label, undefined, action)
+}
+
 export const ButtonDef = defineComponent({
   name: "Button",
   description:
     "A button that triggers interactive actions or conversational updates.",
   props: z.object({
     label: z.string().describe("Visible button label"),
-    action: z
-      .any()
+    action: actionSchema()
       .optional()
       .describe(
-        "Message string, action, or action composition to run on click. Defaults to label."
+        "One action, or Action([...]) for several. Defaults to sending the label."
       ),
     variant: z
       .enum(["default", "destructive", "outline", "secondary", "ghost", "link"])
@@ -106,16 +127,7 @@ export const ButtonDef = defineComponent({
     const triggerAction = useTriggerAction()
 
     const handleClick = () => {
-      if (!action) {
-        void triggerAction(label)
-        return
-      }
-
-      if (typeof action === "string") {
-        void triggerAction(action)
-      } else {
-        void triggerAction(label, undefined, action)
-      }
+      triggerButtonAction(triggerAction, label, action)
     }
 
     return (

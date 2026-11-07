@@ -41,6 +41,8 @@ overrides:
   "diff@>=5.0.0 <5.2.2": "^5.2.2"
 allowBuilds:
   "@google/genai": true
+  # postinstall is optional install telemetry; the published dist is complete
+  "@openuidev/lang-core": false
   better-sqlite3: true
   core-js: false
   esbuild: true

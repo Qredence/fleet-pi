@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "../../../../alert"
 import { Button } from "../../../../button"
 import { FieldGroup } from "../../../../field"
 import { Spinner } from "../../../../spinner"
+import { useSettingsActionsContext } from "../../../layout/right-panel-context"
 import { ItemRow } from "../../../primitives/item-row"
 import { SettingsPane } from "../../../primitives/settings-pane"
 import { RowSurface } from "../../../primitives/surface"
@@ -15,6 +16,11 @@ import {
   SecretCredentialField,
   TextCredentialField,
 } from "../shared/credential-fields"
+
+import {
+  nextSandboxRuntimeStatus,
+  type SandboxRuntimeStatus,
+} from "./sandbox-runtime-status"
 
 import type {
   ChatProviderInfo,
@@ -40,56 +46,28 @@ export function SandboxProviderSection({
   const [target, setTarget] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [attemptedSave, setAttemptedSave] = useState(false)
-  const [runtimeStatus, setRuntimeStatus] = useState<{
-    keyPresent: boolean
-    sandboxReady: boolean
-    volumeName: string
-  } | null>(null)
+  const [runtimeStatus, setRuntimeStatus] =
+    useState<SandboxRuntimeStatus | null>(null)
+  const { loadSandboxStatus } = useSettingsActionsContext()
 
   const refreshRuntimeStatus = useCallback(async () => {
     try {
-      const response = await fetch("/api/sandbox/settings")
-      if (!response.ok) return
-      const body = (await response.json()) as {
-        daytonaApiKeyConfigured?: boolean
-        sandboxReady?: boolean
-        volumeName?: string
-      }
-      if (!body.volumeName) return
-      setRuntimeStatus({
-        keyPresent: Boolean(body.daytonaApiKeyConfigured),
-        sandboxReady: Boolean(body.sandboxReady),
-        volumeName: body.volumeName,
-      })
+      return await loadSandboxStatus()
     } catch {
-      // Ignore runtime status refresh errors.
+      return undefined
     }
-  }, [])
+  }, [loadSandboxStatus])
 
   useEffect(() => {
     let cancelled = false
-    void fetch("/api/sandbox/settings")
-      .then(async (response) => {
-        if (!response.ok) return undefined
-        return (await response.json()) as {
-          daytonaApiKeyConfigured?: boolean
-          sandboxReady?: boolean
-          volumeName?: string
-        }
-      })
-      .then((body) => {
-        if (cancelled || !body?.volumeName) return
-        setRuntimeStatus({
-          keyPresent: Boolean(body.daytonaApiKeyConfigured),
-          sandboxReady: Boolean(body.sandboxReady),
-          volumeName: body.volumeName,
-        })
-      })
-      .catch(() => undefined)
+    void refreshRuntimeStatus().then((status) => {
+      if (cancelled) return
+      setRuntimeStatus((current) => nextSandboxRuntimeStatus(current, status))
+    })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshRuntimeStatus])
 
   const daytonaProvider = useMemo(
     () => providers.find((p) => p.id === "daytona"),
@@ -135,7 +113,8 @@ export function SandboxProviderSection({
         })
       }
 
-      await refreshRuntimeStatus()
+      const status = await refreshRuntimeStatus()
+      setRuntimeStatus((current) => nextSandboxRuntimeStatus(current, status))
       toast.success("Sandbox Provider updated successfully")
       closeEditor()
     } catch (error) {
