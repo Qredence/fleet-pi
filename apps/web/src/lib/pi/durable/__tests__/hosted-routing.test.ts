@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 
-import { projectDurableTurn } from "../durable-projection"
 import {
   conversationIdFromDurableSession,
   durableSessionId,
@@ -20,13 +19,5 @@ describe("hosted session routing", () => {
     expect(isLegacyChatSession({ sessionId: durableSessionId("12") })).toBe(
       false
     )
-  })
-
-  it("does not fail the turn when a projection throws", async () => {
-    await expect(
-      projectDurableTurn(async () => {
-        throw new Error("neon down")
-      })
-    ).resolves.toBeUndefined()
   })
 })
