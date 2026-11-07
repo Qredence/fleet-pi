@@ -1,0 +1,23 @@
+packages/hax-design/scripts/generate-openui-signatures.ts
+  s_f93efa4195d77a::t_908e85328e5bcc 10-12,17
+package.json
+  s_f93efa4195d77a::t_c45e4c78ecb917 80
+apps/web/src/lib/pi/__tests__/sandbox-runtime-status.test.ts
+  s_f93efa4195d77a::t_fd61cf725ca9d7 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40ed4507fd59bb0c5fedbdc2b7515810558d6634",
+  "prompts": {},
+  "sessions": {
+    "s_f93efa4195d77a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dba39832-e89d-43d6-b867-ca8f619768ff",
+        "model": "grok-4.7"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
