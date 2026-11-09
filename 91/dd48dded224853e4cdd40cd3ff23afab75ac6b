@@ -1,0 +1,14 @@
+apps/web/src/lib/workspace/__tests__/seed-template.test.ts
+  h_f276322eb5eb9f 131,146-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91dd48dded224853e4cdd40cd3ff23afab75ac6b",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
