@@ -1,0 +1,131 @@
+templates/agent-workspace/system/workspace-policy.md
+  s_a7df7732467e9b::t_5de2f372b14339 1-56
+templates/agent-workspace/system/constraints.md
+  s_a7df7732467e9b::t_727bde8a395bec 1-23
+agent-workspace/memory/project/known-issues.md
+  s_a7df7732467e9b::t_2aa514a598a460 189-194
+templates/agent-workspace/memory/project/architecture.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-5
+templates/agent-workspace/skills/README.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-3
+templates/agent-workspace/pi/skills/memory-synthesis/SKILL.md
+  s_a7df7732467e9b::t_84eed980f44724 1-43,45-54
+templates/agent-workspace/AGENTS.md
+  s_a7df7732467e9b::t_a97e810d2f1d8c 19-32
+  s_a7df7732467e9b::t_310e141c91b559 1-18,33-45
+apps/web/src/lib/daytona/sandbox-prepare.ts
+  s_a7df7732467e9b::t_e0d9059c4b45ec 121
+  s_a7df7732467e9b::t_4238f3b781d6c5 264-273,279,281-282,292-293,298-305,308-314,324-325,327,329-336,338,346-349,352-362,365-366,369
+  s_a7df7732467e9b::t_f2414f4eeddcf0 5-7
+  s_a7df7732467e9b::t_b6aa0ac22d82a6 23-24,27-29
+  s_a7df7732467e9b::t_e74d5f886c2ef4 323,326,328
+  s_a7df7732467e9b::t_2e137e77da05c0 284-291,297
+  s_a7df7732467e9b::t_924da23ab10b90 341
+  s_a7df7732467e9b::t_2662800ba34e9c 74,78
+  s_a7df7732467e9b::t_a34f219a9313e0 91
+  s_a7df7732467e9b::t_376a1d0f7acbc0 4
+  s_a7df7732467e9b::t_8fae5ec9b764d8 233-262
+  s_a7df7732467e9b::t_ba5224f9e4731f 90
+  s_a7df7732467e9b::t_0e52fbe2fdde06 30
+  s_a7df7732467e9b::t_915b2b7691001b 232
+templates/agent-workspace/instructions/README.md
+  s_a7df7732467e9b::t_0841d91265dcd2 1-5
+templates/agent-workspace/memory/project/decisions.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-5
+templates/agent-workspace/pi/skills/doc-gardening/SKILL.md
+  s_a7df7732467e9b::t_84eed980f44724 1-37
+templates/agent-workspace/manifest.json
+  s_a7df7732467e9b::t_bd2d0ef2491f5b 1-85
+templates/agent-workspace/system/behavior.md
+  s_a7df7732467e9b::t_50c4bcd008bce6 1-13
+templates/agent-workspace/template.json
+  s_a7df7732467e9b::t_bd2d0ef2491f5b 1-3
+templates/agent-workspace/memory/project/preferences.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-2,4-5
+templates/agent-workspace/plans/backlog.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-3
+templates/agent-workspace/pi/skills/execution-plan/SKILL.md
+  s_a7df7732467e9b::t_84eed980f44724 1-20,22-66
+apps/web/src/lib/daytona/__tests__/sandbox-prepare.test.ts
+  s_a7df7732467e9b::t_2f8e8bd3036ed9 96-102,105-106,108-113,116-117,119-155,160-163,177-180,240-244,246-252,255-258,261,269-270,277-281,283,285-297,299-302,329,334-346,348,350-357,359-362,373-378,380,386-387,391-398,400-411,419-462,470,474-476,481-486,489,491-492,494-495,498-504
+  s_a7df7732467e9b::t_61b4de47992ac4 3,12
+  s_a7df7732467e9b::t_81243abc9a109c 156-159,266-268,298,381-385,388-390
+  s_a7df7732467e9b::t_fceafeaab2aefa 24,27-28
+  s_a7df7732467e9b::t_f2126edefb9e15 17-19
+  s_a7df7732467e9b::t_914ec8f711f28c 25,33,181-237
+  s_a7df7732467e9b::t_495fe3cad69985 238
+templates/legacy-seed-blobs.txt
+  s_a7df7732467e9b::t_bd2d0ef2491f5b 1-217
+templates/agent-workspace/README.md
+  s_a7df7732467e9b::t_0f0ab78780652e 1-3,8-9
+docs/daytona.md
+  s_a7df7732467e9b::t_444b6b7a2feff3 48,69,120-125,128-129,163
+templates/agent-workspace/system/self-improvement-policy.md
+  s_a7df7732467e9b::t_a90a720967d025 1-12
+templates/agent-workspace/evals/README.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-3
+templates/agent-workspace/memory/project/open-questions.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-5
+apps/web/src/lib/workspace/__tests__/seed-template.test.ts
+  s_a7df7732467e9b::t_1942c25e1491c1 1-2,3-68,70-187,214
+apps/web/src/lib/workspace/bootstrap-agent-workspace.ts
+  s_a7df7732467e9b::t_52e22a23813be6 11-12,122-123,128-134,276,279,309,327,402,408-409,412-414,417,431-438,441-451,454-457
+  s_a7df7732467e9b::t_e04cfc68cb5ffd 458
+templates/agent-workspace/system/tool-policy.md
+  s_a7df7732467e9b::t_58b9a97c79fc36 1-10
+templates/agent-workspace/system/identity.md
+  s_a7df7732467e9b::t_074160cdd88b92 1-9
+templates/agent-workspace/memory/project/known-issues.md
+  s_a7df7732467e9b::t_a0e1d28cb180fb 1-5
+apps/web/src/lib/workspace/workspace-contract.ts
+  s_a7df7732467e9b::t_86e6e4a88bb4c7 59
+  s_a7df7732467e9b::t_91e4747cfcfaf1 14-19
+  s_a7df7732467e9b::t_3b4d8fde9e7cf9 6-13
+docs/agent-workspace.md
+  s_a7df7732467e9b::t_5780a3b9ae7ee4 15-27
+agent-workspace/system/behavior.md
+  s_a7df7732467e9b::t_1cedace64efead 42,48-50
+.pi/extensions/workspace-index.ts
+  s_a7df7732467e9b::t_03227b534ac746 235,237,248,258
+agent-workspace/pi/skills/memory-synthesis/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-55
+agent-workspace/skills/README.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-4
+apps/web/src/lib/workspace/__tests__/workspace-skills-root.test.ts
+  s_a7df7732467e9b::t_b338e1b01f750c 1-6,8-12,14-50
+  s_a7df7732467e9b::t_36a68dc84a74c1 7,13
+agent-workspace/pi/skills/execution-plan/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-66
+docs/wiki/features/agent-workspace.md
+  s_a7df7732467e9b::t_1cedace64efead 75
+apps/web/e2e/chat-flows-support.ts
+  s_a7df7732467e9b::t_ce4f1baf6c74e3 396-455
+agent-workspace/AGENTS.md
+  s_a7df7732467e9b::t_13b2536185f7cb 61
+agent-workspace/pi/skills/doc-gardening/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-37
+docs/wiki/overview/glossary.md
+  s_a7df7732467e9b::t_1cedace64efead 22
+packages/hax-design/src/components/fleet-pi/pi/shared.tsx
+  s_a7df7732467e9b::t_03227b534ac746 106
+agent-workspace/pi/skills/codebase-research/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-10
+.pi/extensions/lib/safe-path.ts
+  s_a7df7732467e9b::t_cfc7a40de9df60 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22eb54315f926d874f3bdadda16e9e2896fbd141",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "system.ai.claude-opus-5-5"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
