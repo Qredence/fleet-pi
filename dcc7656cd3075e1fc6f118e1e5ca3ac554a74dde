@@ -1,0 +1,16 @@
+apps/web/src/lib/pi/durable/__tests__/user-pi-durable.workers.test.ts
+  h_f276322eb5eb9f 4,51,83-86,88,93-125,201-204,214,263,274,326,338,343
+apps/web/src/lib/pi/durable/hosted-harness.ts
+  h_f276322eb5eb9f 92-107,113-117,119-122,124-126,129-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcc7656cd3075e1fc6f118e1e5ca3ac554a74dde",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
