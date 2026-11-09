@@ -159,8 +159,8 @@ importers:
         specifier: ^2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tailwindcss:
-        specifier: ^4.3.3
-        version: 4.3.3
+        specifier: ^4.3.4
+        version: 4.3.4
       typebox:
         specifier: 1.4.3
         version: 1.4.3
@@ -262,8 +262,8 @@ importers:
         specifier: ^2.4.1
         version: 2.4.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
-        specifier: ^1.61.0
-        version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^1.70.0
+        version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
       motion:
         specifier: ^12.42.0
         version: 12.42.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -317,8 +317,8 @@ importers:
         specifier: ^4.23.0
         version: 4.23.0
       tailwindcss:
-        specifier: ^4.3.3
-        version: 4.3.3
+        specifier: ^4.3.4
+        version: 4.3.4
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -6139,8 +6139,8 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@1.61.0:
-    resolution: {integrity: sha512-v2SQPPPNjnr+BlhL9Spuzmo5yR+hLkftfuE4E3jaxdNPgSH0hJKPcLJBP7yAta87jQNPsSERS59PJjCJ/CorBA==}
+  lucide-react@1.70.0:
+    resolution: {integrity: sha512-gCTPPN1MlQUBtUgdsUv+0CAUj+X8hifRUiRBw4E5v7lvDIOIpx0EZezdGQMSimS8pKA6esvullJub4GYr0mCHA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -7415,6 +7415,9 @@ packages:
 
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
+
+  tailwindcss@4.3.4:
+    resolution: {integrity: sha512-PCJZTFFdG+sL3gvnP1Do9o6GbkvH2q0p04xSs3f7cSvmAeK+sttG+/7ncK1fdRwKFfC7n+wDDJaOMBSefkI9ow==}
 
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
@@ -11080,7 +11083,7 @@ snapshots:
     dependencies:
       '@react-email/text': 0.1.6(react@19.3.1)
       react: 19.3.1
-      tailwindcss: 4.3.3
+      tailwindcss: 4.3.4
     optionalDependencies:
       '@react-email/body': 0.3.0(react@19.3.1)
       '@react-email/button': 0.2.1(react@19.3.1)
@@ -13620,7 +13623,7 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.70.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
@@ -15259,6 +15262,8 @@ snapshots:
   tailwindcss@4.2.1: {}
 
   tailwindcss@4.3.3: {}
+
+  tailwindcss@4.3.4: {}
 
   tapable@2.3.3: {}
 
