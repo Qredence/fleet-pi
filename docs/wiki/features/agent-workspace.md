@@ -8,7 +8,7 @@ This **agent workspace** is distinct from the project root, a Daytona sandbox wo
 
 The current contract has these top-level sections:
 
-- `instructions/`, `system/`, `memory/`, `plans/`, `skills/`, `evals/`, `artifacts/`, and `pi/` are **canonical**.
+- `instructions/`, `system/`, `memory/`, `plans/`, `skills/`, `evals/`, `artifacts/`, and `pi/` are **canonical**. `skills/` is a legacy section kept for compatibility; Pi loads workspace skills only from `pi/skills/`.
 - `scratch/` is **temporary** and must not be treated as durable adaptive state.
 - `indexes/` is a **projection** and can be regenerated from canonical files.
 
@@ -21,7 +21,7 @@ system/       Identity, constraints, policies         (protected — rarely chan
     ↓
 memory/       Project knowledge, decisions            (rationale required)
     ↓
-skills/       Reusable procedures and workflows       (rationale required)
+pi/skills/    Reusable procedures and workflows       (rationale required)
     ↓
 plans/        Active work, backlog, completed plans   (rationale required)
     ↓
@@ -70,7 +70,7 @@ Daily observation logs go to `memory/daily/` (free tier). Research notes from we
 
 ## Skill growth
 
-Each skill lives in `skills/<name>/SKILL.md` with optional supporting files (`changelog.md`, `evals.md`, `examples.md`). After complex or repeatable tasks, the agent is expected to capture the key procedure as a workspace skill so future turns benefit from it without re-deriving it.
+Each skill lives in `pi/skills/<name>/SKILL.md` with optional supporting files (`changelog.md`, `evals.md`, `examples.md`). After complex or repeatable tasks, the agent is expected to capture the key procedure as a workspace skill so future turns benefit from it without re-deriving it.
 
 Workspace skills live in `agent-workspace/pi/skills/<name>/SKILL.md`, the only workspace skill root Pi loads. Skills installed via chat (`resource_install`) land there too and become available after reload. `agent-workspace/skills/` is a legacy location: it is not loaded, and Daytona prepare moves its folders into `pi/skills/` on user volumes.
 
@@ -129,14 +129,14 @@ agent-workspace/
     project/       Canonical project knowledge (5 files)
     daily/         Daily observation logs (free)
     research/      Research notes (rationale required)
-  skills/          Reusable agent procedures
+  skills/          Legacy skill location (not loaded; see pi/skills/)
   plans/
     active/        Current work
     completed/     Finished plans
     abandoned/     Suspended work
     backlog.md     Future work queue
   pi/              Chat-installed Pi resources
-    skills/
+    skills/        Workspace skills (the only root Pi loads)
     prompts/
     extensions/
       enabled/

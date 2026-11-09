@@ -281,10 +281,56 @@ describe("sandbox-prepare skills migration", () => {
     const script = buildPrepareSandboxCommand(
       "https://github.com/Qredence/fleet-pi.git"
     )
-    expect(script.indexOf("FLEET_PI_SKILL_MIGRATED")).toBeLessThan(
-      script.indexOf("git clone")
-    )
+    const migrationIndex = script.indexOf("FLEET_PI_SKILL_MIGRATED")
+    expect(migrationIndex).toBeGreaterThanOrEqual(0)
+    expect(migrationIndex).toBeLessThan(script.indexOf("git clone"))
   })
+})
+
+describe("fleet_move", () => {
+  for (const [label, prefix] of [
+    ["with rename", ""],
+    ["without rename", "mv-shim"],
+  ] as const) {
+    it(`never merges into an existing destination (${label})`, () => {
+      const root = mkdtempSync(join(tmpdir(), "fleet-move-"))
+      try {
+        writeFileInTree(root, "src/shared/SKILL.md", "new copy\n")
+        writeFileInTree(root, "quarantine/shared/SKILL.md", "earlier copy\n")
+        writeFileInTree(root, "quarantine/shared/notes.md", "keep\n")
+        let path = '"$PATH"'
+        if (prefix) {
+          const shims = join(root, prefix)
+          mkdirSync(shims)
+          writeFileSync(
+            join(shims, "mv"),
+            "#!/bin/sh\necho 'mv: Function not implemented' >&2\nexit 1\n",
+            { mode: 0o755 }
+          )
+          path = `'${shims}':"$PATH"`
+        }
+
+        const result = spawnSync(
+          "bash",
+          [
+            "-c",
+            `PATH=${path}\n${PORTABLE_MOVE_SHELL}\nfleet_move '${root}/src/shared' '${root}/quarantine/'`,
+          ],
+          { encoding: "utf8" }
+        )
+
+        expect(result.status).toBe(1)
+        expect(result.stderr).toContain("already exists")
+        expect(read(join(root, "quarantine/shared/SKILL.md"))).toBe(
+          "earlier copy\n"
+        )
+        expect(read(join(root, "quarantine/shared/notes.md"))).toBe("keep\n")
+        expect(read(join(root, "src/shared/SKILL.md"))).toBe("new copy\n")
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    })
+  }
 })
 
 describe("sandbox-prepare seed", () => {
@@ -389,9 +435,21 @@ describe("sandbox-prepare seed", () => {
     const volume = mkdtempSync(join(tmpdir(), "fleet-no-template-volume-"))
     try {
       // A branch without the template must not break the whole prepare:
-      // migration still runs and the volume stays usable.
-      const output = runSeed(volume, repo)
-      expect(output).toContain("seed skipped: template missing")
+      // the seed step falls through so later prepare steps still run.
+      const result = spawnSync(
+        "bash",
+        [
+          "-lc",
+          `${ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`)}\necho FLEET_PI_AFTER_SEED`,
+        ],
+        { encoding: "utf8" }
+      )
+      expect(result.status).toBe(0)
+      expect(result.stdout).toContain("seed skipped: template missing")
+      expect(result.stdout).toContain("FLEET_PI_AFTER_SEED")
+      expect(result.stderr).toContain(
+        "Seed template missing at templates/agent-workspace; skipping seed"
+      )
       expect(existsSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe(
         false
       )

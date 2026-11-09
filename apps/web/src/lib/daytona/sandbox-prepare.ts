@@ -191,12 +191,21 @@ function ensureGitInstalledCommand(): string {
  * `mv` is `rename(2)`, which the Daytona volume filesystem answers with
  * ENOSYS ("Function not implemented"). Copy then delete instead, keeping
  * `mv`'s semantics for both "target file" and "target directory" forms.
+ * Never replaces or merges into an existing destination (for example an
+ * earlier quarantine entry): that fails with status 1 and leaves both
+ * paths untouched.
  * Exported for unit tests.
  */
 export const PORTABLE_MOVE_SHELL = [
   "fleet_move() {",
-  '  if mv "$1" "$2" 2>/dev/null; then return 0; fi',
-  '  cp -R "$1" "$2" && rm -rf "$1"',
+  '  local dest="$2"',
+  '  if [ -d "$2" ]; then dest="$2/$(basename "$1")"; fi',
+  '  if [ -e "$dest" ] || [ -L "$dest" ]; then',
+  '    echo "fleet_move: $dest already exists; leaving $1 in place" >&2',
+  "    return 1",
+  "  fi",
+  '  if mv "$1" "$dest" 2>/dev/null; then return 0; fi',
+  '  cp -R "$1" "$dest" && rm -rf "$1"',
   "}",
 ].join("\n")
 
@@ -324,20 +333,20 @@ export function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd. Cone
     // mode also checks out files directly under `templates/`.
     `(cd "$tmpdir" && git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH})`,
-    // A missing template is not fatal: the volume keeps working, nothing is
-    // recorded, and the next prepare tries again (e.g. before the branch that
-    // adds the template reaches the default branch).
-    `if [ ! -f ${srcRoot}/template.json ]; then`,
-    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}; skipping seed" >&2`,
-    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template missing)"`,
-    '  rm -rf "$tmpdir"',
-    "  exit 0",
-    "fi",
     // The clone is the repo's default branch, which can lag or lead this
     // build. Never apply or record a version for content that is not that
     // version: skip the seed (nothing recorded) and retry on the next prepare.
-    `cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
-    `if [ "$cloned" != "${templateVersion}" ]; then`,
+    // A missing template is skipped the same way, e.g. before the branch that
+    // adds it reaches the default branch. Both skips fall through (no `exit`)
+    // so the rest of the prepare script still runs.
+    'cloned=""',
+    `if [ -f ${srcRoot}/template.json ]; then`,
+    `  cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
+    "fi",
+    `if [ ! -f ${srcRoot}/template.json ]; then`,
+    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}; skipping seed" >&2`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template missing)"`,
+    `elif [ "$cloned" != "${templateVersion}" ]; then`,
     `  echo "Seed template version \${cloned:-unknown} does not match expected ${templateVersion}; skipping seed" >&2`,
     `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template version mismatch)"`,
     "else",
@@ -350,8 +359,9 @@ export function ensureAgentWorkspaceSeedCommand(
     '    blob="$(git hash-object "$file")"',
     `    if grep -qxF "$blob" ${legacyBlobs}; then`,
     `      mkdir -p "$(dirname ${quarantine}/"$rel")"`,
-    `      fleet_move "$file" ${quarantine}/"$rel"`,
-    '      echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    `      if fleet_move "$file" ${quarantine}/"$rel"; then`,
+    '        echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    "      fi",
     "    fi",
     '  done < "$tmpdir/legacy-candidates"',
     "fi",
