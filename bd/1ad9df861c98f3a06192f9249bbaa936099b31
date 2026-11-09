@@ -1,0 +1,14 @@
+apps/web/vite.config.ts
+  h_f276322eb5eb9f 96-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd1ad9df861c98f3a06192f9249bbaa936099b31",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
