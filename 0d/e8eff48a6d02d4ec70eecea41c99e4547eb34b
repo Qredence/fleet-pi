@@ -1,0 +1,19 @@
+apps/web/src/lib/db/__tests__/chat-migrations.test.ts
+  s_a7df7732467e9b::t_a9cd56852319eb 4,11-16,87-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0de8eff48a6d02d4ec70eecea41c99e4547eb34b",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "deepseek-v4-1-flash-1017-on-sp-v1"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
