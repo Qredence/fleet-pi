@@ -40,9 +40,18 @@ describe("findRepoRoot", () => {
 })
 
 describe("getDefaultProjectRoot", () => {
+  let root: string
+
+  beforeEach(() => {
+    root = realpathSync(mkdtempSync(join(tmpdir(), "fleet-pi-root-")))
+    writeFileSync(join(root, "pnpm-workspace.yaml"), "packages: []\n")
+    mkdirSync(join(root, "apps", "web"), { recursive: true })
+  })
+
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
+    rmSync(root, { recursive: true, force: true })
   })
 
   it("prefers FLEET_PI_REPO_ROOT", () => {
@@ -54,9 +63,15 @@ describe("getDefaultProjectRoot", () => {
 
   it("resolves the repo root when cwd is apps/web", () => {
     vi.stubEnv("FLEET_PI_REPO_ROOT", undefined)
-    const repoRoot = findRepoRoot(process.cwd())
-    vi.spyOn(process, "cwd").mockReturnValue(join(repoRoot, "apps", "web"))
+    vi.spyOn(process, "cwd").mockReturnValue(join(root, "apps", "web"))
 
-    expect(getDefaultProjectRoot()).toBe(realpathSync(repoRoot))
+    expect(getDefaultProjectRoot()).toBe(root)
+  })
+
+  it("treats an empty FLEET_PI_REPO_ROOT as unset", () => {
+    vi.stubEnv("FLEET_PI_REPO_ROOT", "")
+    vi.spyOn(process, "cwd").mockReturnValue(join(root, "apps", "web"))
+
+    expect(getDefaultProjectRoot()).toBe(root)
   })
 })

@@ -24,8 +24,9 @@ export function findRepoRoot(start: string): string {
 }
 
 export function getDefaultProjectRoot() {
+  // An empty override counts as unset, matching the Vite config.
   return realpathSync(
-    resolve(process.env.FLEET_PI_REPO_ROOT ?? findRepoRoot(process.cwd()))
+    resolve(process.env.FLEET_PI_REPO_ROOT || findRepoRoot(process.cwd()))
   )
 }
 
