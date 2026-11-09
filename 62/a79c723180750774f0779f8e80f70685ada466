@@ -1,0 +1,43 @@
+apps/web/src/lib/pi/durable/hosted-sandbox-env.ts
+  s_a7df7732467e9b::t_220fa3e9f2c8b7 16-17
+apps/web/src/lib/pi/workspace-memory-core.ts
+  s_a7df7732467e9b::t_0ba71453939f0f 1-183,185-519,521-557
+  s_a7df7732467e9b::t_05135843b62bf3 184,520
+apps/web/src/lib/pi/durable/hosted-harness.ts
+  s_a7df7732467e9b::t_220fa3e9f2c8b7 24-28,33-36,129-130,132-135,151-163,188-191,266,337,430-433,436-439,441,588-599,727-728,732,764-768
+apps/web/src/lib/pi/durable/hosted-sandbox.ts
+  s_a7df7732467e9b::t_220fa3e9f2c8b7 3-8,34-40
+  s_a7df7732467e9b::t_4fb5bf1219de6a 41
+apps/web/src/lib/pi/durable/hosted-workspace-context.ts
+  s_a7df7732467e9b::t_668e8cf7202510 1-42,44-176,178-256,260-261,263-287,289-291,293-300
+  s_a7df7732467e9b::t_220fa3e9f2c8b7 43,288
+  s_a7df7732467e9b::t_d894f082eaacca 257-259,262,292
+  s_a7df7732467e9b::t_05135843b62bf3 177
+packages/pi-protocol/src/hosted-resources.ts
+  s_a7df7732467e9b::t_220fa3e9f2c8b7 4
+.pi/extensions/lib/workspace-memory-index.ts
+  s_a7df7732467e9b::t_eb3f8f117eb2fc 2-24,27,30,32-39,41-51,53
+apps/web/src/lib/pi/durable/__tests__/hosted-workspace-context.test.ts
+  s_a7df7732467e9b::t_2afc1ebddeb7b0 1-62,65-66,70-182,186-225,227-238,240-243,248,257,260,262-310
+  s_a7df7732467e9b::t_242cc56cf95a24 63-64,67-69,183-185,226,239,244-247,249-256,258-259,261
+agent-workspace/memory/project/known-issues.md
+  s_a7df7732467e9b::t_9c6c1999590a30 196-202
+docs/wiki/apps/web/pi-integration.md
+  s_a7df7732467e9b::t_e9855a0d05b3a9 290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62a79c723180750774f0779f8e80f70685ada466",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "system.ai.claude-opus-5-5"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
