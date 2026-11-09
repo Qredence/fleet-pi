@@ -1,0 +1,29 @@
+apps/web/src/lib/daytona/sandbox-prepare.ts
+  s_a7df7732467e9b::t_6c6920484ebbf4 197,224,230,358,366,371
+  s_a7df7732467e9b::t_04f0e610079e2f 310
+  s_a7df7732467e9b::t_b8f4106b3c8825 189-196,198-200,210,228,237,254,265,268,343
+  s_a7df7732467e9b::t_d5473cea12965f 325-327,329-332
+  s_a7df7732467e9b::t_7e65121cce3307 188
+apps/web/src/lib/daytona/__tests__/sandbox-prepare.test.ts
+  s_a7df7732467e9b::t_0e943c48eae35f 345,351-354
+  s_a7df7732467e9b::t_f63dfa1edf5245 71,76,82
+  s_a7df7732467e9b::t_9fd21dbf2767e6 26,205-253
+  s_a7df7732467e9b::t_a9853411817334 74
+  s_a7df7732467e9b::t_15129e4c23d54c 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "338b50bd10600c6a4311c48dae4b4b1fb55ae62d",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "deepseek-v4-1-flash-1017-on-sp-v1"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
