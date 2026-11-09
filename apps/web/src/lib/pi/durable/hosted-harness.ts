@@ -21,10 +21,19 @@ import {
   hostedToolAllowed,
   hostedWriteBlock,
 } from "./hosted-tool-registry"
+import {
+  createHostedWorkspaceContext,
+  expandHostedPromptTemplate,
+  hostedWorkspaceReader,
+} from "./hosted-workspace-context"
 
 import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { HostedMcpServer } from "./durable-mcp"
 import type { HostedSandboxPort } from "./hosted-sandbox-env"
+import type {
+  HostedWorkspaceContext,
+  HostedWorkspaceReader,
+} from "./hosted-workspace-context"
 import type { Context } from "@earendil-works/chord"
 import type {
   ConversationView,
@@ -146,9 +155,13 @@ function hangFirst(trace: HostedTrace, count: number) {
 }
 
 export function createScriptedSandboxPort(
-  trace: HostedTrace
+  trace: HostedTrace,
+  seed: Record<string, string> = {}
 ): HostedSandboxPort {
-  const files = new Map<string, string>([["notes.txt", "notes"]])
+  const files = new Map<string, string>([
+    ["notes.txt", "notes"],
+    ...Object.entries(seed),
+  ])
   return {
     async read(path) {
       const pathBlock = hostedPathBlock(path)
@@ -163,6 +176,19 @@ export function createScriptedSandboxPort(
       trace.writes += 1
       files.set(path, content)
       return Promise.resolve()
+    },
+    list(dir) {
+      const prefix = dir.replace(/\/+$/, "") + "/"
+      const children = new Map<string, boolean>()
+      for (const path of files.keys()) {
+        if (!path.startsWith(prefix)) continue
+        const [name, ...rest] = path.slice(prefix.length).split("/")
+        if (name)
+          children.set(name, rest.length > 0 || children.get(name) === true)
+      }
+      return Promise.resolve(
+        [...children].map(([name, isDirectory]) => ({ name, isDirectory }))
+      )
     },
     async exec(command) {
       const block = agentWorkspaceBashBlock(command)
@@ -188,7 +214,10 @@ function requireEnv(api: ToolExecutionApi) {
 
 type ChatModeRef = { current: ChatMode }
 
-function sandboxTools(mode: ChatModeRef) {
+function sandboxTools(
+  mode: ChatModeRef,
+  onWrite: (path: string) => void = () => undefined
+) {
   const read = defineTool({
     name: "read",
     description: "Read a file in the user sandbox.",
@@ -263,6 +292,7 @@ function sandboxTools(mode: ChatModeRef) {
         context
       )
       if (!written.ok) throw new Error(written.error.message)
+      onWrite(args.path)
       return { output: [{ type: "text" as const, text: "wrote" }] }
     },
   })
@@ -333,6 +363,7 @@ function sandboxTools(mode: ChatModeRef) {
       }
       const written = await env.writeFile(args.path, nextContent, context)
       if (!written.ok) throw new Error(written.error.message)
+      onWrite(args.path)
       return { output: [{ type: "text" as const, text: "edited" }] }
     },
   })
@@ -425,11 +456,18 @@ function optionalTools(options: HostedHarnessOptions | undefined) {
   return tools
 }
 
-function registryFor(options?: HostedHarnessOptions) {
+function registryFor(
+  options?: HostedHarnessOptions,
+  workspaceContext?: HostedWorkspaceContext
+) {
   const registry = createRegistry()
   const chatMode: ChatModeRef = { current: "agent" }
-  const tools = [...sandboxTools(chatMode), ...optionalTools(options)]
+  const tools = [
+    ...sandboxTools(chatMode, (path) => workspaceContext?.noteWrite(path)),
+    ...optionalTools(options),
+  ]
   registry.install(defineExtension({ name: "hosted-sandbox", tools }))
+  if (workspaceContext) registry.install(workspaceContext.extension)
   return {
     registry,
     tools,
@@ -576,7 +614,18 @@ export async function openHostedHarness(
   port: HostedSandboxPort,
   options?: HostedHarnessOptions
 ): Promise<OpenHostedHarness> {
-  const { registry, tools, chatMode } = registryFor(options)
+  // Workspace context reads the user's volume, so only a sandbox turn gets it;
+  // a model-only turn may still hold the previous sandbox's port.
+  const workspaceReader: HostedWorkspaceReader | undefined =
+    mode === "sandbox" ? hostedWorkspaceReader(port) : undefined
+  const workspaceContext = workspaceReader
+    ? createHostedWorkspaceContext(workspaceReader)
+    : undefined
+  const expandPrompt = (prompt: string) =>
+    workspaceReader
+      ? expandHostedPromptTemplate(prompt, workspaceReader)
+      : Promise.resolve(prompt)
+  const { registry, tools, chatMode } = registryFor(options, workspaceContext)
   const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
     (tool) => tool.name
   )
@@ -704,10 +753,12 @@ export async function openHostedHarness(
         }
       })()
       try {
+        const prompt = await expandPrompt(input.prompt)
+        workspaceContext?.beginTurn(prompt)
         const submission = await conversation.submit(
           {
             type: "input",
-            content: input.prompt,
+            content: prompt,
             ...(input.whenBusy ? { whenBusy: input.whenBusy } : {}),
           },
           context
@@ -739,7 +790,11 @@ export async function openHostedHarness(
         throw new Error("No hosted turn is in progress")
       }
       await conversation.submit(
-        { type: "input", content: input.prompt, whenBusy: input.whenBusy },
+        {
+          type: "input",
+          content: await expandPrompt(input.prompt),
+          whenBusy: input.whenBusy,
+        },
         context
       )
     },

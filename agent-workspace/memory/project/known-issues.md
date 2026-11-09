@@ -193,3 +193,10 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 - Affected area: `apps/web/src/lib/daytona/sandbox-prepare.ts`, user Daytona volumes.
 - Current status: **Resolved.** Volumes seed from `templates/agent-workspace/` with a recorded version (`.fleet/template-version`, `SEED_TEMPLATE_VERSION`). Upgrades copy missing files and put changed template files under `.fleet/template-updates/<version>/`; nothing is overwritten. Legacy volumes quarantine unedited old-seed files once (blob match against `templates/legacy-seed-blobs.txt`).
 - Follow-up: Keep `templates/agent-workspace/` neutral (`seed-template.test.ts`). The repo's `agent-workspace/` stays the team home; the template is user-facing.
+
+## Hosted agent ran without workspace context (Resolved)
+
+- Issue: Hosted Pi Durable turns opened the harness with tools only. The agent saw none of the user's `AGENTS.md`, `system/` policy, project memory, or skills, and `/name` prompt templates were not expanded.
+- Affected area: `apps/web/src/lib/pi/durable/hosted-harness.ts`.
+- Current status: **Resolved for sandbox turns.** The bundled `workspace-context` extension renders policy, prompt-scored memory, and a skill index from the volume; templates expand from `pi/prompts/`. Model-only turns (no Daytona key) still have no workspace until the DO workspace store lands.
+- Follow-up: The hosted slash menu does not list `pi/prompts` templates yet; hosted `workspace_status`, `codemode`, and MCP tools are still placeholders that return fixed text.
