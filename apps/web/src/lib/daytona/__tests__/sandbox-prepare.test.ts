@@ -22,6 +22,8 @@ import {
 } from "../../workspace/workspace-contract"
 import {
   LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
+  LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+  PORTABLE_MOVE_SHELL,
   SANDBOX_WORKSPACE_ROOT,
   SEED_REVISION_RELATIVE_PATH,
   SEED_TEMPLATE_REPO_PATH,
@@ -29,6 +31,7 @@ import {
   clearSandboxAuthFingerprint,
   ensureAgentWorkspaceSeedCommand,
   ensureUserCredentials,
+  migrateLegacySkillsCommand,
   migrateLegacyWorkspaceVolumeCommand,
   sweepScratchCommand,
 } from "../sandbox-prepare"
@@ -65,18 +68,18 @@ describe("sandbox-prepare migration", () => {
     const keep = workspaceVolumeShellKeepPattern()
 
     expect(script).toContain(
-      `cp -a '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace/. "$tmpdir"/`
+      `cp -R '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace/. "$tmpdir"/`
     )
     expect(script).toContain(
-      `mv "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
+      `fleet_move "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
     )
-    expect(script).toContain(`cp -an "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`)
+    expect(script).toContain(`cp -Rn "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`)
     expect(script).toContain(
       `rm -rf '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace "$tmpdir"`
     )
     expect(script).toContain(`case "$(basename "$item")" in ${keep})`)
     expect(script).not.toContain(
-      `cp -a "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`
+      `cp -R "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`
     )
     expect(script).not.toContain("/home/daytona/fleet-pi'/")
   })
@@ -176,6 +179,160 @@ function read(path: string) {
   return readFileSync(path, "utf8")
 }
 
+describe("sandbox-prepare skills migration", () => {
+  it("moves legacy skills/<name> into pi/skills and quarantines collisions", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-volume-"))
+    try {
+      writeFileInTree(volume, "skills/mine/SKILL.md", "user skill\n")
+      writeFileInTree(volume, "skills/shared/SKILL.md", "legacy copy\n")
+      writeFileInTree(volume, "skills/README.md", "notes\n")
+      writeFileInTree(volume, "pi/skills/shared/SKILL.md", "installed\n")
+
+      const output = execFileSync(
+        "bash",
+        ["-lc", migrateLegacySkillsCommand(`'${volume}'`)],
+        { encoding: "utf8" }
+      )
+
+      expect(read(join(volume, "pi/skills/mine/SKILL.md"))).toBe("user skill\n")
+      expect(read(join(volume, "pi/skills/shared/SKILL.md"))).toBe(
+        "installed\n"
+      )
+      expect(
+        read(
+          join(
+            volume,
+            WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+            LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+            "shared/SKILL.md"
+          )
+        )
+      ).toBe("legacy copy\n")
+      expect(existsSync(join(volume, "skills/mine"))).toBe(false)
+      // Loose files stay; only skill folders move.
+      expect(read(join(volume, "skills/README.md"))).toBe("notes\n")
+      expect(output).toContain("FLEET_PI_SKILL_MIGRATED=mine")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("copies instead of renaming when the volume cannot rename", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-noext4-"))
+    const shims = mkdtempSync(join(tmpdir(), "fleet-mv-shim-"))
+    try {
+      writeFileInTree(volume, "skills/mine/SKILL.md", "user skill\n")
+      writeFileInTree(volume, "skills/shared/SKILL.md", "legacy copy\n")
+      writeFileInTree(volume, "pi/skills/shared/SKILL.md", "installed\n")
+      // The Daytona volume answers rename(2) with ENOSYS.
+      writeFileSync(
+        join(shims, "mv"),
+        "#!/bin/sh\necho 'mv: Function not implemented' >&2\nexit 1\n",
+        { mode: 0o755 }
+      )
+
+      execFileSync(
+        "bash",
+        [
+          "-c",
+          `PATH='${shims}':"$PATH"\n${migrateLegacySkillsCommand(`'${volume}'`)}`,
+        ],
+        { encoding: "utf8" }
+      )
+
+      expect(read(join(volume, "pi/skills/mine/SKILL.md"))).toBe("user skill\n")
+      expect(existsSync(join(volume, "skills/mine"))).toBe(false)
+      expect(
+        read(
+          join(
+            volume,
+            WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+            LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+            "shared/SKILL.md"
+          )
+        )
+      ).toBe("legacy copy\n")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+      rmSync(shims, { recursive: true, force: true })
+    }
+  })
+
+  it("quarantines through the portable move in the seed", () => {
+    const script = ensureAgentWorkspaceSeedCommand(
+      `'${SANDBOX_WORKSPACE_ROOT}'`,
+      "https://github.com/Qredence/fleet-pi.git"
+    )
+    expect(script).toContain(PORTABLE_MOVE_SHELL)
+    expect(script).toContain(`fleet_move "$file"`)
+  })
+
+  it("is a no-op without a legacy skills directory", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-no-skills-"))
+    try {
+      execFileSync("bash", ["-lc", migrateLegacySkillsCommand(`'${volume}'`)])
+      expect(existsSync(join(volume, "pi"))).toBe(false)
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("runs before the seed in the prepare script", () => {
+    const script = buildPrepareSandboxCommand(
+      "https://github.com/Qredence/fleet-pi.git"
+    )
+    const migrationIndex = script.indexOf("FLEET_PI_SKILL_MIGRATED")
+    expect(migrationIndex).toBeGreaterThanOrEqual(0)
+    expect(migrationIndex).toBeLessThan(script.indexOf("git clone"))
+  })
+})
+
+describe("fleet_move", () => {
+  for (const [label, prefix] of [
+    ["with rename", ""],
+    ["without rename", "mv-shim"],
+  ] as const) {
+    it(`never merges into an existing destination (${label})`, () => {
+      const root = mkdtempSync(join(tmpdir(), "fleet-move-"))
+      try {
+        writeFileInTree(root, "src/shared/SKILL.md", "new copy\n")
+        writeFileInTree(root, "quarantine/shared/SKILL.md", "earlier copy\n")
+        writeFileInTree(root, "quarantine/shared/notes.md", "keep\n")
+        let path = '"$PATH"'
+        if (prefix) {
+          const shims = join(root, prefix)
+          mkdirSync(shims)
+          writeFileSync(
+            join(shims, "mv"),
+            "#!/bin/sh\necho 'mv: Function not implemented' >&2\nexit 1\n",
+            { mode: 0o755 }
+          )
+          path = `'${shims}':"$PATH"`
+        }
+
+        const result = spawnSync(
+          "bash",
+          [
+            "-c",
+            `PATH=${path}\n${PORTABLE_MOVE_SHELL}\nfleet_move '${root}/src/shared' '${root}/quarantine/'`,
+          ],
+          { encoding: "utf8" }
+        )
+
+        expect(result.status).toBe(1)
+        expect(result.stderr).toContain("already exists")
+        expect(read(join(root, "quarantine/shared/SKILL.md"))).toBe(
+          "earlier copy\n"
+        )
+        expect(read(join(root, "quarantine/shared/notes.md"))).toBe("keep\n")
+        expect(read(join(root, "src/shared/SKILL.md"))).toBe("new copy\n")
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    })
+  }
+})
+
 describe("sandbox-prepare seed", () => {
   it("skips the clone when the volume records this template version or newer", () => {
     const volume = mkdtempSync(join(tmpdir(), "fleet-seeded-volume-"))
@@ -271,13 +428,28 @@ describe("sandbox-prepare seed", () => {
     }
   })
 
-  it("fails without recording a version when the template is missing", () => {
+  it("warns and records nothing when the template is missing", () => {
     const repo = mkdtempSync(join(tmpdir(), "fleet-no-template-"))
     writeFileInTree(repo, "agent-workspace/manifest.json", "{}\n")
     commitSeed(repo, "old layout")
     const volume = mkdtempSync(join(tmpdir(), "fleet-no-template-volume-"))
     try {
-      expect(() => runSeed(volume, repo)).toThrow()
+      // A branch without the template must not break the whole prepare:
+      // the seed step falls through so later prepare steps still run.
+      const result = spawnSync(
+        "bash",
+        [
+          "-lc",
+          `${ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`)}\necho FLEET_PI_AFTER_SEED`,
+        ],
+        { encoding: "utf8" }
+      )
+      expect(result.status).toBe(0)
+      expect(result.stdout).toContain("seed skipped: template missing")
+      expect(result.stdout).toContain("FLEET_PI_AFTER_SEED")
+      expect(result.stderr).toContain(
+        "Seed template missing at templates/agent-workspace; skipping seed"
+      )
       expect(existsSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe(
         false
       )

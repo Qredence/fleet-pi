@@ -1,3 +1,8 @@
+---
+name: doc-gardening
+description: Clean up stale, duplicated, or contradictory agent-facing docs and memory in agent-workspace/. Use when notes feel noisy or out of date.
+---
+
 # Doc Gardening Skill
 
 ## When to use it

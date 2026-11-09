@@ -47,7 +47,7 @@ export async function assertSafePath(
         const parent = dirname(current)
         const parentRel = relative(absoluteRoot, parent)
         if (parentRel.startsWith(`..${sep}`) || parentRel === "..") {
-          throw new Error("Path escapes the approved root.")
+          throw new Error("Path escapes the approved root.", { cause: error })
         }
         return current
       }

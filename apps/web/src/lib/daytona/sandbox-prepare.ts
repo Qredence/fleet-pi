@@ -27,6 +27,7 @@ export const SEED_TEMPLATE_METADATA_FILE = "template.json"
 /** Blob ids the pre-template seed copied; see the file header. */
 export const LEGACY_SEED_BLOBS_REPO_PATH = "templates/legacy-seed-blobs.txt"
 export const LEGACY_SEED_QUARANTINE_SUBDIRECTORY = "legacy-seed"
+export const LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY = "legacy-skills"
 export const SCRATCH_TTL_DAYS = 7
 
 const WORKSPACE_PI_DIRS = [
@@ -86,6 +87,7 @@ export function buildPrepareSandboxCommand(
     ensureGitInstalledCommand(),
     removeLegacySandboxRootsCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
+    migrateLegacySkillsCommand(workspace),
     ensureAgentWorkspaceSeedCommand(workspace, url, templateVersion),
     sweepScratchCommand(workspace),
     piDirs,
@@ -186,6 +188,28 @@ function ensureGitInstalledCommand(): string {
 }
 
 /**
+ * `mv` is `rename(2)`, which the Daytona volume filesystem answers with
+ * ENOSYS ("Function not implemented"). Copy then delete instead, keeping
+ * `mv`'s semantics for both "target file" and "target directory" forms.
+ * Never replaces or merges into an existing destination (for example an
+ * earlier quarantine entry): that fails with status 1 and leaves both
+ * paths untouched.
+ * Exported for unit tests.
+ */
+export const PORTABLE_MOVE_SHELL = [
+  "fleet_move() {",
+  '  local dest="$2"',
+  '  if [ -d "$2" ]; then dest="$2/$(basename "$1")"; fi',
+  '  if [ -e "$dest" ] || [ -L "$dest" ]; then',
+  '    echo "fleet_move: $dest already exists; leaving $1 in place" >&2',
+  "    return 1",
+  "  fi",
+  '  if mv "$1" "$dest" 2>/dev/null; then return 0; fi',
+  '  cp -R "$1" "$dest" && rm -rf "$1"',
+  "}",
+].join("\n")
+
+/**
  * Heal polluted volumes. Nested agent-workspace wins over root stubs.
  * Foreign entries are quarantined on the durable volume.
  * Exported for unit tests.
@@ -194,6 +218,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
   const keepPattern = workspaceVolumeShellKeepPattern()
   const quarantine = `${workspace}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}`
   return [
+    PORTABLE_MOVE_SHELL,
     "polluted=0",
     // Nested real workspace is always treated as pollution to flatten.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then polluted=1; fi`,
@@ -207,22 +232,54 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     // paths that are not already on the volume root.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
-    `cp -a ${workspace}/agent-workspace/. "$tmpdir"/`,
+    `cp -R ${workspace}/agent-workspace/. "$tmpdir"/`,
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    `fleet_move "$item" ${quarantine}/ || true`,
     "done",
-    `cp -an "$tmpdir"/. ${workspace}/`,
+    `cp -Rn "$tmpdir"/. ${workspace}/`,
     `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
     "else",
     // No nested workspace: quarantine foreign only; keep contract entries.
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    `fleet_move "$item" ${quarantine}/ || true`,
     "done",
     "fi",
+    "fi",
+  ].join("\n")
+}
+
+/**
+ * Move `skills/<name>/` to `pi/skills/<name>/`, the only skill root Pi loads.
+ * When the target already exists, the legacy folder goes to quarantine
+ * instead. Runs before the seed, so moved copies of the old seed are still
+ * caught by the legacy blob check.
+ * Exported for unit tests.
+ */
+export function migrateLegacySkillsCommand(workspace: string): string {
+  const quarantine = `"$ws"/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/${LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY}`
+  return [
+    PORTABLE_MOVE_SHELL,
+    `ws=${workspace}`,
+    'if [ -d "$ws"/skills ]; then',
+    '  for dir in "$ws"/skills/*/; do',
+    '    [ -d "$dir" ] || continue',
+    '    dir="${dir%/}"',
+    '    name="$(basename "$dir")"',
+    '    if [ -e "$ws"/pi/skills/"$name" ]; then',
+    `      target=${quarantine}/"$name"`,
+    '      if [ -e "$target" ]; then target="$target-$(date +%s)"; fi',
+    '      mkdir -p "$(dirname "$target")"',
+    '      fleet_move "$dir" "$target"',
+    "    else",
+    '      mkdir -p "$ws"/pi/skills',
+    '      fleet_move "$dir" "$ws"/pi/skills/"$name"',
+    "    fi",
+    '    echo "FLEET_PI_SKILL_MIGRATED=$name"',
+    "  done",
     "fi",
   ].join("\n")
 }
@@ -261,6 +318,7 @@ export function ensureAgentWorkspaceSeedCommand(
 
   return [
     "set -euo pipefail",
+    PORTABLE_MOVE_SHELL,
     `ws=${workspace}`,
     "recorded=0",
     `if [ -f ${versionFile} ]; then`,
@@ -275,15 +333,20 @@ export function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd. Cone
     // mode also checks out files directly under `templates/`.
     `(cd "$tmpdir" && git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH})`,
-    `if [ ! -f ${srcRoot}/template.json ]; then`,
-    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}" >&2`,
-    "  exit 1",
-    "fi",
     // The clone is the repo's default branch, which can lag or lead this
     // build. Never apply or record a version for content that is not that
     // version: skip the seed (nothing recorded) and retry on the next prepare.
-    `cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
-    `if [ "$cloned" != "${templateVersion}" ]; then`,
+    // A missing template is skipped the same way, e.g. before the branch that
+    // adds it reaches the default branch. Both skips fall through (no `exit`)
+    // so the rest of the prepare script still runs.
+    'cloned=""',
+    `if [ -f ${srcRoot}/template.json ]; then`,
+    `  cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
+    "fi",
+    `if [ ! -f ${srcRoot}/template.json ]; then`,
+    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}; skipping seed" >&2`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template missing)"`,
+    `elif [ "$cloned" != "${templateVersion}" ]; then`,
     `  echo "Seed template version \${cloned:-unknown} does not match expected ${templateVersion}; skipping seed" >&2`,
     `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template version mismatch)"`,
     "else",
@@ -296,8 +359,9 @@ export function ensureAgentWorkspaceSeedCommand(
     '    blob="$(git hash-object "$file")"',
     `    if grep -qxF "$blob" ${legacyBlobs}; then`,
     `      mkdir -p "$(dirname ${quarantine}/"$rel")"`,
-    `      mv "$file" ${quarantine}/"$rel"`,
-    '      echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    `      if fleet_move "$file" ${quarantine}/"$rel"; then`,
+    '        echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    "      fi",
     "    fi",
     '  done < "$tmpdir/legacy-candidates"',
     "fi",
@@ -313,7 +377,7 @@ export function ensureAgentWorkspaceSeedCommand(
     '  if [ ! -e "$dest" ]; then',
     '    mkdir -p "$(dirname "$dest")"',
     // A real copy error fails the script, so the version is not recorded.
-    '    cp -a "$src" "$dest"',
+    '    cp -R "$src" "$dest"',
     "    continue",
     "  fi",
     '  if cmp -s "$src" "$dest"; then continue; fi',
@@ -321,12 +385,12 @@ export function ensureAgentWorkspaceSeedCommand(
     // itself changed since it was last applied (or was never recorded).
     `  if [ -e ${pristine}/"$rel" ] && cmp -s "$src" ${pristine}/"$rel"; then continue; fi`,
     `  mkdir -p "$(dirname ${updates}/"$rel")"`,
-    `  cp -a "$src" ${updates}/"$rel"`,
+    `  cp -R "$src" ${updates}/"$rel"`,
     `  echo "FLEET_PI_TEMPLATE_UPDATE=$rel"`,
     `done < <(find ${srcRoot} -mindepth 1 -print0)`,
     `rm -rf ${pristine}`,
     `mkdir -p ${pristine}`,
-    `cp -a ${srcRoot}/. ${pristine}/`,
+    `cp -R ${srcRoot}/. ${pristine}/`,
     'rev="$(git -C "$tmpdir" rev-parse HEAD)"',
     `printf '%s\\n' "$rev" > ${revFile}`,
     `printf '%s\\n' ${templateVersion} > ${versionFile}`,

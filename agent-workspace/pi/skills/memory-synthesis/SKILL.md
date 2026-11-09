@@ -1,3 +1,8 @@
+---
+name: memory-synthesis
+description: Distil daily notes, finished plans, and reports into short, grounded updates to agent-workspace/memory/project/.
+---
+
 # Memory Synthesis Skill
 
 ## When to use it
