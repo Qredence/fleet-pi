@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto"
 
 import {
+  SEED_TEMPLATE_VERSION,
+  TEMPLATE_PRISTINE_RELATIVE_PATH,
+  TEMPLATE_UPDATES_RELATIVE_PATH,
+  TEMPLATE_VERSION_RELATIVE_PATH,
   WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
   workspaceVolumeShellKeepPattern,
 } from "../workspace/workspace-contract"
@@ -15,9 +19,14 @@ export const SANDBOX_WORKSPACE_ROOT = "/home/daytona/agent-workspace"
 export const LEGACY_SANDBOX_ROOT = "/home/daytona/fleet-pi"
 export const SANDBOX_PI_AUTH_PATH = "/home/daytona/.pi/agent/auth.json"
 export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
-/** Sandbox label. Daytona volumes have no label API; file edits cannot change this. */
-export const FLEET_PI_SEED_REVISION_LABEL = "fleetPiSeedRev"
 export const SEED_REVISION_RELATIVE_PATH = ".fleet/seed-revision"
+/** Seed template inside the repository (sparse-cloned from `main`). */
+export const SEED_TEMPLATE_REPO_PATH = "templates/agent-workspace"
+/** Template metadata file; read by prepare, never copied into a volume. */
+export const SEED_TEMPLATE_METADATA_FILE = "template.json"
+/** Blob ids the pre-template seed copied; see the file header. */
+export const LEGACY_SEED_BLOBS_REPO_PATH = "templates/legacy-seed-blobs.txt"
+export const LEGACY_SEED_QUARANTINE_SUBDIRECTORY = "legacy-seed"
 export const SCRATCH_TTL_DAYS = 7
 
 const WORKSPACE_PI_DIRS = [
@@ -61,11 +70,11 @@ export function resolveRepositoryUrl(value: string | undefined): string {
 
 export function buildPrepareSandboxCommand(
   repoUrl: string,
-  options?: { seedRevision?: string }
+  options?: { templateVersion?: number }
 ): string {
   const workspace = shellEscape(SANDBOX_WORKSPACE_ROOT)
   const url = shellEscape(repoUrl)
-  const seedRevision = options?.seedRevision?.trim() ?? ""
+  const templateVersion = options?.templateVersion ?? SEED_TEMPLATE_VERSION
   const piDirs = WORKSPACE_PI_DIRS.map(
     (dir) => `mkdir -p ${shellEscape(`${SANDBOX_WORKSPACE_ROOT}/${dir}`)}`
   ).join("\n")
@@ -77,7 +86,7 @@ export function buildPrepareSandboxCommand(
     ensureGitInstalledCommand(),
     removeLegacySandboxRootsCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
-    ensureAgentWorkspaceSeedCommand(workspace, url, seedRevision),
+    ensureAgentWorkspaceSeedCommand(workspace, url, templateVersion),
     sweepScratchCommand(workspace),
     piDirs,
     `mkdir -p ${workspace}`,
@@ -107,27 +116,13 @@ export async function prepareSandboxLayout(
   sandbox: Sandbox,
   repoUrl: string
 ): Promise<void> {
-  const labels: Record<string, string | undefined> = sandbox.labels
-  const seedRevision = labels[FLEET_PI_SEED_REVISION_LABEL]?.trim() ?? ""
-  const script = buildPrepareSandboxCommand(repoUrl, { seedRevision })
+  const script = buildPrepareSandboxCommand(repoUrl)
   const result = await executeCommand(sandbox, `bash -c ${shellEscape(script)}`)
   if (result.exitCode !== 0) {
     throw new Error(
       `Failed to prepare Daytona sandbox layout: ${result.result}`
     )
   }
-
-  const recorded = readSeedRevision(result.result)
-  if (!recorded || recorded === seedRevision) return
-  await sandbox.setLabels({
-    ...sandbox.labels,
-    [FLEET_PI_SEED_REVISION_LABEL]: recorded,
-  })
-}
-
-function readSeedRevision(output: string | undefined) {
-  const match = output?.match(/FLEET_PI_SEED_REVISION=([0-9a-f]{7,40})/)
-  return match?.[1]
 }
 
 export async function syncSandboxProviderCredentials(
@@ -233,51 +228,112 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
 }
 
 /**
- * Copy the git seed onto the volume without clobbering user files.
- * When `seedRevision` is set, the sandbox label already records this seed and
- * the clone is skipped. A missing label still uses `cp -an`.
+ * Apply the seed template to the volume. Never overwrites a user file.
+ *
+ * - Skips the clone when the volume already records `templateVersion` or newer.
+ * - On a volume seeded before the template existed (no version file), moves
+ *   files that are byte-identical to an old seed blob into quarantine, so
+ *   copied Fleet Pi team content does not pass as the user's own.
+ * - Copies missing template files. When a template file changed since the
+ *   last applied version and the user's copy differs, writes the new copy to
+ *   `.fleet/template-updates/<version>/` for review instead.
+ *
  * Exported for unit tests.
  */
 export function ensureAgentWorkspaceSeedCommand(
   workspace: string,
   url: string,
-  seedRevision = ""
+  templateVersion: number = SEED_TEMPLATE_VERSION
 ): string {
-  const recorded = seedRevision.trim()
-  if (recorded) {
-    // Comment-only scripts exit non-zero under `bash -lc` on some Linux images
-    // (GitHub Actions). Keep a no-op command so the skip path stays success.
-    return `: # ${FLEET_PI_SEED_REVISION_LABEL} ${recorded} matches; clone skipped`
+  if (!Number.isInteger(templateVersion) || templateVersion < 1) {
+    throw new Error(`Invalid seed template version: ${templateVersion}`)
   }
+  // `workspace` arrives shell-quoted; bind it once so every later use is a
+  // plain double-quoted expansion (also inside `${var#prefix}`).
+  const ws = '"$ws"'
+  const versionFile = `${ws}/${TEMPLATE_VERSION_RELATIVE_PATH}`
+  const pristine = `${ws}/${TEMPLATE_PRISTINE_RELATIVE_PATH}`
+  const updates = `${ws}/${TEMPLATE_UPDATES_RELATIVE_PATH}/${templateVersion}`
+  const quarantine = `${ws}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/${LEGACY_SEED_QUARANTINE_SUBDIRECTORY}`
+  const revFile = `${ws}/${SEED_REVISION_RELATIVE_PATH}`
+  const srcRoot = `"$tmpdir"/${SEED_TEMPLATE_REPO_PATH}`
+  const legacyBlobs = `"$tmpdir"/${LEGACY_SEED_BLOBS_REPO_PATH}`
 
-  const revFile = `${workspace}/${SEED_REVISION_RELATIVE_PATH}`
   return [
     "set -euo pipefail",
+    `ws=${workspace}`,
+    "recorded=0",
+    `if [ -f ${versionFile} ]; then`,
+    `  recorded="$(tr -dc '0-9' < ${versionFile})"`,
+    '  recorded="${recorded:-0}"',
+    "fi",
+    `if [ "$recorded" -ge ${templateVersion} ]; then`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped)"`,
+    "else",
     "tmpdir=$(mktemp -d)",
     `git clone --depth 1 --filter=blob:none --sparse ${url} "$tmpdir"`,
-    // Subshell so sparse-checkout does not change the outer script cwd.
-    '(cd "$tmpdir" && git sparse-checkout set agent-workspace)',
-    `mkdir -p ${workspace}`,
-    // Copy only missing paths. An existing file stays, and a real copy error
-    // fails the script so the seed revision is not recorded.
+    // Subshell so sparse-checkout does not change the outer script cwd. Cone
+    // mode also checks out files directly under `templates/`.
+    `(cd "$tmpdir" && git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH})`,
+    `if [ ! -f ${srcRoot}/template.json ]; then`,
+    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}" >&2`,
+    "  exit 1",
+    "fi",
+    // The clone is the repo's default branch, which can lag or lead this
+    // build. Never apply or record a version for content that is not that
+    // version: skip the seed (nothing recorded) and retry on the next prepare.
+    `cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
+    `if [ "$cloned" != "${templateVersion}" ]; then`,
+    `  echo "Seed template version \${cloned:-unknown} does not match expected ${templateVersion}; skipping seed" >&2`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template version mismatch)"`,
+    "else",
+    `mkdir -p ${ws}/.fleet`,
+    // Legacy cleanup runs once: only volumes with no recorded version.
+    `if [ ! -f ${versionFile} ] && [ -f ${legacyBlobs} ]; then`,
+    `  find ${ws} \\( -path ${ws}/.fleet -o -path ${ws}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY} \\) -prune -o -type f -size +0 -print0 > "$tmpdir/legacy-candidates"`,
+    "  while IFS= read -r -d '' file; do",
+    `    rel="\${file#"$ws"/}"`,
+    '    blob="$(git hash-object "$file")"',
+    `    if grep -qxF "$blob" ${legacyBlobs}; then`,
+    `      mkdir -p "$(dirname ${quarantine}/"$rel")"`,
+    `      mv "$file" ${quarantine}/"$rel"`,
+    '      echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    "    fi",
+    '  done < "$tmpdir/legacy-candidates"',
+    "fi",
     "while IFS= read -r -d '' src; do",
-    '  rel="${src#"$tmpdir"/agent-workspace/}"',
-    `  dest=${workspace}/"$rel"`,
+    `  rel="\${src#${srcRoot}/}"`,
+    // Template metadata stays out of the workspace tree.
+    `  if [ "$rel" = "${SEED_TEMPLATE_METADATA_FILE}" ]; then continue; fi`,
+    `  dest=${ws}/"$rel"`,
     '  if [ -d "$src" ]; then',
     '    mkdir -p "$dest"',
     "    continue",
     "  fi",
-    '  if [ -e "$dest" ]; then',
+    '  if [ ! -e "$dest" ]; then',
+    '    mkdir -p "$(dirname "$dest")"',
+    // A real copy error fails the script, so the version is not recorded.
+    '    cp -a "$src" "$dest"',
     "    continue",
     "  fi",
-    '  mkdir -p "$(dirname "$dest")"',
-    '  cp -a "$src" "$dest"',
-    'done < <(find "$tmpdir/agent-workspace" -mindepth 1 -print0)',
+    '  if cmp -s "$src" "$dest"; then continue; fi',
+    // User copy differs. Offer the template copy only when the template
+    // itself changed since it was last applied (or was never recorded).
+    `  if [ -e ${pristine}/"$rel" ] && cmp -s "$src" ${pristine}/"$rel"; then continue; fi`,
+    `  mkdir -p "$(dirname ${updates}/"$rel")"`,
+    `  cp -a "$src" ${updates}/"$rel"`,
+    `  echo "FLEET_PI_TEMPLATE_UPDATE=$rel"`,
+    `done < <(find ${srcRoot} -mindepth 1 -print0)`,
+    `rm -rf ${pristine}`,
+    `mkdir -p ${pristine}`,
+    `cp -a ${srcRoot}/. ${pristine}/`,
     'rev="$(git -C "$tmpdir" rev-parse HEAD)"',
-    `mkdir -p ${workspace}/.fleet`,
     `printf '%s\\n' "$rev" > ${revFile}`,
-    'echo "FLEET_PI_SEED_REVISION=$rev"',
+    `printf '%s\\n' ${templateVersion} > ${versionFile}`,
+    `echo "FLEET_PI_TEMPLATE_VERSION=${templateVersion} (seed applied at $rev)"`,
+    "fi",
     'rm -rf "$tmpdir"',
+    "fi",
   ].join("\n")
 }
 
@@ -290,7 +346,8 @@ export function sweepScratchCommand(workspace: string): string {
   const scratch = `${workspace}/scratch`
   return [
     `if [ -d ${scratch} ]; then`,
-    `find ${scratch} -type f -mtime +${SCRATCH_TTL_DAYS} ! -name '.gitkeep' -delete`,
+    // -mtime rounds down to whole days (+7 matches only from day 8); use minutes.
+    `find ${scratch} -type f -mmin +${SCRATCH_TTL_DAYS * 24 * 60} ! -name '.gitkeep' -delete`,
     "fi",
   ].join("\n")
 }

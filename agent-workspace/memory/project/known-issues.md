@@ -186,3 +186,10 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
   top-of-stack analysis, instead of trusting a cancelled check run.
 - Follow-up: If cancelled runs stay confusing, configure Sonar to skip
   re-analysis on non-head branches rather than teaching readers to ignore it.
+
+## User volumes were seeded with the team's agent-workspace (Resolved)
+
+- Issue: Daytona prepare sparse-cloned this repo's `agent-workspace/` into every user volume, so new users inherited Fleet Pi team memory, reports, scratch scripts, and the enabled `explorator-agent.ts` extension. Seeding was also skipped forever once the `fleetPiSeedRev` sandbox label matched, so template changes never reached existing users.
+- Affected area: `apps/web/src/lib/daytona/sandbox-prepare.ts`, user Daytona volumes.
+- Current status: **Resolved.** Volumes seed from `templates/agent-workspace/` with a recorded version (`.fleet/template-version`, `SEED_TEMPLATE_VERSION`). Upgrades copy missing files and put changed template files under `.fleet/template-updates/<version>/`; nothing is overwritten. Legacy volumes quarantine unedited old-seed files once (blob match against `templates/legacy-seed-blobs.txt`).
+- Follow-up: Keep `templates/agent-workspace/` neutral (`seed-template.test.ts`). The repo's `agent-workspace/` stays the team home; the template is user-facing.

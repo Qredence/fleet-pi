@@ -12,6 +12,19 @@ It is the repo-local home for the durable context that lets Fleet Pi behave
 like an adaptive and self-improving coding system instead of a stateless chat
 window.
 
+## Two workspaces: the team's and each user's
+
+- **This repository's `agent-workspace/`** is the Fleet Pi team's own agent
+  home. Its memory, plans, and reports describe Fleet Pi development and are
+  never copied to users.
+- **Each user's workspace** (their Daytona volume on hosted deploys) starts
+  from the neutral seed in `templates/agent-workspace/` and then evolves on
+  its own. Fleet Pi never overwrites a file the user or their agent changed;
+  newer template copies arrive under `.fleet/template-updates/<version>/`.
+  See [Seed template](daytona.md#seed-template).
+
+Change the seed only in `templates/agent-workspace/`, and bump its version.
+
 ## What lives here
 
 - `memory/` for durable project knowledge

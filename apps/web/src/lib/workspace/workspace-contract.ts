@@ -3,6 +3,20 @@ import { z } from "zod"
 export const AGENT_WORKSPACE_DIRECTORY = "agent-workspace"
 export const WORKSPACE_CONTRACT_VERSION = 1
 export const WORKSPACE_MANIFEST_RELATIVE_PATH = "manifest.json"
+/**
+ * Version of `templates/agent-workspace/` this build seeds. Bump it together
+ * with `template.json` whenever template content changes, so existing volumes
+ * receive new files and review copies of changed ones.
+ */
+export const SEED_TEMPLATE_VERSION = 1
+/** Fleet bookkeeping on the volume (seed revision, template state). */
+export const WORKSPACE_FLEET_STATE_DIRECTORY = ".fleet"
+/** Template version last applied to the workspace. */
+export const TEMPLATE_VERSION_RELATIVE_PATH = `${WORKSPACE_FLEET_STATE_DIRECTORY}/template-version`
+/** Pristine copy of the last applied template, for 3-way update checks. */
+export const TEMPLATE_PRISTINE_RELATIVE_PATH = `${WORKSPACE_FLEET_STATE_DIRECTORY}/template`
+/** Newer template files the user has not adopted yet, one folder per version. */
+export const TEMPLATE_UPDATES_RELATIVE_PATH = `${WORKSPACE_FLEET_STATE_DIRECTORY}/template-updates`
 
 export const WORKSPACE_TOP_LEVEL_SECTIONS = [
   "instructions",
@@ -42,6 +56,7 @@ export const WORKSPACE_VOLUME_QUARANTINE_DIRECTORY = ".fleet-pi-quarantine"
 export function workspaceVolumeShellKeepPattern(): string {
   return [
     "agent-workspace",
+    WORKSPACE_FLEET_STATE_DIRECTORY,
     WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
     ...WORKSPACE_TOP_LEVEL_SECTIONS,
     ...WORKSPACE_ROOT_FILE_ALLOWLIST,
