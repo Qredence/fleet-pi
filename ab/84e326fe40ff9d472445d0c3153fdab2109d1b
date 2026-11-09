@@ -1,0 +1,28 @@
+apps/web/src/lib/pi/durable/__tests__/do-workspace-store.test.ts
+  h_f276322eb5eb9f 148-164,328-397
+apps/web/src/lib/pi/durable/__tests__/hosted-workspace-context.test.ts
+  h_f276322eb5eb9f 329,333-334
+apps/web/src/lib/pi/durable/__tests__/node-workspace-sql.ts
+  h_f276322eb5eb9f 9-10
+apps/web/src/lib/pi/durable/do-workspace-store.ts
+  h_f276322eb5eb9f 54-55,273-280,422-436,513-515,518,522-523,525-527,530-541,545,547-550,553
+apps/web/src/lib/pi/durable/hosted-harness.ts
+  h_f276322eb5eb9f 60-61,508
+apps/web/src/lib/pi/durable/user-pi-durable.ts
+  h_f276322eb5eb9f 108-109,403-404,407-411,417-418
+docs/agent-workspace.md
+  h_f276322eb5eb9f 27-28,34-35,37-46
+docs/daytona.md
+  h_f276322eb5eb9f 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab84e326fe40ff9d472445d0c3153fdab2109d1b",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
