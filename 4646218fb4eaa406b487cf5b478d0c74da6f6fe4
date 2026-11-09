@@ -1,0 +1,20 @@
+apps/web/e2e/chat-flows-support.ts
+  h_f276322eb5eb9f 203-213,395-401
+apps/web/src/lib/daytona/__tests__/sandbox-prepare.test.ts
+  h_f276322eb5eb9f 284-286,290-335,438-452
+apps/web/src/lib/daytona/sandbox-prepare.ts
+  h_f276322eb5eb9f 194-196,201-208,339-349,362-364
+docs/wiki/features/agent-workspace.md
+  h_f276322eb5eb9f 11,24,73,132,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4646218fb4eaa406b487cf5b478d0c74da6f6fe4",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}

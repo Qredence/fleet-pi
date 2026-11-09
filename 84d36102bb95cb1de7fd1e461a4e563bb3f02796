@@ -1,0 +1,25 @@
+apps/web/src/lib/daytona/sandbox-prepare.ts
+  s_9de5df39faec99::t_f601f345fdbfeb 25-26,282-289,306-307,334,349-350
+apps/web/src/lib/workspace/bootstrap-agent-workspace.ts
+  s_9de5df39faec99::t_7a1d2613154231 275,410-411,415-416,418-430,439-440,452-453
+apps/web/src/routes/api/__tests__/workspace-health.test.ts
+  s_9de5df39faec99::t_0835e7d40167fd 42,50
+apps/web/src/routes/api/workspace/health.ts
+  s_9de5df39faec99::t_dd26abc518e7c2 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84d36102bb95cb1de7fd1e461a4e563bb3f02796",
+  "prompts": {},
+  "sessions": {
+    "s_9de5df39faec99": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "515dcb70-9fca-4d47-8af0-2befaec37882",
+        "model": "grok-4.7"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
