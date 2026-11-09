@@ -1,6 +1,11 @@
 import { posix } from "node:path"
 
-import { downloadFile, executeCommand, uploadFile } from "../../daytona/client"
+import {
+  downloadFile,
+  executeCommand,
+  listFiles,
+  uploadFile,
+} from "../../daytona/client"
 import { assertPathWithinWorkspaceBound } from "../../daytona/sandbox-operations"
 import { USER_VOLUME_ROOT } from "../mutation-tier"
 
@@ -25,6 +30,14 @@ export function daytonaSandboxPort(
     async write(path, content) {
       const resolvedPath = resolveHostedSandboxPath(path)
       await uploadFile(sandbox, content, resolvedPath)
+    },
+    async list(dir) {
+      const resolvedPath = resolveHostedSandboxPath(dir)
+      const entries = await listFiles(sandbox, resolvedPath)
+      return entries.map((entry) => ({
+        name: entry.name,
+        isDirectory: entry.isDir,
+      }))
     },
     async exec(command) {
       const result = await executeCommand(sandbox, command, USER_VOLUME_ROOT)

@@ -13,6 +13,8 @@ export type HostedSandboxPort = {
   read: (path: string) => Promise<string>
   write: (path: string, content: string) => Promise<void>
   exec: (command: string) => Promise<HostedCommandResult>
+  /** Direct children of a workspace-relative directory. */
+  list?: (dir: string) => Promise<Array<{ name: string; isDirectory: boolean }>>
 }
 
 type ShellOptions = {

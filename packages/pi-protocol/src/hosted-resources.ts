@@ -1,6 +1,7 @@
 /** Bundled hosted extensions. Volume JavaScript is never evaluated. */
 export const BUNDLED_HOSTED_EXTENSIONS = [
   "hosted-sandbox",
+  "workspace-context",
   "workspace-status",
 ] as const
 
