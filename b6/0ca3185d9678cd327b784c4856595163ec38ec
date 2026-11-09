@@ -1,0 +1,54 @@
+agent-workspace/system/behavior.md
+  s_a7df7732467e9b::t_1cedace64efead 42,48-50
+.pi/extensions/workspace-index.ts
+  s_a7df7732467e9b::t_03227b534ac746 235,237,248,258
+agent-workspace/pi/skills/memory-synthesis/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-55
+agent-workspace/skills/README.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-4
+apps/web/src/lib/workspace/__tests__/workspace-skills-root.test.ts
+  s_a7df7732467e9b::t_b338e1b01f750c 1-6,8-12,14-50
+  s_a7df7732467e9b::t_36a68dc84a74c1 7,13
+agent-workspace/pi/skills/execution-plan/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-66
+docs/wiki/features/agent-workspace.md
+  s_a7df7732467e9b::t_1cedace64efead 75
+apps/web/e2e/chat-flows-support.ts
+  s_a7df7732467e9b::t_ce4f1baf6c74e3 396-455
+agent-workspace/AGENTS.md
+  s_a7df7732467e9b::t_13b2536185f7cb 61
+agent-workspace/pi/skills/doc-gardening/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-37
+docs/wiki/overview/glossary.md
+  s_a7df7732467e9b::t_1cedace64efead 22
+packages/hax-design/src/components/fleet-pi/pi/shared.tsx
+  s_a7df7732467e9b::t_03227b534ac746 106
+apps/web/src/lib/daytona/sandbox-prepare.ts
+  s_a7df7732467e9b::t_8fae5ec9b764d8 231-260
+  s_a7df7732467e9b::t_ba5224f9e4731f 88
+  s_a7df7732467e9b::t_0e52fbe2fdde06 28
+  s_a7df7732467e9b::t_915b2b7691001b 230
+apps/web/src/lib/daytona/__tests__/sandbox-prepare.test.ts
+  s_a7df7732467e9b::t_914ec8f711f28c 25,33,166-222
+  s_a7df7732467e9b::t_495fe3cad69985 223
+agent-workspace/pi/skills/codebase-research/SKILL.md
+  s_a7df7732467e9b::t_f7f5ffc967c6e3 1-10
+.pi/extensions/lib/safe-path.ts
+  s_a7df7732467e9b::t_cfc7a40de9df60 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b60ca3185d9678cd327b784c4856595163ec38ec",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "system.ai.claude-opus-5-5"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
