@@ -188,6 +188,19 @@ function ensureGitInstalledCommand(): string {
 }
 
 /**
+ * `mv` is `rename(2)`, which the Daytona volume filesystem answers with
+ * ENOSYS ("Function not implemented"). Copy then delete instead, keeping
+ * `mv`'s semantics for both "target file" and "target directory" forms.
+ * Exported for unit tests.
+ */
+export const PORTABLE_MOVE_SHELL = [
+  "fleet_move() {",
+  '  if mv "$1" "$2" 2>/dev/null; then return 0; fi',
+  '  cp -R "$1" "$2" && rm -rf "$1"',
+  "}",
+].join("\n")
+
+/**
  * Heal polluted volumes. Nested agent-workspace wins over root stubs.
  * Foreign entries are quarantined on the durable volume.
  * Exported for unit tests.
@@ -196,6 +209,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
   const keepPattern = workspaceVolumeShellKeepPattern()
   const quarantine = `${workspace}/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}`
   return [
+    PORTABLE_MOVE_SHELL,
     "polluted=0",
     // Nested real workspace is always treated as pollution to flatten.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then polluted=1; fi`,
@@ -209,20 +223,20 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     // paths that are not already on the volume root.
     `if [ -f ${workspace}/agent-workspace/manifest.json ]; then`,
     "tmpdir=$(mktemp -d)",
-    `cp -a ${workspace}/agent-workspace/. "$tmpdir"/`,
+    `cp -R ${workspace}/agent-workspace/. "$tmpdir"/`,
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    `fleet_move "$item" ${quarantine}/ || true`,
     "done",
-    `cp -an "$tmpdir"/. ${workspace}/`,
+    `cp -Rn "$tmpdir"/. ${workspace}/`,
     `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
     "else",
     // No nested workspace: quarantine foreign only; keep contract entries.
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `mv "$item" ${quarantine}/ 2>/dev/null || true`,
+    `fleet_move "$item" ${quarantine}/ || true`,
     "done",
     "fi",
     "fi",
@@ -239,6 +253,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
 export function migrateLegacySkillsCommand(workspace: string): string {
   const quarantine = `"$ws"/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/${LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY}`
   return [
+    PORTABLE_MOVE_SHELL,
     `ws=${workspace}`,
     'if [ -d "$ws"/skills ]; then',
     '  for dir in "$ws"/skills/*/; do',
@@ -249,10 +264,10 @@ export function migrateLegacySkillsCommand(workspace: string): string {
     `      target=${quarantine}/"$name"`,
     '      if [ -e "$target" ]; then target="$target-$(date +%s)"; fi',
     '      mkdir -p "$(dirname "$target")"',
-    '      mv "$dir" "$target"',
+    '      fleet_move "$dir" "$target"',
     "    else",
     '      mkdir -p "$ws"/pi/skills',
-    '      mv "$dir" "$ws"/pi/skills/"$name"',
+    '      fleet_move "$dir" "$ws"/pi/skills/"$name"',
     "    fi",
     '    echo "FLEET_PI_SKILL_MIGRATED=$name"',
     "  done",
@@ -294,6 +309,7 @@ export function ensureAgentWorkspaceSeedCommand(
 
   return [
     "set -euo pipefail",
+    PORTABLE_MOVE_SHELL,
     `ws=${workspace}`,
     "recorded=0",
     `if [ -f ${versionFile} ]; then`,
@@ -308,9 +324,14 @@ export function ensureAgentWorkspaceSeedCommand(
     // Subshell so sparse-checkout does not change the outer script cwd. Cone
     // mode also checks out files directly under `templates/`.
     `(cd "$tmpdir" && git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH})`,
+    // A missing template is not fatal: the volume keeps working, nothing is
+    // recorded, and the next prepare tries again (e.g. before the branch that
+    // adds the template reaches the default branch).
     `if [ ! -f ${srcRoot}/template.json ]; then`,
-    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}" >&2`,
-    "  exit 1",
+    `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}; skipping seed" >&2`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template missing)"`,
+    '  rm -rf "$tmpdir"',
+    "  exit 0",
     "fi",
     // The clone is the repo's default branch, which can lag or lead this
     // build. Never apply or record a version for content that is not that
@@ -329,7 +350,7 @@ export function ensureAgentWorkspaceSeedCommand(
     '    blob="$(git hash-object "$file")"',
     `    if grep -qxF "$blob" ${legacyBlobs}; then`,
     `      mkdir -p "$(dirname ${quarantine}/"$rel")"`,
-    `      mv "$file" ${quarantine}/"$rel"`,
+    `      fleet_move "$file" ${quarantine}/"$rel"`,
     '      echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
     "    fi",
     '  done < "$tmpdir/legacy-candidates"',
@@ -346,7 +367,7 @@ export function ensureAgentWorkspaceSeedCommand(
     '  if [ ! -e "$dest" ]; then',
     '    mkdir -p "$(dirname "$dest")"',
     // A real copy error fails the script, so the version is not recorded.
-    '    cp -a "$src" "$dest"',
+    '    cp -R "$src" "$dest"',
     "    continue",
     "  fi",
     '  if cmp -s "$src" "$dest"; then continue; fi',
@@ -354,12 +375,12 @@ export function ensureAgentWorkspaceSeedCommand(
     // itself changed since it was last applied (or was never recorded).
     `  if [ -e ${pristine}/"$rel" ] && cmp -s "$src" ${pristine}/"$rel"; then continue; fi`,
     `  mkdir -p "$(dirname ${updates}/"$rel")"`,
-    `  cp -a "$src" ${updates}/"$rel"`,
+    `  cp -R "$src" ${updates}/"$rel"`,
     `  echo "FLEET_PI_TEMPLATE_UPDATE=$rel"`,
     `done < <(find ${srcRoot} -mindepth 1 -print0)`,
     `rm -rf ${pristine}`,
     `mkdir -p ${pristine}`,
-    `cp -a ${srcRoot}/. ${pristine}/`,
+    `cp -R ${srcRoot}/. ${pristine}/`,
     'rev="$(git -C "$tmpdir" rev-parse HEAD)"',
     `printf '%s\\n' "$rev" > ${revFile}`,
     `printf '%s\\n' ${templateVersion} > ${versionFile}`,

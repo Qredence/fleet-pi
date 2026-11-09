@@ -23,6 +23,7 @@ import {
 import {
   LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
   LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+  PORTABLE_MOVE_SHELL,
   SANDBOX_WORKSPACE_ROOT,
   SEED_REVISION_RELATIVE_PATH,
   SEED_TEMPLATE_REPO_PATH,
@@ -67,18 +68,18 @@ describe("sandbox-prepare migration", () => {
     const keep = workspaceVolumeShellKeepPattern()
 
     expect(script).toContain(
-      `cp -a '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace/. "$tmpdir"/`
+      `cp -R '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace/. "$tmpdir"/`
     )
     expect(script).toContain(
-      `mv "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
+      `fleet_move "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
     )
-    expect(script).toContain(`cp -an "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`)
+    expect(script).toContain(`cp -Rn "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`)
     expect(script).toContain(
       `rm -rf '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace "$tmpdir"`
     )
     expect(script).toContain(`case "$(basename "$item")" in ${keep})`)
     expect(script).not.toContain(
-      `cp -a "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`
+      `cp -R "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`
     )
     expect(script).not.toContain("/home/daytona/fleet-pi'/")
   })
@@ -216,6 +217,56 @@ describe("sandbox-prepare skills migration", () => {
     }
   })
 
+  it("copies instead of renaming when the volume cannot rename", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-noext4-"))
+    const shims = mkdtempSync(join(tmpdir(), "fleet-mv-shim-"))
+    try {
+      writeFileInTree(volume, "skills/mine/SKILL.md", "user skill\n")
+      writeFileInTree(volume, "skills/shared/SKILL.md", "legacy copy\n")
+      writeFileInTree(volume, "pi/skills/shared/SKILL.md", "installed\n")
+      // The Daytona volume answers rename(2) with ENOSYS.
+      writeFileSync(
+        join(shims, "mv"),
+        "#!/bin/sh\necho 'mv: Function not implemented' >&2\nexit 1\n",
+        { mode: 0o755 }
+      )
+
+      execFileSync(
+        "bash",
+        [
+          "-c",
+          `PATH='${shims}':"$PATH"\n${migrateLegacySkillsCommand(`'${volume}'`)}`,
+        ],
+        { encoding: "utf8" }
+      )
+
+      expect(read(join(volume, "pi/skills/mine/SKILL.md"))).toBe("user skill\n")
+      expect(existsSync(join(volume, "skills/mine"))).toBe(false)
+      expect(
+        read(
+          join(
+            volume,
+            WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+            LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+            "shared/SKILL.md"
+          )
+        )
+      ).toBe("legacy copy\n")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+      rmSync(shims, { recursive: true, force: true })
+    }
+  })
+
+  it("quarantines through the portable move in the seed", () => {
+    const script = ensureAgentWorkspaceSeedCommand(
+      `'${SANDBOX_WORKSPACE_ROOT}'`,
+      "https://github.com/Qredence/fleet-pi.git"
+    )
+    expect(script).toContain(PORTABLE_MOVE_SHELL)
+    expect(script).toContain(`fleet_move "$file"`)
+  })
+
   it("is a no-op without a legacy skills directory", () => {
     const volume = mkdtempSync(join(tmpdir(), "fleet-no-skills-"))
     try {
@@ -331,13 +382,16 @@ describe("sandbox-prepare seed", () => {
     }
   })
 
-  it("fails without recording a version when the template is missing", () => {
+  it("warns and records nothing when the template is missing", () => {
     const repo = mkdtempSync(join(tmpdir(), "fleet-no-template-"))
     writeFileInTree(repo, "agent-workspace/manifest.json", "{}\n")
     commitSeed(repo, "old layout")
     const volume = mkdtempSync(join(tmpdir(), "fleet-no-template-volume-"))
     try {
-      expect(() => runSeed(volume, repo)).toThrow()
+      // A branch without the template must not break the whole prepare:
+      // migration still runs and the volume stays usable.
+      const output = runSeed(volume, repo)
+      expect(output).toContain("seed skipped: template missing")
       expect(existsSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe(
         false
       )
