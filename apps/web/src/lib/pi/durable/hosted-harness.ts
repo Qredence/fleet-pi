@@ -50,7 +50,15 @@ export const HOSTED_MODEL_REPLY = "hosted model reply"
 export const HOSTED_ECHO_COMMAND = "echo fleet-pi-hosted"
 export const HOSTED_ECHO_TEXT = "fleet-pi-hosted"
 
-export type HostedToolMode = "sandbox" | "model-only"
+/**
+ * `sandbox`: Daytona volume with every tool. `workspace`: the Durable Object
+ * store, file tools only. `model-only`: no tools and no workspace context.
+ */
+export type HostedToolMode = "sandbox" | "workspace" | "model-only"
+
+/** Tools that need a real shell, so the store-backed workspace omits them. */
+/** The only tools the built-in Durable Object workspace mode offers. */
+const WORKSPACE_FILE_TOOLS = new Set(["read", "search", "write", "edit"])
 
 export type HostedTrace = {
   reads: number
@@ -137,7 +145,9 @@ export const hostedModels = {
       },
       result: async () => {
         await held
-        return message
+        return options?.signal?.aborted
+          ? { ...message, content: [], stopReason: "aborted" as const }
+          : message
       },
     }
   },
@@ -178,7 +188,7 @@ export function createScriptedSandboxPort(
       return Promise.resolve()
     },
     list(dir) {
-      const prefix = dir.replace(/\/+$/, "") + "/"
+      const prefix = dir ? `${dir.replace(/\/+$/, "")}/` : ""
       const children = new Map<string, boolean>()
       for (const path of files.keys()) {
         if (!path.startsWith(prefix)) continue
@@ -217,7 +227,7 @@ type ChatModeRef = { current: ChatMode }
 function sandboxTools(
   mode: ChatModeRef,
   onWrite: (path: string) => void = () => undefined,
-  onShell: () => void = () => undefined
+  onShell: (command: string) => void = () => undefined
 ) {
   const read = defineTool({
     name: "read",
@@ -382,8 +392,7 @@ function sandboxTools(
       const block = hostedBashBlock(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
-      // Any command can rewrite rendered files (AGENTS.md, system/, memory),
-      // even one that fails part way, so always drop the cached context.
+      // Commands can rewrite rendered files even if they fail part way.
       const result = await requireEnv(api)
         .exec(
           args.command,
@@ -394,7 +403,7 @@ function sandboxTools(
           },
           context
         )
-        .finally(onShell)
+        .finally(() => onShell(args.command))
       if (!result.ok) throw new Error(result.error.message)
       return { output: [{ type: "text" as const, text: output }] }
     },
@@ -471,7 +480,7 @@ function registryFor(
     ...sandboxTools(
       chatMode,
       (path) => workspaceContext?.noteWrite(path),
-      () => workspaceContext?.noteShell()
+      (command) => workspaceContext?.noteShell(command)
     ),
     ...optionalTools(options),
   ]
@@ -485,13 +494,20 @@ function registryFor(
   }
 }
 
+/** `true` means a full sandbox and `false` means no tools. */
 export function toolsForChatMode<T extends { name: string }>(
   tools: Array<T>,
   mode: ChatMode,
-  toolsAvailable: boolean
+  toolMode: boolean | HostedToolMode
 ): Array<T> {
-  if (!toolsAvailable) return []
-  return tools.filter((tool) => hostedToolAllowed(tool.name, mode))
+  const resolved =
+    toolMode === true ? "sandbox" : toolMode === false ? "model-only" : toolMode
+  if (resolved === "model-only") return []
+  return tools.filter(
+    (tool) =>
+      hostedToolAllowed(tool.name, mode) &&
+      (resolved === "sandbox" || WORKSPACE_FILE_TOOLS.has(tool.name))
+  )
 }
 
 async function assistantToolCall(
@@ -623,10 +639,10 @@ export async function openHostedHarness(
   port: HostedSandboxPort,
   options?: HostedHarnessOptions
 ): Promise<OpenHostedHarness> {
-  // Workspace context reads the user's volume, so only a sandbox turn gets it;
-  // a model-only turn may still hold the previous sandbox's port.
+  // Workspace context reads the volume or the Durable Object store; a
+  // model-only turn may still hold the previous sandbox's port, so it gets none.
   const workspaceReader: HostedWorkspaceReader | undefined =
-    mode === "sandbox" ? hostedWorkspaceReader(port) : undefined
+    mode === "model-only" ? undefined : hostedWorkspaceReader(port)
   const workspaceContext = workspaceReader
     ? createHostedWorkspaceContext(workspaceReader)
     : undefined
@@ -635,7 +651,7 @@ export async function openHostedHarness(
       ? expandHostedPromptTemplate(prompt, workspaceReader)
       : Promise.resolve(prompt)
   const { registry, tools, chatMode } = registryFor(options, workspaceContext)
-  const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
+  const offeredNames = toolsForChatMode(tools, "agent", mode).map(
     (tool) => tool.name
   )
   const agentModel = options?.model ?? { provider: "hosted", modelId: "hosted" }
@@ -728,11 +744,7 @@ export async function openHostedHarness(
       liveConversation = conversation
       const chatModeValue = input.chatMode ?? "agent"
       chatMode.current = chatModeValue
-      const selected = toolsForChatMode(
-        tools,
-        chatModeValue,
-        mode === "sandbox"
-      )
+      const selected = toolsForChatMode(tools, chatModeValue, mode)
       offeredNames.splice(
         0,
         offeredNames.length,
@@ -902,7 +914,9 @@ function waitForAgentTurn(
     return run()
   }
   if (signal.aborted) {
-    return Promise.reject(new DOMException("Aborted", "AbortError"))
+    return (abortHook ? abortHook() : Promise.resolve()).finally(() => {
+      throw new DOMException("Aborted", "AbortError")
+    })
   }
   return new Promise((resolve, reject) => {
     const onSignalAbort = () => {

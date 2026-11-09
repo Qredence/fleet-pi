@@ -16,7 +16,7 @@ Authenticated user → POST /api/chat (with session cookie)
   → agent-workspace volume persists across sandbox restarts
 ```
 
-**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
+**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`; hosted chat uses the built-in Durable Object workspace (file tools only, see [agent-workspace](agent-workspace.md)), and copies user-written files to the volume on the first sandbox turn after a key is added.
 
 **CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` **outside this repo** — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter. The Pi CLI does **not** apply that filter, so keep stock `@daytona/pi` out of `~/.pi/agent/settings.json` while developing in `fleet-pi`.
 
@@ -125,7 +125,7 @@ Volumes are seeded from `templates/agent-workspace/` on the repository's default
 
 - **Version.** `SEED_TEMPLATE_VERSION` in `workspace-contract.ts` must match `templates/agent-workspace/template.json`. The volume records the applied version in `.fleet/template-version`; prepare skips the clone when the volume is at that version or newer. If the cloned `template.json` declares a different version (the default branch lags or leads the deployed build), prepare skips the seed, records nothing, and retries on the next prepare. `template.json` itself is never copied into the volume.
 - **Never overwrite.** Missing template files are copied. When a template file changed since the last applied version (compared with the pristine copy in `.fleet/template/`) and the user's copy differs, the new copy goes to `.fleet/template-updates/<version>/<path>` for review. Workspace health (including the public `GET /api/workspace/health`) reports these as `template.pendingUpdateVersions`.
-- **Legacy volumes.** On a volume with no recorded version, files byte-identical to a blob listed in `templates/legacy-seed-blobs.txt` (everything the old seed could have copied) move to `.fleet-pi-quarantine/legacy-seed/` once. Files the user edited stay.
+- **Legacy volumes.** On a volume with no recorded version, files whose path and contents match a historical pair in `templates/legacy-seed-blobs.txt` (everything the old seed could have copied) move to `.fleet-pi-quarantine/legacy-seed/` once. Files the user edited, and matching content at unrelated paths, stay. Existing quarantine entries are preserved with numbered siblings.
 - **Changing the template.** Edit `templates/agent-workspace/`, bump `template.json` and `SEED_TEMPLATE_VERSION` together, and keep it free of team content (`seed-template.test.ts` enforces this).
 
 ### Snapshot optimization

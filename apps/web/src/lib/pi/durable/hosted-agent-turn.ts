@@ -1,11 +1,11 @@
 import { loadUserProjectSettings } from "@/lib/db/user-settings"
 
 import { getVolumeName } from "../../daytona/user-sandbox"
-import { readBoundWorkerEnv } from "../../runtime/request-scope"
 
 import { userPiDurableName } from "./durable-binding"
 import { durableLoopSettingsFromProject } from "./durable-loop-settings"
 import { resolveDurableAgentModel } from "./durable-model-resolve"
+import { readDurableNamespace } from "./durable-namespace"
 import { readHostedSandboxStatus } from "./durable-sandbox"
 import {
   conversationIdFromDurableSession,
@@ -21,12 +21,6 @@ import type {
   ChatWorkspaceStatus,
 } from "@workspace/pi-protocol/chat-protocol"
 import type { ChatMessage } from "@workspace/pi-protocol/chat-types"
-
-type DurableNamespace = {
-  getByName: (name: string) => {
-    fetch: (input: Request) => Promise<Response>
-  }
-}
 
 export async function streamHostedAgentTurn(input: {
   userId: string
@@ -324,14 +318,4 @@ export function mergeDurableSessions(
     if (!byId.has(session.id)) byId.set(session.id, session)
   }
   return [...byId.values()]
-}
-
-function readDurableNamespace(): DurableNamespace | undefined {
-  const env = readBoundWorkerEnv()
-  if (!env || !("USER_PI_DURABLE" in env)) return undefined
-  const binding = env.USER_PI_DURABLE
-  if (!binding || typeof binding !== "object" || !("getByName" in binding)) {
-    return undefined
-  }
-  return binding as DurableNamespace
 }

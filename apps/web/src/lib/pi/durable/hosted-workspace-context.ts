@@ -79,8 +79,8 @@ export type HostedWorkspaceContext = {
   beginTurn: (prompt: string) => void
   /** Drop the cache when a tool changed a file the sections render. */
   noteWrite: (path: string) => void
-  /** A shell command may have changed any rendered file: drop the cache. */
-  noteShell: () => void
+  /** Refresh after shell commands, except simple read-only inspections. */
+  noteShell: (command?: string) => void
 }
 
 /**
@@ -121,7 +121,17 @@ export function createHostedWorkspaceContext(
     noteWrite(path) {
       if (affectsWorkspaceContext(path)) snapshot = undefined
     },
-    noteShell() {
+    noteShell(command) {
+      // Only skip plain inspection commands. Shell operators, substitutions,
+      // quoting, and unknown commands conservatively invalidate everything.
+      if (
+        command &&
+        /^(?:pwd|ls|cat|head|tail|wc|stat)(?:[ \t]+[\w./*?=,:+@% -]+)?$/.test(
+          command.trim()
+        )
+      ) {
+        return
+      }
       snapshot = undefined
     },
   }

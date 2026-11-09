@@ -173,9 +173,17 @@ describe("hosted workspace context sections", () => {
     await renderSections(context)
     expect(reads.length).toBe(afterFirst * 3)
 
-    context.noteShell()
+    context.noteShell("ls memory/project")
+    await renderSections(context)
+    expect(reads.length).toBe(afterFirst * 3)
+
+    context.noteShell("cat AGENTS.md > memory/project/decisions.md")
     await renderSections(context)
     expect(reads.length).toBe(afterFirst * 4)
+
+    context.noteShell("ls; rm memory/project/decisions.md")
+    await renderSections(context)
+    expect(reads.length).toBe(afterFirst * 5)
   })
 
   it("bounds orphaned project memory reads and the rendered list", async () => {
@@ -312,6 +320,37 @@ describe("hosted harness workspace context", () => {
     expect(request).toContain("PREFERENCE-MARKER")
     expect(request).toContain("SKILL-MARKER")
     expect(request).toContain("TEMPLATE-MARKER for world")
+  })
+
+  it("offers file tools without a shell in the built-in workspace mode", async () => {
+    const port = createScriptedSandboxPort(createHostedTrace(), {
+      "AGENTS.md": "STORE-RULES-MARKER",
+    })
+    const { models, requests } = capturingModels()
+    const harness = await openHostedHarness(
+      await storage(),
+      "workspace",
+      port,
+      {
+        models,
+        codemode: true,
+        extensions: ["workspace-status"],
+      }
+    )
+
+    // Only file tools: no shell, code mode, or placeholder extension tools.
+    expect(harness.toolNames).toHaveLength(4)
+    expect(harness.toolNames).toEqual(
+      expect.arrayContaining(["read", "search", "write", "edit"])
+    )
+
+    await harness.runAgentTurn({
+      prompt: "hi",
+      create: true,
+      model: { provider: "hosted", modelId: "hosted" },
+      onView: () => undefined,
+    })
+    expect(requests.at(-1) ?? "").toContain("STORE-RULES-MARKER")
   })
 
   it("adds no workspace context on a model-only turn", async () => {

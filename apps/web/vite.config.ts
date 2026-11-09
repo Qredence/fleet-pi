@@ -93,6 +93,13 @@ const config = defineConfig({
     ? {
         environments: {
           ssr: {
+            build: {
+              sourcemap: true,
+              rolldownOptions: {
+                // Keep stack-trace mappings below Cloudflare's 60 MiB cap.
+                output: { sourcemapExcludeSources: true },
+              },
+            },
             // workerd leaves import.meta.url undefined in bundled modules;
             // Node-oriented deps (pi-coding-agent config) derive paths from it
             // at module load.

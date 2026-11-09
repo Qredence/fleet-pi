@@ -5,6 +5,10 @@ import {
 import { resolveUserSandboxContext } from "@/lib/daytona/resolve-user-sandbox-context"
 import { isDaytonaEnabled } from "@/lib/daytona/user-sandbox"
 import { isHostedDeployment } from "@/lib/deployment/environment"
+import {
+  DURABLE_WORKSPACE_ROOT,
+  durableWorkspaceFSForUser,
+} from "@/lib/pi/durable/durable-workspace-fs"
 import { resolveDaytonaRuntimeApiKey } from "@/lib/pi/runtime/user-provider-secrets"
 
 import type { AppRuntimeContext } from "@/lib/app-runtime"
@@ -39,7 +43,12 @@ export async function resolveWorkspaceContext(
   }
 
   if (isHostedDeployment() && !resolvedDaytonaApiKey) {
-    throw new DaytonaCredentialRequiredError()
+    // Without a Daytona key the panel shows the built-in Durable Object store.
+    const durableFS = durableWorkspaceFSForUser(userId)
+    if (!durableFS) throw new DaytonaCredentialRequiredError()
+    context.workspaceFS = durableFS
+    context.workspaceRoot = DURABLE_WORKSPACE_ROOT
+    return context
   }
 
   if (

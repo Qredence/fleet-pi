@@ -128,7 +128,7 @@ describe("seed template", () => {
     const legacy = new Set(
       readFileSync(join(repoRoot, LEGACY_SEED_BLOBS_REPO_PATH), "utf8")
         .split("\n")
-        .filter((line) => /^[0-9a-f]{40}$/.test(line))
+        .filter((line) => /^[0-9a-f]{40} .+$/.test(line))
     )
     expect(legacy.size).toBeGreaterThan(0)
     // Allowed overlap: the manifest is identical by design (contract output),
@@ -143,7 +143,9 @@ describe("seed template", () => {
           encoding: "utf8",
         }
       ).trim()
-      expect(legacy.has(blob), path).toBe(false)
+      const legacyPath = path.startsWith("pi/skills/") ? path.slice(3) : path
+      expect(legacy.has(`${blob} ${path}`), path).toBe(false)
+      expect(legacy.has(`${blob} ${legacyPath}`), path).toBe(false)
     }
   })
 })
