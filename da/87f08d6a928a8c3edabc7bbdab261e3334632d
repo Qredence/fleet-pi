@@ -1,0 +1,16 @@
+apps/web/src/lib/__tests__/app-runtime.test.ts
+  h_f276322eb5eb9f 43-50,54,66-73,75
+apps/web/src/lib/app-runtime.ts
+  h_f276322eb5eb9f 27,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da87f08d6a928a8c3edabc7bbdab261e3334632d",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
