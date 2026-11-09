@@ -914,7 +914,7 @@ function waitForAgentTurn(
     return run()
   }
   if (signal.aborted) {
-    return (abortHook ? abortHook() : Promise.resolve()).then(() => {
+    return (abortHook ? abortHook() : Promise.resolve()).finally(() => {
       throw new DOMException("Aborted", "AbortError")
     })
   }
