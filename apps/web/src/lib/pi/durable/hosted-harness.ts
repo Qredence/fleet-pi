@@ -89,18 +89,47 @@ function modelReplyMessage(modelId = "hosted") {
   }
 }
 
+/**
+ * A scripted model that does not reply until its turn is aborted, so a test
+ * can act on a turn that is still in flight instead of racing its reply.
+ */
+export const HOSTED_HOLD_MODEL_ID = "hosted-hold"
+
+function untilAborted(signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve) => {
+    if (!signal || signal.aborted) {
+      resolve()
+      return
+    }
+    signal.addEventListener("abort", () => resolve(), { once: true })
+  })
+}
+
 export const hostedModels = {
   getModel(provider: string, modelId: string) {
     if (provider !== "hosted") return undefined
     return { ...hostedModel, id: modelId, name: modelId }
   },
-  streamSimple(model?: { id?: string }) {
+  streamSimple(
+    model?: { id?: string },
+    _context?: unknown,
+    options?: { signal?: AbortSignal }
+  ) {
     const message = modelReplyMessage(model?.id)
+    const held =
+      model?.id === HOSTED_HOLD_MODEL_ID
+        ? untilAborted(options?.signal)
+        : Promise.resolve()
     return {
-      *[Symbol.asyncIterator]() {
+      async *[Symbol.asyncIterator]() {
+        await held
+        if (options?.signal?.aborted) return
         yield { type: "text_delta", partial: message }
       },
-      result: () => Promise.resolve(message),
+      result: async () => {
+        await held
+        return message
+      },
     }
   },
   fetchDeferred() {

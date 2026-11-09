@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 
+import { HOSTED_HOLD_MODEL_ID } from "../hosted-harness"
 import { userPiDurableStub } from "../user-pi-durable"
 
 function durableFetch(
@@ -47,7 +48,7 @@ async function agentTurn(
 
 async function readUntilStart(response: Response): Promise<{
   sessionId: string
-  drain: () => Promise<void>
+  drain: () => Promise<string>
 }> {
   const reader = response.body?.getReader()
   if (!reader) throw new Error("Agent turn response has no body")
@@ -79,11 +80,47 @@ async function readUntilStart(response: Response): Promise<{
   return {
     sessionId,
     drain: async () => {
-      while (!(await reader.read()).done) {
-        // Discard the rest of the turn.
+      for (;;) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        buffered += decoder.decode(chunk.value, { stream: true })
       }
+      return buffered + decoder.decode()
     },
   }
+}
+
+/** A hosted model that stays in flight until the turn is aborted. */
+const heldModel = {
+  provider: "hosted",
+  modelId: HOSTED_HOLD_MODEL_ID,
+  apiKey: "test",
+  baseUrl: "http://localhost",
+  api: "openai-completions" as const,
+}
+
+/** Starts a turn on the held model and returns once it has streamed `start`. */
+async function startHeldTurn(stub: ReturnType<typeof userPiDurableStub>) {
+  const response = await durableFetch(
+    stub,
+    new Request("https://user-pi-durable/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "hello", create: true, model: heldModel }),
+    })
+  )
+  expect(response.ok).toBe(true)
+  return readUntilStart(response)
+}
+
+async function abortTurn(
+  stub: ReturnType<typeof userPiDurableStub>
+): Promise<boolean> {
+  const response = await durableFetch(
+    stub,
+    new Request("https://user-pi-durable/agent/abort", { method: "POST" })
+  )
+  return ((await response.json()) as { aborted?: boolean }).aborted === true
 }
 
 /** Sessions the user started; the harness root conversation has no prompt. */
@@ -161,40 +198,10 @@ describe("UserPiDurable", () => {
 
   it("aborts an in-flight agent turn via POST /agent/abort", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-agent-abort")
-    const hostedModel = {
-      provider: "hosted",
-      modelId: "hosted",
-      apiKey: "test",
-      baseUrl: "http://localhost",
-      api: "openai-completions" as const,
-    }
-    const turn = durableFetch(
-      stub,
-      new Request("https://user-pi-durable/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: "hello",
-          create: true,
-          model: hostedModel,
-        }),
-      })
-    )
-    let aborted = false
-    const started = Date.now()
-    while (!aborted && Date.now() - started < 1000) {
-      const abortResponse = await durableFetch(
-        stub,
-        new Request("https://user-pi-durable/agent/abort", { method: "POST" })
-      )
-      aborted =
-        ((await abortResponse.json()) as { aborted?: boolean }).aborted === true
-      if (!aborted) await new Promise((resolve) => setTimeout(resolve, 5))
-    }
-    expect(aborted).toBe(true)
-    const stream = await turn
-    expect(stream.ok).toBe(true)
-    await stream.text()
+    const started = await startHeldTurn(stub)
+    expect(await abortTurn(stub)).toBe(true)
+    const rest = await started.drain()
+    expect(rest).toContain('"stopReason":"aborted"')
 
     const secondTurn = await durableFetch(
       stub,
@@ -204,7 +211,7 @@ describe("UserPiDurable", () => {
         body: JSON.stringify({
           prompt: "again",
           create: true,
-          model: hostedModel,
+          model: { ...heldModel, modelId: "hosted" },
         }),
       })
     )
@@ -253,27 +260,7 @@ describe("UserPiDurable", () => {
 
   it("refuses to fork while an agent turn is active", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-fork-busy")
-    const hostedModel = {
-      provider: "hosted",
-      modelId: "hosted",
-      apiKey: "test",
-      baseUrl: "http://localhost",
-      api: "openai-completions" as const,
-    }
-    const turn = await durableFetch(
-      stub,
-      new Request("https://user-pi-durable/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: "hello",
-          create: true,
-          model: hostedModel,
-        }),
-      })
-    )
-    expect(turn.ok).toBe(true)
-    const started = await readUntilStart(turn)
+    const started = await startHeldTurn(stub)
     const conversationId = started.sessionId.replace(/^durable:/, "")
     const fork = await durableFetch(
       stub,
@@ -284,6 +271,7 @@ describe("UserPiDurable", () => {
       })
     )
     expect(fork.status).toBe(409)
+    expect(await abortTurn(stub)).toBe(true)
     await started.drain()
   })
 
@@ -335,27 +323,7 @@ describe("UserPiDurable", () => {
 
   it("rejects busy steer/followUp prompts that target a different conversation", async () => {
     const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-busy-mismatch")
-    const hostedModel = {
-      provider: "hosted",
-      modelId: "hosted",
-      apiKey: "test",
-      baseUrl: "http://localhost",
-      api: "openai-completions" as const,
-    }
-    const turn = await durableFetch(
-      stub,
-      new Request("https://user-pi-durable/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: "hello",
-          create: true,
-          model: hostedModel,
-        }),
-      })
-    )
-    expect(turn.ok).toBe(true)
-    const started = await readUntilStart(turn)
+    const started = await startHeldTurn(stub)
 
     const wrongConversation = await durableFetch(
       stub,
@@ -367,11 +335,12 @@ describe("UserPiDurable", () => {
           create: false,
           conversationId: "different-conversation-id",
           whenBusy: "steer",
-          model: hostedModel,
+          model: heldModel,
         }),
       })
     )
     expect(wrongConversation.status).toBe(409)
+    expect(await abortTurn(stub)).toBe(true)
     await started.drain()
   })
 
