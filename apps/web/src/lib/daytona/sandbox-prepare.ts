@@ -24,7 +24,7 @@ export const SEED_REVISION_RELATIVE_PATH = ".fleet/seed-revision"
 export const SEED_TEMPLATE_REPO_PATH = "templates/agent-workspace"
 /** Template metadata file; read by prepare, never copied into a volume. */
 export const SEED_TEMPLATE_METADATA_FILE = "template.json"
-/** Blob ids the pre-template seed copied; see the file header. */
+/** Historical path/blob pairs the pre-template seed copied; see the file header. */
 export const LEGACY_SEED_BLOBS_REPO_PATH = "templates/legacy-seed-blobs.txt"
 export const LEGACY_SEED_QUARANTINE_SUBDIRECTORY = "legacy-seed"
 export const LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY = "legacy-skills"
@@ -207,6 +207,14 @@ export const PORTABLE_MOVE_SHELL = [
   '  if mv "$1" "$dest" 2>/dev/null; then return 0; fi',
   '  cp -R "$1" "$dest" && rm -rf "$1"',
   "}",
+  "fleet_quarantine() {",
+  '  local target="$2" suffix=0',
+  '  while [ -e "$target" ] || [ -L "$target" ]; do',
+  '    suffix=$((suffix + 1)); target="$2.$suffix"',
+  "  done",
+  '  mkdir -p "$(dirname "$target")"',
+  '  fleet_move "$1" "$target"',
+  "}",
 ].join("\n")
 
 /**
@@ -236,7 +244,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `fleet_move "$item" ${quarantine}/ || true`,
+    `fleet_quarantine "$item" ${quarantine}/"$(basename "$item")" || true`,
     "done",
     `cp -Rn "$tmpdir"/. ${workspace}/`,
     `rm -rf ${workspace}/agent-workspace "$tmpdir"`,
@@ -245,7 +253,7 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `for item in ${workspace}/* ${workspace}/.[!.]* ${workspace}/..?*; do`,
     `[ -e "$item" ] || continue`,
     `case "$(basename "$item")" in ${keepPattern}) continue;; esac`,
-    `fleet_move "$item" ${quarantine}/ || true`,
+    `fleet_quarantine "$item" ${quarantine}/"$(basename "$item")" || true`,
     "done",
     "fi",
     "fi",
@@ -269,14 +277,18 @@ export function migrateLegacySkillsCommand(workspace: string): string {
     '    [ -d "$dir" ] || continue',
     '    dir="${dir%/}"',
     '    name="$(basename "$dir")"',
-    '    if [ -e "$ws"/pi/skills/"$name" ]; then',
+    '    if [ -e "$ws"/pi/skills/"$name" ] || [ -L "$ws"/pi/skills/"$name" ]; then',
     `      target=${quarantine}/"$name"`,
-    '      if [ -e "$target" ]; then target="$target-$(date +%s)"; fi',
-    '      mkdir -p "$(dirname "$target")"',
-    '      fleet_move "$dir" "$target"',
+    '      if ! fleet_quarantine "$dir" "$target"; then',
+    '        echo "Could not quarantine legacy skill $name; leaving it in place" >&2',
+    "        continue",
+    "      fi",
     "    else",
     '      mkdir -p "$ws"/pi/skills',
-    '      fleet_move "$dir" "$ws"/pi/skills/"$name"',
+    '      if ! fleet_move "$dir" "$ws"/pi/skills/"$name"; then',
+    '        echo "Could not migrate legacy skill $name; leaving it in place" >&2',
+    "        continue",
+    "      fi",
     "    fi",
     '    echo "FLEET_PI_SKILL_MIGRATED=$name"',
     "  done",
@@ -289,7 +301,7 @@ export function migrateLegacySkillsCommand(workspace: string): string {
  *
  * - Skips the clone when the volume already records `templateVersion` or newer.
  * - On a volume seeded before the template existed (no version file), moves
- *   files that are byte-identical to an old seed blob into quarantine, so
+ *   files whose path and contents match an old seed into quarantine, so
  *   copied Fleet Pi team content does not pass as the user's own.
  * - Copies missing template files. When a template file changed since the
  *   last applied version and the user's copy differs, writes the new copy to
@@ -357,10 +369,14 @@ export function ensureAgentWorkspaceSeedCommand(
     "  while IFS= read -r -d '' file; do",
     `    rel="\${file#"$ws"/}"`,
     '    blob="$(git hash-object "$file")"',
-    `    if grep -qxF "$blob" ${legacyBlobs}; then`,
-    `      mkdir -p "$(dirname ${quarantine}/"$rel")"`,
-    `      if fleet_move "$file" ${quarantine}/"$rel"; then`,
+    '    legacy_rel="$rel"',
+    '    case "$rel" in pi/skills/*) legacy_rel="${rel#pi/}";; esac',
+    `    if grep -qxF "$blob $rel" ${legacyBlobs} || grep -qxF "$blob $legacy_rel" ${legacyBlobs}; then`,
+    `      if fleet_quarantine "$file" ${quarantine}/"$rel"; then`,
     '        echo "FLEET_PI_LEGACY_QUARANTINED=$rel"',
+    "      else",
+    '        echo "Could not quarantine legacy seed $rel; seed version not recorded" >&2',
+    "        exit 1",
     "      fi",
     "    fi",
     '  done < "$tmpdir/legacy-candidates"',
@@ -374,7 +390,7 @@ export function ensureAgentWorkspaceSeedCommand(
     '    mkdir -p "$dest"',
     "    continue",
     "  fi",
-    '  if [ ! -e "$dest" ]; then',
+    '  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then',
     '    mkdir -p "$(dirname "$dest")"',
     // A real copy error fails the script, so the version is not recorded.
     '    cp -R "$src" "$dest"',

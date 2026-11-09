@@ -182,6 +182,18 @@ describe("DO workspace store", () => {
     })
   })
 
+  it("caps file path bytes for both agent and panel writes", async () => {
+    const store = createDoWorkspaceStore(nodeSql())
+    const path = `scratch/${"é".repeat(DO_WORKSPACE_LIMITS.pathBytes / 2)}.md`
+    await expect(store.write(path, "x")).rejects.toMatchObject({
+      code: "EINVAL",
+    })
+    expect(() => store.writeSystem(path, "x")).toThrow(
+      expect.objectContaining({ code: "EINVAL" }) as Error
+    )
+    expect(store.entries()).toEqual([])
+  })
+
   it("keeps the panel out of bookkeeping but lets it edit workspace files", async () => {
     const store = createDoWorkspaceStore(nodeSql())
     store.writeSystem("instructions/README.md", "edited")
@@ -289,6 +301,25 @@ describe("DO workspace store sync to a volume", () => {
     await expect(volume.read("scratch/empty.md")).resolves.toBe("")
   })
 
+  it("makes the volume canonical even when no upload is needed", async () => {
+    for (const content of [undefined, "same"]) {
+      const store = createDoWorkspaceStore(nodeSql())
+      if (content !== undefined) await store.write("scratch/a.md", content)
+      const volume = createScriptedSandboxPort(createHostedTrace(), {
+        "scratch/a.md": "same",
+      })
+      expect(await store.syncToVolume(volume)).toEqual({
+        copied: [],
+        conflicts: [],
+        failed: [],
+      })
+      expect(store.isSuperseded()).toBe(true)
+      await expect(
+        store.write("scratch/new.md", "divergent")
+      ).rejects.toMatchObject({ code: "EACCES" })
+    }
+  })
+
   it("syncs a file written through the Workspace panel", async () => {
     const store = createDoWorkspaceStore(nodeSql())
     const response = await handleWorkspaceFsRequest(store, {
@@ -297,13 +328,18 @@ describe("DO workspace store sync to a volume", () => {
       content: "- panel edit",
     })
     expect(response.status).toBe(200)
+    store.writeSystem("custom/note.md", "- custom panel edit")
 
     const volume = createScriptedSandboxPort(createHostedTrace())
     expect((await store.syncToVolume(volume)).copied).toEqual([
+      "custom/note.md",
       "memory/project/preferences.md",
     ])
     await expect(volume.read("memory/project/preferences.md")).resolves.toBe(
       "- panel edit"
+    )
+    await expect(volume.read("custom/note.md")).resolves.toBe(
+      "- custom panel edit"
     )
   })
 
@@ -318,8 +354,9 @@ describe("DO workspace store sync to a volume", () => {
       code: "EACCES",
     })
     await expect(store.read("scratch/a.md")).resolves.toBe("one")
-    // The bootstrap may still create a file the store lacks.
-    store.writeSystem("scratch/README.md", "notes")
+    expect(() => store.writeSystem("scratch/README.md", "notes")).toThrow(
+      expect.objectContaining({ code: "EACCES" }) as Error
+    )
     expect(() => store.writeSystem("scratch/a.md", "overwrite")).toThrow(
       expect.objectContaining({ code: "EACCES" }) as Error
     )
@@ -409,5 +446,9 @@ describe("DO workspace store sync to a volume", () => {
     // Nothing reached a volume, so the store stays writable.
     expect(store.isSuperseded()).toBe(false)
     await store.write("scratch/a.md", "retry")
+    const volume = createScriptedSandboxPort(createHostedTrace())
+    expect((await store.syncToVolume(volume)).copied).toEqual(["scratch/a.md"])
+    await expect(volume.read("scratch/a.md")).resolves.toBe("retry")
+    expect(store.isSuperseded()).toBe(true)
   })
 })

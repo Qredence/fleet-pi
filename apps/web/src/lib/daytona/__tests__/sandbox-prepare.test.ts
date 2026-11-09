@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs"
@@ -71,7 +72,7 @@ describe("sandbox-prepare migration", () => {
       `cp -R '${SANDBOX_WORKSPACE_ROOT}'/agent-workspace/. "$tmpdir"/`
     )
     expect(script).toContain(
-      `fleet_move "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
+      `fleet_quarantine "$item" '${SANDBOX_WORKSPACE_ROOT}'/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/`
     )
     expect(script).toContain(`cp -Rn "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`)
     expect(script).toContain(
@@ -82,6 +83,36 @@ describe("sandbox-prepare migration", () => {
       `cp -R "$tmpdir"/. '${SANDBOX_WORKSPACE_ROOT}'/`
     )
     expect(script).not.toContain("/home/daytona/fleet-pi'/")
+  })
+
+  it("keeps repeated pollution in separate quarantine entries", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-pollution-repeat-"))
+    try {
+      writeFileInTree(volume, "package.json", "new package")
+      mkdirSync(join(volume, "apps"))
+      writeFileInTree(
+        volume,
+        `${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/package.json`,
+        "earlier package"
+      )
+      execFileSync("bash", [
+        "-c",
+        `set -euo pipefail\n${migrateLegacyWorkspaceVolumeCommand(`'${volume}'`)}`,
+      ])
+      expect(
+        read(
+          join(volume, WORKSPACE_VOLUME_QUARANTINE_DIRECTORY, "package.json")
+        )
+      ).toBe("earlier package")
+      expect(
+        read(
+          join(volume, WORKSPACE_VOLUME_QUARANTINE_DIRECTORY, "package.json.1")
+        )
+      ).toBe("new package")
+      expect(existsSync(join(volume, "package.json"))).toBe(false)
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
   })
 
   it("includes hardened migration in the prepare script", () => {
@@ -258,13 +289,62 @@ describe("sandbox-prepare skills migration", () => {
     }
   })
 
+  it("preserves dangling targets and repeated quarantine entries", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-collision-"))
+    try {
+      mkdirSync(join(volume, "pi/skills"), { recursive: true })
+      symlinkSync("missing", join(volume, "pi/skills/shared"))
+      const quarantine = join(
+        volume,
+        WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+        LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY
+      )
+      writeFileInTree(quarantine, "shared/SKILL.md", "earlier")
+      writeFileInTree(quarantine, "shared.1/SKILL.md", "second")
+      writeFileInTree(volume, "skills/shared/SKILL.md", "third")
+      execFileSync("bash", [
+        "-c",
+        `set -euo pipefail\n${migrateLegacySkillsCommand(`'${volume}'`)}`,
+      ])
+      expect(read(join(quarantine, "shared/SKILL.md"))).toBe("earlier")
+      expect(read(join(quarantine, "shared.1/SKILL.md"))).toBe("second")
+      expect(read(join(quarantine, "shared.2/SKILL.md"))).toBe("third")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("continues prepare when a skill cannot move", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-failure-"))
+    try {
+      writeFileInTree(volume, "skills/mine/SKILL.md", "user skill")
+      const shims = join(volume, "shims")
+      mkdirSync(shims)
+      for (const name of ["mv", "cp"])
+        writeFileSync(join(shims, name), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
+      const result = execFileSync(
+        "bash",
+        [
+          "-c",
+          `set -euo pipefail\nPATH='${shims}':"$PATH"\n${migrateLegacySkillsCommand(`'${volume}'`)}\necho PREPARE_CONTINUED`,
+        ],
+        { encoding: "utf8" }
+      )
+      expect(result).toContain("PREPARE_CONTINUED")
+      expect(result).not.toContain("FLEET_PI_SKILL_MIGRATED")
+      expect(read(join(volume, "skills/mine/SKILL.md"))).toBe("user skill")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
   it("quarantines through the portable move in the seed", () => {
     const script = ensureAgentWorkspaceSeedCommand(
       `'${SANDBOX_WORKSPACE_ROOT}'`,
       "https://github.com/Qredence/fleet-pi.git"
     )
     expect(script).toContain(PORTABLE_MOVE_SHELL)
-    expect(script).toContain(`fleet_move "$file"`)
+    expect(script).toContain(`fleet_quarantine "$file"`)
   })
 
   it("is a no-op without a legacy skills directory", () => {
@@ -334,6 +414,22 @@ describe("fleet_move", () => {
 })
 
 describe("sandbox-prepare seed", () => {
+  it("leaves a dangling template destination untouched", () => {
+    const repo = createSeedRepo({ "README.md": "template" })
+    const volume = mkdtempSync(join(tmpdir(), "fleet-seed-symlink-"))
+    try {
+      symlinkSync("missing", join(volume, "README.md"))
+      runSeed(volume, repo.path)
+      expect(existsSync(join(volume, "missing"))).toBe(false)
+      expect(
+        read(join(volume, TEMPLATE_UPDATES_RELATIVE_PATH, "1/README.md"))
+      ).toBe("template")
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
   it("skips the clone when the volume records this template version or newer", () => {
     const volume = mkdtempSync(join(tmpdir(), "fleet-seeded-volume-"))
     try {
@@ -364,7 +460,7 @@ describe("sandbox-prepare seed", () => {
       `git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH}`
     )
     expect(script).not.toContain("git sparse-checkout set agent-workspace")
-    expect(script).toContain('if [ ! -e "$dest" ]; then')
+    expect(script).toContain('if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then')
     expect(script).toContain("-mmin +10080")
     expect(script).toContain("rm -rf '/home/daytona/fleet-pi'")
     expect(script).toContain("mountpoint -q '/home/daytona/fleet-pi'")
@@ -544,7 +640,10 @@ describe("sandbox-prepare seed", () => {
     const teamMemory = "# Known Issues\n\nTeam-internal CircleCI notes.\n"
     const repo = createSeedRepo(
       { "memory/project/known-issues.md": "# Known Issues\n" },
-      [gitBlobId(teamMemory), gitBlobId("legacy decisions\n")]
+      [
+        `${gitBlobId(teamMemory)} memory/project/known-issues.md`,
+        `${gitBlobId("legacy decisions\n")} memory/project/decisions.md`,
+      ]
     )
     const volume = mkdtempSync(join(tmpdir(), "fleet-legacy-volume-"))
     const knownIssues = join(volume, "memory/project/known-issues.md")
@@ -553,6 +652,12 @@ describe("sandbox-prepare seed", () => {
       // A volume seeded by the old seed: no template version recorded.
       mkdirSync(join(volume, "memory/project"), { recursive: true })
       writeFileSync(knownIssues, teamMemory)
+      writeFileInTree(volume, "artifacts/my-copy.md", teamMemory)
+      writeFileInTree(
+        volume,
+        `${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/${LEGACY_SEED_QUARANTINE_SUBDIRECTORY}/memory/project/known-issues.md`,
+        "previous quarantine"
+      )
       writeFileSync(decisions, "legacy decisions\nplus a user edit\n")
 
       const output = runSeed(volume, repo.path)
@@ -563,7 +668,9 @@ describe("sandbox-prepare seed", () => {
         LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
         "memory/project/known-issues.md"
       )
-      expect(read(quarantined)).toBe(teamMemory)
+      expect(read(quarantined)).toBe("previous quarantine")
+      expect(read(`${quarantined}.1`)).toBe(teamMemory)
+      expect(read(join(volume, "artifacts/my-copy.md"))).toBe(teamMemory)
       expect(read(knownIssues)).toBe("# Known Issues\n")
       expect(read(decisions)).toBe("legacy decisions\nplus a user edit\n")
       expect(output).toContain(
@@ -575,7 +682,10 @@ describe("sandbox-prepare seed", () => {
       writeSeedFiles(
         repo.path,
         { "memory/project/known-issues.md": "# Known Issues\n" },
-        [gitBlobId(teamMemory), gitBlobId("legacy decisions\n")],
+        [
+          `${gitBlobId(teamMemory)} memory/project/known-issues.md`,
+          `${gitBlobId("legacy decisions\n")} memory/project/decisions.md`,
+        ],
         2
       )
       commitSeed(repo.path, "template v2")
@@ -584,6 +694,39 @@ describe("sandbox-prepare seed", () => {
         "2"
       )
       expect(read(knownIssues)).toBe(teamMemory)
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("does not record a seed version after a legacy quarantine I/O failure", () => {
+    const content = "legacy memory"
+    const repo = createSeedRepo(
+      { "memory/project/known-issues.md": "neutral" },
+      [`${gitBlobId(content)} memory/project/known-issues.md`]
+    )
+    const volume = mkdtempSync(join(tmpdir(), "fleet-seed-quarantine-failure-"))
+    try {
+      writeFileInTree(volume, "memory/project/known-issues.md", content)
+      const shims = join(volume, "shims")
+      mkdirSync(shims)
+      for (const name of ["mv", "cp"])
+        writeFileSync(join(shims, name), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
+      const result = spawnSync(
+        "bash",
+        [
+          "-c",
+          `PATH='${shims}':"$PATH"\n${ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo.path}'`)}`,
+        ],
+        { encoding: "utf8" }
+      )
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("seed version not recorded")
+      expect(existsSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe(
+        false
+      )
+      expect(read(join(volume, "memory/project/known-issues.md"))).toBe(content)
     } finally {
       rmSync(repo.path, { recursive: true, force: true })
       rmSync(volume, { recursive: true, force: true })

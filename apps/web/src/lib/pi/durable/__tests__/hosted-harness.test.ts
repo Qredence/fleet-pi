@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest"
 import {
   HOSTED_ECHO_TEXT,
   HOSTED_MODEL_REPLY,
+  HOSTED_HOLD_MODEL_ID,
   createHostedTrace,
   createScriptedSandboxPort,
+  hostedModels,
   openHostedHarness,
   toolsForChatMode,
   waitForCount,
@@ -24,6 +26,20 @@ async function sqliteFile(name: string) {
 }
 
 describe("Pi Durable hosted harness", () => {
+  it("reports an aborted held model without a successful assistant reply", async () => {
+    const controller = new AbortController()
+    const stream = hostedModels.streamSimple(
+      { id: HOSTED_HOLD_MODEL_ID },
+      undefined,
+      { signal: controller.signal }
+    )
+    controller.abort()
+    expect(await stream.result()).toMatchObject({
+      stopReason: "aborted",
+      content: [],
+    })
+  })
+
   it("offers read and search in plan mode and no tools without a sandbox", () => {
     const tools = [
       { name: "read" },

@@ -255,6 +255,9 @@ export class UserPiDurable extends DurableObject {
       active.abortController.abort()
       await active.settled
     }
+    // A handover still uses this store's SQL rows after the turn settles.
+    // Finish it before deleting those rows or opening the replacement store.
+    await this.#workspaceSync
     this.#harness = undefined
     this.#storage = undefined
     this.#queue = { steering: [], followUp: [] }
@@ -404,12 +407,13 @@ export class UserPiDurable extends DurableObject {
         this.#port = port
         this.#sandboxConnectionKey = connectionKey
         portChanged = true
-        // Never block the stream on sequential volume I/O. The chain keeps
-        // handovers ordered; #syncWorkspaceStore never rejects.
-        this.#workspaceSync = this.#workspaceSync.then(() =>
-          this.#syncWorkspaceStore(port)
-        )
       }
+      // Retry pending files on every sandbox turn, including a cached port.
+      // Never block the stream; the chain keeps handovers ordered.
+      const port = this.#port
+      this.#workspaceSync = this.#workspaceSync.then(() =>
+        this.#syncWorkspaceStore(port)
+      )
     } else {
       this.#sandboxConnectionKey = undefined
       const store = this.#workspaceStore()

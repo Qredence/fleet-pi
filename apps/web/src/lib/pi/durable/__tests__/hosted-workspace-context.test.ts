@@ -173,9 +173,17 @@ describe("hosted workspace context sections", () => {
     await renderSections(context)
     expect(reads.length).toBe(afterFirst * 3)
 
-    context.noteShell()
+    context.noteShell("ls memory/project")
+    await renderSections(context)
+    expect(reads.length).toBe(afterFirst * 3)
+
+    context.noteShell("cat AGENTS.md > memory/project/decisions.md")
     await renderSections(context)
     expect(reads.length).toBe(afterFirst * 4)
+
+    context.noteShell("ls; rm memory/project/decisions.md")
+    await renderSections(context)
+    expect(reads.length).toBe(afterFirst * 5)
   })
 
   it("bounds orphaned project memory reads and the rendered list", async () => {

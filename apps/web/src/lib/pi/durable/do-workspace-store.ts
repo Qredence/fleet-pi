@@ -207,6 +207,12 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
 
   const put = (path: string, content: string, origin: Origin) => {
     if (!path) throw new DoWorkspaceError("EINVAL", "A file path is required.")
+    if (utf8Length(path) > DO_WORKSPACE_LIMITS.pathBytes) {
+      throw new DoWorkspaceError(
+        "EINVAL",
+        `Paths in the built-in workspace are limited to ${DO_WORKSPACE_LIMITS.pathBytes} bytes.`
+      )
+    }
     const bytes = utf8Length(content)
     if (bytes > DO_WORKSPACE_LIMITS.fileBytes) {
       throw new DoWorkspaceError(
@@ -406,15 +412,11 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
       if (options?.exclusive && existing) {
         throw new DoWorkspaceError("EEXIST", `File exists: ${normalized}`)
       }
-      if (existing && isSuperseded()) {
+      if (isSuperseded()) {
         throw new DoWorkspaceError("EACCES", SUPERSEDED_MESSAGE)
       }
-      // Agent areas carry user content into a later volume; the rest does not.
-      put(
-        normalized,
-        content,
-        isAgentWritablePath(normalized) ? "user" : "fleet"
-      )
+      // Every panel edit belongs to the user and follows them to the volume.
+      put(normalized, content, "user")
     },
     mkdir(path) {
       const normalized = normalizeStorePath(path)
@@ -497,7 +499,11 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
           result.failed.push(entry.path)
         }
       }
-      if (result.copied.length > 0 || result.conflicts.length > 0) {
+      if (
+        result.failed.length === 0 ||
+        result.copied.length > 0 ||
+        result.conflicts.length > 0
+      ) {
         // The volume is canonical from here: the store stops accepting writes.
         setMeta(SUPERSEDED_META, "1")
       }

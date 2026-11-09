@@ -145,7 +145,9 @@ export const hostedModels = {
       },
       result: async () => {
         await held
-        return message
+        return options?.signal?.aborted
+          ? { ...message, content: [], stopReason: "aborted" as const }
+          : message
       },
     }
   },
@@ -225,7 +227,7 @@ type ChatModeRef = { current: ChatMode }
 function sandboxTools(
   mode: ChatModeRef,
   onWrite: (path: string) => void = () => undefined,
-  onShell: () => void = () => undefined
+  onShell: (command: string) => void = () => undefined
 ) {
   const read = defineTool({
     name: "read",
@@ -390,8 +392,7 @@ function sandboxTools(
       const block = hostedBashBlock(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
-      // Any command can rewrite rendered files (AGENTS.md, system/, memory),
-      // even one that fails part way, so always drop the cached context.
+      // Commands can rewrite rendered files even if they fail part way.
       const result = await requireEnv(api)
         .exec(
           args.command,
@@ -402,7 +403,7 @@ function sandboxTools(
           },
           context
         )
-        .finally(onShell)
+        .finally(() => onShell(args.command))
       if (!result.ok) throw new Error(result.error.message)
       return { output: [{ type: "text" as const, text: output }] }
     },
@@ -479,7 +480,7 @@ function registryFor(
     ...sandboxTools(
       chatMode,
       (path) => workspaceContext?.noteWrite(path),
-      () => workspaceContext?.noteShell()
+      (command) => workspaceContext?.noteShell(command)
     ),
     ...optionalTools(options),
   ]
@@ -913,7 +914,9 @@ function waitForAgentTurn(
     return run()
   }
   if (signal.aborted) {
-    return Promise.reject(new DOMException("Aborted", "AbortError"))
+    return (abortHook ? abortHook() : Promise.resolve()).then(() => {
+      throw new DOMException("Aborted", "AbortError")
+    })
   }
   return new Promise((resolve, reject) => {
     const onSignalAbort = () => {

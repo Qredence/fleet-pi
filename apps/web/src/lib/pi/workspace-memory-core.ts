@@ -31,8 +31,9 @@ export type ProjectMemoryIndex = {
 }
 
 /**
- * Bounds memory reads on every turn: a large `memory/project/` directory must
- * not cost unbounded I/O, Worker memory, or prompt space.
+ * Bounds the number of memory reads and retained text on every turn. Readers
+ * still fetch each selected file before truncation; fileChars caps prompt
+ * content, not download size.
  */
 export const PROJECT_MEMORY_LIMITS = {
   orphanedFiles: 20,
