@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process"
 import {
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -67,7 +66,7 @@ describe("seed template", () => {
     const projectionOnly = new Set(["indexes"])
     for (const dir of WORKSPACE_REQUIRED_DIRECTORY_PATHS) {
       if (projectionOnly.has(dir)) continue
-      expect(existsSync(join(templateRoot, dir)), dir).toBe(true)
+      expect(statSync(join(templateRoot, dir)).isDirectory(), dir).toBe(true)
     }
     for (const policy of WORKSPACE_POLICY_FILE_DEFINITIONS) {
       expect(templateFiles, policy.path).toContain(policy.path)
@@ -182,6 +181,32 @@ describe("readWorkspaceTemplateState", () => {
         createLocalWorkspaceFS()
       )
       expect(state).toEqual({ version: null, pendingUpdateVersions: [] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("reports a read failure other than a missing file as a diagnostic", async () => {
+    const root = mkdtempSync(join(tmpdir(), "fleet-template-unreadable-"))
+    try {
+      // A directory where the version file belongs: readFile fails with
+      // EISDIR, not ENOENT.
+      mkdirSync(join(root, TEMPLATE_VERSION_RELATIVE_PATH), { recursive: true })
+      const diagnostics: Parameters<typeof readWorkspaceTemplateState>[2] = []
+
+      const state = await readWorkspaceTemplateState(
+        { projectRoot: root, workspaceRoot: root },
+        createLocalWorkspaceFS(),
+        diagnostics
+      )
+
+      expect(state).toEqual({ version: null, pendingUpdateVersions: [] })
+      expect(diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-template-state-unreadable",
+          scope: "filesystem",
+        }),
+      ])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

@@ -13,6 +13,7 @@ function toPublicWorkspaceHealth(
     workspaceAvailable: health.workspace.available,
     bootstrapComplete: health.bootstrap.complete,
     projectionStatus: health.projection.status,
+    template: health.template ?? null,
   }
 }
 

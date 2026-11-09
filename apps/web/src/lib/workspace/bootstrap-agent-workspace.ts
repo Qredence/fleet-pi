@@ -272,7 +272,7 @@ export async function bootstrapAgentWorkspace(
     .filter((file) => !file.exists)
     .map((file) => file.path)
 
-  const template = await readWorkspaceTemplateState(context, fs)
+  const template = await readWorkspaceTemplateState(context, fs, diagnostics)
 
   return buildWorkspaceHealthResponse({
     context,
@@ -407,12 +407,27 @@ function buildWorkspaceHealthResponse({
 
 /**
  * Reads the seed bookkeeping that Daytona prepare writes. Missing files mean
- * "never recorded", not an error: local workspaces are not seeded.
+ * "never recorded", not an error: local workspaces are not seeded. Any other
+ * read failure is reported in `diagnostics` so health does not stay `ok`.
  */
 export async function readWorkspaceTemplateState(
   context: AppRuntimeContext,
-  fs: WorkspaceFS
+  fs: WorkspaceFS,
+  diagnostics?: Array<WorkspaceHealthDiagnostic>
 ): Promise<WorkspaceTemplateState> {
+  const reportUnreadable = (error: unknown, relativePath: string) => {
+    if (isNodeError(error) && error.code === "ENOENT") return
+    diagnostics?.push(
+      createDiagnostic(
+        "filesystem",
+        "workspace-template-state-unreadable",
+        "warning",
+        `Cannot read seed template state at ${toWorkspaceProjectPath(relativePath)}.`,
+        toWorkspaceProjectPath(relativePath)
+      )
+    )
+  }
+
   let version: number | null = null
   try {
     const raw = await fs.readFile(
@@ -421,8 +436,8 @@ export async function readWorkspaceTemplateState(
     )
     const parsed = Number.parseInt(raw.trim(), 10)
     version = Number.isInteger(parsed) && parsed > 0 ? parsed : null
-  } catch {
-    version = null
+  } catch (error) {
+    reportUnreadable(error, TEMPLATE_VERSION_RELATIVE_PATH)
   }
 
   let pendingUpdateVersions: Array<number> = []
@@ -434,8 +449,8 @@ export async function readWorkspaceTemplateState(
       .filter((entry) => entry.isDirectory() && /^\d+$/.test(entry.name))
       .map((entry) => Number.parseInt(entry.name, 10))
       .sort((a, b) => a - b)
-  } catch {
-    pendingUpdateVersions = []
+  } catch (error) {
+    reportUnreadable(error, TEMPLATE_UPDATES_RELATIVE_PATH)
   }
 
   return { version, pendingUpdateVersions }

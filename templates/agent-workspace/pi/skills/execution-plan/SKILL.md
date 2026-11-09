@@ -18,7 +18,7 @@ shared across sessions.
 
 ## Outputs
 
-- a plan file under `plans/`
+- a plan file under `plans/active/`
 - progress and decision updates as the work unfolds
 
 ## Procedure

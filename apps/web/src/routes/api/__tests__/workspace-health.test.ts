@@ -39,6 +39,7 @@ describe("GET /api/workspace/health", () => {
       status: string
       workspaceAvailable: boolean
       bootstrapComplete: boolean
+      template: { version: number | null; pendingUpdateVersions: Array<number> }
     }
 
     expect(response.status).toBe(200)
@@ -46,6 +47,7 @@ describe("GET /api/workspace/health", () => {
     expect(body.status).toBe("ok")
     expect(body.workspaceAvailable).toBe(true)
     expect(body.bootstrapComplete).toBe(true)
+    expect(body.template).toEqual({ version: null, pendingUpdateVersions: [] })
   })
 
   it("returns degraded json when the workspace root is blocked", async () => {

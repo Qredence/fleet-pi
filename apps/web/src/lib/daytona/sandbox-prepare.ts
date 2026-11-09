@@ -22,6 +22,8 @@ export const DEFAULT_REPOSITORY_URL = "https://github.com/Qredence/fleet-pi.git"
 export const SEED_REVISION_RELATIVE_PATH = ".fleet/seed-revision"
 /** Seed template inside the repository (sparse-cloned from `main`). */
 export const SEED_TEMPLATE_REPO_PATH = "templates/agent-workspace"
+/** Template metadata file; read by prepare, never copied into a volume. */
+export const SEED_TEMPLATE_METADATA_FILE = "template.json"
 /** Blob ids the pre-template seed copied; see the file header. */
 export const LEGACY_SEED_BLOBS_REPO_PATH = "templates/legacy-seed-blobs.txt"
 export const LEGACY_SEED_QUARANTINE_SUBDIRECTORY = "legacy-seed"
@@ -277,6 +279,14 @@ export function ensureAgentWorkspaceSeedCommand(
     `  echo "Seed template missing at ${SEED_TEMPLATE_REPO_PATH}" >&2`,
     "  exit 1",
     "fi",
+    // The clone is the repo's default branch, which can lag or lead this
+    // build. Never apply or record a version for content that is not that
+    // version: skip the seed (nothing recorded) and retry on the next prepare.
+    `cloned="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' ${srcRoot}/template.json | head -n 1)"`,
+    `if [ "$cloned" != "${templateVersion}" ]; then`,
+    `  echo "Seed template version \${cloned:-unknown} does not match expected ${templateVersion}; skipping seed" >&2`,
+    `  echo "FLEET_PI_TEMPLATE_VERSION=$recorded (seed skipped: template version mismatch)"`,
+    "else",
     `mkdir -p ${ws}/.fleet`,
     // Legacy cleanup runs once: only volumes with no recorded version.
     `if [ ! -f ${versionFile} ] && [ -f ${legacyBlobs} ]; then`,
@@ -293,6 +303,8 @@ export function ensureAgentWorkspaceSeedCommand(
     "fi",
     "while IFS= read -r -d '' src; do",
     `  rel="\${src#${srcRoot}/}"`,
+    // Template metadata stays out of the workspace tree.
+    `  if [ "$rel" = "${SEED_TEMPLATE_METADATA_FILE}" ]; then continue; fi`,
     `  dest=${ws}/"$rel"`,
     '  if [ -d "$src" ]; then',
     '    mkdir -p "$dest"',
@@ -319,6 +331,7 @@ export function ensureAgentWorkspaceSeedCommand(
     `printf '%s\\n' "$rev" > ${revFile}`,
     `printf '%s\\n' ${templateVersion} > ${versionFile}`,
     `echo "FLEET_PI_TEMPLATE_VERSION=${templateVersion} (seed applied at $rev)"`,
+    "fi",
     'rm -rf "$tmpdir"',
     "fi",
   ].join("\n")
@@ -333,7 +346,8 @@ export function sweepScratchCommand(workspace: string): string {
   const scratch = `${workspace}/scratch`
   return [
     `if [ -d ${scratch} ]; then`,
-    `find ${scratch} -type f -mtime +${SCRATCH_TTL_DAYS} ! -name '.gitkeep' -delete`,
+    // -mtime rounds down to whole days (+7 matches only from day 8); use minutes.
+    `find ${scratch} -type f -mmin +${SCRATCH_TTL_DAYS * 24 * 60} ! -name '.gitkeep' -delete`,
     "fi",
   ].join("\n")
 }

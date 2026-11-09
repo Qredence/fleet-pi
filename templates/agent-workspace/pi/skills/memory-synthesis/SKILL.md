@@ -41,8 +41,7 @@ Canonical project memory files:
    preferences, known issues, or open questions.
 4. Write the smallest update that would help a future agent act better.
 5. Prefer the canonical project memory file that matches the fact. Create an
-   ad hoc project-memory file only when explicitly requested, for temporary
-   harness tests, or for raw material that will be synthesized later.
+   ad hoc project-memory file only when the user explicitly asks for one.
 6. Link back to the triggering plan, artifact, or project evidence when
    helpful.
 
