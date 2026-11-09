@@ -16,7 +16,7 @@ Authenticated user → POST /api/chat (with session cookie)
   → agent-workspace volume persists across sandbox restarts
 ```
 
-**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`.
+**Graceful degradation:** When no Daytona key is resolved, tools fall back to host-local execution. On Cloudflare, missing user Daytona BYOK does not fall back to org `DAYTONA_API_KEY`; hosted chat uses the built-in Durable Object workspace (file tools only, see [agent-workspace](agent-workspace.md)) and syncs it to the volume once a key is added.
 
 **CLI:** Stock `npm:@daytona/pi` belongs in personal/global Pi packages (`~/.pi`) for local `pi --daytona` **outside this repo** — not in this project's `.pi/settings.json`, which would collide with the Fleet adapter. The web resource loader also excludes that package so it does not collide with the Fleet adapter. The Pi CLI does **not** apply that filter, so keep stock `@daytona/pi` out of `~/.pi/agent/settings.json` while developing in `fleet-pi`.
 

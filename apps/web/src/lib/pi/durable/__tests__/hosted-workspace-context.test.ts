@@ -314,6 +314,36 @@ describe("hosted harness workspace context", () => {
     expect(request).toContain("TEMPLATE-MARKER for world")
   })
 
+  it("offers file tools without a shell in the built-in workspace mode", async () => {
+    const port = createScriptedSandboxPort(createHostedTrace(), {
+      "AGENTS.md": "STORE-RULES-MARKER",
+    })
+    const { models, requests } = capturingModels()
+    const harness = await openHostedHarness(
+      await storage(),
+      "workspace",
+      port,
+      {
+        models,
+        codemode: true,
+      }
+    )
+
+    expect(harness.toolNames).toEqual(
+      expect.arrayContaining(["read", "search", "write", "edit"])
+    )
+    expect(harness.toolNames).not.toContain("bash")
+    expect(harness.toolNames).not.toContain("codemode")
+
+    await harness.runAgentTurn({
+      prompt: "hi",
+      create: true,
+      model: { provider: "hosted", modelId: "hosted" },
+      onView: () => undefined,
+    })
+    expect(requests.at(-1) ?? "").toContain("STORE-RULES-MARKER")
+  })
+
   it("adds no workspace context on a model-only turn", async () => {
     const port = createScriptedSandboxPort(createHostedTrace(), {
       "AGENTS.md": "WORKSPACE-RULES-MARKER",

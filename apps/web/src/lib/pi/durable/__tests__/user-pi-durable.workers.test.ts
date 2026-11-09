@@ -458,6 +458,62 @@ describe("UserPiDurable", () => {
     expect(await promptedSessions(stub)).toHaveLength(1)
   })
 
+  it("seeds a built-in workspace and serves it over /workspace/fs", async () => {
+    const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-store-fs")
+    const fs = (body: Record<string, unknown>) =>
+      durableFetch(
+        stub,
+        new Request("https://user-pi-durable/workspace/fs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+    const agents = await fs({ op: "stat", path: "AGENTS.md" })
+    expect(await agents.json()).toMatchObject({ kind: "file" })
+    const root = (await (
+      await fs({ op: "readdir", path: "/home/daytona/agent-workspace" })
+    ).json()) as Array<{ name: string; isDirectory: boolean }>
+    expect(root).toContainEqual({ name: "memory", isDirectory: true })
+
+    const missing = await fs({ op: "read", path: "scratch/none.md" })
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toMatchObject({ code: "ENOENT" })
+    const escape = await fs({ op: "read", path: "../../etc/passwd" })
+    expect(await escape.json()).toMatchObject({ code: "EACCES" })
+  })
+
+  it("erases the built-in workspace with the account", async () => {
+    const stub = userPiDurableStub(env.USER_PI_DURABLE, "user-store-erase")
+    const fs = (body: Record<string, unknown>) =>
+      durableFetch(
+        stub,
+        new Request("https://user-pi-durable/workspace/fs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+    await fs({ op: "write", path: "scratch/private.md", content: "secret" })
+    expect(
+      await (await fs({ op: "read", path: "scratch/private.md" })).json()
+    ).toEqual({ content: "secret" })
+
+    await durableFetch(
+      stub,
+      new Request("https://user-pi-durable/data", { method: "DELETE" })
+    )
+
+    expect((await fs({ op: "read", path: "scratch/private.md" })).status).toBe(
+      404
+    )
+    // The erased object reseeds a fresh template workspace.
+    expect(
+      await (await fs({ op: "stat", path: "AGENTS.md" })).json()
+    ).toMatchObject({ kind: "file" })
+  })
+
   it("rejects an empty or oversized user id", () => {
     expect(() => userPiDurableStub(env.USER_PI_DURABLE, "")).toThrow(
       /non-empty user id/

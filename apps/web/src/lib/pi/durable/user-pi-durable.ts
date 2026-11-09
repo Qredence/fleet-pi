@@ -2,6 +2,10 @@ import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/stora
 import { DurableObject } from "cloudflare:workers"
 
 import {
+  createDoWorkspaceStore,
+  handleWorkspaceFsRequest,
+} from "./do-workspace-store"
+import {
   createDurableViewDiff,
   eventsFromConversationView,
   messagesFromEntries,
@@ -19,7 +23,9 @@ import {
   openHostedHarness,
   waitForCount,
 } from "./hosted-harness"
+import { bundledSeedTemplate } from "./seed-template-bundle"
 
+import type { DoWorkspaceStore, WorkspaceFsRequest } from "./do-workspace-store"
 import type { DurableLoopSettings } from "./durable-loop-settings"
 import type { DurableAgentModelConfig } from "./durable-model"
 import type { DurableSandboxConnection } from "./durable-sandbox-port"
@@ -94,6 +100,7 @@ type AgentGate = TurnClaim | { kind: "fork" }
 export class UserPiDurable extends DurableObject {
   #storage: PiDurableStorage | undefined
   #harness: OpenHostedHarness | undefined
+  #store: DoWorkspaceStore | undefined
   #trace: HostedTrace = createHostedTrace()
   #port: HostedSandboxPort = createScriptedSandboxPort(this.#trace)
   #mode: HostedToolMode = "sandbox"
@@ -110,7 +117,26 @@ export class UserPiDurable extends DurableObject {
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    void ctx.blockConcurrencyWhile(() => this.#open("sandbox"))
+    void ctx.blockConcurrencyWhile(() => {
+      this.#openWorkspaceStore()
+      return this.#open("sandbox")
+    })
+  }
+
+  /** Opens and seeds the built-in workspace; a seed failure never blocks chat. */
+  #openWorkspaceStore(): DoWorkspaceStore {
+    const store = createDoWorkspaceStore(this.ctx.storage.sql)
+    try {
+      store.seed(bundledSeedTemplate())
+    } catch (error) {
+      console.error("[user-pi-durable] Workspace store seed failed:", error)
+    }
+    this.#store = store
+    return store
+  }
+
+  #workspaceStore(): DoWorkspaceStore {
+    return this.#store ?? this.#openWorkspaceStore()
   }
 
   storageOwner(): Promise<UserPiDurableStorageOwner> {
@@ -211,6 +237,9 @@ export class UserPiDurable extends DurableObject {
     if (request.method === "DELETE" && url.pathname === "/data") {
       return this.#eraseAll()
     }
+    if (request.method === "POST" && url.pathname === "/workspace/fs") {
+      return this.#workspaceFs(request)
+    }
     return new Response("Not found", { status: 404 })
   }
 
@@ -228,6 +257,10 @@ export class UserPiDurable extends DurableObject {
     this.#storage = undefined
     this.#queue = { steering: [], followUp: [] }
     await this.ctx.storage.deleteAll()
+    this.#store = undefined
+    this.#port = createScriptedSandboxPort(this.#trace)
+    this.#sandboxConnectionKey = undefined
+    this.#openWorkspaceStore()
     await this.#open("sandbox")
     return Response.json({ erased: true })
   }
@@ -359,7 +392,8 @@ export class UserPiDurable extends DurableObject {
     claim.phase = "active"
     this.#queue = { steering: [], followUp: [] }
     const abortController = claim.abortController
-    const turnMode: HostedToolMode = body.sandbox ? "sandbox" : "model-only"
+    // Without a sandbox the agent works in the built-in Durable Object store.
+    const turnMode: HostedToolMode = body.sandbox ? "sandbox" : "workspace"
     let portChanged = false
     if (body.sandbox) {
       const connectionKey = sandboxConnectionKey(body.sandbox)
@@ -367,10 +401,13 @@ export class UserPiDurable extends DurableObject {
         this.#port = await openDaytonaSandboxPort(body.sandbox)
         this.#sandboxConnectionKey = connectionKey
         portChanged = true
+        await this.#syncWorkspaceStore(this.#port)
       }
     } else {
       this.#sandboxConnectionKey = undefined
-      if (this.#mode === "sandbox") {
+      const store = this.#workspaceStore()
+      if (this.#port !== store) {
+        this.#port = store
         portChanged = true
       }
     }
@@ -544,6 +581,28 @@ export class UserPiDurable extends DurableObject {
         "X-Content-Type-Options": "nosniff",
       },
     })
+  }
+
+  /** Copies files the agent wrote in the built-in store onto the volume. */
+  async #syncWorkspaceStore(volume: HostedSandboxPort) {
+    try {
+      const result = await this.#workspaceStore().syncToVolume(volume)
+      if (result.conflicts.length > 0 || result.failed.length > 0) {
+        console.warn("[user-pi-durable] Workspace store sync:", {
+          copied: result.copied.length,
+          conflicts: result.conflicts,
+          failed: result.failed,
+        })
+      }
+    } catch (error) {
+      console.error("[user-pi-durable] Workspace store sync failed:", error)
+    }
+  }
+
+  /** File operations for the Workspace panel when the user has no sandbox. */
+  async #workspaceFs(request: Request): Promise<Response> {
+    const body = (await request.json()) as Partial<WorkspaceFsRequest>
+    return handleWorkspaceFsRequest(this.#workspaceStore(), body)
   }
 
   async #listSessions(): Promise<Response> {

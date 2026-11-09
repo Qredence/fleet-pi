@@ -50,7 +50,14 @@ export const HOSTED_MODEL_REPLY = "hosted model reply"
 export const HOSTED_ECHO_COMMAND = "echo fleet-pi-hosted"
 export const HOSTED_ECHO_TEXT = "fleet-pi-hosted"
 
-export type HostedToolMode = "sandbox" | "model-only"
+/**
+ * `sandbox`: Daytona volume with every tool. `workspace`: the Durable Object
+ * store, file tools only. `model-only`: no tools and no workspace context.
+ */
+export type HostedToolMode = "sandbox" | "workspace" | "model-only"
+
+/** Tools that need a real shell, so the store-backed workspace omits them. */
+const SHELL_TOOLS = new Set(["bash", "codemode"])
 
 export type HostedTrace = {
   reads: number
@@ -178,7 +185,7 @@ export function createScriptedSandboxPort(
       return Promise.resolve()
     },
     list(dir) {
-      const prefix = dir.replace(/\/+$/, "") + "/"
+      const prefix = dir ? `${dir.replace(/\/+$/, "")}/` : ""
       const children = new Map<string, boolean>()
       for (const path of files.keys()) {
         if (!path.startsWith(prefix)) continue
@@ -485,13 +492,20 @@ function registryFor(
   }
 }
 
+/** `true` means a full sandbox and `false` means no tools. */
 export function toolsForChatMode<T extends { name: string }>(
   tools: Array<T>,
   mode: ChatMode,
-  toolsAvailable: boolean
+  toolMode: boolean | HostedToolMode
 ): Array<T> {
-  if (!toolsAvailable) return []
-  return tools.filter((tool) => hostedToolAllowed(tool.name, mode))
+  const resolved =
+    toolMode === true ? "sandbox" : toolMode === false ? "model-only" : toolMode
+  if (resolved === "model-only") return []
+  return tools.filter(
+    (tool) =>
+      hostedToolAllowed(tool.name, mode) &&
+      (resolved === "sandbox" || !SHELL_TOOLS.has(tool.name))
+  )
 }
 
 async function assistantToolCall(
@@ -623,10 +637,10 @@ export async function openHostedHarness(
   port: HostedSandboxPort,
   options?: HostedHarnessOptions
 ): Promise<OpenHostedHarness> {
-  // Workspace context reads the user's volume, so only a sandbox turn gets it;
-  // a model-only turn may still hold the previous sandbox's port.
+  // Workspace context reads the volume or the Durable Object store; a
+  // model-only turn may still hold the previous sandbox's port, so it gets none.
   const workspaceReader: HostedWorkspaceReader | undefined =
-    mode === "sandbox" ? hostedWorkspaceReader(port) : undefined
+    mode === "model-only" ? undefined : hostedWorkspaceReader(port)
   const workspaceContext = workspaceReader
     ? createHostedWorkspaceContext(workspaceReader)
     : undefined
@@ -635,7 +649,7 @@ export async function openHostedHarness(
       ? expandHostedPromptTemplate(prompt, workspaceReader)
       : Promise.resolve(prompt)
   const { registry, tools, chatMode } = registryFor(options, workspaceContext)
-  const offeredNames = toolsForChatMode(tools, "agent", mode === "sandbox").map(
+  const offeredNames = toolsForChatMode(tools, "agent", mode).map(
     (tool) => tool.name
   )
   const agentModel = options?.model ?? { provider: "hosted", modelId: "hosted" }
@@ -728,11 +742,7 @@ export async function openHostedHarness(
       liveConversation = conversation
       const chatModeValue = input.chatMode ?? "agent"
       chatMode.current = chatModeValue
-      const selected = toolsForChatMode(
-        tools,
-        chatModeValue,
-        mode === "sandbox"
-      )
+      const selected = toolsForChatMode(tools, chatModeValue, mode)
       offeredNames.splice(
         0,
         offeredNames.length,

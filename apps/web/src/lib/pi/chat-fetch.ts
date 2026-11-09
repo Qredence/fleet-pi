@@ -23,7 +23,7 @@ export class ChatRequestError extends Error {
 }
 
 export const DAYTONA_CREDENTIAL_REQUIRED_MESSAGE =
-  "Workspace features need a Daytona API key. Add one in Settings → Providers to browse files and run sandbox tools; chat works without it."
+  "Shell and sandbox tools need a Daytona API key. Add one in Settings → Providers. Chat and file tools on the built-in workspace work without it."
 
 export function describeChatErrorCode(message: string) {
   return message === "daytona_credential_required"

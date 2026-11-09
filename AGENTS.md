@@ -155,6 +155,10 @@ Reference: `docs/wiki/deployment.md`, `docs/adr/0004-user-controlled-transcript-
 - `DELETE /api/chat/account` erases the Durable Object as well as Neon rows.
   Deleting one hosted session is only a tombstone (Pi Durable has no
   per-conversation delete).
+- Without a Daytona key, hosted turns use the Durable Object workspace store
+  (`durable/do-workspace-store.ts`): allowlisted text files, no shell. It
+  syncs to the volume on the first sandbox turn and never overwrites a file
+  that differs there (`.fleet/do-import/` instead).
 - Worker code must not import from `.pi/`; colocate helpers under
   `apps/web/src/lib/pi/`. Existing exceptions are tracked in
   `agent-workspace/memory/project/known-issues.md`.

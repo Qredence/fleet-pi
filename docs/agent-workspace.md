@@ -22,6 +22,24 @@ window.
   its own. Fleet Pi never overwrites a file the user or their agent changed;
   newer template copies arrive under `.fleet/template-updates/<version>/`.
   See [Seed template](daytona.md#seed-template).
+- **A hosted user without a Daytona key** gets a small built-in workspace in
+  their Durable Object (`durable/do-workspace-store.ts`), seeded from the same
+  template. The agent can read and write text files under `AGENTS.md`,
+  `README.md`, `artifacts/`, `evals/`, `instructions/`, `memory/`, `plans/`,
+  `pi/skills/`, `pi/prompts/`, `scratch/`, and `system/` (64 KiB per file,
+  2 MiB total), but has no shell. The same mutation tiers as the template
+  still apply, so `memory/project/**` and `plans/**` need a rationale and
+  `evals/**`/`system/**` stay protected. The Workspace panel shows it and can
+  edit any text file except the store's own `.fleet/` and `indexes/`
+  bookkeeping.
+- **Handing the store over to a volume.** On the first sandbox turn after a
+  Daytona key is added, files the agent or the panel wrote are copied to the
+  volume; a file that already exists there with different content (an empty
+  file counts) goes to `.fleet/do-import/<path>` instead. Once anything is
+  handed over, the volume is canonical and the store becomes read-only — it
+  keeps serving reads if the sandbox later disappears, but writes ask for a
+  Daytona key rather than diverging.
+- Account deletion erases the store with the Durable Object.
 
 Change the seed only in `templates/agent-workspace/`, and bump its version.
 

@@ -13,7 +13,9 @@ const {
   mockGetSession,
   mockResolveUserSandboxContext,
   mockResolveDaytonaRuntimeApiKey,
+  mockDurableWorkspaceFSForUser,
 } = vi.hoisted(() => ({
+  mockDurableWorkspaceFSForUser: vi.fn(),
   mockExecuteCommand: vi.fn(),
   mockGetSession: vi.fn(),
   mockResolveUserSandboxContext: vi.fn(),
@@ -34,6 +36,11 @@ vi.mock("@/lib/daytona/resolve-user-sandbox-context", () => ({
 
 vi.mock("@/lib/pi/runtime/user-provider-secrets", () => ({
   resolveDaytonaRuntimeApiKey: mockResolveDaytonaRuntimeApiKey,
+}))
+
+vi.mock("@/lib/pi/durable/durable-workspace-fs", () => ({
+  DURABLE_WORKSPACE_ROOT: "/home/daytona/agent-workspace",
+  durableWorkspaceFSForUser: mockDurableWorkspaceFSForUser,
 }))
 
 vi.mock("@/lib/daytona/client", () => ({
@@ -57,6 +64,7 @@ beforeEach(() => {
   delete process.env.FLEET_PI_REPO_ROOT
   delete process.env.FLEET_PI_DEPLOYMENT
   mockExecuteCommand.mockReset()
+  mockDurableWorkspaceFSForUser.mockReset()
   mockGetSession.mockReset()
   mockResolveUserSandboxContext.mockReset()
   mockResolveDaytonaRuntimeApiKey.mockReset()
@@ -118,6 +126,25 @@ describe("resolveWorkspaceContext", () => {
       )
     ).rejects.toBeInstanceOf(DaytonaCredentialRequiredError)
 
+    expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
+  })
+
+  it("serves the built-in Durable Object workspace on hosted deployments without BYOK", async () => {
+    process.env.FLEET_PI_DEPLOYMENT = "cloudflare"
+    mockGetSession.mockResolvedValue({
+      user: { email: "user@example.test", id: "user-1" },
+    })
+    mockResolveDaytonaRuntimeApiKey.mockResolvedValue(undefined)
+    const durableFS = { stat: vi.fn() }
+    mockDurableWorkspaceFSForUser.mockReturnValue(durableFS)
+
+    const context = await resolveWorkspaceContext(
+      new Request("http://localhost:3000/api/workspace/tree")
+    )
+
+    expect(mockDurableWorkspaceFSForUser).toHaveBeenCalledWith("user-1")
+    expect(context.workspaceFS).toBe(durableFS)
+    expect(context.workspaceRoot).toBe("/home/daytona/agent-workspace")
     expect(mockResolveUserSandboxContext).not.toHaveBeenCalled()
   })
 

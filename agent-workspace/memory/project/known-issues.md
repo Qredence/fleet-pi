@@ -198,5 +198,5 @@ Durable rough edges and risks that future Fleet Pi agents should keep in mind.
 
 - Issue: Hosted Pi Durable turns opened the harness with tools only. The agent saw none of the user's `AGENTS.md`, `system/` policy, project memory, or skills, and `/name` prompt templates were not expanded.
 - Affected area: `apps/web/src/lib/pi/durable/hosted-harness.ts`.
-- Current status: **Resolved for sandbox turns.** The bundled `workspace-context` extension renders policy, prompt-scored memory, and a skill index from the volume; templates expand from `pi/prompts/`. Model-only turns (no Daytona key) still have no workspace until the DO workspace store lands.
+- Current status: **Resolved for sandbox turns.** The bundled `workspace-context` extension renders policy, prompt-scored memory, and a skill index from the volume; templates expand from `pi/prompts/`. Users without a Daytona key now get the Durable Object workspace store (`durable/do-workspace-store.ts`) with the same context and file tools (no shell); it syncs to the volume on the first sandbox turn.
 - Follow-up: The hosted slash menu does not list `pi/prompts` templates yet; hosted `workspace_status`, `codemode`, and MCP tools are still placeholders that return fixed text.
