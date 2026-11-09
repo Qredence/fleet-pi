@@ -1,0 +1,22 @@
+apps/web/src/lib/app-runtime.ts
+  s_a7df7732467e9b::t_fce83949d78db8 1-2,8-24,28
+apps/web/src/lib/__tests__/app-runtime.test.ts
+  s_a7df7732467e9b::t_1a1b2d31f8fd03 8-62
+  s_a7df7732467e9b::t_2d1d66a7eb2c95 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cfa823e4736a3f00cb5342c398d4b7abb39a2ca",
+  "prompts": {},
+  "sessions": {
+    "s_a7df7732467e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45fbd4b0-6b7c-4ecd-ac9d-9043e21b7d14",
+        "model": "system.ai.claude-opus-5-5"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
