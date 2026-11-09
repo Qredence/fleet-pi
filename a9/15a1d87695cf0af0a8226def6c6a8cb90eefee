@@ -1,0 +1,19 @@
+apps/web/src/lib/daytona/__tests__/sandbox-prepare.test.ts
+  s_a7df1c758e5137::t_add05292a2111b 7,424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a915a1d87695cf0af0a8226def6c6a8cb90eefee",
+  "prompts": {},
+  "sessions": {
+    "s_a7df1c758e5137": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c269-45a4-7331-a48c-472e835fbad8",
+        "model": "unknown"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
