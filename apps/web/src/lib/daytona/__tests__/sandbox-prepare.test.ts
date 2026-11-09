@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   rmSync,
   symlinkSync,
   utimesSync,
@@ -420,6 +421,7 @@ describe("sandbox-prepare seed", () => {
     try {
       symlinkSync("missing", join(volume, "README.md"))
       runSeed(volume, repo.path)
+      expect(readlinkSync(join(volume, "README.md"))).toBe("missing")
       expect(existsSync(join(volume, "missing"))).toBe(false)
       expect(
         read(join(volume, TEMPLATE_UPDATES_RELATIVE_PATH, "1/README.md"))
