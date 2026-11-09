@@ -57,7 +57,8 @@ export const HOSTED_ECHO_TEXT = "fleet-pi-hosted"
 export type HostedToolMode = "sandbox" | "workspace" | "model-only"
 
 /** Tools that need a real shell, so the store-backed workspace omits them. */
-const SHELL_TOOLS = new Set(["bash", "codemode"])
+/** The only tools the built-in Durable Object workspace mode offers. */
+const WORKSPACE_FILE_TOOLS = new Set(["read", "search", "write", "edit"])
 
 export type HostedTrace = {
   reads: number
@@ -504,7 +505,7 @@ export function toolsForChatMode<T extends { name: string }>(
   return tools.filter(
     (tool) =>
       hostedToolAllowed(tool.name, mode) &&
-      (resolved === "sandbox" || !SHELL_TOOLS.has(tool.name))
+      (resolved === "sandbox" || WORKSPACE_FILE_TOOLS.has(tool.name))
   )
 }
 

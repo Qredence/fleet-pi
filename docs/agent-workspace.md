@@ -24,21 +24,26 @@ window.
   See [Seed template](daytona.md#seed-template).
 - **A hosted user without a Daytona key** gets a small built-in workspace in
   their Durable Object (`durable/do-workspace-store.ts`), seeded from the same
-  template. The agent can read and write text files under `AGENTS.md`,
+  template. The agent can read and write text files (`.md`, `.txt`, `.json`,
+  `.yaml`, `.yml`) under `AGENTS.md`,
   `README.md`, `artifacts/`, `evals/`, `instructions/`, `memory/`, `plans/`,
   `pi/skills/`, `pi/prompts/`, `scratch/`, and `system/` (64 KiB per file,
   2 MiB total), but has no shell. The same mutation tiers as the template
   still apply, so `memory/project/**` and `plans/**` need a rationale and
   `evals/**`/`system/**` stay protected. The Workspace panel shows it and can
-  edit any text file except the store's own `.fleet/` and `indexes/`
-  bookkeeping.
+  edit supported text files (`.md`, `.txt`, `.json`, `.yaml`, `.yml`) except
+  the store's own `.fleet/` and `indexes/` bookkeeping.
 - **Handing the store over to a volume.** On the first sandbox turn after a
-  Daytona key is added, files the agent or the panel wrote are copied to the
-  volume; a file that already exists there with different content (an empty
-  file counts) goes to `.fleet/do-import/<path>` instead. Once anything is
-  handed over, the volume is canonical and the store becomes read-only — it
-  keeps serving reads if the sandbox later disappears, but writes ask for a
-  Daytona key rather than diverging.
+  Daytona key is added, files the agent or the panel wrote in the agent areas
+  above are copied to the volume in the background; a file that already
+  exists there with different content (an empty file counts) goes to
+  `.fleet/do-import/<path>` instead, and a file whose volume copy cannot be
+  confirmed stays pending for the next sandbox turn. Panel edits outside those areas (for
+  example `manifest.json`) stay in the store and are not handed over. Once
+  anything is handed over, the volume is canonical and agent writes are
+  rejected; the store keeps serving reads if the sandbox later disappears,
+  and the panel can still create new files in it but not change existing
+  ones.
 - Account deletion erases the store with the Durable Object.
 
 Change the seed only in `templates/agent-workspace/`, and bump its version.

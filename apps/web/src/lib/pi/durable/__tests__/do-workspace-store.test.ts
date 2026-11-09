@@ -145,6 +145,23 @@ describe("DO workspace store", () => {
     await store.write("scratch/chunk-0.md", chunk)
   })
 
+  it("caps directory markers and path length", () => {
+    const store = createDoWorkspaceStore(nodeSql())
+    for (let i = 0; i < DO_WORKSPACE_LIMITS.directories; i += 1) {
+      store.mkdir(`scratch/d${i}`)
+    }
+    // Re-creating an existing directory is still fine.
+    store.mkdir("scratch/d0")
+    expect(() => store.mkdir("scratch/one-too-many")).toThrow(
+      expect.objectContaining({ code: "EFBIG" }) as Error
+    )
+    expect(() =>
+      createDoWorkspaceStore(nodeSql()).mkdir(
+        `scratch/${"x".repeat(DO_WORKSPACE_LIMITS.pathBytes)}`
+      )
+    ).toThrow(expect.objectContaining({ code: "EINVAL" }) as Error)
+  })
+
   it("lists direct children and refuses shell commands", async () => {
     const store = createDoWorkspaceStore(nodeSql())
     await store.write("pi/skills/plan/SKILL.md", "s")
@@ -305,6 +322,76 @@ describe("DO workspace store sync to a volume", () => {
     store.writeSystem("scratch/README.md", "notes")
     expect(() => store.writeSystem("scratch/a.md", "overwrite")).toThrow(
       expect.objectContaining({ code: "EACCES" }) as Error
+    )
+  })
+
+  it("never overwrites a volume file it could not read", async () => {
+    const store = createDoWorkspaceStore(nodeSql())
+    await store.write("scratch/a.md", "store copy")
+    const base = createScriptedSandboxPort(createHostedTrace(), {
+      "scratch/a.md": "volume copy",
+    })
+    const flaky = {
+      ...base,
+      read: () => Promise.reject(new Error("download timed out")),
+    }
+
+    const result = await store.syncToVolume(flaky)
+
+    expect(result.failed).toEqual(["scratch/a.md"])
+    expect(result.copied).toEqual([])
+    await expect(base.read("scratch/a.md")).resolves.toBe("volume copy")
+    expect(store.entries().find((e) => e.path === "scratch/a.md")?.synced).toBe(
+      false
+    )
+    expect(store.isSuperseded()).toBe(false)
+  })
+
+  it("keeps a file pending when the volume cannot be listed", async () => {
+    const store = createDoWorkspaceStore(nodeSql())
+    await store.write("scratch/a.md", "store copy")
+    const base = createScriptedSandboxPort(createHostedTrace(), {
+      "scratch/other.md": "x",
+    })
+    const unlisted = {
+      ...base,
+      read: () => Promise.reject(new Error("download failed")),
+      list: (dir: string) =>
+        dir === "scratch"
+          ? Promise.reject(new Error("list failed"))
+          : (base.list?.(dir) ?? Promise.resolve([])),
+    }
+
+    expect((await store.syncToVolume(unlisted)).failed).toEqual([
+      "scratch/a.md",
+    ])
+    expect(store.entries().find((e) => e.path === "scratch/a.md")?.synced).toBe(
+      false
+    )
+  })
+
+  it("copies when a listing confirms the file is absent", async () => {
+    const store = createDoWorkspaceStore(nodeSql())
+    await store.write("memory/project/decisions.md", "store copy")
+    const base = createScriptedSandboxPort(createHostedTrace())
+    const missing = {
+      ...base,
+      read: (path: string) =>
+        path === "memory/project/decisions.md"
+          ? Promise.reject(new Error("not found"))
+          : base.read(path),
+      // The parent directory itself is missing: listing it fails.
+      list: (dir: string) =>
+        dir === "memory/project" || dir === "memory"
+          ? Promise.reject(new Error("no such directory"))
+          : (base.list?.(dir) ?? Promise.resolve([])),
+    }
+
+    expect((await store.syncToVolume(missing)).copied).toEqual([
+      "memory/project/decisions.md",
+    ])
+    await expect(base.read("memory/project/decisions.md")).resolves.toBe(
+      "store copy"
     )
   })
 

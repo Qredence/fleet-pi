@@ -51,6 +51,8 @@ export const DO_WORKSPACE_LIMITS = {
   fileBytes: 64 * 1024,
   totalBytes: 2 * 1024 * 1024,
   files: 500,
+  directories: 500,
+  pathBytes: 1024,
 } as const
 
 export const DO_WORKSPACE_EXEC_UNAVAILABLE =
@@ -268,6 +270,14 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
     return children
   }
 
+  const countDirectories = () =>
+    Number(
+      sql
+        .exec("SELECT COUNT(*) AS dirs FROM fleet_workspace_dirs")
+        .toArray()
+        .at(0)?.dirs ?? 0
+    )
+
   const isDirectory = (path: string) => {
     if (!path) return true
     const marker = sql
@@ -409,6 +419,21 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
     mkdir(path) {
       const normalized = normalizeStorePath(path)
       if (!normalized) return
+      if (utf8Length(normalized) > DO_WORKSPACE_LIMITS.pathBytes) {
+        throw new DoWorkspaceError(
+          "EINVAL",
+          `Paths in the built-in workspace are limited to ${DO_WORKSPACE_LIMITS.pathBytes} bytes.`
+        )
+      }
+      if (
+        !isDirectory(normalized) &&
+        countDirectories() >= DO_WORKSPACE_LIMITS.directories
+      ) {
+        throw new DoWorkspaceError(
+          "EFBIG",
+          `The built-in workspace holds at most ${DO_WORKSPACE_LIMITS.directories} directories.`
+        )
+      }
       sql.exec(
         "INSERT INTO fleet_workspace_dirs (path) VALUES (?) ON CONFLICT(path) DO NOTHING",
         normalized
@@ -485,28 +510,47 @@ export function createDoWorkspaceStore(sql: WorkspaceSql): DoWorkspaceStore {
 /**
  * File text at `path`, `""` for an existing empty file, or undefined when the
  * volume has no file there. Ports read missing files as either an error or an
- * empty string, so an empty read is confirmed with a directory listing.
+ * empty string, and a read can also fail transiently, so an error or an empty
+ * read is only treated as "missing" when a listing confirms it. Anything else
+ * throws, which keeps the entry pending instead of overwriting a file.
  */
 async function readVolumeFile(volume: HostedSandboxPort, path: string) {
+  let readError: unknown
   try {
     const text = await volume.read(path)
     if (text !== "") return text
-  } catch {
-    return undefined
+  } catch (error) {
+    readError = error ?? new Error(`Could not read ${path}`)
   }
-  return (await volumeHasEntry(volume, path)) ? "" : undefined
+  if (!(await volumeHasEntry(volume, path))) return undefined
+  if (readError !== undefined) throw readError
+  return ""
 }
 
-async function volumeHasEntry(volume: HostedSandboxPort, path: string) {
-  if (!volume.list) return false
+/**
+ * Whether `path` exists on the volume. Throws when that cannot be confirmed
+ * (no listing support, or a listing failure inside an existing directory).
+ */
+async function volumeHasEntry(
+  volume: HostedSandboxPort,
+  path: string
+): Promise<boolean> {
+  if (!path) return true
+  if (!volume.list) {
+    throw new Error(`Cannot confirm whether ${path} exists on the volume`)
+  }
   const slash = path.lastIndexOf("/")
   const dir = slash === -1 ? "" : path.slice(0, slash)
   const name = slash === -1 ? path : path.slice(slash + 1)
+  let entries: Array<{ name: string }>
   try {
-    return (await volume.list(dir)).some((entry) => entry.name === name)
-  } catch {
+    entries = await volume.list(dir)
+  } catch (error) {
+    // A missing parent proves the file is absent; otherwise we cannot tell.
+    if (await volumeHasEntry(volume, dir)) throw error
     return false
   }
+  return entries.some((entry) => entry.name === name)
 }
 
 function ensureSchema(sql: WorkspaceSql) {

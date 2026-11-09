@@ -326,14 +326,15 @@ describe("hosted harness workspace context", () => {
       {
         models,
         codemode: true,
+        extensions: ["workspace-status"],
       }
     )
 
+    // Only file tools: no shell, code mode, or placeholder extension tools.
+    expect(harness.toolNames).toHaveLength(4)
     expect(harness.toolNames).toEqual(
       expect.arrayContaining(["read", "search", "write", "edit"])
     )
-    expect(harness.toolNames).not.toContain("bash")
-    expect(harness.toolNames).not.toContain("codemode")
 
     await harness.runAgentTurn({
       prompt: "hi",

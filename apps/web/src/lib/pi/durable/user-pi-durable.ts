@@ -105,6 +105,8 @@ export class UserPiDurable extends DurableObject {
   #port: HostedSandboxPort = createScriptedSandboxPort(this.#trace)
   #mode: HostedToolMode = "sandbox"
   #sandboxConnectionKey: string | undefined
+  /** Store-to-volume handover; runs beside the turn, ordered across ports. */
+  #workspaceSync: Promise<void> = Promise.resolve()
   #options: HostedHarnessOptions | undefined
   #modelConfig: DurableAgentModelConfig | undefined
   #loopKey = ""
@@ -398,15 +400,22 @@ export class UserPiDurable extends DurableObject {
     if (body.sandbox) {
       const connectionKey = sandboxConnectionKey(body.sandbox)
       if (connectionKey !== this.#sandboxConnectionKey) {
-        this.#port = await openDaytonaSandboxPort(body.sandbox)
+        const port = await openDaytonaSandboxPort(body.sandbox)
+        this.#port = port
         this.#sandboxConnectionKey = connectionKey
         portChanged = true
-        await this.#syncWorkspaceStore(this.#port)
+        // Never block the stream on sequential volume I/O. The chain keeps
+        // handovers ordered; #syncWorkspaceStore never rejects.
+        this.#workspaceSync = this.#workspaceSync.then(() =>
+          this.#syncWorkspaceStore(port)
+        )
       }
     } else {
       this.#sandboxConnectionKey = undefined
       const store = this.#workspaceStore()
       if (this.#port !== store) {
+        // Finish any handover before the store serves the agent again.
+        await this.#workspaceSync
         this.#port = store
         portChanged = true
       }
