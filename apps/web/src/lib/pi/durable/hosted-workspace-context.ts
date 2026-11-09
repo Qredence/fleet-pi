@@ -79,6 +79,8 @@ export type HostedWorkspaceContext = {
   beginTurn: (prompt: string) => void
   /** Drop the cache when a tool changed a file the sections render. */
   noteWrite: (path: string) => void
+  /** A shell command may have changed any rendered file: drop the cache. */
+  noteShell: () => void
 }
 
 /**
@@ -118,6 +120,9 @@ export function createHostedWorkspaceContext(
     },
     noteWrite(path) {
       if (affectsWorkspaceContext(path)) snapshot = undefined
+    },
+    noteShell() {
+      snapshot = undefined
     },
   }
 }
@@ -237,11 +242,27 @@ function stripWorkspacePrefix(path: string) {
 
 function normalizeWorkspacePath(path: string) {
   const relative = stripWorkspacePrefix(
-    path.replace(/\\/g, "/").replace(/^\.\//, "")
+    collapseDotSegments(path.replace(/\\/g, "/"))
   )
   return relative.startsWith("/home/daytona/agent-workspace/")
     ? relative.slice("/home/daytona/agent-workspace/".length)
     : relative
+}
+
+/** Resolves `.` and `..` segments so `system/../AGENTS.md` is `AGENTS.md`. */
+function collapseDotSegments(path: string) {
+  const absolute = path.startsWith("/")
+  const out: Array<string> = []
+  for (const segment of path.split("/")) {
+    if (segment === "" || segment === ".") continue
+    if (segment === "..") {
+      if (out.length > 0 && out[out.length - 1] !== "..") out.pop()
+      else if (!absolute) out.push("..")
+      continue
+    }
+    out.push(segment)
+  }
+  return `${absolute ? "/" : ""}${out.join("/")}`
 }
 
 function isSafeSegment(name: string) {

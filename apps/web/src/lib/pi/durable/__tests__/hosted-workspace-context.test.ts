@@ -18,6 +18,7 @@ import {
   expandHostedPromptTemplate,
   parseFrontmatter,
 } from "@/lib/pi/durable/hosted-workspace-context"
+import { PROJECT_MEMORY_LIMITS } from "@/lib/pi/workspace-memory-core"
 
 import {
   formatProjectMemoryForStartupContext,
@@ -99,6 +100,7 @@ describe("hosted workspace context sections", () => {
     const memory = rendered["project-memory"] ?? ""
     expect(memory).toContain("memory/project/decisions.md")
     expect(memory).not.toContain("agent-workspace/")
+    expect(memory).toContain("deploy previews")
     expect(memory.indexOf("deploy previews")).toBeLessThan(
       memory.indexOf("Billing uses Stripe")
     )
@@ -170,6 +172,28 @@ describe("hosted workspace context sections", () => {
     context.beginTurn("second")
     await renderSections(context)
     expect(reads.length).toBe(afterFirst * 3)
+
+    context.noteShell()
+    await renderSections(context)
+    expect(reads.length).toBe(afterFirst * 4)
+  })
+
+  it("bounds orphaned project memory reads and the rendered list", async () => {
+    const orphans: Files = {}
+    const total = PROJECT_MEMORY_LIMITS.orphanedFiles + 5
+    for (let i = 0; i < total; i += 1) {
+      orphans[`memory/project/note-${String(i).padStart(2, "0")}.md`] =
+        "# Note\n\n- an orphaned note\n"
+    }
+    const { reader, reads } = fakeReader(orphans)
+    const rendered = await renderSections(createHostedWorkspaceContext(reader))
+
+    const orphanReads = reads.filter((path) => path.includes("/note-"))
+    expect(orphanReads).toHaveLength(PROJECT_MEMORY_LIMITS.orphanedFiles)
+    const memory = rendered["project-memory"] ?? ""
+    expect(memory).toContain("note-00.md")
+    expect(memory).not.toContain(`note-${total - 1}.md`)
+    expect(memory).toContain("and 5 more")
   })
 
   it("classifies which writes change the rendered context", () => {
@@ -183,6 +207,10 @@ describe("hosted workspace context sections", () => {
     expect(
       affectsWorkspaceContext("agent-workspace/pi/skills/x/SKILL.md")
     ).toBe(true)
+    expect(affectsWorkspaceContext("system/../AGENTS.md")).toBe(true)
+    expect(affectsWorkspaceContext("scratch/../memory/project/a.md")).toBe(true)
+    expect(affectsWorkspaceContext("system/./identity.md")).toBe(true)
+    expect(affectsWorkspaceContext("memory/project/../daily/a.md")).toBe(false)
     expect(affectsWorkspaceContext("memory/daily/2026-11-09.md")).toBe(false)
     expect(affectsWorkspaceContext("scratch/tmp/a")).toBe(false)
   })

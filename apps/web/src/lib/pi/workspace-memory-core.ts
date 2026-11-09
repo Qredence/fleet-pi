@@ -23,9 +23,21 @@ export type ProjectMemoryFile = {
 
 export type ProjectMemoryIndex = {
   canonical: Array<ProjectMemoryFile>
+  /** At most {@link PROJECT_MEMORY_LIMITS.orphanedFiles}, by path. */
   orphaned: Array<ProjectMemoryFile>
+  /** Orphaned files beyond the limit: listed by count only, never read. */
+  orphanedOmitted: number
   projectMemoryDir: string
 }
+
+/**
+ * Bounds memory reads on every turn: a large `memory/project/` directory must
+ * not cost unbounded I/O, Worker memory, or prompt space.
+ */
+export const PROJECT_MEMORY_LIMITS = {
+  orphanedFiles: 20,
+  fileChars: 64_000,
+} as const
 
 export const CANONICAL_PROJECT_MEMORY_FILES = [
   {
@@ -76,9 +88,11 @@ export async function readProjectMemoryIndexWith(
     )
   )
 
+  const { orphaned, orphanedOmitted } = await readOrphanedProjectMemory(reader)
   return {
     canonical,
-    orphaned: await readOrphanedProjectMemory(reader),
+    orphaned,
+    orphanedOmitted,
     projectMemoryDir: PROJECT_MEMORY_DIR,
   }
 }
@@ -98,9 +112,9 @@ export function formatProjectMemoryForStartupContext(
     lines.push(
       `- orphaned: ${index.orphaned
         .map((file) => markdownBasename(file.path) + ".md")
-        .join(
-          ", "
-        )} (searchable fallback; synthesize into canonical memory when useful)`
+        .join(", ")}${formatOmitted(
+        index.orphanedOmitted
+      )} (searchable fallback; synthesize into canonical memory when useful)`
     )
   }
 
@@ -139,6 +153,9 @@ export function formatProjectMemoryForWorkspaceIndex(
           `- ${file.path} (${formatMemoryFileStatus(file)}; synthesize into canonical memory when useful)`
       )
     )
+    if (index.orphanedOmitted > 0) {
+      lines.push(`- …${formatOmitted(index.orphanedOmitted)} (not indexed)`)
+    }
   }
 
   return lines
@@ -159,6 +176,7 @@ async function readProjectMemoryFile(
   if (content === undefined) {
     return emptyProjectMemoryFile(key, path, fallbackTitle, false)
   }
+  content = content.slice(0, PROJECT_MEMORY_LIMITS.fileChars)
 
   const snippets = extractMemorySnippets(content)
   return {
@@ -174,7 +192,7 @@ async function readProjectMemoryFile(
 
 async function readOrphanedProjectMemory(
   reader: ProjectMemoryReader
-): Promise<Array<ProjectMemoryFile>> {
+): Promise<{ orphaned: Array<ProjectMemoryFile>; orphanedOmitted: number }> {
   let entries: Array<string>
   try {
     entries = (await reader.listMarkdownFiles(PROJECT_MEMORY_DIR))
@@ -183,11 +201,12 @@ async function readOrphanedProjectMemory(
       .filter((path) => !CANONICAL_PATHS.has(path))
       .sort((a, b) => a.localeCompare(b))
   } catch {
-    return []
+    return { orphaned: [], orphanedOmitted: 0 }
   }
 
-  return Promise.all(
-    entries.map((path) =>
+  const kept = entries.slice(0, PROJECT_MEMORY_LIMITS.orphanedFiles)
+  const orphaned = await Promise.all(
+    kept.map((path) =>
       readProjectMemoryFile(
         reader,
         markdownBasename(path),
@@ -196,6 +215,11 @@ async function readOrphanedProjectMemory(
       )
     )
   )
+  return { orphaned, orphanedOmitted: entries.length - kept.length }
+}
+
+function formatOmitted(count: number) {
+  return count > 0 ? ` and ${count} more` : ""
 }
 
 function markdownBasename(path: string) {

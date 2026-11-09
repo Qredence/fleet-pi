@@ -216,7 +216,8 @@ type ChatModeRef = { current: ChatMode }
 
 function sandboxTools(
   mode: ChatModeRef,
-  onWrite: (path: string) => void = () => undefined
+  onWrite: (path: string) => void = () => undefined,
+  onShell: () => void = () => undefined
 ) {
   const read = defineTool({
     name: "read",
@@ -381,15 +382,19 @@ function sandboxTools(
       const block = hostedBashBlock(mode.current, args.command, args.confirm)
       if (block) return blocked(block)
       let output = ""
-      const result = await requireEnv(api).exec(
-        args.command,
-        {
-          onOutput: (text) => {
-            output += text
+      // Any command can rewrite rendered files (AGENTS.md, system/, memory),
+      // even one that fails part way, so always drop the cached context.
+      const result = await requireEnv(api)
+        .exec(
+          args.command,
+          {
+            onOutput: (text) => {
+              output += text
+            },
           },
-        },
-        context
-      )
+          context
+        )
+        .finally(onShell)
       if (!result.ok) throw new Error(result.error.message)
       return { output: [{ type: "text" as const, text: output }] }
     },
@@ -463,7 +468,11 @@ function registryFor(
   const registry = createRegistry()
   const chatMode: ChatModeRef = { current: "agent" }
   const tools = [
-    ...sandboxTools(chatMode, (path) => workspaceContext?.noteWrite(path)),
+    ...sandboxTools(
+      chatMode,
+      (path) => workspaceContext?.noteWrite(path),
+      () => workspaceContext?.noteShell()
+    ),
     ...optionalTools(options),
   ]
   registry.install(defineExtension({ name: "hosted-sandbox", tools }))
