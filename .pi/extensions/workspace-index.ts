@@ -232,9 +232,9 @@ async function resolveEntry(
 }
 
 async function discoverSkills(cwd: string): Promise<Array<WorkspaceEntry>> {
-  const skillsDir = resolve(cwd, "agent-workspace/skills")
+  const skillsDir = resolve(cwd, "agent-workspace/pi/skills")
   if (!(await pathExists(skillsDir))) {
-    return [directoryEntry("agent-workspace/skills")]
+    return [directoryEntry("agent-workspace/pi/skills")]
   }
 
   let directories: Array<string>
@@ -245,7 +245,7 @@ async function discoverSkills(cwd: string): Promise<Array<WorkspaceEntry>> {
       .map((entry) => entry.name)
       .sort((a, b) => a.localeCompare(b))
   } catch {
-    return [directoryEntry("agent-workspace/skills")]
+    return [directoryEntry("agent-workspace/pi/skills")]
   }
 
   if (directories.length === 0) {
@@ -255,7 +255,7 @@ async function discoverSkills(cwd: string): Promise<Array<WorkspaceEntry>> {
   return resolveEntries(
     cwd,
     directories.map((name) =>
-      fileEntry(`agent-workspace/skills/${name}/SKILL.md`)
+      fileEntry(`agent-workspace/pi/skills/${name}/SKILL.md`)
     )
   )
 }

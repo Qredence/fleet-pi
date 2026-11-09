@@ -22,6 +22,7 @@ import {
 } from "../../workspace/workspace-contract"
 import {
   LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
+  LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
   SANDBOX_WORKSPACE_ROOT,
   SEED_REVISION_RELATIVE_PATH,
   SEED_TEMPLATE_REPO_PATH,
@@ -29,6 +30,7 @@ import {
   clearSandboxAuthFingerprint,
   ensureAgentWorkspaceSeedCommand,
   ensureUserCredentials,
+  migrateLegacySkillsCommand,
   migrateLegacyWorkspaceVolumeCommand,
   sweepScratchCommand,
 } from "../sandbox-prepare"
@@ -175,6 +177,64 @@ function runSeedResult(volume: string, repo: string, version = 1) {
 function read(path: string) {
   return readFileSync(path, "utf8")
 }
+
+describe("sandbox-prepare skills migration", () => {
+  it("moves legacy skills/<name> into pi/skills and quarantines collisions", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-skills-volume-"))
+    try {
+      writeFileInTree(volume, "skills/mine/SKILL.md", "user skill\n")
+      writeFileInTree(volume, "skills/shared/SKILL.md", "legacy copy\n")
+      writeFileInTree(volume, "skills/README.md", "notes\n")
+      writeFileInTree(volume, "pi/skills/shared/SKILL.md", "installed\n")
+
+      const output = execFileSync(
+        "bash",
+        ["-lc", migrateLegacySkillsCommand(`'${volume}'`)],
+        { encoding: "utf8" }
+      )
+
+      expect(read(join(volume, "pi/skills/mine/SKILL.md"))).toBe("user skill\n")
+      expect(read(join(volume, "pi/skills/shared/SKILL.md"))).toBe(
+        "installed\n"
+      )
+      expect(
+        read(
+          join(
+            volume,
+            WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+            LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY,
+            "shared/SKILL.md"
+          )
+        )
+      ).toBe("legacy copy\n")
+      expect(existsSync(join(volume, "skills/mine"))).toBe(false)
+      // Loose files stay; only skill folders move.
+      expect(read(join(volume, "skills/README.md"))).toBe("notes\n")
+      expect(output).toContain("FLEET_PI_SKILL_MIGRATED=mine")
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("is a no-op without a legacy skills directory", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-no-skills-"))
+    try {
+      execFileSync("bash", ["-lc", migrateLegacySkillsCommand(`'${volume}'`)])
+      expect(existsSync(join(volume, "pi"))).toBe(false)
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("runs before the seed in the prepare script", () => {
+    const script = buildPrepareSandboxCommand(
+      "https://github.com/Qredence/fleet-pi.git"
+    )
+    expect(script.indexOf("FLEET_PI_SKILL_MIGRATED")).toBeLessThan(
+      script.indexOf("git clone")
+    )
+  })
+})
 
 describe("sandbox-prepare seed", () => {
   it("skips the clone when the volume records this template version or newer", () => {

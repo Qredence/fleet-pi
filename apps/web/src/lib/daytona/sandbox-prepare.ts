@@ -27,6 +27,7 @@ export const SEED_TEMPLATE_METADATA_FILE = "template.json"
 /** Blob ids the pre-template seed copied; see the file header. */
 export const LEGACY_SEED_BLOBS_REPO_PATH = "templates/legacy-seed-blobs.txt"
 export const LEGACY_SEED_QUARANTINE_SUBDIRECTORY = "legacy-seed"
+export const LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY = "legacy-skills"
 export const SCRATCH_TTL_DAYS = 7
 
 const WORKSPACE_PI_DIRS = [
@@ -86,6 +87,7 @@ export function buildPrepareSandboxCommand(
     ensureGitInstalledCommand(),
     removeLegacySandboxRootsCommand(),
     migrateLegacyWorkspaceVolumeCommand(workspace),
+    migrateLegacySkillsCommand(workspace),
     ensureAgentWorkspaceSeedCommand(workspace, url, templateVersion),
     sweepScratchCommand(workspace),
     piDirs,
@@ -223,6 +225,37 @@ export function migrateLegacyWorkspaceVolumeCommand(workspace: string): string {
     `mv "$item" ${quarantine}/ 2>/dev/null || true`,
     "done",
     "fi",
+    "fi",
+  ].join("\n")
+}
+
+/**
+ * Move `skills/<name>/` to `pi/skills/<name>/`, the only skill root Pi loads.
+ * When the target already exists, the legacy folder goes to quarantine
+ * instead. Runs before the seed, so moved copies of the old seed are still
+ * caught by the legacy blob check.
+ * Exported for unit tests.
+ */
+export function migrateLegacySkillsCommand(workspace: string): string {
+  const quarantine = `"$ws"/${WORKSPACE_VOLUME_QUARANTINE_DIRECTORY}/${LEGACY_SKILLS_QUARANTINE_SUBDIRECTORY}`
+  return [
+    `ws=${workspace}`,
+    'if [ -d "$ws"/skills ]; then',
+    '  for dir in "$ws"/skills/*/; do',
+    '    [ -d "$dir" ] || continue',
+    '    dir="${dir%/}"',
+    '    name="$(basename "$dir")"',
+    '    if [ -e "$ws"/pi/skills/"$name" ]; then',
+    `      target=${quarantine}/"$name"`,
+    '      if [ -e "$target" ]; then target="$target-$(date +%s)"; fi',
+    '      mkdir -p "$(dirname "$target")"',
+    '      mv "$dir" "$target"',
+    "    else",
+    '      mkdir -p "$ws"/pi/skills',
+    '      mv "$dir" "$ws"/pi/skills/"$name"',
+    "    fi",
+    '    echo "FLEET_PI_SKILL_MIGRATED=$name"',
+    "  done",
     "fi",
   ].join("\n")
 }

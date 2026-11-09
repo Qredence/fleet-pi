@@ -103,7 +103,7 @@ export function getWorkspaceSkillResources(
 
   const skillsRoot = findWorkspaceNode(
     workspace.nodes,
-    "agent-workspace/skills"
+    "agent-workspace/pi/skills"
   )
   if (!skillsRoot?.children?.length) return []
 

@@ -1,3 +1,8 @@
+---
+name: execution-plan
+description: Write a resumable plan under agent-workspace/plans/ for multi-step work and keep its progress and decision logs current.
+---
+
 # Execution Plan Skill
 
 ## When to use it

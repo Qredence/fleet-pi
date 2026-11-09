@@ -72,7 +72,7 @@ Daily observation logs go to `memory/daily/` (free tier). Research notes from we
 
 Each skill lives in `skills/<name>/SKILL.md` with optional supporting files (`changelog.md`, `evals.md`, `examples.md`). After complex or repeatable tasks, the agent is expected to capture the key procedure as a workspace skill so future turns benefit from it without re-deriving it.
 
-Skills in `agent-workspace/skills/` are workspace-local and available in every session. Skills installed via chat (`resource_install`) land in `agent-workspace/pi/skills/` and become available after reload.
+Workspace skills live in `agent-workspace/pi/skills/<name>/SKILL.md`, the only workspace skill root Pi loads. Skills installed via chat (`resource_install`) land there too and become available after reload. `agent-workspace/skills/` is a legacy location: it is not loaded, and Daytona prepare moves its folders into `pi/skills/` on user volumes.
 
 ## Plans as first-class artifacts
 

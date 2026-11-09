@@ -393,6 +393,66 @@ export const MOCK_WORKSPACE_TREE: MockWorkspaceTreeResponse = {
                 },
               ],
             },
+            {
+              name: "codebase-research",
+              path: "agent-workspace/pi/skills/codebase-research",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/codebase-research/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
+            {
+              name: "doc-gardening",
+              path: "agent-workspace/pi/skills/doc-gardening",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/doc-gardening/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
+            {
+              name: "execution-plan",
+              path: "agent-workspace/pi/skills/execution-plan",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/execution-plan/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
+            {
+              name: "frontend-design",
+              path: "agent-workspace/pi/skills/frontend-design",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/frontend-design/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
+            {
+              name: "memory-synthesis",
+              path: "agent-workspace/pi/skills/memory-synthesis",
+              type: "directory",
+              children: [
+                {
+                  name: "SKILL.md",
+                  path: "agent-workspace/pi/skills/memory-synthesis/SKILL.md",
+                  type: "file",
+                },
+              ],
+            },
           ],
         },
       ],
@@ -466,73 +526,6 @@ export const MOCK_WORKSPACE_TREE: MockWorkspaceTreeResponse = {
             {
               name: ".gitkeep",
               path: "agent-workspace/scratch/tmp/.gitkeep",
-              type: "file",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: "skills",
-      path: "agent-workspace/skills",
-      type: "directory",
-      children: [
-        {
-          name: "codebase-research",
-          path: "agent-workspace/skills/codebase-research",
-          type: "directory",
-          children: [
-            {
-              name: "SKILL.md",
-              path: "agent-workspace/skills/codebase-research/SKILL.md",
-              type: "file",
-            },
-          ],
-        },
-        {
-          name: "doc-gardening",
-          path: "agent-workspace/skills/doc-gardening",
-          type: "directory",
-          children: [
-            {
-              name: "SKILL.md",
-              path: "agent-workspace/skills/doc-gardening/SKILL.md",
-              type: "file",
-            },
-          ],
-        },
-        {
-          name: "execution-plan",
-          path: "agent-workspace/skills/execution-plan",
-          type: "directory",
-          children: [
-            {
-              name: "SKILL.md",
-              path: "agent-workspace/skills/execution-plan/SKILL.md",
-              type: "file",
-            },
-          ],
-        },
-        {
-          name: "frontend-design",
-          path: "agent-workspace/skills/frontend-design",
-          type: "directory",
-          children: [
-            {
-              name: "SKILL.md",
-              path: "agent-workspace/skills/frontend-design/SKILL.md",
-              type: "file",
-            },
-          ],
-        },
-        {
-          name: "memory-synthesis",
-          path: "agent-workspace/skills/memory-synthesis",
-          type: "directory",
-          children: [
-            {
-              name: "SKILL.md",
-              path: "agent-workspace/skills/memory-synthesis/SKILL.md",
               type: "file",
             },
           ],

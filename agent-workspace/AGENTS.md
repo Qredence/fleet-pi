@@ -58,7 +58,7 @@ When you need deeper context, read the relevant file rather than guessing:
 | Workspace architecture   | `ARCHITECTURE.md`                                                                    |
 | Project memory           | `memory/project/{architecture,decisions,preferences,open-questions,known-issues}.md` |
 | Active plans             | `plans/active/`                                                                      |
-| Skills                   | `skills/`                                                                            |
+| Skills                   | `pi/skills/`                                                                         |
 | Evaluations              | `evals/`                                                                             |
 | Runtime resources (Pi)   | `pi/`                                                                                |
 | Scratch space            | `scratch/tmp/`                                                                       |

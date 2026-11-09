@@ -39,13 +39,15 @@ Codex or Claude plugin bundles unless the user asks for a separate artifact.
 
 ## Installing Workspace Skills
 
-When adding a skill to `agent-workspace/skills/`, always preserve the source
+When adding a skill to `agent-workspace/pi/skills/`, always preserve the source
 content exactly — do not summarize, paraphrase, or excerpt it. Copy the full
 file verbatim using `workspace_write`. The skill's frontmatter, guidelines,
 examples, and any other sections must all be present in the destination file.
 
 Place each skill in its own subdirectory matching the skill name:
-`agent-workspace/skills/<skill-name>/SKILL.md`.
+`agent-workspace/pi/skills/<skill-name>/SKILL.md`, with `name` and
+`description` frontmatter. That is the only workspace skill root Pi loads;
+`agent-workspace/skills/` is a legacy location and is not loaded.
 
 ## Capability Gaps
 
