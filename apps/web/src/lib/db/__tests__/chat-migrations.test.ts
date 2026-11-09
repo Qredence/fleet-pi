@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest"
 
 import { runChatMigrations } from "../chat-migrations"
+import { CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL } from "../chat-postgres-data-api-revoke-reconcile"
 import { CHAT_POSTGRES_SESSION_OWNER_FUNCTION_SQL } from "../chat-postgres-session-tombstones"
 
 import type { ChatMigrationClient } from "../chat-migrations"
 
 const OWNER_FN = /CREATE OR REPLACE FUNCTION fleet_pi_check_session_owner\(/
+
+function noop() {}
+
+function isReconcile(text: string) {
+  return text.includes("ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner")
+}
 
 /**
  * Fake Postgres that keeps the migration ledger and tracks which definition of
@@ -75,6 +82,54 @@ describe("runChatMigrations", () => {
     expect(db.ownerFunction).toContain("pi_session_tombstones")
     expect(db.ownerFunction).toContain("'deleted'")
     expect(db.forceRlsStatements).toBeGreaterThan(forceRlsAfterFirstRun)
+  })
+
+  it("re-applies the Data API revoke reconcile last on every run, even when revoke migrations are recorded", async () => {
+    const statements: Array<string> = []
+    const ledger = new Set<string>()
+    const client: ChatMigrationClient = {
+      query: (text: string, params?: Array<unknown>) => {
+        if (text.includes("SELECT id FROM fleet_pi_chat_migrations")) {
+          const id = String(params?.[0])
+          return Promise.resolve({
+            rows: (ledger.has(id) ? [{ id }] : []) as never,
+          })
+        }
+        if (text.includes("INSERT INTO fleet_pi_chat_migrations")) {
+          ledger.add(String(params?.[0]))
+          return Promise.resolve({ rows: [] })
+        }
+        statements.push(text)
+        return Promise.resolve({ rows: [] })
+      },
+    }
+    await runChatMigrations(client, noop)
+    expect(statements.at(-1)).toBe(CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL)
+    expect(ledger.has("20260719_revoke_data_api_pi_grants")).toBe(true)
+    expect(ledger.has("20260723_revoke_data_api_pi_grants_again")).toBe(true)
+    expect(ledger.has("20260719_revoke_ownership_probe_execute")).toBe(true)
+
+    statements.length = 0
+    await runChatMigrations(client, noop)
+    expect(statements.filter(isReconcile)).toHaveLength(1)
+    expect(statements.at(-1)).toBe(CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL)
+  })
+
+  it("points the reconcile app-role grant at FLEET_PI_APP_ROLE", async () => {
+    const statements: Array<string> = []
+    const client: ChatMigrationClient = {
+      query: (text: string) => {
+        statements.push(text)
+        return Promise.resolve({ rows: [] })
+      },
+    }
+    await runChatMigrations(client, noop, { appRole: "fleet_pi_app_v2" })
+    const reconcile = statements.at(-1) ?? ""
+    expect(reconcile).toContain(
+      "ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner"
+    )
+    expect(reconcile).toContain("rolname = 'fleet_pi_app_v2'")
+    expect(reconcile).not.toMatch(/'fleet_pi_app'/)
   })
 
   it("checks tombstones before ownership in the shared definition", () => {

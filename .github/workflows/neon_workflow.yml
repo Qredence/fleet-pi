@@ -72,10 +72,11 @@ jobs:
 
       # Preview branches are copy-on-write children of main, so they start with
       # main's schema. chat:migrate is ledger-backed and idempotent: it applies
-      # only new migration ids, then re-asserts FORCE RLS, ownership-probe
-      # revokes, and the fleet_pi_app grants. Readiness fails the job when
-      # pi_sessions is missing FORCE RLS or a Data API role can EXECUTE the
-      # ownership probes.
+      # only new migration ids, then re-asserts FORCE RLS, the app-role grants
+      # (FLEET_PI_APP_ROLE, default fleet_pi_app), and the Data API revokes.
+      # Readiness fails the job when pi_sessions is missing FORCE RLS or a Data
+      # API role keeps pi_* table privileges or can EXECUTE the ownership
+      # probes.
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -99,11 +100,14 @@ jobs:
           # Direct (unpooled) owner connection: DDL + one interactive
           # transaction must not go through PgBouncer. Never echo this value.
           FLEET_PI_CHAT_MIGRATION_DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url }}
+          # Live runtime role for grants; unset falls back to fleet_pi_app.
+          FLEET_PI_APP_ROLE: ${{ vars.FLEET_PI_APP_ROLE }}
 
       - name: Run Better Auth migrations on the preview branch
         run: pnpm auth:migrate
         env:
           FLEET_PI_AUTH_MIGRATION_DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url }}
+          FLEET_PI_APP_ROLE: ${{ vars.FLEET_PI_APP_ROLE }}
           # Schema generation only; no sessions are signed with this value.
           BETTER_AUTH_SECRET: ci-preview-migration-placeholder-secret
           BETTER_AUTH_URL: https://preview.invalid
