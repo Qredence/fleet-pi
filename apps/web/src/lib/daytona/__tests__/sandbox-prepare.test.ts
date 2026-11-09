@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process"
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -8,17 +9,22 @@ import {
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  TEMPLATE_PRISTINE_RELATIVE_PATH,
+  TEMPLATE_UPDATES_RELATIVE_PATH,
+  TEMPLATE_VERSION_RELATIVE_PATH,
   WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
   workspaceVolumeShellKeepPattern,
 } from "../../workspace/workspace-contract"
 import {
-  FLEET_PI_SEED_REVISION_LABEL,
+  LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
   SANDBOX_WORKSPACE_ROOT,
+  SEED_REVISION_RELATIVE_PATH,
+  SEED_TEMPLATE_REPO_PATH,
   buildPrepareSandboxCommand,
   clearSandboxAuthFingerprint,
   ensureAgentWorkspaceSeedCommand,
@@ -85,46 +91,272 @@ describe("sandbox-prepare migration", () => {
   })
 })
 
+const TEMPLATE = "templates/agent-workspace"
+
+type SeedRepo = { path: string; revision: string }
+
+/** A git repo shaped like Fleet Pi's seed: `templates/agent-workspace/**`. */
+function createSeedRepo(
+  files: Record<string, string>,
+  legacyBlobs: Array<string> = []
+): SeedRepo {
+  const repo = mkdtempSync(join(tmpdir(), "fleet-seed-repo-"))
+  writeSeedFiles(repo, files, legacyBlobs)
+  return { path: repo, revision: commitSeed(repo, "seed") }
+}
+
+function writeSeedFiles(
+  repo: string,
+  files: Record<string, string>,
+  legacyBlobs: Array<string> = []
+) {
+  const root = join(repo, TEMPLATE)
+  writeFileInTree(root, "template.json", '{ "version": 1 }\n')
+  for (const [path, content] of Object.entries(files)) {
+    writeFileInTree(root, path, content)
+  }
+  writeFileSync(
+    join(repo, "templates", "legacy-seed-blobs.txt"),
+    ["# legacy blobs", ...legacyBlobs, ""].join("\n")
+  )
+}
+
+function commitSeed(repo: string, message: string) {
+  const env = gitIdentity()
+  execFileSync("git", ["init", "-q"], { cwd: repo, env })
+  execFileSync("git", ["add", "."], { cwd: repo, env })
+  execFileSync("git", ["commit", "-q", "-m", message], { cwd: repo, env })
+  return execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: repo,
+    env,
+    encoding: "utf8",
+  }).trim()
+}
+
+function writeFileInTree(root: string, path: string, content: string) {
+  const target = join(root, path)
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, content)
+}
+
+function gitBlobId(content: string) {
+  return execFileSync("git", ["hash-object", "--stdin"], {
+    input: content,
+    encoding: "utf8",
+  }).trim()
+}
+
+function runSeed(volume: string, repo: string, version = 1) {
+  return execFileSync(
+    "bash",
+    [
+      "-lc",
+      ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`, version),
+    ],
+    { encoding: "utf8" }
+  )
+}
+
+function read(path: string) {
+  return readFileSync(path, "utf8")
+}
+
 describe("sandbox-prepare seed", () => {
-  it("skips the clone when the seed label is already recorded", () => {
-    const script = ensureAgentWorkspaceSeedCommand(
-      `'${SANDBOX_WORKSPACE_ROOT}'`,
-      "'https://github.com/Qredence/fleet-pi.git'",
-      "abc123def456"
-    )
+  it("skips the clone when the volume records this template version or newer", () => {
+    const volume = mkdtempSync(join(tmpdir(), "fleet-seeded-volume-"))
+    try {
+      mkdirSync(join(volume, ".fleet"), { recursive: true })
+      writeFileSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH), "3\n")
 
-    expect(script).toContain(
-      `: # ${FLEET_PI_SEED_REVISION_LABEL} abc123def456 matches; clone skipped`
-    )
-    expect(script).not.toContain("git clone")
-    execFileSync("bash", ["-lc", script])
+      for (const version of [2, 3]) {
+        const output = runSeed(volume, "https://example.invalid/x.git", version)
+        expect(output).toContain("FLEET_PI_TEMPLATE_VERSION=3 (seed skipped)")
+      }
+    } finally {
+      rmSync(volume, { recursive: true, force: true })
+    }
   })
 
-  it("uses non-clobber copy when seeding", () => {
-    const script = ensureAgentWorkspaceSeedCommand(
-      `'${SANDBOX_WORKSPACE_ROOT}'`,
-      "'https://github.com/Qredence/fleet-pi.git'"
-    )
-
-    expect(script).toContain('if [ -e "$dest" ]; then')
-    expect(script).toContain('cp -a "$src" "$dest"')
-    expect(script).not.toContain("|| [ $? -eq 1 ]")
+  it("rejects an invalid template version", () => {
+    expect(() =>
+      ensureAgentWorkspaceSeedCommand("'/w'", "'https://x.invalid'", 0)
+    ).toThrow("Invalid seed template version")
   })
 
-  it("includes safe seed in the prepare script and removes legacy fleet-pi", () => {
+  it("sparse-clones the template path, not the team workspace", () => {
     const script = buildPrepareSandboxCommand(
       "https://github.com/Qredence/fleet-pi.git"
     )
-    expect(script).toContain("cp -an ")
-    expect(script).toContain("find ")
-    expect(script).toContain("-mtime +7")
     expect(script).toContain("--sparse")
+    expect(script).toContain(
+      `git sparse-checkout set ${SEED_TEMPLATE_REPO_PATH}`
+    )
+    expect(script).not.toContain("git sparse-checkout set agent-workspace")
+    expect(script).toContain('if [ ! -e "$dest" ]; then')
+    expect(script).toContain("-mtime +7")
     expect(script).toContain("rm -rf '/home/daytona/fleet-pi'")
     expect(script).toContain("mountpoint -q '/home/daytona/fleet-pi'")
     expect(script).not.toMatch(/git clone[^\n]*\/home\/daytona\/fleet-pi/)
   })
 
-  it("keeps a user decisions.md through migrate and a second prepare", () => {
+  it("seeds an empty volume and records version, pristine copy, and revision", () => {
+    const repo = createSeedRepo({
+      "manifest.json": "{}\n",
+      "memory/project/decisions.md": "# Decisions\n",
+      "scratch/tmp/.gitkeep": "",
+    })
+    const volume = mkdtempSync(join(tmpdir(), "fleet-empty-volume-"))
+    try {
+      runSeed(volume, repo.path)
+      expect(read(join(volume, "manifest.json"))).toBe("{}\n")
+      expect(read(join(volume, "memory/project/decisions.md"))).toBe(
+        "# Decisions\n"
+      )
+      expect(read(join(volume, "scratch/tmp/.gitkeep"))).toBe("")
+      expect(read(join(volume, TEMPLATE_VERSION_RELATIVE_PATH)).trim()).toBe(
+        "1"
+      )
+      expect(read(join(volume, SEED_REVISION_RELATIVE_PATH)).trim()).toBe(
+        repo.revision
+      )
+      expect(
+        read(join(volume, TEMPLATE_PRISTINE_RELATIVE_PATH, "manifest.json"))
+      ).toBe("{}\n")
+      expect(existsSync(join(volume, TEMPLATE_UPDATES_RELATIVE_PATH))).toBe(
+        false
+      )
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("fails without recording a version when the template is missing", () => {
+    const repo = mkdtempSync(join(tmpdir(), "fleet-no-template-"))
+    writeFileInTree(repo, "agent-workspace/manifest.json", "{}\n")
+    commitSeed(repo, "old layout")
+    const volume = mkdtempSync(join(tmpdir(), "fleet-no-template-volume-"))
+    try {
+      expect(() => runSeed(volume, repo)).toThrow()
+      expect(existsSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe(
+        false
+      )
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("never overwrites user edits and offers changed template files for review", () => {
+    const repo = createSeedRepo({
+      "pi/skills/demo/SKILL.md": "seed v1\n",
+      "system/identity.md": "identity v1\n",
+    })
+    const volume = mkdtempSync(join(tmpdir(), "fleet-upgrade-volume-"))
+    const skill = join(volume, "pi/skills/demo/SKILL.md")
+    const identity = join(volume, "system/identity.md")
+    try {
+      runSeed(volume, repo.path, 1)
+      writeFileSync(skill, "user-edit\n")
+
+      // Template v2: the skill changes, identity stays, a new prompt appears.
+      writeSeedFiles(repo.path, {
+        "pi/skills/demo/SKILL.md": "seed v2\n",
+        "system/identity.md": "identity v1\n",
+        "pi/prompts/new.md": "new prompt\n",
+      })
+      commitSeed(repo.path, "template v2")
+      const output = runSeed(volume, repo.path, 2)
+
+      expect(read(skill)).toBe("user-edit\n")
+      expect(read(identity)).toBe("identity v1\n")
+      expect(read(join(volume, "pi/prompts/new.md"))).toBe("new prompt\n")
+      expect(
+        read(
+          join(
+            volume,
+            TEMPLATE_UPDATES_RELATIVE_PATH,
+            "2/pi/skills/demo/SKILL.md"
+          )
+        )
+      ).toBe("seed v2\n")
+      expect(output).toContain(
+        "FLEET_PI_TEMPLATE_UPDATE=pi/skills/demo/SKILL.md"
+      )
+      expect(
+        existsSync(
+          join(volume, TEMPLATE_UPDATES_RELATIVE_PATH, "2/system/identity.md")
+        )
+      ).toBe(false)
+      expect(read(join(volume, TEMPLATE_VERSION_RELATIVE_PATH)).trim()).toBe(
+        "2"
+      )
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("does not offer an update when only the user changed a file", () => {
+    const repo = createSeedRepo({ "memory/project/decisions.md": "stub\n" })
+    const volume = mkdtempSync(join(tmpdir(), "fleet-user-only-volume-"))
+    const decisions = join(volume, "memory/project/decisions.md")
+    try {
+      runSeed(volume, repo.path, 1)
+      writeFileSync(decisions, "user-edit\n")
+      runSeed(volume, repo.path, 2)
+
+      expect(read(decisions)).toBe("user-edit\n")
+      expect(existsSync(join(volume, TEMPLATE_UPDATES_RELATIVE_PATH))).toBe(
+        false
+      )
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("quarantines unedited legacy seed files once and keeps user edits", () => {
+    const teamMemory = "# Known Issues\n\nTeam-internal CircleCI notes.\n"
+    const repo = createSeedRepo(
+      { "memory/project/known-issues.md": "# Known Issues\n" },
+      [gitBlobId(teamMemory), gitBlobId("legacy decisions\n")]
+    )
+    const volume = mkdtempSync(join(tmpdir(), "fleet-legacy-volume-"))
+    const knownIssues = join(volume, "memory/project/known-issues.md")
+    const decisions = join(volume, "memory/project/decisions.md")
+    try {
+      // A volume seeded by the old seed: no template version recorded.
+      mkdirSync(join(volume, "memory/project"), { recursive: true })
+      writeFileSync(knownIssues, teamMemory)
+      writeFileSync(decisions, "legacy decisions\nplus a user edit\n")
+
+      const output = runSeed(volume, repo.path)
+
+      const quarantined = join(
+        volume,
+        WORKSPACE_VOLUME_QUARANTINE_DIRECTORY,
+        LEGACY_SEED_QUARANTINE_SUBDIRECTORY,
+        "memory/project/known-issues.md"
+      )
+      expect(read(quarantined)).toBe(teamMemory)
+      expect(read(knownIssues)).toBe("# Known Issues\n")
+      expect(read(decisions)).toBe("legacy decisions\nplus a user edit\n")
+      expect(output).toContain(
+        "FLEET_PI_LEGACY_QUARANTINED=memory/project/known-issues.md"
+      )
+
+      // Legacy cleanup never runs again once a version is recorded.
+      writeFileSync(knownIssues, teamMemory)
+      runSeed(volume, repo.path, 2)
+      expect(read(knownIssues)).toBe(teamMemory)
+    } finally {
+      rmSync(repo.path, { recursive: true, force: true })
+      rmSync(volume, { recursive: true, force: true })
+    }
+  })
+
+  it("keeps a user decisions.md through migrate and a seeded prepare", () => {
     const volume = mkdtempSync(join(tmpdir(), "fleet-volume-"))
     const decisions = join(volume, "memory", "project", "decisions.md")
     mkdirSync(join(volume, "memory", "project"), { recursive: true })
@@ -137,118 +369,18 @@ describe("sandbox-prepare seed", () => {
       join(volume, "agent-workspace", "memory", "project", "decisions.md"),
       "git-seed\n"
     )
+    mkdirSync(join(volume, ".fleet"), { recursive: true })
+    writeFileSync(join(volume, TEMPLATE_VERSION_RELATIVE_PATH), "1\n")
 
     try {
       const quoted = `'${volume}'`
       execFileSync("bash", ["-lc", migrateLegacyWorkspaceVolumeCommand(quoted)])
-      expect(readFileSync(decisions, "utf8")).toBe("user-edit\n")
-      execFileSync("bash", [
-        "-lc",
-        ensureAgentWorkspaceSeedCommand(
-          quoted,
-          "'https://example.invalid/fleet-pi.git'",
-          "already-seeded"
-        ),
-      ])
-      expect(readFileSync(decisions, "utf8")).toBe("user-edit\n")
+      expect(read(decisions)).toBe("user-edit\n")
+      // Migration keeps Fleet state on the volume root.
+      expect(read(join(volume, TEMPLATE_VERSION_RELATIVE_PATH))).toBe("1\n")
+      runSeed(volume, "https://example.invalid/fleet-pi.git")
+      expect(read(decisions)).toBe("user-edit\n")
     } finally {
-      rmSync(volume, { recursive: true, force: true })
-    }
-  })
-
-  it("seeds a volume that has no manifest.json", () => {
-    const repo = mkdtempSync(join(tmpdir(), "fleet-seed-repo-"))
-    const volume = mkdtempSync(join(tmpdir(), "fleet-empty-volume-"))
-    const gitEnv = gitIdentity()
-    const sections = [
-      "system",
-      "memory",
-      "skills",
-      "plans",
-      "artifacts",
-      "scratch",
-    ]
-    mkdirSync(join(repo, "agent-workspace"), { recursive: true })
-    writeFileSync(join(repo, "agent-workspace", "manifest.json"), "{}\n")
-    writeFileSync(join(repo, "agent-workspace", "SEEDED.txt"), "seeded\n")
-    for (const section of sections) {
-      mkdirSync(join(repo, "agent-workspace", section), { recursive: true })
-      writeFileSync(join(repo, "agent-workspace", section, ".gitkeep"), "")
-    }
-    execFileSync("git", ["init"], { cwd: repo, env: gitEnv })
-    execFileSync("git", ["add", "."], { cwd: repo, env: gitEnv })
-    execFileSync("git", ["commit", "-m", "seed"], { cwd: repo, env: gitEnv })
-    const revision = execFileSync("git", ["rev-parse", "HEAD"], {
-      cwd: repo,
-      env: gitEnv,
-      encoding: "utf8",
-    }).trim()
-
-    try {
-      execFileSync("bash", [
-        "-lc",
-        ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`),
-      ])
-      expect(readFileSync(join(volume, "manifest.json"), "utf8")).toBe("{}\n")
-      expect(readFileSync(join(volume, "SEEDED.txt"), "utf8")).toBe("seeded\n")
-      expect(
-        readFileSync(join(volume, ".fleet", "seed-revision"), "utf8").trim()
-      ).toBe(revision)
-      for (const section of sections) {
-        expect(readFileSync(join(volume, section, ".gitkeep"), "utf8")).toBe("")
-      }
-    } finally {
-      rmSync(repo, { recursive: true, force: true })
-      rmSync(volume, { recursive: true, force: true })
-    }
-  })
-
-  it("keeps an edited skill after manifest.json is deleted", () => {
-    const repo = mkdtempSync(join(tmpdir(), "fleet-skill-repo-"))
-    const volume = mkdtempSync(join(tmpdir(), "fleet-skill-volume-"))
-    const gitEnv = gitIdentity()
-    mkdirSync(join(repo, "agent-workspace", "skills", "demo"), {
-      recursive: true,
-    })
-    writeFileSync(join(repo, "agent-workspace", "manifest.json"), "{}\n")
-    writeFileSync(
-      join(repo, "agent-workspace", "skills", "demo", "SKILL.md"),
-      "seed\n"
-    )
-    execFileSync("git", ["init"], { cwd: repo, env: gitEnv })
-    execFileSync("git", ["add", "."], { cwd: repo, env: gitEnv })
-    execFileSync("git", ["commit", "-m", "seed"], { cwd: repo, env: gitEnv })
-
-    const skill = join(volume, "skills", "demo", "SKILL.md")
-    try {
-      execFileSync("bash", [
-        "-lc",
-        ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`),
-      ])
-      const revision = readFileSync(
-        join(volume, ".fleet", "seed-revision"),
-        "utf8"
-      ).trim()
-      writeFileSync(skill, "user-edit\n")
-      rmSync(join(volume, "manifest.json"))
-
-      execFileSync("bash", [
-        "-lc",
-        ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`),
-      ])
-      expect(readFileSync(skill, "utf8")).toBe("user-edit\n")
-
-      rmSync(join(volume, "manifest.json"))
-      execFileSync("bash", [
-        "-lc",
-        ensureAgentWorkspaceSeedCommand(`'${volume}'`, `'${repo}'`, revision),
-      ])
-      expect(readFileSync(skill, "utf8")).toBe("user-edit\n")
-      expect(() =>
-        readFileSync(join(volume, "manifest.json"), "utf8")
-      ).toThrow()
-    } finally {
-      rmSync(repo, { recursive: true, force: true })
       rmSync(volume, { recursive: true, force: true })
     }
   })

@@ -8,6 +8,8 @@ import { isCloudflareDeployment } from "../deployment/environment"
 
 import {
   AGENT_WORKSPACE_DIRECTORY,
+  TEMPLATE_UPDATES_RELATIVE_PATH,
+  TEMPLATE_VERSION_RELATIVE_PATH,
   WORKSPACE_MANIFEST_RELATIVE_PATH,
   WORKSPACE_POLICY_FILE_DEFINITIONS,
   WORKSPACE_REQUIRED_DIRECTORY_PATHS,
@@ -117,8 +119,17 @@ export type WorkspaceHealthResponse = {
     canonicalSourceOfTruth: true
     diagnostics: Array<WorkspaceHealthDiagnostic>
   }
+  /** Seed template state; absent when the workspace is unavailable. */
+  template?: WorkspaceTemplateState
   warnings: Array<string>
   diagnostics: Array<WorkspaceHealthDiagnostic>
+}
+
+export type WorkspaceTemplateState = {
+  /** Template version last applied, or null when never recorded. */
+  version: number | null
+  /** Versions with template copies waiting for review, ascending. */
+  pendingUpdateVersions: Array<number>
 }
 
 const EMPTY_MANIFEST_STATE: WorkspaceManifestState = {
@@ -261,8 +272,11 @@ export async function bootstrapAgentWorkspace(
     .filter((file) => !file.exists)
     .map((file) => file.path)
 
+  const template = await readWorkspaceTemplateState(context, fs)
+
   return buildWorkspaceHealthResponse({
     context,
+    template,
     createdPaths,
     diagnostics,
     directoryStates,
@@ -292,6 +306,7 @@ type WorkspaceHealthResponseInput = {
   policyStates: Array<WorkspacePolicyState>
   scratchProtectionStates: Array<WorkspaceFileState>
   sectionStates: Array<WorkspaceSectionState>
+  template: WorkspaceTemplateState
   warnings: Set<string>
   workspace: { available: boolean; created: boolean }
 }
@@ -309,6 +324,7 @@ function buildWorkspaceHealthResponse({
   policyStates,
   scratchProtectionStates,
   sectionStates,
+  template,
   warnings,
   workspace,
 }: WorkspaceHealthResponseInput): WorkspaceHealthResponse {
@@ -383,9 +399,46 @@ function buildWorkspaceHealthResponse({
       canonicalSourceOfTruth: true,
       diagnostics: sortDiagnostics(projectionDiagnostics),
     },
+    template,
     warnings: sortedWarnings,
     diagnostics: sortedDiagnostics,
   }
+}
+
+/**
+ * Reads the seed bookkeeping that Daytona prepare writes. Missing files mean
+ * "never recorded", not an error: local workspaces are not seeded.
+ */
+export async function readWorkspaceTemplateState(
+  context: AppRuntimeContext,
+  fs: WorkspaceFS
+): Promise<WorkspaceTemplateState> {
+  let version: number | null = null
+  try {
+    const raw = await fs.readFile(
+      join(context.workspaceRoot, TEMPLATE_VERSION_RELATIVE_PATH),
+      "utf8"
+    )
+    const parsed = Number.parseInt(raw.trim(), 10)
+    version = Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  } catch {
+    version = null
+  }
+
+  let pendingUpdateVersions: Array<number> = []
+  try {
+    const entries = await fs.readdir(
+      join(context.workspaceRoot, TEMPLATE_UPDATES_RELATIVE_PATH)
+    )
+    pendingUpdateVersions = entries
+      .filter((entry) => entry.isDirectory() && /^\d+$/.test(entry.name))
+      .map((entry) => Number.parseInt(entry.name, 10))
+      .sort((a, b) => a - b)
+  } catch {
+    pendingUpdateVersions = []
+  }
+
+  return { version, pendingUpdateVersions }
 }
 
 export async function loadAgentWorkspaceHealth(

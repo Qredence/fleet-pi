@@ -45,7 +45,7 @@ Hint: Start without extensions using "pi -ne".
 | Workspace volume | `fleet-pi-ws-{userId}`   | Persists across sandbox restarts/deletions             |
 | Snapshot         | `fleet-pi-v{version}`    | Shared when available; speeds up sandbox creation      |
 
-**Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Sparse seed runs only when `manifest.json` is missing, using non-clobber `cp -an`. Do not delete the workspace volume unless intentionally resetting that user.
+**Persistence contract:** User edits under `agent-workspace/` live on `fleet-pi-ws-{userId}` mounted at `/home/daytona/agent-workspace`. There is **no** full-repo clone and **no** sandbox `.fleet` session volume — Pi sessions stay on the host / Neon mirror. Prepare seeds from `templates/agent-workspace/` (see [Seed template](#seed-template)) and never overwrites a user file. Do not delete the workspace volume unless intentionally resetting that user.
 
 **Migration:** Sandboxes that still mount the legacy `/home/daytona/fleet-pi` (or `/home/daytona/fleet-pi/agent-workspace`) path are **recreated automatically** on next warm-up — the durable `fleet-pi-ws-*` volume is kept and remounted at `/home/daytona/agent-workspace`. Ephemeral leftover `/home/daytona/fleet-pi` trees (not mounts) are deleted during prepare. Sandboxes stuck in `error` (for example after a failed volume mount) are also recreated on warm-up with the same volume. Do not auto-delete volumes.
 
@@ -66,7 +66,7 @@ BETTER_AUTH_SECRET=...       # Required for user authentication
 DAYTONA_TARGET=us            # Region (us or eu)
 DAYTONA_API_URL=...          # Defaults to Daytona Cloud
 DAYTONA_WEBHOOK_SECRET=...   # Required before webhook events mutate local cache
-FLEET_PI_REPOSITORY_URL=...  # HTTPS repo used to sparse-seed agent-workspace
+FLEET_PI_REPOSITORY_URL=...  # HTTPS repo whose templates/agent-workspace seeds volumes
 AWS_REGION=us-east-1         # For Bedrock (LLM provider)
 ```
 
@@ -117,7 +117,16 @@ Bootstrap uses a `WorkspaceFS` abstraction that dispatches to either:
 - `createLocalWorkspaceFS()` — wraps `node:fs/promises` (default)
 - `createSandboxWorkspaceFS(sandbox)` — wraps Daytona SDK operations
 
-The volume content persists across sandbox restarts. Prepare seeds only empty volumes (no `manifest.json`) using non-clobber copy; bootstrap then fills missing stubs without overwriting user-authored files.
+The volume content persists across sandbox restarts. Prepare applies the seed template (below); bootstrap then fills missing stubs without overwriting user-authored files.
+
+### Seed template
+
+Volumes are seeded from `templates/agent-workspace/` on the repository's default branch, not from the repo's own `agent-workspace/` (that tree is the Fleet Pi team's agent home and is never copied to users).
+
+- **Version.** `SEED_TEMPLATE_VERSION` in `workspace-contract.ts` must match `templates/agent-workspace/template.json`. The volume records the applied version in `.fleet/template-version`; prepare skips the clone when the volume is at that version or newer.
+- **Never overwrite.** Missing template files are copied. When a template file changed since the last applied version (compared with the pristine copy in `.fleet/template/`) and the user's copy differs, the new copy goes to `.fleet/template-updates/<version>/<path>` for review. Workspace health reports these as `template.pendingUpdateVersions`.
+- **Legacy volumes.** On a volume with no recorded version, files byte-identical to a blob listed in `templates/legacy-seed-blobs.txt` (everything the old seed could have copied) move to `.fleet-pi-quarantine/legacy-seed/` once. Files the user edited stay.
+- **Changing the template.** Edit `templates/agent-workspace/`, bump `template.json` and `SEED_TEMPLATE_VERSION` together, and keep it free of team content (`seed-template.test.ts` enforces this).
 
 ### Snapshot optimization
 
@@ -151,7 +160,7 @@ Each user (default): 1 vCPU + 1 GB RAM + 3 GB disk when running.
 | File                                               | Purpose                                           |
 | -------------------------------------------------- | ------------------------------------------------- |
 | `apps/web/src/lib/daytona/user-sandbox.ts`         | Per-user sandbox + volume provisioning            |
-| `apps/web/src/lib/daytona/sandbox-prepare.ts`      | Sparse seed + volume migration                    |
+| `apps/web/src/lib/daytona/sandbox-prepare.ts`      | Versioned template seed + volume migration        |
 | `apps/web/src/lib/daytona/sandbox-operations.ts`   | Tool ops for bash/read/write/edit/grep/find/ls    |
 | `apps/web/src/lib/daytona/secret-hosts.ts`         | HTTPS allowlists for Secrets-eligible providers   |
 | `apps/web/src/lib/daytona/sync-daytona-secrets.ts` | Upsert org Secrets + createSandbox secrets map    |
