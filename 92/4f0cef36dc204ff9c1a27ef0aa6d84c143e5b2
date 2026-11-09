@@ -1,0 +1,22 @@
+apps/web/src/lib/pi/durable/__tests__/hosted-workspace-context.test.ts
+  h_f276322eb5eb9f 21,103,175-196,210-213
+apps/web/src/lib/pi/durable/hosted-harness.ts
+  h_f276322eb5eb9f 219-220,385-393,395-397,471-475
+apps/web/src/lib/pi/durable/hosted-workspace-context.ts
+  h_f276322eb5eb9f 82-83,124-126,245,252-267
+apps/web/src/lib/pi/workspace-memory-core.ts
+  h_f276322eb5eb9f 26,28-29,33-41,91,94-95,115-117,156-158,179,195,204,207-209,218-222
+docs/wiki/apps/web/pi-integration.md
+  h_f276322eb5eb9f 290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "924f0cef36dc204ff9c1a27ef0aa6d84c143e5b2",
+  "prompts": {},
+  "humans": {
+    "h_f276322eb5eb9f": {
+      "author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
