@@ -1,8 +1,9 @@
 # CircleCI pipeline for Fleet Pi.
 #
 # Validation mirrors the gates in .github/workflows/ci.yml: lint/format/guards,
-# typecheck, syncpack, web unit tests, build, knip, jscpd, tech-debt, the
-# AGENTS.md command check, and the deployment-readiness gate.
+# typecheck, syncpack, workspace unit tests through Smarter Testing, build, knip,
+# jscpd, tech-debt, the AGENTS.md command check, and the
+# deployment-readiness gate.
 #
 # Deployment split: GitHub Actions keeps auto-deploying the Worker on every main
 # push (`.github/workflows/cloudflare.yml`). This pipeline adds `deploy-readiness`
@@ -169,15 +170,37 @@ jobs:
 
   test:
     executor: node-lts
+    parallelism: 2
     steps:
       - checkout
       - install-pnpm
       - install-dependencies
-      # Matches .github/workflows/ci.yml, which runs the web suite only.
+      # The latest CircleCI CLI in the image ships the testsuite subcommand.
+      # Fail early with a clear message if it is missing.
       - run:
-          name: Test web
-          command: pnpm --filter web test
+          name: Verify Smarter Testing CLI
+          command: circleci testsuite --help >/dev/null
+      # Smarter Testing replaces the raw web test command. GitHub Actions keeps
+      # running the raw Vitest suites.
+      - run:
+          name: Run web unit suite
+          command: circleci testsuite run "web-unit"
           no_output_timeout: 20m
+      - run:
+          name: Run web Workers suite
+          command: circleci testsuite run "web-workers"
+          no_output_timeout: 20m
+      - run:
+          name: Run pi-protocol suite
+          command: circleci testsuite run "pi-protocol"
+          no_output_timeout: 20m
+      - run:
+          name: Run hax-design suite
+          command: circleci testsuite run "hax-design"
+          no_output_timeout: 20m
+      - store_test_results:
+          path: test-reports
+          when: always
 
   build:
     executor: node-heavy

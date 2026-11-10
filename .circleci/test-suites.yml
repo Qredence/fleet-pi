@@ -1,0 +1,47 @@
+# CircleCI Smarter Testing suites.
+#
+# Each suite runs its package's Vitest config through pnpm, so discover and run
+# share the package cwd and test atoms stay package-relative. `outputs.junit`
+# is intentionally omitted: the testsuite creates an absolute temp path, which
+# Vitest resolves unchanged. The run step copies that report into the
+# repo-root `test-reports/` directory used by `store_test_results`.
+---
+name: web-unit
+discover: pnpm --filter web exec vitest list --filesOnly --config vitest.config.ts
+run: |
+  export FLEET_PI_JUNIT_OUTPUT="<< outputs.junit >>"
+  status=0
+  pnpm --filter web exec vitest run --config vitest.testsuite.config.ts << test.atoms >> || status=$?
+  mkdir -p test-reports
+  cp "$FLEET_PI_JUNIT_OUTPUT" test-reports/web-unit.xml || true
+  exit "$status"
+---
+name: web-workers
+discover: pnpm --filter web exec vitest list --filesOnly --config vitest.workers.config.ts
+run: |
+  export FLEET_PI_JUNIT_OUTPUT="<< outputs.junit >>"
+  status=0
+  pnpm --filter web exec vitest run --config vitest.testsuite.workers.config.ts << test.atoms >> || status=$?
+  mkdir -p test-reports
+  cp "$FLEET_PI_JUNIT_OUTPUT" test-reports/web-workers.xml || true
+  exit "$status"
+---
+name: pi-protocol
+discover: pnpm --filter @workspace/pi-protocol exec vitest list --filesOnly --config vitest.config.ts
+run: |
+  export FLEET_PI_JUNIT_OUTPUT="<< outputs.junit >>"
+  status=0
+  pnpm --filter @workspace/pi-protocol exec vitest run --config vitest.testsuite.config.ts << test.atoms >> || status=$?
+  mkdir -p test-reports
+  cp "$FLEET_PI_JUNIT_OUTPUT" test-reports/pi-protocol.xml || true
+  exit "$status"
+---
+name: hax-design
+discover: pnpm --filter @workspace/hax-design exec vitest list --filesOnly --config vitest.config.ts
+run: |
+  export FLEET_PI_JUNIT_OUTPUT="<< outputs.junit >>"
+  status=0
+  pnpm --filter @workspace/hax-design exec vitest run --config vitest.testsuite.config.ts << test.atoms >> || status=$?
+  mkdir -p test-reports
+  cp "$FLEET_PI_JUNIT_OUTPUT" test-reports/hax-design.xml || true
+  exit "$status"

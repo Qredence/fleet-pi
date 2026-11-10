@@ -22,7 +22,9 @@
         "src/lib/**/*.test.ts",
         "src/lib/**/__tests__/**/*.ts",
         "src/lib/**/*.workers.test.ts",
-        "src/routes/**/__tests__/**/*.ts"
+        "src/routes/**/__tests__/**/*.ts",
+        "vitest.testsuite.config.ts",
+        "vitest.testsuite.workers.config.ts"
       ],
       "ignoreDependencies": [
         "@tanstack/router-plugin",
