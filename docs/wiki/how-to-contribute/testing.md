@@ -33,6 +33,28 @@ pnpm --filter web test:coverage
 
 Coverage is collected via `@vitest/coverage-v8`. After running `test:coverage`, open the HTML report in `apps/web/coverage/`.
 
+### CircleCI Smarter Testing
+
+CircleCI runs the workspace Vitest suites through Smarter Testing. The suite definitions live in `.circleci/test-suites.yml`; each suite runs its package's Vitest config and copies a JUnit report into `test-reports/` for CircleCI's Tests tab and Insights.
+
+| Suite | Covers |
+| --- | --- |
+| `web-unit` | `apps/web` unit tests |
+| `web-workers` | `apps/web` Workers tests |
+| `pi-protocol` | `packages/pi-protocol` |
+| `hax-design` | `packages/hax-design` |
+
+Local runs are free. `pnpm test` remains the default local command; use the testsuite when you want to mirror what CircleCI runs:
+
+```bash
+circleci testsuite run "web-unit"
+circleci testsuite run "web-unit" --run-tests=all
+circleci testsuite list-tests "web-unit" -t 'src/lib/pi/'
+circleci testsuite doctor "web-unit"
+```
+
+The `testsuite` subcommand is part of the CircleCI CLI. If it is missing, install the extension with `circleci extension install testsuite`; this is a machine-level CLI plugin, not a repository dependency. GitHub Actions still runs raw Vitest.
+
 ### Writing Tests
 
 Import from `vitest` directly:

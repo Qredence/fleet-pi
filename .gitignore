@@ -13,6 +13,10 @@ node_modules
 coverage
 test-results/
 dogfood-output/
+# CircleCI Smarter Testing local state and reports
+.circleci/state*.json
+.circleci/impact*.json
+test-reports/
 # jscpd reports and cache
 report/
 .jscpd/
