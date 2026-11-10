@@ -26,7 +26,7 @@
     "remap-auth-user-ids": "vpx scripts/remap-auth-user-ids.ts"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@daytona/sdk": "^0.230.0",
     "@earendil-works/chord": "1.2.0",
     "@earendil-works/pi-agent-core": "^1.2.0",
