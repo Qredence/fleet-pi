@@ -14,6 +14,33 @@ function isReconcile(text: string) {
   return text.includes("ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner")
 }
 
+const SELECT_LEDGER = "SELECT id FROM fleet_pi_chat_migrations"
+const INSERT_LEDGER = "INSERT INTO fleet_pi_chat_migrations"
+
+/**
+ * Ledger-backed reply shared by every fake below: answers the ledger SELECT
+ * from `ledger` and records ledger INSERTs into it. Returns `undefined` for
+ * any other statement so the caller can keep its own bookkeeping. Rows are
+ * `never`-typed so the reply satisfies the client's generic `query`.
+ */
+function answerLedger(
+  text: string,
+  params: Array<unknown> | undefined,
+  ledger: Set<string>
+) {
+  if (text.includes(SELECT_LEDGER)) {
+    const id = String(params?.[0])
+    return Promise.resolve({
+      rows: (ledger.has(id) ? [{ id }] : []) as never,
+    })
+  }
+  if (text.includes(INSERT_LEDGER)) {
+    ledger.add(String(params?.[0]))
+    return Promise.resolve({ rows: [] as never })
+  }
+  return undefined
+}
+
 /**
  * Fake Postgres that keeps the migration ledger and tracks which definition of
  * fleet_pi_check_session_owner is live after each statement batch, in order.
@@ -24,16 +51,8 @@ function createFakeDatabase() {
   let forceRlsStatements = 0
   const client: ChatMigrationClient = {
     query: (text: string, params?: Array<unknown>) => {
-      if (text.includes("SELECT id FROM fleet_pi_chat_migrations")) {
-        const id = String(params?.[0])
-        return Promise.resolve({
-          rows: (ledger.has(id) ? [{ id }] : []) as never,
-        })
-      }
-      if (text.includes("INSERT INTO fleet_pi_chat_migrations")) {
-        ledger.add(String(params?.[0]))
-        return Promise.resolve({ rows: [] })
-      }
+      const ledgerReply = answerLedger(text, params, ledger)
+      if (ledgerReply) return ledgerReply
       // Within one batch the last CREATE OR REPLACE wins.
       const parts = text.split(OWNER_FN)
       if (parts.length > 1) {
@@ -89,16 +108,8 @@ describe("runChatMigrations", () => {
     const ledger = new Set<string>()
     const client: ChatMigrationClient = {
       query: (text: string, params?: Array<unknown>) => {
-        if (text.includes("SELECT id FROM fleet_pi_chat_migrations")) {
-          const id = String(params?.[0])
-          return Promise.resolve({
-            rows: (ledger.has(id) ? [{ id }] : []) as never,
-          })
-        }
-        if (text.includes("INSERT INTO fleet_pi_chat_migrations")) {
-          ledger.add(String(params?.[0]))
-          return Promise.resolve({ rows: [] })
-        }
+        const ledgerReply = answerLedger(text, params, ledger)
+        if (ledgerReply) return ledgerReply
         statements.push(text)
         return Promise.resolve({ rows: [] })
       },
