@@ -54,13 +54,13 @@
     "undici": "^8.12.4"
   },
   "devDependencies": {
-    "@neon/config": "^1.13.0",
+    "@neon/config": "^1.14.0",
     "@neondatabase/serverless": "^1.2.0",
     "husky": "^9.1.7",
     "jscpd": "^5.4.2",
     "knip": "^6.44.1",
     "lint-staged": "^17.6.0",
-    "neon": "^2.34.1",
+    "neon": "^9.3.2",
     "syncpack": "^15.3.3",
     "turbo": "^2.11.10",
     "typescript": "^7.0.2",
