@@ -223,7 +223,9 @@ export function usePiChat(
   }, [refreshSessions])
 
   useEffect(() => {
-    let cancelled = false
+    // Refs rather than `let`: React Compiler's immutability rule flags a
+    // render-scope binding reassigned inside the effect's cleanup/callbacks.
+    const cancelledRef = { current: false }
     const loadActiveSession = async () => {
       abortRef.current?.abort()
       abortRef.current = null
@@ -245,7 +247,7 @@ export function usePiChat(
       }
 
       const result = await client.loadSession(storedSession)
-      if (cancelled) return
+      if (cancelledRef.current) return
       setSessionMetadataSynced(result.session)
       setMessagesSynced(result.messages)
       setActivityLabelSynced(
@@ -254,7 +256,7 @@ export function usePiChat(
     }
 
     void loadActiveSession().catch(async (err) => {
-      if (cancelled) return
+      if (cancelledRef.current) return
       await failChatRequest(err, recoverFromForbiddenSession, {
         setError,
         setStatus,
@@ -262,7 +264,7 @@ export function usePiChat(
     })
 
     return () => {
-      cancelled = true
+      cancelledRef.current = true
     }
   }, [
     client,
