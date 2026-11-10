@@ -54,7 +54,7 @@
     "undici": "^8.12.3"
   },
   "devDependencies": {
-    "@neon/config": "^0.9.5",
+    "@neon/config": "^1.13.0",
     "@neondatabase/serverless": "^1.2.0",
     "husky": "^9.1.7",
     "jscpd": "^5.4.2",
