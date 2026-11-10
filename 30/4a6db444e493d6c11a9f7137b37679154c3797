@@ -1,0 +1,29 @@
+.circleci/test-suites.yml
+  s_f99ab9bf268253::t_1d66a15fe2accf 1-47
+apps/web/vitest.testsuite.config.ts
+  s_f99ab9bf268253::t_a69ba0994102c1 1-26
+apps/web/vitest.testsuite.workers.config.ts
+  s_f99ab9bf268253::t_940f9b1e830c64 1-26
+knip.json
+  s_f99ab9bf268253::t_44749f66ae1c6f 25-27
+packages/hax-design/vitest.testsuite.config.ts
+  s_f99ab9bf268253::t_4fe8eeee5bd787 1-26
+packages/pi-protocol/vitest.testsuite.config.ts
+  s_f99ab9bf268253::t_bedd317061c61f 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "304a6db444e493d6c11a9f7137b37679154c3797",
+  "prompts": {},
+  "sessions": {
+    "s_f99ab9bf268253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e09662ff-7118-48aa-9082-e297b65fbb90",
+        "model": "system.ai.claude-opus-5-5"
+      },
+      "human_author": "Zachary BENSALEM <zachary@qredence.ai>"
+    }
+  }
+}
