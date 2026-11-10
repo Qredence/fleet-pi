@@ -78,8 +78,8 @@ importers:
   apps/web:
     dependencies:
       '@asteasolutions/zod-to-openapi':
-        specifier: ^8.5.0
-        version: 8.5.0(zod@4.6.7)
+        specifier: ^9.1.0
+        version: 9.1.0(zod@4.6.7)
       '@daytona/sdk':
         specifier: ^0.230.0
         version: 0.230.0
@@ -336,8 +336,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@asteasolutions/zod-to-openapi':
-        specifier: ^8.5.0
-        version: 8.5.0(zod@4.6.7)
+        specifier: ^9.1.0
+        version: 9.1.0(zod@4.6.7)
       '@types/node':
         specifier: ^22.19.0
         version: 22.20.5
@@ -362,8 +362,8 @@ packages:
       zod:
         optional: true
 
-  '@asteasolutions/zod-to-openapi@8.5.0':
-    resolution: {integrity: sha512-SABbKiObg5dLRiTFnqiW1WWwGcg1BJfmHtT2asIBnBHg6Smy/Ms2KHc650+JI4Hw7lSkdiNebEGXpwoxfben8Q==}
+  '@asteasolutions/zod-to-openapi@9.1.0':
+    resolution: {integrity: sha512-pLMeRgRYS7/vZIgAAkOe2P6+XGTifR1MT9pqDoxZ11EmcJJ+DPmdPqLN8ZZF4U8R9KHCCQCS9c2wtuE8wSrfkw==}
     peerDependencies:
       zod: ^4.0.0
 
@@ -6504,8 +6504,8 @@ packages:
       zod:
         optional: true
 
-  openapi3-ts@4.5.0:
-    resolution: {integrity: sha512-jaL+HgTq2Gj5jRcfdutgRGLosCy/hT8sQf6VOy+P+g36cZOjI1iukdPnijC+4CmeRzg/jEllJUboEic2FhxhtQ==}
+  openapi3-ts@4.6.2:
+    resolution: {integrity: sha512-gyyil3DweqhXiEhTqtAs9wwRLfWHmetwhI4kmM5Rn0d6gtmK863Ki7qqbQnp9+Wwlqoe3B1LFWj7kMp5ctE4rQ==}
 
   openid-client@6.8.1:
     resolution: {integrity: sha512-VoYT6enBo6Vj2j3Q5Ec0AezS+9YGzQo1f5Xc42lreMGlfP4ljiXPKVDvCADh+XHCV/bqPu/wWSiCVXbJKvrODw==}
@@ -8047,9 +8047,9 @@ snapshots:
     optionalDependencies:
       zod: 4.6.7
 
-  '@asteasolutions/zod-to-openapi@8.5.0(zod@4.6.7)':
+  '@asteasolutions/zod-to-openapi@9.1.0(zod@4.6.7)':
     dependencies:
-      openapi3-ts: 4.5.0
+      openapi3-ts: 4.6.2
       zod: 4.6.7
 
   '@aws-sdk/checksums@3.1002.1':
@@ -14141,7 +14141,7 @@ snapshots:
       ws: 8.22.0
       zod: 4.6.7
 
-  openapi3-ts@4.5.0:
+  openapi3-ts@4.6.2:
     dependencies:
       yaml: 2.9.1
 
