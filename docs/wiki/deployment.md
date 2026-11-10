@@ -158,27 +158,30 @@ duplicate.
 
 ### Deployment split
 
-GitHub Actions remains the only **automatic** deployer
-(`.github/workflows/cloudflare.yml` on every `main` push). CircleCI adds a
-parallel, human-gated lane:
+CircleCI is the only **production** deployer. One pipeline owns the
+`fleet-pi-web` Worker, so two deploys can never race on the same script:
 
 - `deploy-readiness` runs on every push, with the same prod-shaped and
   preview-shaped `verify-deployment-readiness` placeholders as the GitHub Actions
   release gate. It needs no credentials; the migration probes self-skip.
-- `approval` holds on `main` after `deploy-readiness`. Nothing deploys until a
-  human approves.
-- `deploy-production` then rebuilds, runs `wrangler deploy`, and records a
-  deployment in the Deploys UI (`fleet-pi-web` in `production`, version =
-  short SHA) with `circleci run release plan/update`. It needs the
-  `fleet-pi-deploy` context: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
-  `VITE_NEON_AUTH_URL`.
+- `deploy-production` runs automatically on `main` once `deploy-readiness`
+  passes, rebuilds, runs `wrangler deploy`, and records a deployment in the
+  Deploys UI (`fleet-pi-web` in `production`, version = short SHA) with
+  `circleci run release plan/update`. It needs the `fleet-pi-deploy` context:
+  `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `VITE_NEON_AUTH_URL`.
+  There is no approval gate: `deploy-readiness` is the safety check, and it has
+  already run by the time this job starts.
 - `.circleci/rollback.yml` is a separate, trigger-less definition for manual
   `wrangler rollback`.
 
-Because the approval lane redeploys the **approved commit**, it can be older
-than `HEAD` by the time someone approves. Treat it as the deliberate re-deploy
-and emergency path, not the routine one. PR previews and Neon preview branches
-stay entirely on GitHub Actions.
+`VITE_NEON_AUTH_URL` is compiled in by Vite at build time and is the only signal
+that enables Managed Auth in the client, so `deploy-production` fails fast if it
+is missing or looks like a CI placeholder — otherwise the deploy would ship an
+app that silently falls back to local anonymous auth.
+
+GitHub Actions keeps **preview** deploys only
+(`.github/workflows/cloudflare.yml`, PRs labelled `cloudflare-preview`). PR
+previews and Neon preview branches stay entirely on GitHub Actions.
 
 `.github/workflows/neon_workflow.yml` manages one Neon preview branch per same-repo PR (Dependabot and fork PRs are skipped; they have no secrets):
 

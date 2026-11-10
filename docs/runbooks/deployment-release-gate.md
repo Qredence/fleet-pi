@@ -39,22 +39,29 @@ with the same placeholders, so both systems gate the same properties. It needs
 no credentials; the migration probes self-skip unless
 `FLEET_PI_CHAT_MIGRATION_DATABASE_URL` is set in the CircleCI project.
 
-## CircleCI approval-gated redeploy
+## CircleCI production deploy
 
-GitHub Actions still deploys the Worker automatically on every `main` push.
-CircleCI's lane is separate and never runs unattended:
+CircleCI is the only production deployer. GitHub Actions keeps preview deploys
+only, so exactly one pipeline owns the `fleet-pi-web` Worker.
 
 1. `deploy-readiness` passes on `main`.
-2. The `approval` job holds. Nothing has deployed yet.
-3. A human approves in the CircleCI UI. `deploy-production` then runs
-   `circleci run release plan` (opening a PENDING deployment for component
-   `fleet-pi-web` in environment `production`), builds, runs `wrangler deploy`,
-   and closes the deployment as SUCCESS or FAILED.
+2. `deploy-production` runs automatically. It verifies the deploy configuration
+   (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `VITE_NEON_AUTH_URL`) and
+   refuses to continue if any is missing or `VITE_NEON_AUTH_URL` looks like a CI
+   placeholder — that variable is compiled in at build time and is the only
+   signal that enables Managed Auth, so a placeholder build would ship an app
+   with local anonymous auth.
+3. It then runs `circleci run release plan` (opening a PENDING deployment for
+   component `fleet-pi-web` in environment `production`), builds, runs
+   `wrangler deploy` from `apps/web`, and closes the deployment as SUCCESS or
+   FAILED.
 
-**Caveat:** the lane deploys the commit that was approved, not necessarily
-`HEAD`. By the time someone approves, `main` may have moved on and GitHub
-Actions may already have shipped a newer commit. Use this lane for a deliberate
-re-deploy or an emergency, and confirm which commit you are approving.
+There is no approval gate. `deploy-readiness` is the safety check and it has
+already run; a human hold after it only delayed the deploy without testing
+anything the pipeline could not test itself. `serial-group` keeps two pushes
+from overlapping.
+
+If a deploy needs to be undone, use the rollback definition below.
 
 ### Rollback
 

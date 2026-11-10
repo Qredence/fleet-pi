@@ -361,10 +361,21 @@ jobs:
             NEON_AI_GATEWAY_BASE_URL: https://ci-gateway.neon.tech
             FLEET_PI_READINESS_REQUIRE_MIGRATION_PROBES: "1"
 
-  # Manual, approval-gated production redeploy. GitHub Actions already deploys
-  # main on push; this is the deliberate path — re-deploy a specific approved
-  # commit and record it in the Deploys UI. Requires the `fleet-pi-deploy`
-  # context (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, VITE_NEON_AUTH_URL).
+  # Production deploy. CircleCI is the single deployer for main; the GitHub
+  # Actions `cloudflare.yml` production path is retired so exactly one pipeline
+  # owns the `fleet-pi-web` Worker.
+  #
+  # Auto-runs once deploy-readiness passes, with no human gate: the wait points
+  # live *before* the mutating step (deploy-readiness is what proves the Worker
+  # builds and the env contract holds), not after it. The GitHub Actions
+  # workflow previously deployed `main` unconditionally on every push, so this
+  # is strictly the stricter path, not a looser one.
+  #
+  # Requires the `fleet-pi-deploy` context: CLOUDFLARE_API_TOKEN,
+  # CLOUDFLARE_ACCOUNT_ID, and VITE_NEON_AUTH_URL. The last one matters more
+  # than it looks: it is compiled in by Vite at build time and is the *only*
+  # signal that turns Managed Auth on in the client. A build without it ships
+  # an app that falls back to local anonymous auth.
   deploy-production:
     executor: node-heavy
     environment:
@@ -373,6 +384,30 @@ jobs:
       - checkout
       - install-pnpm
       - install-dependencies
+      # Guard before doing any work, so a missing var fails loudly instead of
+      # silently shipping a build with Managed Auth disabled.
+      - run:
+          name: Verify deploy configuration
+          command: |
+            missing=""
+            for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VITE_NEON_AUTH_URL; do
+              if [ -z "$(eval "printf '%s' \"\${${name}:-}\"")" ]; then
+                missing="${missing} ${name}"
+              fi
+            done
+            if [ -n "${missing}" ]; then
+              echo "Missing required deploy variable(s):${missing}" >&2
+              echo "Expected from the fleet-pi-deploy context and the deploy environment." >&2
+              exit 1
+            fi
+            case "${VITE_NEON_AUTH_URL}" in
+              *ci.example*|http://localhost*|http://127.0.0.1*)
+                echo "VITE_NEON_AUTH_URL looks like a placeholder: ${VITE_NEON_AUTH_URL}" >&2
+                echo "Refusing to deploy a build with Managed Auth disabled." >&2
+                exit 1
+                ;;
+            esac
+            echo "Deploy configuration present."
       - plan-deploy-marker:
           deploy_name: fleet-pi-web-deploy
       - run:
@@ -380,11 +415,22 @@ jobs:
           command: circleci run release update fleet-pi-web-deploy --status=RUNNING
       - run:
           name: Build Cloudflare Worker
+          # VITE_NEON_AUTH_URL is compiled in by Vite here; it must be in scope
+          # for the build step, not only for deploy. The context supplies it.
           command: pnpm --filter web build:cloudflare
           no_output_timeout: 20m
+          environment:
+            VITE_NEON_AUTH_URL: ${VITE_NEON_AUTH_URL}
       - run:
           name: Deploy to Cloudflare
-          command: pnpm --filter web exec wrangler deploy --message "${CIRCLE_SHA1:0:7}"
+          # `--filter web exec` runs wrangler with the repo root as cwd, and
+          # wrangler refuses to resolve a workspace member's config from there:
+          #   "The Cloudflare application detection logic has been run in the
+          #    root of a workspace instead of targeting a specific project."
+          # Run it from apps/web so `wrangler.jsonc` is found.
+          command: |
+            cd apps/web
+            pnpm exec wrangler deploy --message "${CIRCLE_SHA1:0:7}"
           no_output_timeout: 20m
       - run:
           name: Mark the deployment successful
@@ -442,24 +488,20 @@ workflows:
             - typecheck
           filters: *branch-only
 
-      # Production redeploy, main only, held for a human. The hold is what stops
-      # this racing the GitHub Actions deploy.
-      - approval:
-          type: approval
+      # Production deploy, main only. No approval gate: deploy-readiness is the
+      # safety check, and it already ran above. `serial-group` keeps two deploys
+      # from overlapping when pushes land close together.
+      - deploy-production:
           requires:
             - deploy-readiness
+          context:
+            - fleet-pi-deploy
+          serial-group: fleet-pi-production-deploy
           filters: &main-only
             branches:
               only: main
             tags:
               ignore: /.*/
-      - deploy-production:
-          requires:
-            - approval
-          context:
-            - fleet-pi-deploy
-          serial-group: fleet-pi-production-deploy
-          filters: *main-only
       - cancel-deploy-marker:
           requires:
             - deploy-production:
