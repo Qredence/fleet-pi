@@ -8,6 +8,7 @@ import {
   CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_MIGRATION_ID,
   CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL,
 } from "./chat-postgres-data-api-revoke-again"
+import { CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL } from "./chat-postgres-data-api-revoke-reconcile"
 import {
   CHAT_POSTGRES_DB_OPTIMIZATION_MIGRATION_ID,
   CHAT_POSTGRES_DB_OPTIMIZATION_SQL,
@@ -271,4 +272,11 @@ export async function runChatMigrations(
   // created after the migrations were recorded still gets its privileges.
   await client.query(CHAT_POSTGRES_APP_ROLE_GRANTS_SQL)
   log(`Reconciled ${appRole} grants`)
+
+  // Not ledger-gated, must run last: Neon's Data API default privileges
+  // re-grant `authenticated` on every new table/function, and the numbered
+  // revoke migrations above are skipped once recorded. Strip Data API roles
+  // from pi_* / fleet_pi_* objects and re-grant function EXECUTE to appRole.
+  await client.query(CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL)
+  log("Reconciled Data API revokes on pi_* / fleet_pi_* objects")
 }

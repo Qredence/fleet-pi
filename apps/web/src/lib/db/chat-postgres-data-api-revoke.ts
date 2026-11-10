@@ -2,10 +2,13 @@ export const CHAT_POSTGRES_DATA_API_REVOKE_MIGRATION_ID =
   "20260719_revoke_data_api_pi_grants"
 
 /**
- * Historical safety migration. Closed beta keeps Neon Data API off.
- * `chat:migrate` re-applies `CHAT_POSTGRES_DATA_API_REVOKE_AGAIN_SQL` on every
- * run so a one-shot ledger entry cannot leave `authenticated` / `anonymous`
- * grants in place. Do not wire `chat-postgres-data-api-auth` back into the runner.
+ * Historical, ledger-gated safety migration: it runs once per database and
+ * is skipped after it is recorded. Ongoing correctness comes from
+ * `CHAT_POSTGRES_DATA_API_REVOKE_RECONCILE_SQL`
+ * (`chat-postgres-data-api-revoke-reconcile.ts`), which `chat:migrate` runs on
+ * every run so Neon Data API default privileges cannot leave `authenticated` /
+ * `anonymous` grants in place. Do not wire `chat-postgres-data-api-auth` back
+ * into the runner.
  */
 export const CHAT_POSTGRES_DATA_API_REVOKE_SQL = `
 DO $$
