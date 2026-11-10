@@ -40,6 +40,11 @@ export function useChatAutoScroll({
   const assistantSpaceActiveRef = useRef(false)
   const lastUserMessageIdRef = useRef(lastUserMessageId)
   const pendingPlanningScrollUserIdRef = useRef<string | null>(null)
+  // ResizeObserver cross-callback state. Refs rather than `let` because React
+  // Compiler's immutability rule flags a render-scope binding reassigned inside
+  // the observer callback.
+  const lastContentHeightRef = useRef(0)
+  const prevScrollHeightRef = useRef(0)
 
   const containerRefCallback = useCallback((el: HTMLDivElement | null) => {
     chatContainerRef.current = el
@@ -67,18 +72,20 @@ export function useChatAutoScroll({
   }, [])
 
   const scrollToBottomSettled = useCallback(() => {
-    let rafOne = 0
-    let rafTwo = 0
+    // Refs, not `let`: React Compiler's immutability rule flags a render-scope
+    // binding reassigned inside a rAF callback.
+    const rafOne = { current: 0 }
+    const rafTwo = { current: 0 }
     scrollToBottomInstant()
-    rafOne = requestAnimationFrame(() => {
+    rafOne.current = requestAnimationFrame(() => {
       scrollToBottomInstant()
-      rafTwo = requestAnimationFrame(() => {
+      rafTwo.current = requestAnimationFrame(() => {
         scrollToBottomInstant()
       })
     })
     return () => {
-      cancelAnimationFrame(rafOne)
-      cancelAnimationFrame(rafTwo)
+      cancelAnimationFrame(rafOne.current)
+      cancelAnimationFrame(rafTwo.current)
     }
   }, [scrollToBottomInstant])
 
@@ -119,22 +126,25 @@ export function useChatAutoScroll({
       shouldAutoScrollRef.current = true
     }
 
-    let lastContentHeight = contentWrapper.getBoundingClientRect().height
-    let prevScrollHeight = container.scrollHeight
+    lastContentHeightRef.current = contentWrapper.getBoundingClientRect().height
+    prevScrollHeightRef.current = container.scrollHeight
 
     const resizeObserver = new ResizeObserver(() => {
       const newContentHeight = contentWrapper.getBoundingClientRect().height
-      if (newContentHeight === lastContentHeight) return
-      lastContentHeight = newContentHeight
+      if (newContentHeight === lastContentHeightRef.current) return
+      lastContentHeightRef.current = newContentHeight
 
       if (!shouldAutoScrollRef.current) {
         const newScrollHeight = container.scrollHeight
-        if (newScrollHeight !== prevScrollHeight && prevScrollHeight > 0) {
-          const delta = newScrollHeight - prevScrollHeight
+        if (
+          newScrollHeight !== prevScrollHeightRef.current &&
+          prevScrollHeightRef.current > 0
+        ) {
+          const delta = newScrollHeight - prevScrollHeightRef.current
           container.scrollTop = container.scrollTop + delta
         }
       }
-      prevScrollHeight = container.scrollHeight
+      prevScrollHeightRef.current = container.scrollHeight
     })
 
     resizeObserver.observe(contentWrapper)

@@ -82,8 +82,11 @@ minimumReleaseAgeExclude:
   - "shadcn"
   # Tabler icons (direct dep of hax-design; @tabler/* covers icons + icons-react).
   - "@tabler/*"
-  # PostHog analytics SDK (direct dep of web).
+  # PostHog analytics SDK (direct dep of web). The glob covers posthog-js plus
+  # its internal split (@posthog/core, @posthog/types, …), which re-release on
+  # the same near-daily train and are NOT covered by the exact 'posthog-js' name.
   - "posthog-js"
+  - "@posthog/*"
   # Toolchain pins (insurance: not in the blocked-19, but same publishers re-release
   # <24h and would re-break dependabot previews). typescript/@types/node/better-sqlite3.
   - "typescript"
@@ -94,5 +97,3 @@ minimumReleaseAgeExclude:
   - "@earendil-works/pi-codemode@1.2.0"
   - "@earendil-works/pi-durable@1.2.0"
   - "@earendil-works/pi-telemetry@1.2.0"
-  - "@posthog/browser-common@0.9.9"
-  - "@posthog/core@1.60.0"
