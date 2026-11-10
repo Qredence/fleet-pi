@@ -43,6 +43,31 @@ const EXISTENCE_ONLY_SCRIPTS = new Set([
   "remap-auth-user-ids",
 ])
 
+// Gates that already run as their own CircleCI job. Executing them here too
+// doubles the pipeline's cost without adding coverage: the validator only has
+// to prove the command in AGENTS.md is still wired up, and a broken one fails
+// its dedicated job on the same commit. Measured before this list existed:
+// `pnpm build` ran twice (bare and --filter web), and build:cloudflare, lint,
+// typecheck, syncpack, knip, jscpd, format, tech-debt, and generate:openapi
+// each ran a second time — 4m40s of a 5m20s job.
+const CI_JOB_COVERED_SCRIPTS = new Set([
+  "build",
+  "build:cloudflare",
+  "format",
+  "format:check",
+  "generate:docs",
+  "generate:openapi",
+  "generate:openui-signatures",
+  "guard:no-eslint-prettier",
+  "jscpd",
+  "knip",
+  "lint",
+  "syncpack",
+  "tech-debt",
+  "typecheck",
+  "verify-deployment-readiness",
+])
+
 // Commands to skip (Pi tool commands, examples with placeholders, self-referencing)
 const SKIP_PATTERNS = [
   /^read\s+/,
@@ -95,6 +120,9 @@ function existenceOnlyReasonFor(scriptName) {
   // dry-run here races the same vitest workers and flakes under load.
   if (scriptName === "test" && process.env.CI) {
     return "existence check only - verified by CI test job"
+  }
+  if (CI_JOB_COVERED_SCRIPTS.has(scriptName)) {
+    return "existence check only - verified by its own CI job"
   }
   return undefined
 }
