@@ -2,7 +2,7 @@
 #
 # Validation mirrors the gates in .github/workflows/ci.yml: lint/format/guards,
 # typecheck, syncpack, workspace unit tests through Smarter Testing, build, knip,
-# jscpd, tech-debt, the AGENTS.md command check, and the
+# jscpd, the tech-debt scan (inside lint), the AGENTS.md command check, and the
 # deployment-readiness gate.
 #
 # Deployment split: GitHub Actions keeps auto-deploying the Worker on every main
@@ -80,6 +80,13 @@ commands:
             pnpm --version
 
   install-dependencies:
+    parameters:
+      # Only one job should write the store cache: CircleCI saves are
+      # first-writer-wins, so N concurrent savers just discard N-1 uploads.
+      # Every other job restores and tops up in memory instead.
+      save_store:
+        type: boolean
+        default: false
     steps:
       - restore_cache:
           keys:
@@ -94,14 +101,13 @@ commands:
           # Cold installs download native binaries (workerd, better-sqlite3)
           # without printing anything for long stretches.
           no_output_timeout: 20m
-
-  install-tech-debt-tools:
-    steps:
-      - run:
-          name: Install ripgrep and python3
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y ripgrep python3
+      - when:
+          condition: << parameters.save_store >>
+          steps:
+            - save_cache:
+                key: v1-linux-node24-pnpm-{{ checksum "pnpm-lock.yaml" }}
+                paths:
+                  - ~/.cache/pnpm
 
   # Marks the CircleCI deployment record for this pipeline. `plan` opens a
   # PENDING deployment in the Deploys UI; `update` moves it to RUNNING, SUCCESS,
@@ -142,10 +148,31 @@ jobs:
       - run:
           name: Check OpenAPI spec drift
           command: pnpm generate:openapi -- --check
-      - save_cache:
-          key: v1-linux-node24-pnpm-{{ checksum "pnpm-lock.yaml" }}
-          paths:
-            - ~/.cache/pnpm
+      # Folded in rather than given its own job: the scan is 0.66s of real work,
+      # and a separate job spent ~55s on VM setup plus a 15s pnpm install to run
+      # it. This job already installs apt packages, so ripgrep costs ~6s here.
+      # Non-blocking by design — see the exit-code handling below.
+      - run:
+          name: Install ripgrep for the tech-debt scan
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y ripgrep
+      - run:
+          name: Scan for tech-debt markers (non-blocking)
+          command: |
+            set +e
+            pnpm tech-debt
+            status=$?
+            set -e
+            if [ "${status}" -eq 1 ]; then
+              echo "Tech-debt markers found (exit 1). This gate is informational; see the tech-debt-report artifact."
+              exit 0
+            fi
+            exit "${status}"
+      - store_artifacts:
+          path: tech-debt-report.json
+          destination: tech-debt-report.json
+          when: always
 
   typecheck:
     executor: node-lts
@@ -209,7 +236,10 @@ jobs:
     steps:
       - checkout
       - install-pnpm
-      - install-dependencies
+      # The only job that writes the store cache. It is a root job with no
+      # `requires`, so it saves early and every later job restores a warm store.
+      - install-dependencies:
+          save_store: true
       - run:
           name: Build
           command: pnpm build
@@ -241,33 +271,6 @@ jobs:
       - store_artifacts:
           path: report
           destination: jscpd-report
-          when: always
-
-  tech-debt:
-    executor: node-lts
-    steps:
-      - checkout
-      - install-pnpm
-      - install-dependencies
-      - install-tech-debt-tools
-      # scripts/scan-tech-debt.sh exits 1 whenever it finds markers, so GitHub
-      # Actions runs it with continue-on-error. Keep the job green for the same
-      # reason; the report is published as an artifact every time.
-      - run:
-          name: Scan for tech-debt markers (non-blocking)
-          command: |
-            set +e
-            pnpm tech-debt
-            status=$?
-            set -e
-            if [ "${status}" -eq 1 ]; then
-              echo "Tech-debt markers found (exit 1). This gate is informational; see the tech-debt-report artifact."
-              exit 0
-            fi
-            exit "${status}"
-      - store_artifacts:
-          path: tech-debt-report.json
-          destination: tech-debt-report.json
           when: always
 
   validate-agents-md:
@@ -416,8 +419,6 @@ workflows:
       - knip:
           filters: *branch-only
       - jscpd:
-          filters: *branch-only
-      - tech-debt:
           filters: *branch-only
       - test:
           requires:

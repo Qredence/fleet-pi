@@ -1,10 +1,12 @@
 {
   "$schema": "https://v2-11-10.turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": ["FLEET_PI_TARGET"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["FLEET_PI_TARGET"],
       "outputs": ["dist/**"]
     },
     "lint": {
