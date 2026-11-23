@@ -55,7 +55,7 @@
   },
   "devDependencies": {
     "@neon/config": "^1.14.0",
-    "@neondatabase/serverless": "^1.2.0",
+    "@neondatabase/serverless": "^1.2.1",
     "husky": "^9.1.7",
     "jscpd": "^5.4.2",
     "knip": "^6.44.1",
