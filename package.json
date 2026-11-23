@@ -50,21 +50,21 @@
     "@earendil-works/pi-coding-agent": "^1.2.0",
     "@earendil-works/pi-tui": "^1.2.0",
     "diff": "^9.0.0",
-    "typebox": "1.4.5",
-    "undici": "^8.12.4"
+    "typebox": "1.4.7",
+    "undici": "^8.13.0"
   },
   "devDependencies": {
-    "@neon/config": "^1.14.0",
+    "@neon/config": "^1.14.5",
     "@neondatabase/serverless": "^1.2.0",
     "husky": "^9.1.7",
-    "jscpd": "^5.4.2",
-    "knip": "^6.44.1",
-    "lint-staged": "^17.6.0",
-    "neon": "^9.3.2",
+    "jscpd": "^5.4.3",
+    "knip": "^6.47.0",
+    "lint-staged": "^17.6.1",
+    "neon": "^9.8.0",
     "syncpack": "^15.3.3",
-    "turbo": "^2.11.10",
+    "turbo": "^2.11.13",
     "typescript": "^7.0.2",
-    "vite-plus": "1.5.0"
+    "vite-plus": "1.7.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": [
